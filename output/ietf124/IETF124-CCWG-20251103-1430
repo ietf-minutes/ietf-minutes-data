@@ -1,0 +1,71 @@
+# CCWG Meeting Minutes - IETF 124
+
+## Summary
+
+The CCWG session at IETF 124 covered a broad range of topics, including updates from the Hackathon, progress on the BBRv2 specification, an introduction to Seaback (Circuit Breaker Assisted Congestion Control) seeking input, a status update on Scream v2 for media congestion control, a presentation on NDTC (Network Delivery Time Control) for cloud gaming, a progress report on "Search" for slow start improvements, and an overview of Christian's TCC Congestion Control. Key discussions revolved around evaluation methodologies, reproducibility, multipath considerations, BBRv2 design choices (especially drain gain and test cases), the applicability of circuit breakers to congestion control, and the architecture of media-aware congestion control. The working group decided to focus on the broad topics of "media congestion control proposals" and "slow start improvements."
+
+## Key Discussion Points
+
+*   **Hackathon Update**
+    *   **FQ-CoDel vs FQ-PI Comparison**: Students from NITK presented results from testing FQ-CoDel (RFC 829) against FQ-PI (Internet Draft) on a live testbed using an AP QQIW 235 connected to the IETF network and a remote bufferbloat server. FQ-PI was found to perform on par or better in certain scenarios (e.g., RUL test).
+    *   **EQM Evaluation Suite**: A team developed an evaluation suite compliant with RFC 7928, including topology helpers for DFC 1 and 2. Questions were raised regarding recommended topologies for multi-path transfer protocols, performance parameters for benchmarking, and comprehensive testing in multi-bottleneck scenarios.
+    *   **Congestion Control Evaluation Suite ("Nest")**: A Python package for real-time testbed creation using Linux network namespaces is being developed, aiming for RFC 9743 compliance. Community feedback was requested on desired features, especially regarding reproducibility and minimizing variability in real-time testbeds for CI/CD integration.
+*   **BBR Update (BBRv2)**
+    *   Significant progress has been made, with numerous changes landed, including experimental considerations for Probe RTT (e.g., 5s vs 10s intervals).
+    *   Efforts to clarify language: avoiding TCP-specific terms (e.g., segment to packet, bytes and seconds for measurements), and refining descriptions for pacing and "App Limited" states.
+    *   **Substantive Open Issue**: A key design question remains regarding the drain gain (0.5 vs 0.35) or moving to a "Probe Down" phase (similar to Probe BW). Data from experiments is sought to inform this decision.
+    *   **Test Cases**: There has been no progress on defining reproducible test cases. Authors requested community help, suggesting an appendix of common pitfalls ("gotchas") as a starting point.
+    *   **Generalization to Non-TCP Transports**: Discussion included offload budget considerations for QUIC and editorial cleanup of per-packet and connection state variables.
+    *   **Pseudocode Simplification**: Removing the ACK phase from pseudocode was proposed for cleaner presentation, and validation from other implementations (Google QUIC, Picoquic) is requested.
+    *   **Restarting from Idle**: Challenges in precisely defining "idle" in QUIC (where `c.in_flight == 0` might not capture all subtleties) were discussed, and suggestions were invited.
+    *   **Implementation Status**: Cloudflare confirmed active BBRv2 implementation and running experiments, noting challenges in obtaining clear data. Picoquic also confirmed BBR implementation as a default.
+*   **Seaback (Circuit Breaker Assisted Congestion Control)**
+    *   Presented by Mbondi WG, Seaback aims to enhance multicast capabilities by providing bitrate metadata via DORMS.
+    *   It defines a network circuit breaker following RFC 8084 but encountered mapping issues: lack of active measurements (relying on metadata), co-located ingress/egress meters, and reaction applied at the egress (pruning multicast channels).
+    *   Proposed changes include proactive congestion prevention (pre-emptively not joining channels) and direct congestion measurement.
+    *   Discussion highlighted the fundamental difference between circuit breakers (all-or-nothing) and TCP congestion control (rate adaptation), and the complexity of using link utilization as a signal for mixed traffic types (e.g., IPTV vs. software downloads).
+    *   The AD emphasized that the work can remain in Mbondi but the congestion control aspects need deep discussion in CCWG.
+*   **Scream v2**
+    *   Ingemar presented an update on Scream v2, a window-based congestion control algorithm that limits bytes in flight, continuously increases its reference window (one packet/RTT, mimicking TCP Prague), and reduces it on packet loss or queue delay increase (virtual L4S marking).
+    *   Progress since IETF 119 includes generalization beyond OTP/RTCP, addressing clock drift/skipping, modifications to L4S marking, and improvements to its reaction to network changes.
+    *   An experimental WebRTC implementation lacks a strict window limit and uses relaxed pacing compared to the draft. Performance with L4S shows improved RTT and frame rate stability.
+    *   Discussion revolved around potential similarities with UDP Prague and the long-standing question of whether to separate the congestion control algorithm from media codec steering logic.
+    *   Concerns were raised about a single-layer approach, the existence of different video adaptation paradigms (real-time vs. layered encoding), and the risk of optimistic CC leading to priority inversion and performance degradation.
+*   **NDTC (Network Delivery Time Control)**
+    *   Paul Wiegno (Netflix) introduced NDTC, a rate control algorithm used for Netflix cloud gaming, with an IPR disclosure.
+    *   Unlike traditional CC, NDTC focuses on the timely arrival of frames, proactively minimizing self-induced packet losses and queueing latency.
+    *   Its core heuristic, Frame-dithering Available Capacity Estimation (F-DACE), estimates available capacity by leveraging random variations in packet pacing (dithering) and comparing normalized send/receive durations.
+    *   It operates even in complex network conditions where network processing time per byte is locally linear.
+    *   An AIMD congestion control (Prague-based) runs in parallel to handle packet loss and ECN signals.
+    *   Testbed results show fast ramp-up, accurate capacity tracking independent of encoder frame size, low frame received duration and delay, coexistence with cross-traffic (favoring timely delivery over strict fairness), and seamless mode switching (capacity estimation, loss-based, L4S).
+    *   Requires feedback with accurate timestamps (e.g., TCC, RFC 8888).
+*   **Search (Slow Start Exit Rate Control)**
+    *   Mark Squillante presented updates on "Search," an algorithm designed to improve TCP slow start by more accurately exiting before packet loss or premature exit.
+    *   It tracks the difference between sent and acknowledged bytes over an RTT to detect when capacity is reached.
+    *   Ongoing work focuses on reducing memory usage for per-flow state and empirical evidence of safety ("does no harm").
+    *   A Linux-based implementation of High Start Plus Plus is being developed for comparison, with a framework to run kernel code in user space for controlled testing with emulated traces.
+    *   Deployment efforts are underway with a video streaming vendor (on FreeBSD) to improve "time to first chunk" in live streaming scenarios, particularly in edge cases where traditional slow start performs poorly.
+    *   Discussion on the algorithmic differences between delay-based (High Start) and rate-based (Search) approaches and their similarities.
+*   **TCC Congestion Control**
+    *   Christian presented two drafts describing his TCC algorithm and design considerations.
+    *   Key goals include working well with real-time video, stable throughput, supporting app-limited flows, avoiding bufferbloat, and achieving low delay, especially in challenging Wi-Fi environments with significant RTT jitter.
+    *   The algorithm handles variable RTTs (due to retransmissions and head-of-queue blocking in Wi-Fi) by not stopping transmission on high delay signals. It uses a nominal congestion window based on measured rate and maximum RTT, combined with pacing based on the measured rate.
+    *   Bandwidth probing is BBR-like, with cautious increases and quick backoffs. It also incorporates sensitivity, where high-bandwidth applications back off faster.
+
+## Decisions and Action Items
+
+*   **DECISION**: The CCWG will focus on the topic of **media congestion control proposals**. (27 'yes' votes)
+*   **DECISION**: The CCWG will focus on the topic of **slow start improvements**. (27 'yes' votes)
+*   **ACTION**: **Seaback authors** (from MBONDI) are requested to engage with the CCWG mailing list to discuss the congestion control aspects of their proposal in more detail.
+*   **ACTION**: **Hackathon participants** developing the congestion control evaluation suite ("Nest") are requested to send the link to their design document to the CCWG mailing list for community feedback.
+*   **ACTION**: **BBR authors** requested data from implementers on the "Drain gain vs. Probe Down" design choice.
+*   **ACTION**: **BBR authors** requested help from the community in defining reproducible test cases.
+*   **ACTION**: **Scream v2 authors** and other media congestion control proposal authors (e.g., ADP Prague) are encouraged to consider how to present and potentially combine their ideas, particularly regarding the separation of congestion control logic from media codec steering.
+*   **ACTION**: **Search authors** and **High Start Plus Plus implementers** are encouraged to continue their work on empirical evidence of safety and algorithmic comparison.
+*   **ACTION**: Discussion on **NDTC** and **TCC Congestion Control** to continue on the CCWG mailing list and in future sessions.
+
+## Next Steps
+
+*   Continue discussions on all presented topics (Seaback, Scream v2/other media CC, NDTC, Search, TCC) on the CCWG mailing list.
+*   Authors to provide further updates and requested data/feedback as identified during the session.
+*   Chairs will facilitate group discussion on the scope and direction for the new focus areas of "media congestion control proposals" and "slow start improvements," including how to evaluate and potentially combine existing proposals.

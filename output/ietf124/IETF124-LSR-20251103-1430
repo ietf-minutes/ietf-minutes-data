@@ -1,0 +1,99 @@
+# LSR Session Minutes
+
+## Summary
+
+The LSR working group meeting covered several working group status updates, recently published RFCs, and drafts nearing completion. Three main technical presentations were delivered: ISIS Power Groups, Metric Normalization for IGP Flexible Algorithms, and an update on CSNP Optimization using Merkle Trees. The "ISIS Power Groups" draft proposes a mechanism for energy savings by grouping router components and allowing flexible traffic engineering policies to consolidate traffic before powering down interfaces. The "Metric Normalization" draft aims to improve ECMP utilization by normalizing link metrics for IGP flexible algorithms. The "CSNP Optimization" discussion focused on a sophisticated method to reduce periodic overhead in large-scale networks using Merkle trees and robust collision analysis, though the practical value and comparison to existing protocols sparked significant debate. Discussions on all presented drafts were encouraged to continue on the working group mailing list.
+
+## Key Discussion Points
+
+### Working Group Status Updates
+
+The chairs provided an update on recent activities and document status:
+
+*   **Recently Published RFCs:**
+    *   IS-IS Prefix Tags
+    *   Multi-part (documenting current ISIS behavior, led to long-term ISIS discussion)
+    *   MPLS SR documents (two final documents from pre-ISIS/OSPF merger)
+    *   Reverse affinity (flexible algorithm for reverse direction)
+    *   Unreachable Prefix (Experimental RFC for notification of unreachable prefixes, rough consensus achieved on problem scope)
+*   **Drafts Adopted/Submitted/In Progress:**
+    *   **Yang extensions for IGP flexible algorithms:** Yang model work by Ying Zan expected in next IETFs.
+    *   **Any-Cast flag in ISIS:** Submitted, to identify any-cast prefixes (e.g., for backup path exclusion).
+    *   **Experimental draft for flooding graph computation:** Adopted, a straightforward algorithm for area flooding, related to RFC 93xx on dynamic flooding.
+    *   **Soft Data Plane:** Encoding for flexible combinations of flex algorithm metric and SID.
+*   **Drafts in Working Group Last Call (WGLC) or close to IESG:**
+    *   Several drafts recently closed WGLC; Yang Doctor review completed, AD reviews from Med and Mahesh requested.
+    *   **OSPF link with unreachable metric:** Allows excluding links treated as unreached (hard part was backward compatibility).
+    *   **SR Enhanced VPN:** WGLC expected soon, Spring WG also involved.
+    *   **Yang documents for IGP features:** A dedicated presentation was scheduled, focused on including augmentations directly in feature drafts.
+    *   **Flex algorithm bandwidth constraints and metrics:** Expected to go to WGLC soon, parts already implemented by Cisco and Juniper.
+    *   **Simplified flooding framework:** Proposed to be advanced at the same document status level as the initial flooding framework.
+
+### ISIS Power Groups (Presented by Colby Barth)
+
+*   **Problem Statement:** Modern routing systems are complex, making it difficult to manage power consumption and facilitate energy savings. The goal is to save power by consolidating traffic through engineering policies, enabling components to be turned off.
+*   **Proposed Solution:**
+    *   Introduces two new top-level TLVs in ISIS:
+        *   `Power Group TLV`: Defines a power group with an identifier, power value (e.g., max power of FEs, optics cages), a parent identifier (for hierarchy), and a bit indicating if all member interfaces are power-capable.
+        *   `Sleeping Adjacency TLV`: A list of adjacencies that are currently in a power-sleep state, distinguishing it from merely "down."
+    *   Introduces three new sub-TLVs:
+        *   `Power Group Member sub-TLV`: Indicates which power group an interface belongs to (an interface can belong to multiple, e.g., in a LAG).
+        *   `Interface Power sub-TLV`: Operator-defined power of the interface.
+        *   `Sleeping Bandwidth sub-TLV`: Advertises bandwidth put to sleep, relevant for LAGs.
+*   **Discussion Points:**
+    *   **Liveness:** Questions were raised on how liveness is maintained for "sleeping" adjacencies once power is off. The response clarified that the decision to power off is made *in advance*, and the sleeping state is advertised before power-down. Liveness checks need further thought.
+    *   **Precedent & Green WG:** OSPF demand circuits were cited as a precedent for managing inactive interfaces. The Green WG has documents on power reporting, but nothing directly aligned with this operational approach to power saving via IGP.
+    *   **Graceful Shutdown:** Graceful link removal (e.g., via max metric) is an implementation detail for transitioning to a sleeping state. The sleeping adjacency indicates a potential for an adjacency to return, not a guaranteed consistent state.
+    *   **Vendor Consistency:** Concerns about defining power groups and ensuring consistent power consumption metrics across different vendors for TE calculations. The authors stated that the power group definition is an abstraction not intended for normalization across *different system architectures*. Vendors should report accurate "best effort wattage" in Watts per power group. Operators would define policies and dependency chains.
+*   **Working Group Poll:** A poll on having read the draft showed approximately 50/50. "Not yet" voters were asked to provide feedback on what's missing. Initial feedback suggested dependency on the Green WG for standardization of power group definitions and cross-vendor normalization, though authors noted that their proposal is an operational mechanism.
+
+### Metric Normalization for IGP Flexible Algorithms (Presented by Leian Channel)
+
+*   **Problem Statement:** In network environments, multiple paths often have very similar but not identical metric values, preventing ECMP load balancing and leading to poor resource utilization. The goal is to enable these "nearly equal" paths to be used together.
+*   **Proposed Solution:** A metric normalization and adjustment method. It makes minor adjustments to existing link metric values so that paths with similar metrics end up with identical normalized metrics, enabling ECMP. This applies to standard HP metrics, link delay, TE metrics, and bandwidth metrics (RFC 9350, 9843 compliant). It emphasizes full compatibility with existing IGP routing algorithms and ease of deployment.
+*   **Algorithm Details:**
+    *   Involves two configurable parameters: `metric step` (granularity) and `metric offset` (baseline adjustment).
+    *   A three-step calculation process, referencing RFC 9843 for automatic metric calculations based on bandwidth. The adjustment is applied *after* the initial metric calculation.
+*   **Protocol Extension:**
+    *   Proposes defining a new sub-TLV within the FAD (Flexible Algorithm Definition) sub-TLV for both IS-IS and OSPF (complying with RFC 9350).
+    *   This sub-TLV would contain `metric type`, `metric step`, and `metric offset`.
+    *   The extension aims to simplify configuration and maintain consistency across multiple devices, though a static configuration approach is also considered acceptable.
+*   **Discussion Points:**
+    *   **Terminology:** "Normalize" was confirmed as a more appropriate term than "standardize."
+    *   **TE Application:** For TE paths, which are often computed by a single controller or head-end, advertising normalization information across the domain might not be strictly necessary, as local computation could suffice.
+    *   **Existing Mechanisms:** The existence of unequal multi-path (UCMP) implementations, which use weighting factors, was raised as a potential alternative, questioning the need for this new approach across the domain.
+    *   **Advertisement Necessity:** Questions arose whether the normalization *method* (metric step, offset) needs to be advertised, or if only the *normalized metric* should be advertised as a local router behavior. The authors argued advertisement simplifies configuration and ensures consistency across routers.
+
+### CSNP Optimization / Merkle Trees (Presented by Tony P.)
+
+*   **Problem Statement:** In large-scale networks, periodic CSNP (Complete Sequence Number PDU) exchanges generate significant, often useless, periodic overhead (CPU and I/O) even when the network is stable. While CSNPs are essential "safety belts" against flooding issues, a more efficient mechanism is needed.
+*   **Proposed Solution:** Utilize Merkle trees (trees of hashes) for efficient database synchronization.
+    *   **Hashing:** Individual LSP fragments are hashed (preferably with Fletcher checksums for better entropy). These fragment hashes form the leaves of the Merkle tree.
+    *   **Hierarchical Hashing:** Higher-level hashes are computed from groups of lower-level hashes. A single top-level hash can represent a large portion of the LSDB. If a neighbor's top-level hash matches, synchronization is confirmed without further exchange. If it mismatches, progressively lower-level hashes are exchanged until the differing fragments are identified.
+    *   **Partitioning:** LSDB fragments are partitioned into continuous ranges, similar to how CSNPs cover ranges. XOR operations are used for combining hashes, allowing for easy adjustment to ranges and cheap updates (remove old, add new hash). Ranges are typically aligned with System IDs (nodes).
+    *   **Synchronization Strategy:** A flag in Hello PDUs indicates support. Implementations have flexibility in how they pack and summarize hashes, and in strategies for starting synchronization (e.g., aggressively for stable networks, or full CSNPs for cold boots).
+*   **Collision Analysis ("Disaster Metric"):**
+    *   The current protocol has existing, though rare, inconsistencies (e.g., undetected LSP differences with same fragment ID/checksum).
+    *   A "disaster metric" (probability x duration of inconsistency) was introduced for comparison. The current protocol was assigned a metric of 1 (1/65K probability, 65K seconds duration for 16-bit checksum).
+    *   Merkle trees were shown to significantly reduce this metric (e.g., 0.1 for half a million fragments using 32-bit hashes due to frequent refreshes).
+    *   Using 64-bit or 40-bit Fletcher checksums could further reduce collision probabilities.
+    *   Alternatives like frequent full CSNPs were deemed impractical for very large networks due to high traffic volume.
+*   **Discussion Points:**
+    *   **Practical Value vs. Theoretical:** Significant debate arose regarding the practical value of HSNPs. Some argued that existing protocol "undetectable" differences are rare and don't significantly impact network operations. The focus should be on deployment scenarios where periodic CSNPs are truly needed (e.g., compromised flooding) and where HSNPs don't generate "false positives" due to transient database differences.
+    *   **CSNP Role:** The operational importance of periodic CSNPs as a "safety belt" for maintaining database consistency, especially when flooding might be compromised, was stressed. HSNPs offer logarithmic scaling of packet exchanges compared to the linear scaling of CSNPs, making them more feasible for large LSDBs.
+    *   **Collision Comparison:** Concerns were raised about comparing collision probabilities between CSNPs (where LSP structure adds redundancy) and HSNPs (which operate on randomized hashes), suggesting it might not be an "apples to apples" comparison. The impact of a hash collision in Merkle trees potentially affecting many fragments was also noted. The presenter emphasized the need for quantitative analysis (math) over "feelings" when discussing low probabilities.
+*   **Flooding Draft Update:** Briefly mentioned updates to a separate flooding draft, including better double hashing, clarifications on shortest path removal and regression to full flooding, and simulation results confirming correctness and no increased PSNP volume with flooding reduction.
+
+## Decisions and Action Items
+
+*   **ISIS Power Groups:** No immediate decision on working group adoption. Authors were requested to clarify missing details, especially regarding cross-vendor normalization and problem statement guidance for TE. Discussion to continue on the mailing list.
+*   **Metric Normalization for IGP Flexible Algorithms:** No immediate decision on working group adoption. Authors were asked to update the draft with correct terminology ("normalize") and to continue discussion on the mailing list regarding the necessity of protocol advertisement versus local configuration and the interaction with existing UCMP mechanisms.
+*   **CSNP Optimization / Merkle Trees:** No immediate decision. Discussion to continue on the mailing list, focusing on practical deployment scenarios, collision analysis details, and clarifying comparisons with existing CSNP behavior.
+
+## Next Steps
+
+*   **ISIS Power Groups:** Authors to refine the draft based on feedback, particularly addressing cross-vendor consistency and the problem statement in relation to Green WG activities.
+*   **Metric Normalization for IGP Flexible Algorithms:** Authors to update terminology and engage in further mailing list discussion about the proposed protocol extensions versus local configuration.
+*   **CSNP Optimization / Merkle Trees:** Authors to continue developing the draft, address the concerns raised regarding practical value and collision analysis, and engage in further discussion on the mailing list.
+*   **Yang documents:** Interested parties are encouraged to review the uploaded slides and send questions to the mailing list.
+*   **General:** All attendees are reminded to continue technical discussions on the LSR working group mailing list.
