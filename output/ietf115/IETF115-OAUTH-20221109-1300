@@ -1,0 +1,76 @@
+# oauth
+
+## Summary
+
+The oauth session covered three key topics: an update on JOT Embedded Tokens, a discussion on the proposed charter for fine-grained transactional authorization, and an in-depth presentation on cross-device flows and client ID for anonymous clients. Discussions centered on proposed architectural changes, security implications, and potential new work items for the working group. The chairs announced a call for adoption for the cross-device flows document.
+
+## Key Discussion Points
+
+### JOT Embedded Tokens (formerly Multiple Subject JOT)
+
+*   **Motivation:** Focus shifted to use cases requiring binding multiple tokens from *multiple issuers* into a new token, showing their relationship. Use cases involving a single issuer will be addressed separately.
+*   **Use Cases:**
+    *   **Access Token:** STIR/SHAKEN for telephone call redirection, where an intermediate party embeds an original token into a new one to demonstrate call lineage.
+    *   **ID Token:** Linking claims from disparate issuers (e.g., date of birth from one, education certification from another).
+*   **Proposed Mechanism:** Utilize the existing OAuth 2.0 Token Exchange mechanism with an extension to request the embedding of a provided token into the newly issued token.
+*   **New Claim:** A `tokens` claim is proposed, which is a list of objects, each containing a `type` (e.g., "access_token", "id_token") and the `token` string itself.
+*   **Discussion:**
+    *   The need to explicitly define the *semantics* of embedded tokens was raised to prevent unintended repurposing across different use cases.
+    *   Feedback suggested exploring the `token_type` parameter in Token Exchange for indicating embedding semantics, rather than new parameters.
+    *   The observation was made that embedding a token implies full delegation and control to the recipient.
+    *   Clarification was sought on whether this mechanism operates within or across trust boundaries; it is intended for *cross-boundary* scenarios involving different issuers.
+
+### Fine-Grained Transactional Authorization
+
+*   **Motivation:** To secure communication between microservices, both within a single trust domain and across different trust domains (e.g., multi-cloud, hybrid). The aim is to prevent privilege escalation or user impersonation in the event of a software supply chain attack or VPC compromise, relying on open standards.
+*   **Prior Work Reviewed:** Netflix "passports," Athens decentralized authorization, George's short-lived transaction tokens, Kelly's token chaining, and Atul's generic problem architecture.
+*   **Problem Architecture:** Illustrated scenarios involving external APIs, pass-through microservices, and resource microservices across multiple VPCs, emphasizing the need to preserve identity, authorization, and context throughout call chains.
+*   **Proposed Scope/Charter:**
+    *   Cover interactive/batch and synchronous/asynchronous invocations.
+    *   Address various trust boundaries (on-prem to cloud, different cloud tenants).
+    *   Define mechanisms to convey authentication immutably, provide least-privilege authorization, and maintain immutable context information (e.g., transaction details).
+    *   Focus on a framework for *communicating* identities securely, leveraging existing work where possible (e.g., IETF SEC Events), rather than defining new identity formats.
+*   **Information to Preserve:** Principal identity, identities of services in the call chain, authorization scope (initial and downscoped), and invocation context.
+*   **Discussion for Future:** Efficiency considerations (given high frequency for RPCs), short-lived tokens, and call chain verification will be discussed in further detail.
+
+### Cross Device Flows
+
+*   **Problem Statement:** Attackers exploit social engineering and unauthenticated channels between devices (e.g., device authorization grant using QR codes) to gain access tokens, bypassing strong authentication. The issue is user decision-making rather than protocol flaws.
+*   **Attack Flow:** Session initiation by attacker, social engineering to mislead the user, user authenticates on their device, attacker gains tokens.
+*   **Draft Proposal:** A document detailing concepts, scenarios (6 identified, 2 more found), and mitigation strategies (approx. 12, categorized as preventative, disruptive, recovery).
+*   **Alternative Protocols:** The draft provides guidance on alternative protocols (e.g., FIDO2 WebAuthn) and their trade-offs, emphasizing WebAuthn as a highly secure option when device capabilities permit.
+*   **Foundational Pillars:** Calls for more robust formal analysis of user decision-making in security protocols.
+*   **Discussion:**
+    *   Strong support for the work was expressed, highlighting its importance in addressing user-facing security gaps.
+    *   The idea of developing *consistent user experience (UX) guidance* or "design patterns" for security-sensitive user interactions was raised, potentially by engaging UX research communities.
+    *   While WebAuthn is very secure, its technical classification as a "cross-device flow" was debated, with Peter clarifying its inclusion as a secure *alternative* to traditional cross-device OAuth, aimed at steering implementers towards better options.
+    *   The document's utility for implementers, architects, and security professionals was affirmed.
+
+### Client ID for Anonymous Clients
+
+*   **Problem:** RFC 6749 requires the Authorization Server (AS) to issue client IDs and clients to register. Many emerging use cases (e.g., OpenID for Verifiable Credentials, Open Banking, Education Federation) involve a large number of clients interacting with ASs where pre-registration for every client is impractical or undesirable ("anonymous clients").
+*   **Current Workarounds:** Some ASs, constrained by current RFCs, are issuing and publishing a single client ID for multiple disparate clients to use, leading to potential impersonation or shared client context.
+*   **Prior Art/Proposed Solutions:**
+    *   **OpenID Federation:** Allows clients to define their own `client_id` as a URI, with metadata discovered from a `.well-known` endpoint. This approach deviates from RFC 6749 but is implemented.
+    *   **OpenID for Verifiable Presentation (OIDC4VP):** Offers options like `client_id` being the `redirect_uri`, passing `client_metadata` directly in the authorization request (signed), or external metadata hosting.
+    *   **OpenID for Verifiable Credential Issuance (OIDC4VCI):** Defines a new grant type that can allow `client_id` to be *omitted* from the token request, effectively supporting truly anonymous clients.
+*   **Key Questions:** Who should determine `client_id`? Who should manage client metadata?
+*   **Purpose of Client ID:** Identified uses include binding to redirect URIs, retrieving client metadata, customizing user experience, and applying specific permissions (plus, a record of authorization grants).
+*   **Discussion:**
+    *   OAuth 2.1 already relaxed language to allow client IDs issued by "trusted third parties," with a suggestion to remove "trusted" to broaden scope further.
+    *   Concerns were raised about the Security BCP's advice against clients influencing their own `client_id`, given these new use cases.
+    *   The "open web" use case (e.g., IndieAuth) was highlighted as an existing, widely deployed model since 2014 where client IDs are URLs and metadata is self-discovered.
+    *   It was emphasized that many listed needs for `client_id` are actually about the underlying *client registration record* at the AS, which the `client_id` references.
+    *   The potential for Pushed Authorization Requests (PAR) to alleviate some `client_id` requirements was mentioned, but not all deployment models support PAR.
+    *   Strong support for further work was voiced, with a focus on defining how clients can communicate their metadata (self-attested or third-party assigned) to an AS.
+
+## Decisions and Action Items
+
+*   **Decision:** The chairs will issue a call for adoption on the mailing list for the Cross Device Flows document (draft-ietf-oauth-cross-device-flows-bcp).
+*   **Action Item:** Peter Gietz to update the Cross Device Flows draft before the call for adoption.
+
+## Next Steps
+
+*   **JOT Embedded Tokens:** The draft will be updated with the discussed details and technical aspects will be further explored.
+*   **Fine-Grained Transactional Authorization:** A deeper discussion will be held at tomorrow's side meeting.
+*   **Client ID for Anonymous Clients:** The discussion will continue on the mailing list. Tobias has published an individual draft ("OAuth Client Discovery") that is conceptually aligned, and Aaron will provide links to relevant work (e.g., IndieAuth). The working group is encouraged to explore combining the client metadata idea with mechanisms like OpenID Federation.

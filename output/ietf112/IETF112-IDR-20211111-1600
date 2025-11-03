@@ -1,0 +1,101 @@
+# idr
+
+## Summary
+The IDR session covered a range of BGP extensions and operational challenges. Key discussions included a PCEP-based solution for traffic engineering, updates on BGP Flow Specification v2, clarifications for BGP Dynamic Capabilities, the potential for BGP multi-sessions over Quick for improved resilience, BGP-driven metadata for 5G edge computing, and a proposal to revise BGP error handling which sparked significant debate on operational safety. Cross-working group collaboration, particularly with PCE and DetNet, was a recurring theme.
+
+## Key Discussion Points
+
+*   **PSAP (Path Segment-based Application Path) for Inter-Network TE** (Agent)
+    *   **Motivation:** To provide traffic engineering in inter-network environments using BGP sessions controlled by PCEP.
+    *   **Solution Overview:**
+        1.  Build multiple BGP sessions between edge routers (e.g., R1 and R7).
+        2.  PC (PCEP controller) sends `PDP information object` to edge routers to establish these multi-BGP sessions with QoS, peer, and tunnel information.
+        3.  PC sends `Explicit Peer Route object` to intermediate edge routers to explicitly define BGP next-hop paths (e.g., R1-R6-R8-R5-R7) including root priority.
+        4.  PC sends `Peer Prefix Advertisement object` to edge routers to advertise different prefixes via the different BGP sessions, ensuring traffic differentiation for QoS.
+    *   **Outcome:** Achieves normal and priority traffic on different paths, meeting QoS requirements.
+    *   **Discussion:** The work requires collaboration between the IDR and PCE working groups.
+
+*   **Flow Specification Version 2 (FSv2)** (Donald)
+    *   **Motivation:** Address limitations in BGP Flow Specification Version 1 (RFCs 5575, 8955, 8956), including lack of consistent TLV encoding, difficulty with extensibility, absence of filter/action ordering, and unclear peer interaction.
+    *   **Solution:** FSv2 uses a new SAFI and introduces significant improvements.
+    *   **Draft Status (v03):** Substantially expanded, with improved material on ordering (between FSv1 and FSv2 rules), more control over failure treatment in action chains, expanded validation (routing, cryptographic), and a new manageability section.
+    *   **Discussion:** The comprehensive nature of FSv2 was highlighted, with an urgent call for operator and developer review and comments.
+
+*   **Dynamic Capabilities for BGP** (Nk)
+    *   **Motivation:** Enable dynamic revision of BGP capabilities without session reset, building on existing implementations for AFIs/SAFIs and Graceful Restart (GR).
+    *   **Recent Updates (v16):**
+        *   **Multiple Instance Capability:** Clarified that each instance (e.g., AFI/SAFI) is revised individually due to historical 4-byte capability length.
+        *   **Single Instance Capability:** Clarified that the entire capability is replaced, and removal is indicated by setting the length field to zero.
+        *   **Capability Selection:** Implementers/operators decide which capabilities to support dynamically based on complexity and use case.
+    *   **Discussion:**
+        *   Dynamic revision is only possible for capabilities explicitly advertised as dynamically revisable by *both* peers in the OPEN message.
+        *   Some capabilities (e.g., Add Paths) may still not be safe to renegotiate. A suggestion was made for a parallel capability to explicitly list renegotiable items.
+        *   The chairs requested implementation reports to aid IANA early allocation for a newly identified error code conflict.
+        *   It was suggested to add text to the draft outlining easiest use cases (e.g., AFIs/SAFIs, GR) to encourage adoption.
+
+*   **Multi-session for BGP over Quick** (Yinzhan)
+    *   **Motivation:**
+        1.  Malformed messages or errors in one BGP AFI/SAFI often lead to the termination of the entire TCP BGP session, impacting all other services.
+        2.  Consolidating all services into a single BGP TCP connection can lead to control plane resource contention.
+    *   **Solution:** Leverage Quick (RFC 9000), a UDP-based, multiplexed, and secure transport protocol. Quick connections carry multiple independent streams, each with its own flow control.
+    *   **Mechanism:** One Quick connection can support multiple BGP sessions, with each session operating independently over a Quick stream (e.g., one stream per AFI/SAFI). Errors in one stream/session would not affect others.
+    *   **Error Handling:** Introduces new error sub-codes for multi-session conflicts, capability mismatches, and network layer protocol mismatches in OPEN messages.
+    *   **Discussion:**
+        *   While existing BGP error handling could disable specific AFIs/SAFIs, Quick's stream model potentially offers a cleaner separation and improved resilience.
+        *   Quick's Layer 5 session model might help BGP handle some malformed NLRI errors more gracefully, as packet boundaries could be more reliably identified compared to a raw TCP stream.
+
+*   **5G Edge Computing Application Metadata** (Linda)
+    *   **Motivation:** In 5G edge computing, application layer load balancing (e.g., via local DNS) may not account for actual network conditions (router load/stress), leading to suboptimal server selection for low-latency services.
+    *   **Proposal:** Propagate network-specific attributes (e.g., cost) via BGP to ingress routers.
+    *   **Mechanism:** Associate "site cost" with tunneling capabilities. Egress routers advertise prefixes along with tunnel types and an additional cost to reach that prefix. Ingress routers can then compute paths based on prefix, tunnel, and cost.
+    *   **Optimization:** Route constraint distribution (e.g., based on application server ID) can limit the flooding of these metrics to interested ingress routers.
+    *   **Discussion:**
+        *   A debate on whether this problem is best solved at the application layer or network layer. Application developers argue for app-layer solutions, but those have limitations (e.g., slow load balancer deployment).
+        *   The draft's assumption of small, localized networks near the 5G core was noted.
+        *   Concern about potential chattiness of BGP updates; the author clarified that cost changes would occur on the order of hours or days, not minutes, to prevent oscillation.
+        *   The complexity of maintaining "sticky" server connections when UEs move was raised as a significant challenge that app-layer solutions currently address.
+
+*   **Revised Error Handling for BGP Messages** (Hypo)
+    *   **Motivation:** Existing BGP error handling (RFC 4271, 7606) can be too strict, leading to unstable sessions (repeated resets) when malformed messages are encountered.
+    *   **Proposals:** Reduce the impact of errors by allowing more graceful handling, clarifying ambiguous definitions, and loosening strictness in specific scenarios.
+        *   **MP_REACH/MP_UNREACH:** Discarding error prefixes while keeping correct ones, processing the last/first of multiple attributes, ignoring current messages for NLRI errors.
+        *   **Address Validation:** Clarifying handling of zero BGP IDs (Aggregator, Originator ID) and validation of IP addresses in Network attributes.
+        *   **SRv6 Precedence (RFC 8669):** Withdrawing routes if the attribute is incorrect.
+    *   **Discussion:**
+        *   **Strong Counterarguments:** Many participants (Nk, Jeff, Kev) emphasized that partial parsing or discarding parts of BGP updates, especially NLRI, is fundamentally dangerous due to BGP's incremental nature. This can lead to stale routing information and black holes, particularly for Internet routes. RFC 7606's "treat-as-withdraw" relies on *successful full parsing* of the NLRI field.
+        *   **Operational Safety:** While a "best effort" approach might seem appealing for network stability, it risks leaving the network in a logically inconsistent or broken state. The original strictness was chosen for operational safety, especially for the global Internet.
+        *   **Specific Cases:**
+            *   Next-hop validation might be an area for potential, focused improvement.
+            *   Making zero BGP IDs invalid now could cause backward compatibility issues.
+            *   For specific closed environments (e.g., data centers) or certain AFIs/SAFIs (like Long-Lived Graceful Restart for non-Internet routes), a "partially broken but up" session might be preferred over a reset, but this is not suitable for general Internet use.
+        *   The consensus was to continue discussion on the mailing list, focusing on clarifying specific edge cases within 7606 rather than a wholesale revision that could compromise operational integrity.
+
+*   **Flow Specifications for DetNet Flow Mapping** (Quan)
+    *   **Motivation:** DetNet requires robust flow mapping between TSN streams and DetNet flows at boundary nodes, including one-to-one and N-to-1 aggregation.
+    *   **Proposal:** Extend BGP Flow Specification to provide control plane functionality for this mapping.
+    *   **Mechanism:** Proposes new FlowSpec types: `MAC Service Data NLRI` for TSN traffic filtering and `DetNet Flow NLRI` for DetNet MPLS flows, along with new extended communities (`Sequence Action Extended Community`, `TSN Action Extended Community`) to map matched packets to specific flows or TSN streams and associated parameters.
+    *   **Discussion:** This work was noted as important but was advised to align with and contribute to the ongoing Flow Specification Version 2 efforts, as current FlowSpec v1 is not extensible for new capabilities.
+
+## Decisions and Action Items
+
+*   **PSAP (Agent):**
+    *   **ACTION:** Add the draft to the cross-working group wiki for tracking between IDR and PCE.
+    *   **ACTION:** Schedule a shared Working Group Last Call with PCE, including chair review.
+    *   **ACTION:** Continue to welcome comments on the IDR mailing list.
+*   **Dynamic Capabilities (Nk):**
+    *   **ACTION:** Work with chairs for early IANA allocation for the new error code to resolve conflict with Enhanced Route Refresh.
+    *   **ACTION:** Implementers are requested to provide implementation reports (via the IDR wiki) detailing which capabilities they support, to facilitate IANA allocation.
+    *   **ACTION:** Consider adding an appendix to the draft documenting the evolution and significant changes (e.g., from v4 to v5) for better interoperability and clarity.
+    *   **ACTION:** Consider adding text to the draft highlighting easy use cases (e.g., AFIs/SAFIs, GR) to guide implementers.
+*   **Flow Specification Version 2 (Donald):**
+    *   **ACTION:** Attendees are urged to review the current draft (v03) and provide comments, particularly operators and developers.
+    *   **ACTION:** An IDR virtual meeting is scheduled for December 13th to discuss FSv2 in detail.
+*   **Flow Specifications for DetNet Flow Mapping (Quan):**
+    *   **ACTION:** The author will update the proposed FlowSpec extensions to align with and integrate into the Flow Specification Version 2 efforts.
+
+## Next Steps
+
+*   **All Drafts:** Authors will continue to refine their drafts based on feedback received during the session and on the mailing list.
+*   **Mailing List Discussion:** Continue detailed technical discussions for Revised Error Handling and 5G Edge Computing App Metadata on the IDR mailing list.
+*   **Cross-WG Coordination:** Maintain close coordination for drafts involving multiple working groups (e.g., PSAP with PCE, DetNet FlowSpec with FSv2, 5G Edge Computing with LS&R and Six-Man).
+*   **Implementation Reports:** Implementers of Dynamic Capabilities are encouraged to submit their reports to the IDR chairs and mailing list.

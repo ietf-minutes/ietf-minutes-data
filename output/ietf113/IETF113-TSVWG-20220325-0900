@@ -1,0 +1,131 @@
+# tsvwg Meeting Minutes
+
+## Summary
+
+The tsvwg session covered updates on several drafts, including Multi-Path DCCP, Differentiated Services Code Point (DSCP) considerations, NQB (Network Queueing Behavior), UDP Options, and DPLPMTUD (Datagram Packetization Layer Path MTU Discovery) for UDP Options. A detailed technical overview of Internet checksum implementations was also provided as background for the UDP Options work. Key discussions revolved around the maturity and adoption of MPDCCCP, the implications of "TOS precedence bleaching" on DSCP assignments, and the path to Working Group Last Call for the NQB and UDP Options related drafts. Calls for review and community engagement were made across several topics.
+
+## Key Discussion Points
+
+*   **TSVWG Status Update**
+    *   Five Internet-Drafts are with working group chairs and authors, having passed Working Group Last Call (WGLC).
+        *   ECN for CUPS (shepherded by David Black) needs text replacement.
+        *   ECN for Tunnels using Shim Headers has similar issues resolved.
+        *   Both are ready for shepherd write-up and will be passed up to the IESG before the next IETF.
+    *   Three L4S drafts (architecture, identifier, AQM) completed WGLC some time ago and are undergoing extended review and shepherd write-up.
+    *   All these drafts are progressing.
+
+*   **Multi-Path DCCP (MPDCCCP)**
+    *   Marcus Armbrust (Deutsche Telekom) presented on the progress of the Multi-Path DCCP draft.
+    *   **Key Changes since last IETF**:
+        *   **Handshaking Procedure**: Finalized to a four-way design, similar to Multi-Path TCP.
+        *   **MPPRio Option**: Introduced for fine-granular path management (enable/disable paths, set backup mode, path prioritization for scheduling).
+        *   **Maximum Packet Size**: Defined a strategy for multi-pass context, maintaining compatibility with single-pass DCCP.
+        *   **Closing Procedures**: Defined two new options: `MP_FAST_CLOSE` (abrupt shutdown using a new DCCP reset code 12) and `MP_CLOSE` (regular shutdown following DCCP closing procedure, sent on all paths). Both use key material for authentication to prevent misuse.
+        *   **Congestion Control**: Added considerations for bottleneck fairness with single-pass.
+    *   **Implementation Status**: Draft maintained on GitHub with individual pull requests. An open-source Linux reference implementation for out-of-tree Multi-Path DCCP is available and updated with recent changes.
+    *   **3GPP ATSSS Relation**: MPDCCCP is proposed as a solution for non-TCP multi-path transport in 5G systems. The prototype includes encapsulation, scheduling, reordering, multiple Congestion Control IDs (CCID 2, 3, and a new CCID5 following BBR), and path management functionalities.
+    *   **Discussion**:
+        *   Lars Eggert asked about upstreaming to Linux netdev community. Marcus stated it's currently an out-of-tree implementation, with some user-space implementation work at Karlstad University. Acknowledged the need for kernel inclusion for broader adoption.
+        *   Michael Tusche inquired about IPRs. Marcus confirmed the protocol implementation is GPL-based and free, with no IPRs for use.
+        *   MPDCCCP is currently the only solution for non-TCP splitting support in the 3GPP SA2 technical report.
+        *   A Proof-of-Concept (POC) with a major terminal vendor is underway to integrate MPDCCCP into Android systems.
+        *   Hackathon Demo: Demonstrated seamless handover between Wi-Fi and 4G using MPDCCCP on a Google Pixel 4 during a Skype call, showing no interruption.
+    *   **Next Steps**: Draft version 4 is considered feature-complete. Marcus requested reviewers to join the effort. Goal is to keep pace with 3GPP Release 18 timelines.
+    *   **Side Meeting**: An informal side meeting was announced for further discussion on 3GPP ATSSS, emphasizing it's for information distribution only, with no remote participation.
+
+*   **Differentiated Services: Considerations for Assigning DSCPs**
+    *   Anna Forès presented on the "Considerations for assigning Diffserv Code Points" draft.
+    *   **Revision 01 Updates**:
+        *   Clarifications on different pathologies affecting DSCPs, including a new one: clearing the least significant bits (LSBs).
+        *   Incorporated comments from Brian Carpenter and Rudy Gurbhaye regarding RFC 3086 (PHBs), RFC 2474 (remarking at domain boundaries), management code points, and the non-binding nature of GSMA IR34.
+    *   **Problem: TOS Precedence Bleaching**:
+        *   Measurement data shows a significant number of "routers" bleach the three most significant bits (MSBs) of a DSCP, effectively reducing it to a value between 0 and 7. This happens on up to 20% of paths.
+        *   This "bleaching" pollutes lower DSCP values (e.g., AF11, EF bleach to 2 or 6), making them unusable for new specific assignments due to aggregation with diverse traffic.
+        *   DSCP 4 has historical issues (SSH bug). DSCP 5 is provisionally allocated to NQB.
+    *   **Network Behaviors**: Categorized into transparent (pass DSCPs as is), managed (operators police/remark, support new code points), and unmanaged/weird (e.g., TOS precedence bleaching, inconsistent remarking).
+    *   **Call for Input**: What recommendations should be made regarding "unmanaged" networks? Should the currently informational draft make recommendations for future assignments?
+    *   **Discussion**:
+        *   Martin Duke thanked Anna for the draft, highlighting the clarity of the DSCP grid and the issue of "burning" generally useful code points. Suggested presenting to OPS Area.
+        *   Gorry Fergus clarified the draft is currently informational but could potentially lead to a BCP/Standards Track document if it updates existing 20-year-old RFCs and architecture.
+        *   Rudiger provided operational experience, desiring "default transport" in the backbone but service differentiation in access, emphasizing fair resource sharing.
+        *   Jonathan Morton supported efforts to discourage bleaching.
+        *   Suggestions to present to IEPC (informal operator group) and MAPRG (Measurement and Analysis for Protocols Research Group).
+    *   **Action Items**: Anna will revise the draft, prepare a presentation for OPS Area (and potentially IEPC/MAPRG) at the next IETF, and initiate discussion on the mailing list about potential recommendations for future DSCP assignments.
+
+*   **Differentiated Services: NQB (Network Queueing Behavior)**
+    *   Greg White presented updates to the NQB draft.
+    *   **Draft-10 Updates**:
+        *   Clarified compatible senders for NQB marking (low-rate flows of sports applications).
+        *   Added rationale for the choice of DSCP 45.
+        *   Discussed implications of EDCA (Enhanced Distributed Channel Access) manipulation for Wi-Fi compatibility, noting it converts a priority queue to best-effort priority.
+        *   IANA section reformatted; proposed unique names: `NQB-Edge` (for DSCP 45) and `NQB-Core` (for DSCP 5).
+    *   **Discussion**:
+        *   Gorry Fergus questioned the need for clarity on the aggregate meaning of DSCP 5 when other DSCPs in the same column might bleach to it.
+        *   David Black noted Diffserv historically aimed for both domain-specific and end-to-end services, but end-to-end has proven challenging (referencing Anna's presentation).
+        *   A question was raised about the long-term need for DSCP 45 vs. 5, considering potential ubiquitous NQB support or Wi-Fi equipment updates. Greg stated DSCP 45 is currently seen as long-term for endpoints.
+    *   **Next Steps**: Chairs will work with Greg to address remaining comments, particularly around remarking guidance and the naming of the code points, before moving to Working Group Last Call.
+
+*   **UDP Options Update**
+    *   Gorry Fergus (proxying for Joe Touch) presented updates to the UDP Options draft.
+    *   **Core Updates (v13-15)**:
+        *   New option area structure, including an Option Checksum (OCS) field for the options area.
+        *   Integration of `unsafe kind` option.
+        *   Updated fragmentation text.
+        *   `Request/Response` option is now required.
+    *   **v16 Updates**:
+        *   Corrected limits on options, updated terminology, refined table of contents.
+        *   **OCS Checksum Optionality**: The OCS field is now optional *only* when the UDP checksum is zero; otherwise, it is mandatory. This ensures it does not affect NAT traversal.
+    *   **Implementation Status**: Earlier versions were implemented (e.g., for DPLPMTUD), but the latest version requires new implementation efforts. Call for hackathon activities and implementation experiences.
+    *   **Next Steps**: Invited expert reviewers (Tommy Pauly, Colin Perkins) for a full read-through. Expects further revisions based on their feedback, followed by Working Group Last Call.
+
+*   **Internet Checksum (Background)**
+    *   Tom Herbert provided a detailed overview of the Internet checksum, its implementation, and performance considerations. This served as a background for the UDP Options work.
+    *   **Overview**: Pervasive (TCP, UDP, IPv4, GRE), simple 16-bit one's complement sum. Weak verification but computationally expensive if not optimized.
+    *   **Arithmetic Properties**: Commutative, associative, FFFF equivalent to zero, allows for folding larger word sizes and checksum deltas (efficient updates).
+    *   **Implementations**:
+        *   **Small Data (e.g., IP header)**: Optimized with specialized CPU instructions (e.g., x86 `ADDC`).
+        *   **Large Payloads (e.g., TCP/UDP)**: Offloaded to Network Interface Controllers (NICs) for hardware acceleration.
+    *   **Checksum Offload (Tx/Rx)**: Protocol-agnostic offload is preferred. Host computes pseudo-header sum; NIC completes the packet sum. Receive side returns a full packet sum to the host, which then derives specific protocol checksums.
+    *   **Large Send/Receive Offloads (TSO/GSO/LRO)**: Checksum handling is critical for performance when processing large packets.
+    *   **Discussion**:
+        *   Checksum errors are rare (e.g., once a year per customer base due to old hardware without ECC memory).
+        *   Internet checksum is end-to-end, unlike Ethernet CRC (hop-by-hop).
+        *   **Misconception**: Disabling UDP checksum (setting to 0) is **not** a performance advantage for hosts and can even be a disadvantage. Host still needs to process inner TCP checksums, and legacy offload algorithms may force host CPU computation if UDP checksum is zero. Offload already absorbs the cost of UDP/TCP checksums. The problem is when new protocols or combinations accidentally force host CPU checksum computation.
+
+*   **DPLPMTUD UDP Options**
+    *   Tom Herbert presented an update on the DPLPMTUD UDP Options document.
+    *   **Purpose**: Provides additional text to integrate DPLPMTUD requirements into the UDP Options framework.
+    *   **Changes**: Aligned with the UDP Options base specification (e.g., `probe token` changed to `nonce value`), clarified that the two kinds of options cannot be sent more than once per datagram, and refined text on probing with data.
+    *   **Maturity**: The document is considered finished, pending minor terminology changes from the UDP Options base spec.
+    *   **Discussion**: Chris Heard asked if DPLPMTUD could be implemented as a shim on top of UDP Options. Tom clarified it's a protocol action rather than a shim, providing a small service set to the upper layer.
+    *   **Next Steps**: Call for review; if no further issues, the working group will be asked to initiate Working Group Last Call, likely synchronized with the UDP Options base specification.
+
+## Decisions and Action Items
+
+*   **MPDCCCP**:
+    *   **Decision**: Draft version 4 is considered feature-complete.
+    *   **Action**: Marcus Armbrust and co-authors to solicit reviewers.
+    *   **Action**: Continue work on upstreaming the Linux implementation.
+*   **DSCP Considerations**:
+    *   **Decision**: The draft is currently informational.
+    *   **Action**: Anna Forès to revise the draft based on feedback, incorporating clarifications and discussions.
+    *   **Action**: Anna Forès to prepare a presentation for the OPS Area (and potentially IEPC and MAPRG) at the next IETF to discuss TOS Precedence Bleaching and its implications.
+    *   **Action**: Anna Forès to initiate discussion on the mailing list regarding potential recommendations for future DSCP assignments and whether a BCP/Standards Track document for architecture updates is needed.
+*   **NQB**:
+    *   **Action**: Greg White to address remaining comments on the mailing list, particularly regarding remarking guidance and the naming of the `NQB-Edge` (45) and `NQB-Core` (5) DSCP values.
+*   **UDP Options**:
+    *   **Action**: Chairs to facilitate reviews by Tommy Pauly and Colin Perkins.
+    *   **Action**: Joe Touch (via Gorry Fergus) to produce a further revision based on review feedback.
+    *   **Action**: Community encouraged to undertake implementation work (e.g., hackathon).
+*   **DPLPMTUD UDP Options**:
+    *   **Decision**: Document considered finished, pending minor alignment with UDP Options base spec.
+    *   **Action**: Working Group to review the document. If no further issues are raised, the co-chairs will be asked to initiate Working Group Last Call, synchronized with the UDP Options base spec.
+
+## Next Steps
+
+*   **MPDCCCP**: Seek reviewers, continue implementation and 3GPP alignment.
+*   **DSCP Considerations**: Draft revision, prepare for cross-area presentations, foster mailing list discussion on recommendations.
+*   **NQB**: Address comments, prepare for Working Group Last Call.
+*   **UDP Options**: Complete expert review, revise, and proceed to Working Group Last Call.
+*   **DPLPMTUD UDP Options**: Final review by the working group, proceed to Working Group Last Call.
+*   **General**: Encourage further participation and discussion on the mailing list for all ongoing work items.

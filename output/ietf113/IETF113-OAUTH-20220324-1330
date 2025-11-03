@@ -1,0 +1,94 @@
+# oauth
+
+## Summary
+
+The oauth working group session covered three main topics: security vulnerabilities in the OAuth Device Code Flow, a proposed standard for Step-Up Authentication, and the current state and future needs for OAuth client libraries. A significant portion of the session was dedicated to understanding and addressing social engineering attacks against the Device Code Flow, including a live demonstration. Discussions also highlighted the challenges developers face when implementing OAuth and the need for better guidance and tooling. Finally, a recap of a side meeting on the OAuth 2.0 Security BCP re-affirmed the importance of PKCE, particularly for public clients.
+
+## Key Discussion Points
+
+### Device Code Flow Exploits and Mitigations
+
+Peter Castlemann, Philip Schippers, and Daniel Fett presented on social engineering exploits affecting the OAuth Device Code Flow (RFC 8628).
+
+*   **Vulnerability:** The Device Code Flow is susceptible to phishing and social engineering attacks due to a "gap" in trust transfer between the consumption device (e.g., smart TV) and the authorization device (e.g., smartphone). Users are asked to manually transfer a code, creating an opportunity for an attacker to intercept or inject their own code.
+*   **Attack Pattern:**
+    1.  An attacker obtains a legitimate device code from the Authorization Server (AS) for a service.
+    2.  The attacker uses social engineering (e.g., phishing email, fake QR code, phone call) to trick a user into entering *the attacker's* code on the user's trusted authorization device.
+    3.  The user authenticates and authorizes the flow, unknowingly granting the attacker access to the service.
+    4.  The attacker retrieves tokens, gaining persistent access.
+*   **Demonstration:** Daniel Fett showcased a live phishing demo where a user attempting to log into a seemingly legitimate (but attacker-controlled) website scanned a QR code that, unknown to them, linked to a legitimate service (Nextcloud). The user authorized the login on their mobile wallet, and the attacker gained control of a Nextcloud session.
+*   **Current RFC 8628 Mitigations:** The RFC suggests improved UI/UX and limiting token lifetimes. It also mentions proximity and device trustworthiness as considerations, but without strong guidance.
+*   **Proposed Mitigations/Improvements:**
+    *   More concrete guidance on leveraging **proximity** (e.g., via Bluetooth) for secure context transfer, both for UX and backend risk mitigation.
+    *   Deployment of **content filtering** solutions.
+    *   Requiring **additional metadata** and **token binding** to prevent token exfiltration and lateral attacks.
+    *   **Trusted devices** policies, allowing only pre-registered/trusted devices in the flow.
+    *   Exploration of **secure QR codes** (potentially related to FIDO/WebAuthn).
+    *   Providing clear **protocol selection guidance** for engineers, indicating when Device Code Flow is appropriate and when more secure alternatives should be used.
+    *   **Prioritizing non-textual code transmission (e.g., QR codes):** Philip Schippers highlighted that textual entry of the verification URI (e.g., `example.com/device`) makes users vulnerable to phishing sites and guided social engineering attacks. Non-textual methods are less prone to such exploits.
+*   **Future Direction:** While WebAuthn and cross-device flows (potentially leveraging Bluetooth) offer a promising future for phishing-resistant authentication, there is a strong need to secure existing implementations and provide better guidance for current Device Code Flow deployments.
+
+### Step-Up Authentication
+
+Vittorio Bertocci and Brian presented a proposal for a standard mechanism for Step-Up Authentication.
+
+*   **Problem:** There is no standard, interoperable solution for scenarios where a Resource Server (RS) dynamically determines that the current authentication level of a user (represented by their access token) is insufficient for a requested action. This can occur due to dynamic policies, risk engines, or continuous authentication requirements, leading to clients repeatedly receiving "service refused" responses.
+*   **Proposal:**
+    *   Introduce a new `www-authenticate` error code: `insufficient_user_authentication`.
+    *   Allow the RS to specify desired authentication context class references (`acr_values`) in the challenge, similar to how `acr_values` is used in OpenID Connect.
+    *   The client would then repeat the authorization request to the Authorization Server (AS), including the requested `acr_values` parameter.
+    *   The AS, if it commits to this flow (indicated in its metadata), would attempt to comply with the requested `acr`, potentially requiring the user to perform additional authentication (e.g., MFA).
+    *   The resulting access token would include an `acr` claim reflecting the new authentication level.
+*   **Advantages:** Provides an interoperable, low-overhead solution that reuses existing OAuth/OIDC extensibility mechanisms.
+*   **Discussion Points:**
+    *   The `acr_values` parameter is multi-valued, consistent with OIDC semantics.
+    *   The RS needing to care about authentication levels (beyond simple authorization scopes) is for its own internal authorization policies (e.g., reading vs. sending email with MFA).
+    *   The proposal allows for simultaneous requests for higher `acr` and additional scopes.
+    *   Concerns were raised about interoperability for `acr` values across different domains/Authorization Servers. While `acr` values are strings that require mutual understanding, some argued that this could be managed within federated ecosystems, not strictly limited to a single domain.
+    *   The importance of `www-authenticate` and its proper parsing by clients was noted.
+    *   The IANA registry for `authn` context classes (RFC 6711) was suggested as a potential resource for globally recognized `acr` values.
+    *   The model addresses dynamic re-authentication needs, which are harder to convey through static scopes alone.
+
+### OAuth Client Libraries
+
+Daniel Fett discussed the current state of OAuth client libraries and proposed solutions for improvement.
+
+*   **Problem:** There is a significant lack of good, modern, and universal OAuth client libraries. Many existing libraries are unmaintained, incomplete, vendor-specific, or fail to implement the latest security recommendations (e.g., PKCE). This forces developers to create custom implementations, leading to security vulnerabilities, developer frustration, and slow adoption of new standards.
+*   **"Auth Configuration Hell":** Without server metadata, developers must manually configure numerous endpoints and security parameters, making libraries less appealing.
+*   **Consequences:** Fragmentation, slow adoption of new specs (e.g., `iss` parameter), increased development costs, and widespread security problems in custom code.
+*   **Proposed Solutions:**
+    1.  **Define a Goal/Profiles:** The working group should define clear levels of support and mandatory features for OAuth client libraries, possibly based on existing profiles like OAuth 2.1 or FAPI. This would provide a target for library developers.
+    2.  **Make Server Metadata Mandatory:** Require Authorization Servers to provide metadata (e.g., in OAuth 2.1). This enables client libraries to auto-configure, significantly reducing developer friction.
+    3.  **Conformance Tests:** Establish conformance testing programs, similar to OpenID Connect's, to ensure libraries adhere to defined standards and profiles.
+*   **Discussion Points:**
+    *   While a "universal" library might be challenging given the contextual nature of OAuth, there's an "80% use case" for common flows (e.g., sign-in) that could be covered.
+    *   IETF should not build libraries itself, but could bless or certify them.
+    *   The OAuth protocol itself is complex, with multiple flows, making a single, comprehensive library difficult.
+    *   Developers often want solutions specific to a provider (e.g., "connect to GitHub"), which vendor SDKs provide, but these often have poor OAuth implementations.
+    *   There is broad agreement on the need for clearer guidance, quality standards, and testing to improve the security posture of OAuth implementations. Aaron Parecki expressed willingness to improve the `oauth.net/code` list to better highlight quality libraries.
+    *   The idea of vendor collaboration to provide consistent documentation and discourage "from scratch" implementations was also raised.
+
+### PKCE Security BCP Recap
+
+Daniel Fett provided a recap of a side meeting discussion regarding the role of PKCE in the OAuth 2.0 Security BCP.
+
+*   **PKCE Importance:** PKCE (Proof Key for Code Exchange) is essential for the Security BCP, providing CSRF protection and, critically, a protection layer for authorization codes.
+*   **Two Attack Types & PKCE's Role:**
+    1.  **Direct Authorization Code Stealing/Usage (Public Clients):** If an attacker steals an authorization code from a public client's authorization response, they can directly exchange it at the token endpoint to get tokens. PKCE is the *only* defense in this scenario because the attacker cannot provide the corresponding `code_verifier`.
+    2.  **Authorization Code Injection (Confidential Clients):** For confidential clients, an attacker cannot directly use a stolen code due to client authentication. Instead, they inject the stolen code into a legitimate authorization flow initiated by the client. Both PKCE and the `nonce` parameter (in OIDC) prevent this by binding the authorization request to the token request.
+*   **Conclusion:** For public clients using `response_type=code`, PKCE is a **MUST** in the Security BCP because it is the sole defense against direct authorization code theft.
+*   **Discussion:** Mike Jones volunteered to work with Daniel and other authors to refine the language in the Security BCP. There was a brief discussion about the nuances of `nonce` and `c_hash` in OIDC flows and whether they offer sufficient mitigation in some cases, but the general conclusion that PKCE is fundamental for public clients remains.
+
+## Decisions and Action Items
+
+*   **Device Code Flow:** Peter Castlemann (with others) will take the feedback from the discussion, which indicates strong interest, to shape a response and explore potential additional implementation guidance, profiles, or alternative solutions. Interested parties are encouraged to reach out to Peter.
+*   **Step-Up Authentication:** Vittorio Bertocci and Brian will update their draft proposal, taking into account the feedback received (e.g., clarifying domain interoperability, relationship to scopes/AMR), and resubmit a new version for further consideration by the working group. Reviewers (including Peter Castlemann and Philip Schippers) were identified.
+*   **OAuth Client Libraries:** Daniel Fett will continue the discussion on the mailing list to gather more ideas and refine the proposals for defining library profiles, mandating metadata, and exploring conformance testing.
+*   **PKCE Security BCP:** Daniel Fett, Mike Jones, and Aaron Parecki will collaborate to refine the wording in the OAuth 2.0 Security BCP to better explain the rationale for PKCE's "MUST" requirements, particularly distinguishing between different code theft/injection attack vectors and how various mitigations (PKCE, nonce, c_hash) apply.
+
+## Next Steps
+
+*   Continue discussion on Device Code Flow security enhancements and alternatives.
+*   Advance the Step-Up Authentication draft.
+*   Further develop proposals for improving OAuth client libraries and their ecosystem.
+*   Refine the language and explanations in the OAuth 2.0 Security BCP concerning PKCE.

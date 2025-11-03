@@ -1,0 +1,87 @@
+# idr Session
+
+## Summary
+
+The idr working group session at IETF 113 focused on updates to the working group's status, progress in BGP auto-configuration, the BGP YANG model, and extensive discussion on BGP routes with color proposals (BGP CAR, BGP CT, and BGP LCU). Chairs presented a summary of the interim meeting discussions regarding the "routes with color" drafts and introduced additional clarifying questions. Three proposals for BGP routes with color were presented, followed by a lively discussion comparing their approaches to local convergence, NLRI design, extensibility, and operational models. The auto-configuration track saw the presentation of L3ND and a discussion on the path forward for adopting a solution.
+
+## Key Discussion Points
+
+*   **Working Group Status:**
+    *   RFC 9184 (BGP extended communities) published. RFC 9127bis (BFD YANG) in AUTH48.
+    *   Working Group Last Calls (WGLC) nearing completion for RPD and BGP Wide Community drafts.
+    *   Adoption calls in progress for FlowSpec V2, BGP IFIT capabilities, Max Prefixes procedures, and SR P2MP.
+    *   No consensus was reached on the VPN Prefix RF, but authors are encouraged to get a FCFS code point and implement.
+    *   Review requests from BESS, PCE, BEER, and SIDROPS working groups for various drafts, including SR-TE policy color bits, SRv6 services, EVPN PVPN internetworking, unequal load balancing, and ROV RR route refresh.
+    *   A successful interim meeting on January 24th focused heavily on "BGP routes with color" and BGP auto-configuration.
+*   **BGP Auto-Configuration:**
+    *   Currently, four proposals are being considered for adoption: LODP, L3DL, draft-minto, and the recently added L3ND.
+    *   **L3ND Presentation (Randy Bush):**
+        *   A Layer 3, session-oriented, resumable protocol over TCP/TLS for neighbor discovery and BGP bootstrapping.
+        *   Uses multicast UDP hellos for initial discovery. Peers establish TCP/TLS sessions based on lowest IP address as server.
+        *   Supports self-signed (Trust On First Use) or CA-based TLS certificates, configurable by the operator.
+        *   PDUs for session management (Open, ACK), address advertisements (IPv4/IPv6 encapsulations with flags for primary/secondary, loopback, etc.), and Upper Layer Protocol Configuration (ULPC) for minimal BGP parameters (AS, peering address, authentication).
+        *   Randy Bush raised open questions about how parameters are passed to BGP and the necessity of restartability complexity.
+    *   **Discussion on L3ND:**
+        *   Some participants argued that passing parameters to BGP is an implementation detail outside IETF scope, while Randy Bush stressed the need for interoperability.
+        *   The use of DANE for TLS was considered but deemed too complex due to adding DNS at this layer.
+        *   Signaling self-signed vs. CA-issued certificates on the wire was questioned as it could be a local configuration, but Randy argued it clarifies security assertions.
+        *   Questions were raised about L3ND's reliance on "hello" for bootstrapping (similar to other protocols) and the mechanism of determining a unique TCP server by IP address.
+    *   **Path Forward for Auto-Configuration Adoption:**
+        *   Chairs proposed additional questions for the adoption call, driven by the L3ND discussion:
+            1.  At what layer should the solution work (L2, L3, or both)?
+            2.  What security solution is desired (certificates, shared secret)?
+            3.  Is reliable transport required (and if so, does it need to be TCP)?
+        *   The working group will be polled on these questions after IETF 113 to guide the adoption process.
+*   **BGP YANG Model Update (Mahesh Jettenandani):**
+    *   Version 13 of the model maintains a robust structure for future BGP extensions.
+    *   Updates include aligning with RFC 9127bis (BFD YANG), adding BGP MED considerations, enhancing `send-community` to an identity for extensibility (e.g., white communities), and support for large communities.
+    *   The BGP Policy Model was updated to support `next-hop` match/set and large community sets.
+    *   Outstanding issues include IANA module for extended communities, generic community type formats, and handling vendor-specific AS Path regex and "replace pre-S" semantics. Collaboration on AS Path regex parsing was offered.
+    *   Next steps focus on interfacing with BFD, TCP, and Keychain YANG modules, and suggesting changes for L3VPN YANG model augmentation.
+*   **BGP Routes with Color:**
+    *   **Chair's Summary of Interim Discussion:**
+        *   CAR and CT proposals have comparable functional capabilities but different NLRI formats and operational models.
+        *   CAR introduces `optional-components` in the NLRI to decouple non-key data, similar to how BGP-LU carries a label stack.
+        *   Sue Hares posed clarifying questions on local convergence (especially for CT with same RD), the role of AIGP in convergence, and fallback handling (CAR explicitly defines, CT does not).
+    *   **BGP CAR Presentation (Dan Jayarao):**
+        *   Extends BGP-LU with intent-awareness using color (SR policy architecture).
+        *   Proposes a new SAF with NLRI containing prefix and color, acting as a distinguisher and intent indicator.
+        *   Emphasizes efficiency, local convergence (ECMP/backup at every hop), and a future-proof design with non-key TLVs and multiple encapsulations without duplicate routes.
+        *   Claimed local convergence advantage over CT by default.
+        *   Supports longest prefix match for next-hop resolution.
+        *   Compatible with SR Policy architecture. Uses Local Color Mapping (LCM) for inter-domain color mapping exceptions.
+        *   Two interoperable implementations exist.
+    *   **BGP CT Presentation (Kali Raj):**
+        *   Proposes a new AFI/SAFI for intent-driven service mapping to guarantee end-to-end SLA, as extending BGP-LU cannot guarantee this across old nodes.
+        *   Argues color is an adjective, best carried as an attribute rather than in the NLRI key.
+        *   Introduces "transport class" and "mapping community" to express intent and desired fallback mechanisms, offering more explicit signaling than CAR.
+        *   Claims CT's design with color outside the NLRI key is more flexible for LPM and other lookups.
+        *   Emphasizes protecting operator investment by using well-understood L3VPN machinery.
+        *   Acknowledges RFC 8277 limitations and suggests moving forwarding information out of the NLRI.
+    *   **BGP LU-Unicast (LCU) Presentation (Ron Chen):**
+        *   Uses existing BGP-LU technology with color extended communities and additional path functions (RFC 7911) or by configuring one prefix per color on the PE.
+        *   Proposes a capability advertisement for colored BGP-LU.
+        *   In non-supporting transit domains, colored BGP-LU routes are either re-advertised or downgraded to standard BGP-LU.
+        *   Route resolution is recursive and color-aware, using color and next-hop for lookup.
+        *   Claims simplicity and ease of implementation.
+    *   **General Discussion on Routes with Color:**
+        *   Debate centered on the NLRI design: whether to include color in the NLRI key (CAR) or carry it as an attribute/via mapping communities (CT). This impacts local convergence, path resolution, and extensibility.
+        *   Questions regarding color mapping complexity across domains, particularly CAR's LCM community, and whether this is a rare or common operational scenario.
+        *   Concerns raised about the efficiency and packing implications of carrying encapsulation information in attributes vs. the NLRI, especially for large-scale, multi-intent scenarios.
+        *   The sufficiency of CT's specification for multi-encapsulation (beyond MPLS) was questioned, with a request for more detail in the draft.
+        *   An operator use case for local repair for egress peer engineering was highlighted, suggesting the ability to advertise multiple prefix-to-label methods, which both drafts might address.
+
+## Decisions and Action Items
+
+*   **Action Item:** Chairs to send out adoption questions for BGP auto-configuration proposals to the idr mailing list after IETF 113.
+*   **Action Item:** Authors of BGP CAR with interoperable implementations (Dan Jayarao) are to address the issue of squatting code points as soon as possible.
+*   **Action Item:** All participants in the "BGP Routes with Color" discussion are requested to focus on functional details and avoid making value judgments about other implementations.
+*   **Action Item:** Srihari is requested to elaborate on his color mapping concerns for "BGP Routes with Color" on the mailing list to facilitate resolution.
+*   **Action Item:** Ketan is requested to send comments to the mailing list detailing the need for multi-encapsulation specification in the CT draft.
+*   **Action Item:** Ben is requested to send his comments on the egress peer engineering use case for routes with color to the mailing list.
+
+## Next Steps
+
+*   Chairs will summarize the remaining questions and points of disagreement from the "BGP Routes with Color" discussion and feed them back to the mailing list.
+*   The chairs will discuss whether to schedule another interim meeting for "BGP Routes with Color" or to wait for IETF 114 to continue discussions.
+*   The idr working group has another session scheduled on Friday at IETF 113.

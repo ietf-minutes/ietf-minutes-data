@@ -1,0 +1,114 @@
+# tsvwg
+
+## Summary
+
+This tsvwg session covered updates on several transport-related drafts, including RFC 4960bis (SCTP), SCTP NAT support, DTLS over SCTP, UDP Options, DPLPMTUD for UDP Options, MPDCCP, and NQB DSCP. Key discussions revolved around resolving long-standing issues, addressing security concerns, and aligning specifications with real-world deployment needs, particularly from 3GPP. Several drafts are nearing working group last call, while others require further design convergence or security analysis.
+
+## Key Discussion Points
+
+*   **RFC 4960bis (SCTP)**
+    *   Version 15 passed working group last call and received external review, leading to substantial late comments about potential use cases.
+    *   Currently, it's back with the working group for a new revision before resubmission to the IESG for publication.
+    *   **Incorporated Changes**:
+        *   Clarified handling of advertised receiver window < 1500.
+        *   Security discussion on cookies: content is implementation-dependent, not required to be encrypted, signing key should be changed frequently (e.g., hourly).
+        *   "should not" for outstanding TSNs and SSNs changed to "must not".
+        *   Slow start condition increased only if `com_ack_point` moved forward, now aligned with congestion avoidance.
+        *   IANA section updated, including policy for PPIDs.
+    *   The document is expected on the IESG telechat in mid-December.
+
+*   **SCTP NAT Support**
+    *   Version 23 was submitted to keep the draft alive, with no recent changes.
+    *   Received reviews from ADs (Magnus and Martin) and an alternative suggestion from Claudio.
+    *   **Major Issues Identified**:
+        *   Handling IP fragmentation at the NAT.
+        *   Controlling NAT-friendly endpoint behavior (e.g., detecting if behind NAT).
+        *   Improving multi-homing support for internal hosts and multiple external addresses.
+        *   Remote addresses removed from NAT binding table; request to put back if restarts are not disabled.
+        *   Complexity of packet processing at the middlebox (understanding chunks).
+        *   Document changes the definition of an association by considering the verification tag, but endpoints may not support this.
+    *   **Potential Ways Forward Discussed**:
+        1.  Improve the current method (addresses issues 2-5), but increases complexity.
+        2.  Use a fallback algorithm (never disable restarts, don't use verification tags, treat like UDP/TCP), reducing complexity but increasing collision chances.
+        3.  Switch to Claudio's draft (subset of current work, not a revolution).
+        4.  Drop the work entirely.
+    *   **Security Concern**: Christian raised concerns about man-on-the-side attacks and stat explosion issues by forged IP addresses affecting NAT rebinding, requesting an email with attack scenarios.
+
+*   **DTLS over SCTP**
+    *   Goal: Enable DTLS to protect SCTP messages larger than 16384 bytes, specifically for 3GPP use cases requiring long-lived associations and periodic re-authentication/re-keying (including SCTP-AUTH).
+    *   **New Proposal**: Use parallel DTLS connections.
+        *   When re-keying or re-authenticating, initiate a full DTLS handshake.
+        *   Use 1-byte DTLS connection IDs in all DTLS records for multiplexing.
+        *   Switch when all old-key protected records are sent and acknowledged; sender is responsible for closing.
+        *   Benefits: No dependency on DTLS for re-keying features, no functional changes between DTLS 1.2/1.3, multiple re-keyings, mutual re-authentication, forward secrecy.
+    *   **IPR Discussion**: Ericsson has made two IPR disclosures related to this draft. Concerns were raised about the impact on open-source implementations and potentially obsoleting RFC 683, which currently has no IPR claims.
+
+*   **UDP Options**
+    *   Update from September interim.
+    *   **Key Changes**:
+        *   Fixed position for the OCS (Option Checksum) option, making it easier to parse and offload.
+        *   "Unsafe" option changed to exist only behind fragment options.
+        *   Fragment (Frag) option rewritten and re-scoped: fixed position after OCS; per-fragment options placed before data; per-reassembled datagram options at the end.
+    *   **MRSS (Maximum Reassembly Segment Size)**:
+        *   Default expectation for receivers to reassemble a datagram with a 3000-byte payload.
+        *   Requirement for all receivers to support reassembly of two fragments for simplicity and reduced attack surface (e.g., traversing tunnels or sending >1500 bytes).
+        *   MRSS option allows negotiation of larger sizes and more fragments.
+    *   **Open Issues**:
+        *   Lack of specification for sending padding packets for DPLPMTUD.
+        *   Per-fragment options add significant, unnecessary complexity.
+
+*   **UDP Options DPLPMTUD (Datagram Packetization Layer Path MTU Discovery)**
+    *   Document was adopted by the working group.
+    *   Adds necessary features for DPLPMTUD to UDP Options (confirmation of connectivity, sending probes, path validation, PTP handling).
+    *   **Next Steps**:
+        *   Add text on generating padding (by adding zero bytes, replacing `knox`).
+        *   Editorial pass for typos and consistency.
+        *   Add text explaining how DPLPMTUD works with fragments (now that frag option design is settling).
+        *   Expects to complete alongside UDP Options, tracking its changes.
+
+*   **MPDCCP (Multipath DCCP)**
+    *   Received working group adoption in August.
+    *   Focusing on maturity for working group last call, aligning with 3GPP Release 18 study item approval (decision by end of year).
+    *   Engaging with vendors for testbed and implementation activities. Next open-source version planned for end of year.
+    *   **Draft Updates (v01)**: Reliable exchange of multi-path options, consistent description of multi-path reordering, fallback strategies for failed multi-path establishment, RFC editor style guide compliance.
+    *   **Draft Updates (v02)**: Enhanced handshaking procedure with authentication for subsequent flows, improved multi-path priority option (fine-granular steering, backup, disable), improved operational section.
+    *   **Handshaking Procedure Discussion**:
+        *   **Initial (3-way)**: MP_JOIN can arrive too early, leading to DCCP reset if the initial multi-path connection is not yet established.
+        *   **Improved (4-way)**: Adds an extra acknowledgement, ensuring multi-path connection is initiated before MP_JOIN, but adds delay.
+        *   **Optimized (3-way)**: Checks for multi-path connection establishment later in the join process, reducing dependency but still sensitive to latency differences.
+        *   **Optimal (Reliable 2-way)**: Proposes creating necessary multi-path structures after the first DCCP Request at host B. Key material exchanged in 2 messages, making subsequent MP_JOIN independent of the initial flow's final ACK.
+    *   **Security Concern**: Early creation of multi-path structures might increase attack surface for Denial of Service.
+    *   **3GPP Multi-path**: Clarified that MPDCCP supports an *unlimited* number of flows, not just two, addressing 3GPP SA2 discussions.
+
+*   **NQB (Non-Queue Building) DSCP**
+    *   **Sender Requirements & Guidance on Rates**:
+        *   NQB flow described informatively as "at most a few well-spaced packets per RTT" (e.g., one large packet every 10ms, ~1 Mbit/s).
+        *   NQB marking does not remove the need for congestion control or circuit breaker functionalities.
+        *   **Recommendation**: Do not mark traffic as NQB if it exceeds "a few packets per RTT" or ~1 Mbit/s instantaneously.
+    *   **Scaling Recommendation**: Discussion on scaling the rate limit based on "10% of the global average access link capacity at the time," with current examples (6.3 Mbit/s for servers, 1.3 Mbit/s for clients). Concern raised about using non-uniform average statistics.
+    *   **IANA Registry**: Question on whether NQB DSCPs should be labeled separately or both as non-queue building.
+    *   Need for "teeth" in the spec to allow networks to evict non-compliant NQB traffic.
+
+## Decisions and Action Items
+
+*   **SCTP NAT Support**:
+    *   **ACTION**: Marcus, Claudio, and ADs (Magnus, Martin) to discuss the various options for moving forward and report back within a few weeks.
+    *   **ACTION**: Christian to send an email to the mailing list detailing a specific attack scenario related to NAT rebinding and security.
+*   **DTLS over SCTP**:
+    *   **ACTION**: Magnus to continue working on the draft and incorporate feedback.
+    *   **ACTION**: The working group will revisit the IPR status, the question of obsoleting RFC 683, and discuss implementation experience at a future meeting (likely next).
+*   **UDP Options**:
+    *   **ACTION**: Joe (via chairs) to take the issues regarding padding packets and the complexity of per-fragment options to the mailing list for further discussion.
+*   **UDP Options DPLPMTUD**:
+    *   **ACTION**: Tom to produce a new draft revision within the next month, including padding text and clearer interaction with fragment options.
+*   **MPDCCP**:
+    *   **ACTION**: Marcus to continue discussions on the proposed handshaking procedures, particularly the optimal 2-way handshake and associated security concerns, on the mailing list.
+*   **NQB DSCP**:
+    *   **ACTION**: Greg to add text to the draft allowing networks to evict or drop non-compliant NQB traffic.
+    *   **ACTION**: The working group to discuss the scaling recommendation for sender rates (e.g., 10% of global average) and IANA labeling on the mailing list.
+
+## Next Steps
+
+*   The chairs intend to arrange an interim meeting in the upcoming IETF period.
+*   Attendees are encouraged to look out for announcements regarding the interim and propose any topics they believe should be included on its agenda.
+*   Working group last call for NQB DSCP is expected to be initiated shortly after the new year.

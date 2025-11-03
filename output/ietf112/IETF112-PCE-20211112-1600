@@ -1,0 +1,90 @@
+# pce
+
+## Summary
+
+The pce working group session covered several key PCEP extension drafts. A significant discussion revolved around relaxing the strict object ordering requirements in RFC 5440 to improve flexibility and interop. Other presentations included PCEP extensions for topology filtering, support for Virtual Transport Networks (VTN) and its relation to Network Resource Partitions (NRP), updates on PCEP Link-State (LS) capabilities, PCEP extensions for Multicast/BEER, VLAN-based traffic forwarding, and an RSVP Color attribute. Several drafts are seeking working group adoption, and there's a strong emphasis on aligning terminology and architecture with other IETF working groups like TEAS and BEER.
+
+## Key Discussion Points
+
+*   **PCEP Object Ordering (Draft: `draft-dhody-pce-object-ordering-00`)**
+    *   **Problem:** RFC 5440's strict "MUST" requirement for object ordering in PCEP messages has led to errata and interop issues, as new extensions frequently cause conflicts.
+    *   **Proposal:** Update RFC 5440 to change "MUST" to "SHOULD" for message reception, allowing implementations to be more liberal in accepting out-of-order objects when unambiguous. Sending messages should still respect ordering.
+    *   **Compatibility:** Acknowledged potential backward compatibility issues with legacy strict implementations, though many existing implementations are already liberal on receive. RFC 5440 currently lacks an error code for out-of-order objects.
+    *   **Discussion:**
+        *   Andrew: Raised concerns about negative impact on interop with existing strict implementations.
+        *   Joe: Questioned the purpose of strict sending if receiving is liberal. The presenter clarified this is a common standard philosophy.
+        *   Oscar: Suggested a complete revisit of PCEP grammar, whether adopting a fully strict or relaxed approach, as a sudden change could be problematic.
+        *   Boris: Supported the approach and suggested signaling the relaxing capability via a PCEP capability TLV.
+        *   Mike: Supported liberal receiving, suggested specifying relative ordering between specific objects rather than a global strict order.
+
+*   **PCEP Extensions for Topology Filter (Draft: `draft-cheng-pce-topology-filter-00`)**
+    *   **Purpose:** Defines PCEP extensions to support topology filters (as defined in a related YANG draft) during path computation.
+    *   **Mechanism:** Introduced TLVs within a new Topology object to identify topology references (e.g., IGP domain, instance ID, multi-topology ID, area ID). Proposed extensions for IRO/XRO objects for include/exclude filtering rules.
+    *   **Discussion:**
+        *   Joe: Asked for clarification on consistency with other drafts (e.g., slicing/NRP ID, TE Topology) and the operational procedure (controller to device or device to controller).
+        *   Robin: Questioned the division of work into multiple drafts and the necessity of certain constraints.
+        *   Chairs: Emphasized the need for alignment with TEAS documents.
+
+*   **PCEP Support for VTN (Virtual Transport Network) (Draft: `draft-wang-pce-pcep-vtn-00`)**
+    *   **Purpose:** Describes PCEP extensions to carry VTN information for VTN-specific path computation requests, responses, reports, and initiation.
+    *   **Mechanism:** Defined a `VTN_ID_TLV` (32-bit global identifier) to be carried in the LSPA object. A PCEP capability bit was introduced for PCC to indicate support for data plane VTN ID encapsulation. Applicable to PCReq, PCRep, PCReport, and PCInitiate messages.
+    *   **Discussion:**
+        *   Eric: Raised concerns about potential duplication with the Network Resource Partition (NRP) ID term being discussed in TEAS, and suggested collaboration to avoid standardizing two IDs.
+        *   Jimmy: Noted an ongoing mailing list discussion about the relationship between enhanced VPN (HSB) and network slicing, suggesting feedback there to clarify scope and potential convergence of terms.
+        *   Pavan (Co-Chair): Clarified that while the TEAS framework draft uses "Network Resource Partition", there's no formal consensus call on the term, and the editor is leading its definition.
+        *   Adrian (TEAS Editor): Confirmed no formal consensus on terminology in TEAS framework, and that the framework aims to provide a common base for mapping, rather than forcing document rewrites.
+
+*   **PCEP LS Update (Draft: `draft-mishra-pce-pcep-ls-02`)**
+    *   **Purpose:** An experimental ID to explore learning network state and topology via PCEP, explicitly stated as not a replacement for existing mechanisms.
+    *   **Use Cases:** Primarily for PCC-PCECC (device to controller) and HPC (controller-controller) scenarios.
+    *   **Mechanism:** Reuses existing PCEP sessions, introduces a new PCEP object/message, and reuses existing TLVs. The default mode (R=0) is local-only, but R=1 allows hybrid setups. Aims for single SBI for some PCECC use cases, and faster learning for certain information (e.g., optical extensions).
+    *   **Request:** Seeking working group adoption as an experimental track.
+    *   **Discussion:**
+        *   Chiang: Expressed strong support for adoption, viewing it as essential to complete PCEP capabilities alongside BGP-LS.
+        *   Robin: Agreed on the application scenario, particularly for simplifying controller/router implementations.
+
+*   **PCEP Extensions for Multicast/BEER (Draft: `draft-li-pce-pcep-extension-for-multicast-beer-01`)**
+    *   **Purpose:** PCEP extensions for multicast management signaling in SDN scenarios, focusing on BEER (Bit Indexed Explicit Replication).
+    *   **Process:** Involves ingress source registration, egress receiver join/leave, controller path calculation, and receiver statistics synchronization.
+    *   **Updates:** Refined objects by moving duplicate fields into TLVs, added a `P` flag for BEER multicast, allowing objects to be used in both BEER and non-BEER scenarios. Defined several new TLVs for multicast source/group addresses, VPN info, and VR info.
+    *   **Discussion:**
+        *   Dhruv (Co-Chair): Noted previous discussion in BEER WG; stressed the need for clear requirements and architectural guidance from the BEER WG. Expressed concern about the document mixing BEER and non-BEER specific content.
+        *   Tony: Suggested an interim meeting between PCE and BEER WGs to establish clear requirements and align architecture for PCEP-based BEER solutions.
+        *   George: Agreed the document should focus solely on BEER, as existing RFC 6006 covers non-BEER point-to-multipoint PCEP extensions.
+
+*   **PCEP Extensions for VLAN-based Traffic Forwarding (Draft: `draft-qin-pce-pcep-vlan-based-traffic-forwarding-01`)**
+    *   **Purpose:** Defines PCEP extensions for VLAN-based traffic forwarding in native IP networks, building on RFC 9050 (NPR label switch paths).
+    *   **Mechanism:** PCE calculates explicit SR routes, sending information to PCCs. PCCs then form VLAN forwarding tables (ingress forms a VLAN forwarding table, transit/egress form VLAN crossing tables). Packets are labeled with VLAN tags and forwarded.
+    *   **Advantages:** Uses a new address space, compatible with IPv4/IPv6, leverages existing PCE technologies.
+    *   **Updates:** Made updates to the CC object for specific interface indication and introduced an 'O' bit for differentiating in/out VLAN.
+    *   **Discussion:**
+        *   Igen: Noted its alignment with SR PC solutions and support for IPv4/IPv6.
+
+*   **PCEP RSVP Color Draft (Draft: `draft-sivabalan-pce-pcep-rsvp-color-02`)**
+    *   **Presenter:** Pavan (due to Balaji's audio issues).
+    *   **Update:** The single TLV was generalized to support various use cases, including those referenced in the PCE multipath draft.
+    *   **Request:** Seeking working group adoption.
+    *   **Discussion:**
+        *   Dhruv: Asked where the TLV would be carried. Pavan clarified it would be in the LSPA object, potentially under path attributes for multipath, and specific use cases would detail its placement for RSVP.
+
+## Decisions and Action Items
+
+*   **PCEP Object Ordering:**
+    *   **Action Item:** Discussion to continue on the mailing list.
+    *   **Action Item:** Co-authors to perform a scan of existing PCEP extensions for text related to object ordering.
+*   **VTN / NRP ID:**
+    *   **Action Item:** Discussion on the relationship between VTN ID and Network Resource Partition ID to continue on the mailing list.
+    *   **Action Item:** Chairs will seek guidance from the TEAS WG on terminology alignment.
+*   **PCEP LS:**
+    *   **Action Item:** Chairs will consider a working group adoption call based on the expressed interest.
+*   **Multicast / BEER:**
+    *   **Action Item:** An interim meeting between the PCE and BEER working groups is suggested to align requirements and architecture for PCEP-based BEER solutions.
+    *   **Guidance:** Document authors are advised to focus the draft strictly on BEER-specific aspects to avoid confusion with generic multicast solutions.
+*   **PCEP RSVP Color:**
+    *   **Action Item:** Chairs will consider a working group adoption call.
+
+## Next Steps
+
+*   Continue discussions on the PCE mailing list for the PCEP object ordering and VTN/NRP ID alignment.
+*   PCE chairs to coordinate with TEAS and BEER WGs for terminology and architectural alignment.
+*   Working group adoption calls are anticipated for the PCEP LS and PCEP RSVP Color drafts.

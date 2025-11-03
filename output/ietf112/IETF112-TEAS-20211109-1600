@@ -1,0 +1,111 @@
+# teas
+
+## Summary
+The session resumed with a deep dive into the IETF Network Slice framework document, focusing on definitions of connectivity matrices, endpoints, and alignment of terminology. Key discussions centered on the necessity and modeling of multiple connectivity matrices per slice, the precise definition of "customer" and "endpoint," and the scope of "technology agnosticism." The chairs highlighted the importance of moving the framework document towards last call to unblock other related work.
+
+Several individual drafts were presented, including an NBI model for network slices, a solution for realizing network slices in IP/MPLS, scalability considerations for VPN+ and VTN, a YANG model for slice policy, an application of IETF Network Slices in 5G, a framework for end-to-end IETF Network Slicing, a topology filter YANG model, and new work on intent-based routing. Many authors requested working group adoption for their drafts, prompting discussions on terminology alignment and overlap with existing work.
+
+## Key Discussion Points
+
+*   **IETF Network Slice Framework (Adrian Farrel):**
+    *   **Connectivity Matrix (CM) Definition:** Extensive discussion around the definition of CMs.
+        *   Tarik queried the need for an "uber grouping" of CMs for class of service (CoS) criteria, suggesting a shift from customer-facing slice description to network realization. Adrian acknowledged the likely need.
+        *   Reza proposed clarifying CMs into unicast/multicast categories (point-to-point vs. point-to-multipoint) and requested a clear definition of "matrix" (X sender, Y receiver) for alignment with NBI/service YANG models.
+        *   Kiran raised concerns about the distinction between CE-to-CE and PE-based provisioning, suggesting a single unicast flow as a fundamental building block.
+        *   Greg clarified that CMs are distinct from data flows, as unicast traffic can traverse a point-to-multipoint CM.
+        *   Jack emphasized that CMs define connectivity models (point-to-cloud, cloud-to-point, cloud-to-cloud) and SLAs, not traffic types, and that confusing traffic with connectivity models should be avoided.
+        *   Adrian acknowledged the diversity of opinions and the need for further discussion on the mailing list.
+    *   **Draft -05 Changes Summary:**
+        *   Allowed for multiple CMs per slice (subject to CM definition changes).
+        *   Refined service definition, with endpoint definition being a key issue.
+        *   Added a figure illustrating endpoint positions (CE port, PE port, in PE) and introduced "ancillary CE" for service functions.
+        *   Included a realization process figure, which needs clearer textual descriptions.
+        *   Workflow agreed upon: no specific order mandated for operations.
+    *   **Further Issues:**
+        *   Need for an editorial pass to remove stale text and duplication.
+        *   Factor in review comments (e.g., Louie's).
+        *   Open question on endpoint definition: explore "service demarcation point" or "service attachment point" for consistency with ops area YANG models (L3SM, L2SM). This may aid CM discussion.
+    *   **NBI/SBI Alignment with RFC 8309:**
+        *   Proposed aligning NBI/SBI terminology with RFC 8309 to reduce confusion between southbound and northbound interfaces.
+        *   "IETF network slice service interface" suggested for NBI. SBI terminology (network model vs. network configuration model) remains under debate.
+        *   Louie questioned the "IETF slice controller" role compared to higher-layer orchestrators or lower-level controllers. Adrian clarified this as an implementation choice within a bundled controller.
+        *   Kriti suggested "intent model" and "implementation model" for better abstraction than "customer/network." Adrian will consider this if a robust definition of "intent" is available.
+        *   Reza noted that QoS is a general network characteristic, not specific to slicing, though it supports slice scope.
+    *   **Technology Agnosticism:**
+        *   Clarification sought on the statement "technology agnostic."
+        *   Consensus that the *service* is agnostic to the technology in the *underlay network*, but the customer's *traffic* and attachment circuits are technology-specific. The agnostic boundary needs clearer definition in the text.
+
+*   **IETF Network Slice NBI Draft (Reza Rakkhshani):**
+    *   **Connectivity Matrix Modeling:** Presented options for modeling multiple connectivity matrices within a slice.
+        *   Multiple CMs are needed because one Network Slice Endpoint (NSE) can send different traffic types, or the same endpoints can have different SLOs.
+        *   Option 1: Each CM is a one-directional connection with potentially different SLOs.
+        *   Option 2: A single CM can include multiple NSEs sending traffic, identified by an ID and traffic type.
+        *   Shafang argued against multiple CMs per slice, preferring multiple slices each with one CM for simplicity. This is a working group decision point.
+    *   **Other Aspects:** Proposed "network slice connection groups" for aggregating characteristics when one endpoint sends to multiple others (e.g., total traffic quota). Co-authors believe a "tag" for association between IETF NS and higher-layer consumers, which was previously removed, is needed. Also discussed influencing the Network Slice Controller from the orchestrator for underlay realization.
+    *   Italo clarified the traffic classification implications for the two CM options.
+
+*   **Solution to Realize Network Slices in IP/MPLS Networks (Tarik Paya):**
+    *   **Updates:** Incorporated "Network Resource Partition" (NRP) as agreed on the teas mailing list. Expanded realization steps for IETF NS in transport networks using "slice aggregates."
+    *   **Terminology:** Defined Slice Aggregate, Network Resource Partition (NRP), and Slice Policy, clarifying their distinct roles.
+    *   **Review Comments:** Editorial comments addressed. Attempted to incorporate SR building blocks (Zafar), but alignment is still pending. Clarified that DiffServ is not mandated but enables hierarchical QoS.
+    *   Jimmy requested more generic terms for slice realization and clarification of "slice aggregate." Robin expressed confusion over "slice aggregate" meaning changes. Zafar noted ongoing discussions for combining his SR building block draft.
+
+*   **Scalability Considerations for VPN+ and VTN (Jian Li):**
+    *   **Recap:** VTN (Virtual Transport Network) used as a virtual underlay for enhanced VPNs/VPN+, delivering IETF NS services. Scalability is critical.
+    *   **Optimizations:** Proposed control plane (shared control protocol instances/sessions, shared policy computation, hybrid control plane) and data plane (decoupling resource ID from topology-specific ID, dedicated VTN resource ID, IPv6 Hover Hub extension header) optimizations.
+    *   **Relationship to teas:** VTN in VPN+ context is equivalent to NRP in IETF NS framework.
+    *   Louie questioned the need for VTN ID in packets and requested alignment with NRP terminology.
+
+*   **Slice Policy YANG Model (Tarik Paya):**
+    *   **Updates:** Incorporated "Network Resource Partition" (NRP) by replacing "said" (slice aggregate ID) with "nrp-id." Aligned with topology filter data model.
+    *   Daruf suggested re-evaluating "slice policy" terminology and providing more detail/references for rate/shaping description in the YANG model.
+    *   Robin raised concerns that the data model depends on unstable data plane/control plane solutions. Bo noted a potential lack of clarity on bandwidth profiles across NRP links and data plane resource association.
+
+*   **Application of IETF Network Slice in 5G Context (Reza Rakkhshani):**
+    *   **Context:** 5G end-to-end network slices (UE to UPF) are a key use case for IETF NS, spanning RAN, Transport, and Core domains.
+    *   **Mapping:** Focus on how 3GPP's Network Slice Selection ID (NSSAI) maps to transport (IETF NS). Discussed traffic from the AN to the PE needing an identifier (IDA) to map to an IETF NS (IDB), with VLAN as one potential solution.
+    *   Kriti sought clarification if IDA is in-packet or conceptual. Reza clarified the draft explores options without implying a specific in-packet ID.
+
+*   **Framework for End-to-End IETF Network Slicing (Robin Li):**
+    *   **Background:** Builds on existing single-domain realization work, focusing on end-to-end IETF NS spanning multiple network domains.
+    *   **ID Layers:** Defined different layers of IDs: 5G SNSSAI, Global VTN ID (for multi-domain IETF NS), and Local VTN ID (per domain). Local VTN ID is mandatory in packets, while others are optional.
+    *   Tarik questioned if this constituted a new framework or if it should be covered by the existing IETF NS framework document.
+
+*   **Topology Filter YANG Model (Dhruv Kumar):**
+    *   **Construct:** Introduced a standalone data model for topology filters, applicable on native or customized topologies, resulting in a filtered set of topological elements. Includes "topology filter set" for unions.
+    *   Augments the `networks` container from `ietf-network`.
+    *   Adrian challenged the work, believing it overlaps with existing routing policy work and requesting comparison with BGP flow filters. Adrian ultimately objected to the work.
+
+*   **Intent-Based Routing (Jamin Li):**
+    *   **Concept:** Proposed carrying intent information in the data plane to reduce scalability challenges of seamless MPLS SR inter-domain routing.
+    *   **Terminology:** Introduced "Intent (Intrinsic Information)" as a data plane concept, distinct from "Color" (control plane), but both can represent intent and be mapped.
+    *   **Advantages:** Improved scalability (local intent mapping) and flexibility (intent satisfied by different solutions like SR policy or underlay NS across domains).
+    *   The chair raised a question about whether this work belongs in the teas WG but acknowledged its traffic engineering aspects.
+
+## Decisions and Action Items
+
+*   **Framework Document (Adrian Farrel):**
+    *   **Action:** Adrian to fold in comments on Connectivity Matrix definition and drive further discussion on the mailing list.
+    *   **Action:** Adrian to post to the list regarding the open question on endpoint definition (service demarcation point / service attachment point).
+    *   **Action:** Adrian to clarify text regarding the technology agnostic boundary in the framework document.
+    *   **Decision:** Workflow (Issue 7) remains flexible, no further changes needed.
+*   **IETF Network Slice NBI Draft (Reza Rakkhshani):**
+    *   **Action:** The working group needs to discuss and decide whether multiple connectivity matrices per slice should be explicitly supported.
+*   **Solution to Realize Network Slices in IP/MPLS Networks (Tarik Paya):**
+    *   **Action:** Zafar and Tarik to continue discussions on aligning/combining the SR building blocks draft. The discussion should be on the mailing list.
+    *   **Decision:** A working group adoption call will be sent to the mailing list.
+*   **Scalability Considerations for VPN+ and VTN (Jian Li):**
+    *   **Decision:** A working group adoption call will be sent to the mailing list.
+    *   **Action:** Authors to ensure alignment of terminology, specifically referring to "Network Resource Partition" instead of "VTN."
+*   **Slice Policy YANG Model (Tarik Paya):**
+    *   **Decision:** A working group adoption call will be sent to the mailing list.
+    *   **Action:** Authors to elaborate on descriptions for rate/shaping and consider refining terminology (e.g., "network partition policy").
+*   **Framework for End-to-End IETF Network Slicing (Robin Li):**
+    *   **Action:** Chairs requested authors to identify and propose specific text additions to the existing IETF Network Slice framework document, rather than maintaining a separate, short framework document.
+
+## Next Steps
+
+*   **IETF Network Slice Framework Document:** Adrian Farrel plans to publish draft -06 in November. A thorough review by the working group is requested by the end of calendar year 2021, with the aim to resolve remaining issues in January/February 2022 and proceed to a last call before the next IETF meeting.
+*   **Pending Adoption Requests:** Working group adoption calls for Tarik's IP/MPLS Solution, Jian's VPN+VTN Scalability, and Tarik's Slice Policy YANG Model will be sent to the mailing list.
+*   **Topology Filter YANG Model:** The working group is requested to review the document and provide feedback, particularly addressing the concerns raised regarding potential overlap with existing routing policy work. Adrian Farrel indicated he would raise his objection with the AD.
+*   **Intent-Based Routing:** Further discussion on the mailing list is encouraged for this new work. The chairs will track its progress and applicability within the teas working group.

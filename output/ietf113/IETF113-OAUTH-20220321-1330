@@ -1,0 +1,86 @@
+# oauth
+
+## Summary
+
+The OAuth working group meeting covered updates on current drafts and RFCs, followed by presentations and discussions on three key areas: D-Pop (Demonstrating Proof-of-Possession), redirection attacks in OAuth, and the ongoing development of OAuth 2.1. Key discussions revolved around the readiness of D-Pop for Working Group Last Call, how to address known redirection vulnerabilities, and several outstanding issues in OAuth 2.1, including the `iss` response parameter, access token lifetimes, and redirect URI methods for native apps, as well as the definitions of client types.
+
+## Key Discussion Points
+
+*   **Working Group Updates:**
+    *   RFC 9207 was published (congratulations to Danielle and Creston).
+    *   One Jot response for token introspection is in the RFC edit queue.
+    *   Christina's and Mike's "simple document" has reached working group consensus.
+    *   The Security BCP is undergoing chair review, with progress expected soon.
+    *   The RAW document has been updated by Thorsten and will proceed to shepherd write-up.
+*   **D-Pop (Demonstrating Proof-of-Possession):**
+    *   Brian Campbell provided a full overview, highlighting recent changes.
+    *   **Protocol Overview:** D-Pop is a pragmatic application-level proof-of-possession mechanism for OAuth 2 tokens issued to public clients. It uses a `dpop+jwt` as an HTTP header.
+    *   **Key Updates/Features:**
+        *   Proofs are `dpop+jwt` typed, use asymmetric signatures, include the JWK in the header, JTI for replay prevention, and HTTP request info (`htu`, `htm`).
+        *   `ath` (access token hash) claim introduced for protected resource access.
+        *   Server-provided `nonce` challenge (`use_dpop_nonce` error and `DPoP-Nonce` header) for replay prevention.
+        *   Authorization server metadata (`dpop_signing_alg_values_supported`) and client registration metadata (`dpop_bound_access_tokens`) added.
+        *   `dpop_jkt` parameter added to authorization requests to bind authorization codes to a D-Pop key, enhancing end-to-end flow binding, compatible with PKCE and PAR.
+    *   **Open Questions:**
+        *   Necessity of `application/dpop+jwt` media type registration: Mike Jones recommended proceeding with registration, as `typ` claims are intended for media types.
+        *   Number of authors: Roman (AD) confirmed support for retaining all six authors if the working group deems their contributions significant, documenting this in the shepherd write-up.
+*   **Redirection Attacks in OAuth:**
+    *   Roman provided an overview of vulnerabilities arising from mismanaged redirections, which are not vendor-specific.
+    *   **Attack Scenarios:**
+        *   Redirection to an attacker-controlled URI after user authentication when parameters like `response_type` or `scope` are invalid.
+        *   Redirection to an attacker-controlled URI even if the user denies consent.
+        *   Automatic redirection before user authentication due to missing or invalid parameters.
+        *   Redirection during silent authentication in OpenID Connect.
+    *   **RFC 6749 Context:** The RFC states AS "must not automatically redirect" for `redirect_uri` or `client_id` errors, but "informs the client by redirecting" for other errors or user denial, creating an ambiguity.
+    *   **Community Feedback:**
+        *   Consensus that these are well-known front-channel trade-offs, not new attacks.
+        *   Suggestions to add specific paragraphs to the existing Security BCP rather than creating a new document or delaying the BCP, focusing on implementer guidance and security implications.
+*   **OAuth 2.1 Updates:**
+    *   Aaron Parecki presented on the ongoing work and current status.
+    *   **Recent Updates:** Mandatory TLS for redirect URIs (except loopback), consolidated TLS language, extensive editorial clarifications, normative text moved from security considerations into main body, refresh token guidance aligned with Security BCP.
+    *   **Implicit Flow Clarification:** A new section clarifies that OAuth 2.1 removes the *OAuth* implicit flow (issuing tokens from the authorization endpoint) but does not preclude OpenID Connect's use of `id_token` as a response type.
+    *   **Remaining Work:** More review feedback, normative text extraction, expanding the "differences from OAuth 2" section, and addressing open GitHub issues.
+    *   **Specific Issues Discussed:**
+        *   **`iss` (Issuer) Response Parameter (RFC 9207):** Now an RFC, discussion centered on whether to integrate it into 2.1.
+            *   Mike Jones and Daniel Fathauer suggested providing brief guidance and examples within 2.1, referencing RFC 9207 for full details and corner cases.
+            *   Vittorio noted its utility for earlier verification in the response.
+        *   **Access Token Lifetime:** RFC 6750 implies tokens "must" have a limited lifetime, but this normative requirement was in security considerations and often ignored in practice.
+            *   Justin Richard argued it should be security advice (non-normative), as lifetime can be event-based or revoked, not just time-based, and allows for specific API key use cases.
+            *   Vittorio and George Fletcher expressed concern about explicitly allowing "forever" tokens, emphasizing the need for robust revocation mechanisms and a "sensible criteria" for token validity.
+        *   **Redirect URI Methods for Native Apps:** The Native Apps BCP (now part of 2.1) requires ASes to support all three methods (private URI schemes, HTTPS URLs, loopback interface), which conflicts with profiles like FAPI that prohibit less secure methods (e.g., private URI schemes).
+            *   Discussion favored removing the "MUST support all three" requirement.
+            *   Suggestions included reordering the methods by security preference (HTTPS URLs first, loopback second, private URI schemes last) and adding context on their use and security implications.
+        *   **Client Definitions (Public/Confidential/Credentialed Clients):** Discussion on clarifying the potentially confusing "credentialed client" term.
+            *   Justin Richard proposed collapsing core definitions back to "public client" (no secret) and "confidential client" (has a secret). The *method* of acquiring credentials and associated trust levels (e.g., static vs. dynamic registration) should be discussed as an orthogonal dimension.
+            *   Vittorio raised concerns about redefining "confidential client" due to its historical implication of singleton applications and potential "ripple effects" on existing systems.
+            *   General agreement on the need for clearer explanations of client types and trust models.
+
+## Decisions and Action Items
+
+*   **D-Pop:**
+    *   **Decision:** Proceed with `application/dpop+jwt` media type registration.
+    *   **Action Item:** Brian Campbell to update the D-Pop draft based on media type discussion.
+    *   **Decision:** Target Working Group Last Call for D-Pop once updates are complete.
+*   **Redirection Attacks:**
+    *   **Decision:** Incorporate description and implementer guidance on redirection attacks into the existing Security BCP, rather than making normative changes or creating a new document.
+    *   **Action Item:** Roman, Mike Jones, and others interested to draft initial text for the Security BCP, potentially discussing in side meetings.
+*   **OAuth 2.1:**
+    *   **`iss` Response Parameter:**
+        *   **Decision:** OAuth 2.1 will include brief guidance for the `iss` parameter (RFC 9207), simple examples, and reference the RFC for full details and corner cases.
+        *   **Action Item:** Aaron Parecki to implement this guidance.
+    *   **Access Token Lifetime:**
+        *   **Decision:** No normative requirement for time-based access token expiry. The text will be rephrased as advice, guiding implementers on the importance of limiting token lifetime and having revocation mechanisms, acknowledging various models for achieving this.
+        *   **Action Item:** Aaron Parecki to update the draft accordingly.
+    *   **Redirect URI Methods for Native Apps:**
+        *   **Decision:** Reorder the list of redirect URI methods by security preference (claimed HTTPS URLs first, loopback second, private URI schemes last) and remove the normative "MUST support all three" requirement. Add contextual information on security implications.
+        *   **Action Item:** Aaron Parecki to update the draft accordingly.
+    *   **Client Definitions (Public/Confidential/Credentialed Clients):**
+        *   **Action Item:** This topic requires further asynchronous discussion on the mailing list or GitHub. Brian Campbell to file an issue for tracking. The general direction is to clarify existing definitions of public and confidential clients and discuss trust/credential acquisition as an orthogonal dimension.
+
+## Next Steps
+
+*   Brian Campbell will update the D-Pop document and work towards Working Group Last Call.
+*   Roman and others will draft text on redirection attacks for the Security BCP.
+*   Aaron Parecki will incorporate the decisions regarding the `iss` parameter, access token lifetime, and redirect URI methods into the OAuth 2.1 draft.
+*   Further discussion on client definitions will proceed asynchronously on the mailing list and GitHub.
+*   The working group has two side meetings scheduled (Tuesday at 2 PM, Wednesday at 6 PM) and another official session on Thursday at the same time. Details for side meetings to be sent to the mailing list.

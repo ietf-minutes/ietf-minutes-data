@@ -1,0 +1,65 @@
+# dnsop
+
+## Summary
+
+The dnsop session covered three main topics: hackathon results on Extended DNS Error responses, an update on DNS Catalog Zones, and a discussion on NSEC3 parameter guidance. A new draft on Automatic DNSSEC Bootstrapping was also presented. Key discussions revolved around the safety and utility of unsolicited EDNS errors, the readiness of Catalog Zones for Working Group Last Call, and the contentious details of NSEC3 iteration count recommendations, particularly regarding the use of specific dates and the "serve-fail" vs. "insecure" outcomes. The bootstrapping proposal received strong support for adoption, with an open point on hashing in the naming scheme.
+
+## Key Discussion Points
+
+*   **Extended DNS Error Response (EDNS(0) Errors) Hackathon Results:**
+    *   **Objective:** Tested the behavior of resolvers when receiving unsolicited EDNS(0) error options from authoritative servers, based on the hypothesis that resolvers are more tolerant of such responses than authoritatives are to unknown EDNS options in queries.
+    *   **Methodology:** Used eBPF on authoritative servers and RIPE Atlas probes for measurements. Two measurements: a baseline and one with an unsolicited EDNS(0) error.
+    *   **Findings:** Approximately 0.5% of resolvers (95 in the test) accepted the baseline but *not* the unsolicited EDNS option. A significant number (73%) responded to the unsolicited option but *not* the baseline, which was attributed to internet error margin. A bug in the reporting domain configuration (trailing zero) was identified.
+    *   **Implications:** Suggested a "driver for DNSSEC" (similar to DMARC) could provide reporting without failures, easing DNSSEC deployment and allowing quick rollbacks.
+    *   **Discussion:** Ben Schwartz questioned the safety, pointing out that unsolicited EDNS options from authoritatives are "clearly out of spec" and suggested testing the reverse (resolver sending unknown EDNS option). The presenter acknowledged a small error rate but suggested sampling could mitigate risks.
+
+*   **DNS Catalog Zones:**
+    *   **Update:** Version 4 of the draft introduced "catalog producer" and "catalog consumer" terms, removed optimizations for predictable RRs, and refined descriptions for basic operations and error handling.
+    *   **New Features:**
+        *   **Properties:** Standardized definitions for member zone properties.
+        *   **`COO` (Change Of Ownership):** Facilitates controlled migration of member zones between catalogs in a stateless manner.
+        *   **`GROUP`:** Allows different configurations (e.g., DNSSEC signing status) for member zones within a single catalog, enabling atomic configuration changes.
+        *   **`SERIAL`:** A property intended to improve update reliability and reduce notify/SOA query traffic. Discussed potentially splitting this into a separate document.
+    *   **Security:** Clarified that administrative control shifts from the server operator/consumer to the catalog producer. Recommends private transport (TLS, TSIG).
+    *   **Discussion:** Peter Van Dijk raised concerns about using "real-looking" TLDs in examples and recommended using reserved TLDs (`.arpa`, `.invalid`) or operator-owned names to prevent leakage. Paul Wouters, initially skeptical, reported positive deployment experience, noting it aids in diversifying name server software. Victor suggested considering signing catalog zones themselves for content validation.
+    *   **Status:** The draft is considered ready for Working Group Last Call, with interoperability testing ongoing.
+
+*   **NSEC3 Parameter Guidance:**
+    *   **Background:** Follow-up from previous discussions, aiming to modify NSEC3 usage.
+    *   **Consensus Points:**
+        *   Zone publishers should move to `iterations = 0`. This received no objections.
+        *   Validators should enforce lower iteration counts.
+        *   `SERVFAIL` is preferred over `INSECURE` to mitigate CPU exhaustion attacks and prevent zone takeovers/surveillance.
+    *   **Proposed Text for Validators (Iterations):** Suggested text for Section 4, recommending an upper limit of 100 iterations as of November 2021, and encouraging vendors to lower limits over time.
+    *   **Discussion on Dates in RFCs:** Paul Wouters objected to including specific dates in RFCs, suggesting such guidance belongs in a regularly updated DNS guidelines document or should be generalized (e.g., "as of this publication").
+    *   **Proposed Text for Validators (`SERVFAIL`):** Encouraged validators to lower default/acceptable limits for returning `SERVFAIL` for high iteration counts.
+    *   **Discussion on Scope:** Peter (via chat) emphasized the need to address both operators and vendors. Peter Koch (DENIC) expressed concern about the "compliance game" implied by "enforcement" in standards, arguing that if it's a security risk, it should be framed as such rather than a protocol standard mandate for voluntary adoption.
+
+*   **Automatic DNSSEC Bootstrapping:**
+    *   **Problem:** Current methods for getting DS records to the parent are unauthenticated, slow, error-prone, or require too many intermediaries.
+    *   **Proposal:** An authenticated, in-band, immediate method using a "signaling mechanism" from the DNS operator.
+    *   **Mechanism:** DNS operators would publish zone-specific information (e.g., CDS/CDNSKEY records) under a securely delegated namespace within their nameserver's domain (e.g., `_boot.ns1.provider.net`), signed with the NS zone's keys. The parent can then validate the child's CDS against this operator-signed signal.
+    *   **Technical Considerations:** Avoids collisions with existing CDS/CDNSKEY usage. Proposed hashing ancestor labels (e.g., `hash_of_example.com`) to help with length limits, reduce ambiguity, and improve privacy. However, hashing adds implementation complexity and makes debugging difficult.
+    *   **Impact:** Analysis of Alexa Top 1 Million showed 22-23% of currently insecure domains could be bootstrapped this way, indicating high potential.
+    *   **Discussion:** Victor and Paul Wouters strongly supported adoption, with Victor specifically recommending against the hashing of labels.
+
+## Decisions and Action Items
+
+*   **NSEC3 Parameter Guidance:**
+    *   **Decision:** General consensus that zone publishers should move to `iterations = 0`.
+    *   **Action Item:** Wes Hardiker to revise the proposed text for NSEC3 parameter guidance, taking into account feedback on dates in RFCs, the distinction between "insecure" and "serve-fail," and addressing both operators and vendors. Submit revised text to the mailing list for further wordsmithing.
+
+*   **DNS Catalog Zones:**
+    *   **Action Item:** Willem to update examples in the draft/slides to use reserved TLDs (e.g., `.arpa`, `.invalid`) or operator-owned names for catalog zones.
+    *   **Action Item:** Working Group members are requested to review the current version of the draft thoroughly, especially in preparation for a Working Group Last Call. Interoperability testing to continue.
+
+*   **Automatic DNSSEC Bootstrapping:**
+    *   **Decision:** The chairs will initiate discussions with Peter Thomassen regarding the adoption of the draft as new working group work, considering the current working group load.
+    *   **Action Item:** Peter Thomassen and the working group to continue discussion on the mailing list regarding the "hash or not to hash" question for the naming scheme.
+
+## Next Steps
+
+*   **NSEC3 Parameter Guidance:** Further discussion and wordsmithing of proposed text on the mailing list, especially regarding the timeline for validator iteration count enforcement and `SERVFAIL` behavior.
+*   **DNS Catalog Zones:** Continued interoperability testing and thorough working group review ahead of an anticipated Working Group Last Call.
+*   **Automatic DNSSEC Bootstrapping:** Chairs to engage with Peter Thomassen for potential adoption of the draft. Technical discussion on the naming scheme (hashing) to continue on the mailing list.
+*   **General:** The co-chairs will continue to organize interim meetings between IETF sessions and will announce proposed dates and agendas.

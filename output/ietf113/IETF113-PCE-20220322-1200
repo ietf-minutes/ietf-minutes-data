@@ -1,0 +1,68 @@
+# pce Session Minutes
+
+## Summary
+
+The PCE working group held its second session, covering several drafts focused on extending PCEP capabilities for advanced traffic engineering scenarios. Key discussions included defining "circuit-style" policies for segment routing (SR) networks, proposing PCEP extensions to support these policies, introducing VLAN-based traffic forwarding in native IP networks using PCEP, and presenting PCEP procedures for PCE-based multicast and BIER (Bit Indexed Explicit Replication) deployments. Several drafts were discussed, with a general call for continued engagement on the mailing list for technical clarifications and potential adoption.
+
+## Key Discussion Points
+
+*   **Circuit Style Segment Routing Policies (Christian Schmutzer)**
+    *   **Objective:** Enable SR networks to support both connectionless and connection-oriented services (e.g., private lines, TDM-like guarantees).
+    *   **Requirements:** Persistent traffic-engineered paths, strict bandwidth commitments, end-to-end path protection (e.g., sub-50ms), and OAM.
+    *   **Characteristics:** Bundling of bi-directional SR policies with bandwidth requests, co-routing, strict hops using unprotected adjacency SIDs, no re-optimization, and multiple candidate paths for recovery.
+    *   **Proposal:** Leverages existing PCEP mechanisms (bandwidth object, bi-directional association object, SR policy association) and IGP/BGP-LS extensions for topology and bandwidth dissemination. Informational draft, grouping existing constructs.
+    *   **Discussion:**
+        *   Clarification on "circuit-style" term, suggesting "bandwidth guarantee" might be more precise for packet-switched networks. The intent is admission-controlled, highest-priority bandwidth.
+        *   The "50ms restoration" is used colloquially to mean "as fast as possible" with pre-established paths, acknowledging latency bounds.
+        *   Query regarding PCE architecture (single vs. multiple collaborating PCEs) for managing bandwidth-guaranteed paths, referencing the PC State Sync draft.
+        *   Questioned if the work is PCEP-specific or a broader SR policy concept better suited for the SPRING WG. Authors acknowledged it might be broader.
+        *   Discussion on the utility of stateful PCE if path re-computation (pinning) is explicitly disallowed.
+
+*   **PCEP Extensions for Circuit Style SR Policy (Samuel Cyriac)**
+    *   **Objective:** Define PCEP extensions to realize the requirements of circuit-style SR policies.
+    *   **Strict Path Request:**
+        *   For stateless messages, clarifies existing 'L' flag in RP object to mean strict adjacency SIDs for SR.
+        *   For stateful messages, proposes a new 'O' flag in LSP Extended Flags TLV for both SR and RSVP, indicating a strict path request.
+    *   **Path Computation Trigger Control:**
+        *   Introduces a new TLV for `Path Computation Triggers` with flags to block recomputation due to topology changes or periodic optimizations, aiming for path persistency.
+    *   **Discussion:**
+        *   Suggestions to use a single "lock/pin path" bit instead of multiple flags for triggers, though higher granularity was noted as a benefit.
+        *   Discussion on how PCE should react if bandwidth guarantees are violated (e.g., link capacity drop). Proposed clarifying that if an LSP is deemed "down," PCE *can* recompute, potentially adding a flag for "recompute if LSP is invalid."
+        *   Working group discussion was requested on whether to use specific TLVs for well-known policies or a more generic policy association mechanism.
+
+*   **PCEP Extension for VLAN based Traffic Forwarding in Native IP Network (You Ning)**
+    *   **Objective:** Define PCEP extensions for VLAN-based traffic forwarding in native IP networks, building on RFC 9050.
+    *   **Mechanism:** PCE calculates explicit routes. Ingress PCC creates VLAN Forwarding Routing Tables (VFRT). Transit/Egress PCCs create VLAN Crossing Routing Tables (VCRT). Guaranteed traffic is matched, labeled with VLAN tags, and forwarded. Egress removes the VLAN tag.
+    *   **Advantages:** Uses a new address space (VLANs) to avoid conflicts with MPLS labels and bypasses SRv6 encapsulation overhead.
+    *   **Discussion:**
+        *   A key concern was raised by the chair regarding whether defining VFRT/VCRT structures and forwarding logic falls within the PCE WG's charter, as this touches on data plane specifics. It was noted that previous native IP work was in the TEAS WG.
+        *   Proponents argued that the tables are a "policy space" and the instructions from PCE to PCC are within scope.
+
+*   **PCEP Procedures and Protocol Extensions for PCE-based Multicast (You Nian)**
+    *   **Objective:** Manage IP Multicast, MRDDP, and SR Multicast trees using a PCE.
+    *   **Process:**
+        1.  **Multicast Tree Information Discovery:** Ingress registers sources, egress joins/leaves, using new PCEP objects/flags to carry tree identifiers and source/receiver information.
+        2.  **Multicast State Setup and Updates:** Defines new TLVs (e.g., `Tree Forwarding Label Static TLV`, `VPN Forwarding Identifier TLV`) for CCI objects to assign labels/identifiers for P2MP LSPs and BIER trees. RSP object carries tree identifiers.
+        3.  **Multicast Statistics Synchronization:** Briefly mentioned but not detailed due to time.
+
+*   **PCEP for BIER (Rong Ge)**
+    *   **Objective:** Use PCE for central allocation and PCEP for distribution of BIER information.
+    *   **Mechanisms for BIFT generation:**
+        1.  **With IGP:** PCE allocates per-PCC parameters (Subdomain ID, BFR ID, algorithms) via CCI and Encapsulation TLVs. PCC uses IGP to distribute.
+        2.  **Without IGP:** PCE allocates all BIER information for each PCC, including neighbor and next-hop information via an `Address TLV`.
+    *   **Protocol Extensions:** New 'B' bit in `PCECC Capabilities TLV`, new Path Setup Type, new CCI object type for BIER, and new optional TLVs (`BIER Encapsulation TLV`, `Address TLV`) within the CCI object. Reuses RFC 8664 FEC objects for BFR prefix.
+
+## Decisions and Action Items
+
+*   **Agenda Order:** The order of the first two presentations was swapped as requested by the authors.
+*   **Mailing List Discussion for Circuit Style SR:** The chair requested further discussion on the mailing list regarding:
+    *   Whether the "circuit style" SR policy concept should be generic (potentially in SPRING WG) or PCEP-specific.
+    *   The use of stateful PCE when paths are intended to be "pinned" and not recomputed.
+*   **Mailing List Discussion for PCEP Extensions for Circuit Style SR Policy:** The working group is encouraged to discuss the proposal for specific TLVs for well-known policies versus using a more generic policy association mechanism.
+*   **Mailing List Discussion for VLAN based Traffic Forwarding:** The chair will discuss the scope of defining VFR/VCR tables and forwarding logic with the AD and requests further feedback from the working group on the mailing list regarding whether this falls within the PCE WG charter.
+*   **Mailing List Discussion for PCE-based Multicast:** Comments on the draft are welcomed on the mailing list.
+*   **Mailing List Discussion for PCEP for BIER:** Comments on the draft are welcomed on the mailing list.
+
+## Next Steps
+
+All authors and the working group are encouraged to continue discussions on the respective mailing list threads to resolve open questions, refine proposals, and build consensus for potential adoption or progression of the drafts.
