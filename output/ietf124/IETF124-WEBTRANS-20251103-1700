@@ -1,0 +1,41 @@
+# WEBTRANS Session Minutes - IETF-124
+
+## Summary
+
+The WEBTRANS session at IETF-124 covered updates from the W3C WebTransport Working Group, hackathon interoperability results, and addressed several critical open issues across the WebTransport overview, H3, and H2 specifications. The W3C is nearing Candidate Recommendation status, with significant progress on API stability. Hackathon participants demonstrated growing interoperability, validating the specifications. Key technical discussions revolved around streamlining header handling, establishing clear guidelines for stream and session limits, and a major decision to provide flexibility for WebTransport over H3 deployments by allowing it to optionally run within a single H3 stream. The working group aims to proceed to Working Group Last Call (WG Last Call) once the remaining issues are formally resolved.
+
+## Key Discussion Points
+
+*   **W3C WebTransport API Progress**: The W3C WebTransport Working Group is 90% complete towards its Candidate Recommendation (CR) milestone, with 8 open issues ready for Pull Requests and 74 closed issues since the last update in July 2023.
+*   **Datagram Readable Streams**: Datagram readables are no longer byte streams by default to preserve datagram semantics (allowing empty datagrams) and avoid conflicts with the `ByteStream` specification. Byte stream functionality is now optional via a constructor argument.
+*   **`min RTT` Statistic Definition**: The exposed `min RTT` statistic is now explicitly defined as per RFC 9002, Section 5.2.
+*   **Fetch Integration and Headers**: The W3C is actively working on integrating WebTransport with Fetch (PR 697). Discussions highlighted questions regarding whether Fetch integration automatically handles headers (including authentication headers) for `CONNECT` requests, the handling of forbidden header names, and the appropriate timing for server-side authentication using these headers. The consensus was that these are primarily W3C/WHATWG concerns, with the IETF group emphasizing the importance of enabling authentication headers to prevent custom re-implementations.
+*   **Hackathon Interoperability**: Safari and Firefox teams reported successful interoperability tests with Meta's Devious Beton server (H3 drafts 4 and 14) and Cloudflare's server (H3 draft 4). Safari is prototyping with the latest H2/H3 drafts, with flow control enabled. Firefox is actively implementing `reset stream mat` and flow control. Issues remain regarding video stream associations and full support for features like session pooling.
+*   **Unidirectional Stream (Receive-Only)**: A request for explicitly defining an operation to open a unidirectional stream for receive-only purposes was discussed. The editors' proposal, which suggests this functionality is adequately covered by existing compositions (e.g., opening a bidirectional stream and immediately closing its send side), was accepted.
+*   **H3 Negotiation Updates**: The negotiation process for WebTransport over H3 has been refined. Only the server is required to send `Enable Connect Protocol`. `WT_MAX_SESSIONS` has been reinstated as a setting to allow both sides to signal pooling support. Requirements for `QUIC_DATAGRAMS`, `MAX_DATAGRAM_FRAME_SIZE`, and `RESET_STREAM_MAT` are reinforced, with new text outlining error handling if these are not properly configured.
+*   **Stream Limits and DOS Considerations**: Discussions initiated on defining appropriate limits for server-opened unidirectional and bidirectional streams, particularly in security considerations. Concerns were raised that setting fixed numerical limits in the specification could become an "eternal" problem, potentially leading to suboptimal application performance or hindering flexible server deployments.
+*   **`WT_MAX_SESSIONS` Setting**: Extensive discussion occurred regarding the utility and implementation of the `WT_MAX_SESSIONS` setting in both H2 and H3, which signals the maximum number of WebTransport sessions a peer is willing to accept. Challenges in coordinating and enforcing this limit led to a proposal for simplification.
+*   **WebTransport Over Single H3 Stream**: A key discussion point was whether WebTransport over H3 should *always* require splitting into separate H3 streams (one for each WebTransport stream and H3 datagrams) or if it should allow running within a single H3 stream (similar to WebTransport over H2). The latter option simplifies proxying and integration in specific deployment environments where the full benefits of H3-native streaming are not required or desired.
+
+## Decisions and Action Items
+
+*   **W3C Header Discussions**: The IETF noted its desire for WebTransport to support authentication headers, acknowledging this is a W3C/WHATWG domain for further resolution.
+*   **Stream Limits Issue**: Alan Fendell will open a new issue to gather thoughts and opinions on defining recommended stream limits within the WebTransport specifications, recognizing the challenges of setting universal numbers.
+*   **`WT_MAX_SESSIONS` Removal (H2 & H3)**:
+    *   **Decision**: The `WT_MAX_SESSIONS` setting will be removed from both the H2 and H3 WebTransport specifications.
+    *   **Decision**: Instead of `WT_MAX_SESSIONS`, the server will indicate WebTransport support via a boolean setting (e.g., `WT_ENABLED`).
+    *   **Decision**: Servers are encouraged to use rate-limiting headers in response to `CONNECT` requests to provide dynamic hints to clients about session capacity.
+    *   **Action**: A Pull Request (PR) will be submitted to implement these changes.
+*   **Optional Single H3 Stream for WebTransport**:
+    *   **Decision**: The current requirement that WebTransport over H3 *must* split into separate H3 streams will be removed. Clients will now have the option to request generic, stream-based WebTransport over H3.
+    *   **Action**: A PR will be submitted to implement this change.
+*   **Upgrade Token Naming**: The discussion regarding the naming conventions for generic (`WebTransport`) versus H3-specific (`WebTransport-H3`) upgrade tokens will be continued on the issue tracker.
+*   **H2 Max Stream Data (Bi-Directional)**:
+    *   **Decision**: The concept of `bi-di local` and `bi-di remote` for initial maximum stream data, analogous to QUIC, will be applied to WebTransport over H2.
+    *   **Action**: A PR will be submitted to implement this change.
+
+## Next Steps
+
+*   Pen holders assigned to the remaining open issues (including DOS considerations, stream limits, and upgrade token naming) are expected to submit concrete proposals and Pull Requests in the coming weeks.
+*   The working group will review and resolve these outstanding issues.
+*   The chairs plan to initiate a Working Group Last Call for the WebTransport specifications between now and the next IETF meeting, contingent on the timely resolution of all remaining issues and updates to the drafts.
