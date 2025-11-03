@@ -1,0 +1,74 @@
+# WISH Meeting Minutes
+
+## Summary
+
+The WISH working group convened to review and discuss several open Pull Requests (PRs) aiming to finalize the draft specification for WISH v1. Key discussions revolved around clarifying error handling, defining extensibility for events, establishing a discoverability mechanism for WebRTC endpoints, and detailing partial media acceptance. The group reached consensus on several technical decisions, clearing the path for further progress towards a working group last call, with a focus on resolving event-related questions for v1.
+
+## Key Discussion Points
+
+*   **Error Handling Clarification for POST and PATCH Requests (PR)**
+    *   The specification previously had ambiguities regarding the use of `406 Not Acceptable` (used for both counteroffers and general errors) and lacked specific error codes for malformed SDP or incorrect content types in POST and PATCH requests.
+    *   **Proposed changes**:
+        *   HTTP PATCH with malformed SDP or non-JSEP conformant answer must be rejected.
+        *   `406 Not Acceptable` is to be interpreted as a service-sent counteroffer *only if* it includes `Content-Type: application/sdp` and a syntactically valid SDP offer. Otherwise, it's a generic HTTP error.
+        *   POST/PATCH requests with content types other than `application/sdp` must be rejected with `415 Unsupported Media Type`.
+        *   POST requests with `application/sdp` but invalid SDP should be rejected with an appropriate 4XX response (e.g., `422 Unprocessable Entity` or `400 Bad Request`), with `406` reserved for counteroffers.
+        *   PATCH with `application/sdp` when an SDP is not expected (e.g., offer/answer completed) must be rejected with `422 Unprocessable Entity`.
+    *   These changes clarify behavior for service-sent offers, ICE restarts, and trickle ICE.
+    *   *No objections were raised for these changes during the meeting.*
+
+*   **Events Extensibility (PR)**
+    *   Addresses Issue #29 regarding forward compatibility for events.
+    *   **Proposed change**: Unknown fields in Server-Sent Events (SSE) and within the JSON object included in the data field *must* be silently ignored by the client.
+
+*   **Discoverability (PR)**
+    *   Adds a new section on how WebRTC endpoints can be discovered.
+    *   **Proposed mechanism**: Web players and SDKs *may* use an HTTP HEAD request to determine if a URL is a WISH endpoint. A WISH endpoint *should* respond with `200 OK` and include a `Content-Type: application/sdp` header.
+    *   **Discussion**:
+        *   **Editor Affiliation**: A comment was made regarding an outdated affiliation for a co-author. This will be addressed during working group or IETF last call.
+        *   **HEAD Request Semantics**: Question raised by Jonathan Lennox: If a server only supports service-sent offers (and would 405 a GET/POST), should it 405 a HEAD request? Niels will investigate HTTP HEAD rules, but initial thought is it should still return `200 OK` if a GET would eventually be `200 OK` (i.e., it can provide an SDP).
+        *   **False Positives**: Concern about URLs that might coincidentally return `application/sdp` for a HEAD request. This was deemed an edge case that can be documented, but not require complex handling.
+
+*   **Unknown Event Type Handling (PR)**
+    *   Addresses Issue #20 regarding how to handle requests for unsupported event types when establishing an event stream.
+    *   **Proposed change**: When processing a POST request to create a server-to-client event stream, the web resource *must* validate each requested event type. If an event type is not supported, the request *must* be rejected with a `400 Bad Request` response. The web resource *may* include additional error information.
+    *   **Discussion**: Initial suggestion to silently ignore unsupported event types was rejected. Consensus was to explicitly return a `400 Bad Request` to inform the client of the unsupported request, rather than silently failing to deliver expected events.
+
+*   **Partial Media Acceptance (PR)**
+    *   Addresses Issue #7 on handling codec negotiation errors.
+    *   **Decision for v1**: Allow partial acceptance of media streams. This means data channels or specific media lines can be dropped from an offer.
+    *   **Proposed changes**: The web endpoint *may* partially accept the client's offer (e.g., accepting audio/video while rejecting data channel m-lines). The draft will detail mechanisms for rejecting m-lines.
+    *   **Discussion**: Harald Alvestrand noted that rejecting media sections, especially with BUNDLE and max-bundle, can be tricky and lead to implementation issues. He suggested it might be advisable to always negotiate data channels as WebRTC has standardized extensions for this. Niels will add a note to consider this feedback.
+
+*   **Data Channel vs. Server-Sent Events for Notifications**
+    *   Discussed Issue #15 (better efficiency for server-sent events via data channel).
+    *   The idea of always negotiating a data channel (as suggested by Harald) could potentially make SSE for notifications redundant.
+    *   **Open question**: Should WISH v1 require all players to support data channels if this becomes the primary event transport, or should it support multiple methods for events (SSE and data channel)?
+    *   Tim Panton's previous work on this topic was referenced, suggesting he had explored both options. Niels will review his prior PRs.
+
+## Decisions and Action Items
+
+### Decisions
+
+*   The proposed changes to clarify error handling for POST and PATCH requests (using `406`, `415`, `422`) were accepted in principle, pending further feedback.
+*   Unknown fields in Server-Sent Events (SSE) and within their JSON data fields *must* be silently ignored by clients for extensibility.
+*   Requests for unsupported event types *must* result in a `400 Bad Request` response.
+*   Partial media acceptance (allowing rejection of m-lines or data channels) is permitted for WISH v1.
+
+### Action Items
+
+*   **Niels**:
+    *   Investigate and clarify the expected behavior of HTTP HEAD requests for servers that only support service-sent offers (i.e., would 405 a POST/GET).
+    *   Add a note or consider Harald Alvestrand's feedback regarding the complexities and potential issues of rejecting media sections, especially data channels in a BUNDLE context.
+    *   Review Tim Panton's previous PRs related to using data channels for events to inform the discussion on event transport for v1.
+    *   Send an email to the mailing list to gather consensus on the exact scope and mechanism for events (Server-Sent Events vs. Data Channels) to be included in WISH v1.
+    *   Send out a survey to schedule an interim meeting, potentially in December or early January, to address the remaining open issues, particularly those related to event transport.
+*   **Working Group**:
+    *   Provide feedback on all outstanding Pull Requests by the end of the current week.
+
+## Next Steps
+
+1.  Integrate feedback and merge the current set of Pull Requests clarifying error handling, events extensibility, discoverability, unknown event type handling, and partial media acceptance.
+2.  Backport any necessary RFC editor changes from the WIP specification.
+3.  Based on mailing list consensus and discussion at a planned interim meeting, finalize the approach for events in WISH v1, including the transport mechanism (Server-Sent Events, Data Channels, or both).
+4.  Proceed towards a Working Group Last Call for the WISH v1 draft once major issues are resolved.

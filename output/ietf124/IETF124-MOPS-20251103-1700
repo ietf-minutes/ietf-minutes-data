@@ -1,0 +1,83 @@
+# MOPS
+
+## Summary
+
+The MOPS working group session covered four main topics: the progress of the Network Overlay draft, a call for participation in a side meeting on multicast for live streaming, an overview of the Content Steering protocol, and research findings on optimizing Media Over QUIC for Quality of Experience. A key decision was made to proceed with a Working Group Last Call for the Network Overlay draft. The session also included an update from the SVTA on their work on hosted edge caches and an announcement regarding a co-chair transition for the MOPS WG.
+
+## Key Discussion Points
+
+*   **Network Overlay Draft (Sanjay Mishra)**
+    *   **Purpose**: The draft explores operational challenges and architectural implications for video streaming due to privacy-enhancing network overlays (e.g., Apple's iCloud Private Relay) that influence or override native network policies (routing, addressing).
+    *   **Current Status**: Version 03, adopted as a working group draft in February.
+    *   **Changes (v02 to v03)**: General cleanup, redundancy removal, streamlined introduction, expanded examples (routing, DNS, IP address), clarified operational scope (beyond HTTP video to all streaming systems), improved linkages between overlay privacy goals and streaming impacts.
+    *   **Identified Impact Areas**:
+        *   **IP Address Policies**: Affects session authentication, CDN association, potentially leading to service denial.
+        *   **Geolocation Changes**: Interferes with content viewing rights based on user location.
+        *   **Routing Policies**: Leads to sub-optimal CDN cache selection, higher latency, and degraded quality of experience.
+        *   **DNS Policies**: Impacts cache selection and content delivery time.
+        *   **Operational Challenges**: Issues with CDN interconnection troubleshooting and identifying/resolving problems related to policy changes.
+    *   **Feedback Request**: Authors believe all significant use cases have been identified and documented. Feedback is sought on any new use cases, improvements to existing content, or validation of the identified problems. The draft is considered ready for Working Group Last Call (WGLC).
+    *   **Comment (Participant)**: Suggested forwarding the WGLC to other working groups like TSVART due to its broad relevance.
+
+*   **Side Meeting: Multicast for Live Streaming (Lenny Julian)**
+    *   **Motivation**: The significant growth of live streaming events (tens of millions of viewers) is pushing network limits, highlighting a need for more efficient content delivery.
+    *   **Problem**: Existing solutions for multicast operate in two separate worlds: network-layer (PIM, AMT) and application-layer (UDP for ultra-low latency, QUIC extensions, congestion control, reliability, ABR, encryption). There's a lack of awareness between these two worlds.
+    *   **Purpose of Side Meeting**: To bring these two worlds together, discuss challenges of using multicast for internet live streaming, and conduct a gap analysis, focusing on Layer 4 and above (reliability, ABR, encryption).
+    *   **Agenda**: Discussion on "Is multicast a bad idea whose time has come?", speakers on streaming multicast technologies, and an open discussion session.
+    *   **Comment (Glenn Dean)**: Emphasized the importance of considering rights management and geo-filtering mechanisms (e.g., via encryption key distribution) when designing multicast solutions, as different broadcasters may have different rights and encoding requirements across territories.
+    *   **Call to Action**: MOPS working group members were encouraged to attend the side meeting on Wednesday to contribute.
+
+*   **Content Steering (Roger Pantos)**
+    *   **Purpose**: A protocol for large streaming providers (using HLS and DASH) to control which redundant content path their clients choose.
+    *   **Motivation**: Providers use multiple CDNs for regional performance and economic reasons, and operate redundant streams for resilience (encoders, origins, data centers). Dynamic steering is needed to move users to cheaper CDNs or around network outages. Before content steering, providers lacked control over client path selection, leading to service disruptions.
+    *   **Design Objectives**: Give providers control (planned/unplanned), allow dynamic plan changes during playback, be simple to implement, and be protocol-agnostic (reusable with DASH, HLS).
+    *   **How it Works**:
+        *   **Pathways**: A complete set of playlists for a media asset.
+        *   **Stream Manifest**: A JSON file listing all available pathways in a preferred order, including a Time To Live (TTL) and a reload URL.
+        *   **Client Behavior**: Clients start on the manifest-specified pathway and only switch to a lower-priority pathway if they fail to load files/tiers on the current one. Clients regularly reload the manifest to get updated pathway priorities.
+        *   **Server Control**: Servers can reorder the pathway list in the manifest and use query parameters in the reload URL for per-client/per-region decisions.
+        *   **Pathway Cloning**: Servers can dynamically add new pathways by defining a "clone" (e.g., replacing a hostname) to the manifest.
+    *   **Host Protocol Bindings**: Content steering integrates with HLS (e.g., pathway ID mapped to HLS pathway attribute) and DASH.
+    *   **Adoption**: Broadly supported by players, vendors, and infrastructure providers (e.g., Apple TV). It has remained stable since its introduction in 2022.
+    *   **Specification**: Currently an Internet Draft, originally part of HLS BIS, now separated to be generic for any URL-based delivery protocol.
+    *   **Discussion**:
+        *   **CDN Switching Logic**: Industry generally uses static per-client/per-region rules, with operational overrides for outages. Client-provided bitrate information is available but not widely used for complex dynamic switching yet.
+        *   **TTL and Caching**: The manifest includes a TTL. Steering services typically don't heavily cache manifests due to lower traffic volume compared to content, but this could be re-evaluated if caching becomes a concern.
+    *   **AD Comment (Eric Vyncke)**: Raised the question of publishing as a Proposed Standard vs. Informational RFC. While documenting industry practice is valid for informational, a standards track RFC might make it a stronger reference for other specs. This is an ongoing discussion.
+
+*   **Media Over QUIC: Optimizing for Quality of Experience (Abdul Haq)**
+    *   **Motivation**: Video traffic dominates the internet, primarily via HTTP Adaptive Streaming (DASH/HLS) traditionally on TCP. TCP has known limitations (head-of-line blocking, slow start, difficult innovation). QUIC (HTTP/3) offers advantages (lower handshake latency, multiplexing, custom congestion control, user-space feedback).
+    *   **Initial Findings (QUIC vs. TCP)**: Simply migrating to QUIC doesn't guarantee superior QoE. Mixed results for startup delay, rebuffering, and throughput. QUIC helps with faster startup.
+    *   **Key Issue**: QUIC implementations significantly impact Quality of Experience (QoE). Even with fixed ABR and network conditions, different QUIC implementations (e.g., MoveFast, quiche.cloud, neqo) and congestion controls (Cubic, BBR) yield widely varying V-MaF (video multi-method assessment fusion) results. No single implementation excels across all scenarios (VOD, low-latency live streaming).
+    *   **"Blind Loop" Problem**: ABR algorithms (client-side) and congestion control (server-side) operate in silos without mutual awareness, leading to suboptimal QoE (e.g., ABR decisions mismatching congestion control, queue build-up unobserved by CC).
+    *   **Proposed Solution**: **Cooperative Streaming Stack**.
+        *   **Core Idea**: Create cross-layer information sharing and optimization between application, transport, and network layers.
+        *   **Principles**:
+            1.  Application shares QoE telemetries (e.g., using CMCD standard).
+            2.  Server-side congestion control is optimized using both network-layer (e.g., ECN marking) and application-layer telemetries.
+            3.  Leverage network signals (e.g., AQM optimization, ECN marking for transport/application layers).
+    *   **Conclusion**: Transport-level metrics (e.g., raw throughput) are poor proxies for QoE. A "transport-centric win can be an application-layer loss." Walls between layers must be removed to share telemetries, and machine learning can help understand correlations for holistic decisions.
+    *   **Discussion (Jenna Ingar, Netflix)**: Noted that different QUIC implementations are often specifically tuned for particular applications (e.g., Facebook's MoveFast for video, Google's quiche for general web traffic). It's crucial to consider this tuning when evaluating performance for video QoE. Author agreed that the scope is vast but reinforced the need for cross-layer sharing.
+
+*   **SVTA Update (Glenn Dean)**
+    *   **Industry Shift**: The video industry is undergoing a revolutionary change, moving from mastering Video-on-Demand (VOD) at scale to tackling the challenges of large-scale live streaming. This involves new protocols (MoQ, QUIC, proprietary).
+    *   **SVTA Evolution**: The Streaming Video Technology Alliance (SVTA) has grown beyond its initial focus on VOD and Open Caching.
+    *   **New Specification**: The SVTA is developing a specification for "Hosted Caches at the Edge," planned for public release in late 2024 or early 2025.
+        *   **Goal**: Provide a standard reference environment for hosting caches at the edge, abstracting the cache implementation itself, allowing for different protocols (e.g., MoQ relay, HTTP/2).
+        *   **Defined Roles**: Tenant (the hosted cache), Hosted Service Provider (provides compute, memory, infrastructure), and Network Operator (provides networking and transport). It envisions new integration and awareness between the host and network operator.
+        *   **Topics Covered**: Content steering, networking, addressing, and operational aspects for deployment.
+    *   **Participation**: SVTA members can join regular meetings (Thursdays, 9 AM Pacific time) to contribute to this specification.
+
+## Decisions and Action Items
+
+*   **Network Overlay Draft**: The working group will proceed with a Working Group Last Call (WGLC) for the Network Overlay draft (draft-ietf-mops-network-overlay-03).
+*   **MOPS Co-Chair**: Kyle Rose is stepping down as MOPS co-chair. The AD is seeking nominations for a new co-chair.
+
+## Next Steps
+
+*   **MOPS Working Group**: Review the Network Overlay draft (draft-ietf-mops-network-overlay-03) during its Working Group Last Call period and provide feedback.
+*   **Interested Individuals**: Attend the side meeting on Multicast for Live Streaming on Wednesday.
+*   **Content Steering Authors**: Continue discussions with the IETF AD regarding the publication track for Content Steering (informational vs. standards track RFC).
+*   **Community**: Those interested in serving as a MOPS co-chair, or who know suitable candidates, should contact the IETF AD.
+*   **Abdul Haq**: Engage with QUIC implementers and IETF working groups on cross-layer sharing for QoE optimization.
+*   **Glenn Dean**: Continue engagement between SVTA and IETF, particularly on the "Hosted Caches at the Edge" specification.

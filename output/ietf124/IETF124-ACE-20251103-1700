@@ -1,0 +1,75 @@
+# ACE
+
+## Summary
+
+The ACE (Authentication and Authorization for Constrained Environments) Working Group met at IETF 124 to discuss the status and future work of several key drafts. Key discussions included the PubSub Profile for ACE and CoAP, the ACE Workflows and Parameters draft, the EST OSCORE profile, and the EDHOC and OSCORE ACE Profile. The PubSub Profile was deemed ready for Working Group Last Call, and the EST OSCORE draft is nearing IESG submission after addressing review comments. Significant technical points were debated regarding normative language, certificate handling in constrained environments, and the flexibility of new parameters and workflows.
+
+## Key Discussion Points
+
+*   **Chair Remarks and Agenda:**
+    *   The IETF Note Well was highlighted as recently updated, requiring participant understanding.
+    *   An agenda bash occurred: the `draft-ietf-ace-est-oscore` draft was moved to be discussed directly before `draft-ietf-ace-edhoc-oscore-profile` (prior to agenda item 6).
+*   **PubSub Profile for ACE and CoAP (draft-ietf-ace-pubsub-profile-coap-01):**
+    *   This draft defines an application profile for group communication using ACE, building on RFC 9594, specifically for CoAP (MQTT support was removed).
+    *   Version 01 updates included applying editorial comments from other application profiles, refining IANA considerations, explicitly mentioning CoAP in the TLS label, and aligning CoAP formats with RFC 1396.
+    *   Clarification was added for access token upload during DTLS/TLS handshakes and a clear distinction was made between nonce properties (randomness and length). All appendix requirements are now referred to in the document body.
+    *   **Status:** The authors believe the document is ready for Working Group Last Call, pending an update to a normative reference (CoAP Sub-architecture document) from the CoRE Working Group.
+    *   **Discussion:** J. Salander (Ericsson) confirmed the draft's readiness for WGLC.
+*   **ACE Workflows and Parameters (draft-ietf-ace-workflows-06):**
+    *   The draft's scope was reduced by splitting out bidirectional access control into a separate document.
+    *   It introduces an alternative AS-RS workflow where the AS uploads the access token to the RS. New parameters for the `/token` endpoint (AS) and `/.well-known/ace/rs-info` endpoint (RS) facilitate agile authentication credential transfer and dynamic updates of access rights.
+    *   The semantics of the existing `ace_profile` parameter were extended. Error messages now use the Problem Details format.
+    *   Updates include clarifying AS support for `to_rs` and `from_rs` parameters.
+    *   A new `updated_rights` boolean parameter was introduced for the RS's `/.well-known/ace/rs-info` endpoint, specifically for dynamic updates of access rights via the AS-RS workflow. This parameter disambiguates if a new token replaces an existing one or starts a new series, aiding robust error handling.
+    *   A new IANA registry entry for "AS to RS Request" was proposed as a parameter usage location.
+    *   **Open Issues:** Seven open technical errata on RFC 9200 (main ACE framework) were noted, particularly regarding examples and IANA registration.
+    *   **Future Work:** More examples for newly introduced parameters, clearer guidelines for `anchor_cnf` with group audiences.
+    *   **Discussion:** D. Robin suggested editorial changes to move detailed `updated_rights` parameter descriptions to a dedicated section. He also clarified that a client requesting a token from the AS always initiates a new series from the client's perspective, even if the RS previously forgot an old token.
+*   **EST OSCORE (draft-ietf-ace-est-oscore-09):**
+    *   **Status:** The draft is currently in Working Group Last Call (WGLC), having received reviews from Marco and Esko.
+    *   **Marco's Review:** An extensive editorial review led to 40 fixes in version 09. A specific point of discussion was the use of lowercase "must" in Section 3 for requirements already met by EDHOC.
+    *   **Discussion on "must" (RFC 2119 compliance):** J. Richard (WGLC chair) advised against using lowercase "must" to imply normative requirements as it can be confusing and contradicts RFC 8410. He suggested using phrases like "has to" or explicitly stating "is required by another specification."
+        *   **Decision:** The working group agreed to avoid lowercase "must" for normative statements in Section 3, paragraphs 3 and 4, and substitute with "has to" or similar phrasing, or clearly state that the requirement originates from another specification.
+    *   **Esko's Review (post-cutoff):**
+        *   **Issue 1 (GitHub #112):** A minor syntax error with double quotes in an example was identified. A proposed text correction will be adopted.
+        *   **Issue 2 (Bag of Certificates):** The EST `certs` endpoint can return a "bag of certificates," which is suboptimal for constrained environments as it implies an unordered sequence. The question was whether single certificates or chains could be used.
+        *   **Discussion:** The CoCo/C509 draft allows single certificates or chains. J. Salander suggested moving away from "bag" for IoT. E. Ike (Esko) noted that EST CoAP-S might allow a bag, presenting a trade-off between mimicking existing behavior and optimizing for constraints.
+        *   **Decision:** For ASN.1 encoding, the document will retain the original EST CoAP-S semantics (allowing a bag). For CBOR encoding, it will move to "chains" of certificates, which are more optimal for constrained devices.
+*   **EDHOC and OSCORE ACE Profile (draft-ietf-ace-edhoc-oscore-09):**
+    *   This profile uses EDHOC for key establishment (uploading access tokens in EAD items) and OSCORE for secure communication. An optimized workflow combines EDHOC message 3 with the first OSCORE-protected request.
+    *   **Version 09 Updates:**
+        *   Mandates support for the new CoAP `/.well-known` path abbreviation option and the code point for `/.well-known/edhoc`.
+        *   Expanded on transporting ACE request creation hints in EAD items, allowing a client to discover the correct AS URI from the RS in EDHOC message 2 (using `credential_by_value` and `request_creation_hints` EAD items). A detailed workflow example was provided.
+        *   Added CBOR-encoded examples for new EAD items (access token upload, session ID, credential by value, request creation hints).
+        *   Forbids the AS from selecting a public credential for the `cnf` claim/parameter that differs from the one specified by the client, contrasting with the ACE TLS profile's RPK mode.
+    *   **Next Steps:**
+        *   Extend the request creation hints example with a message flow figure.
+        *   Request early IANA allocation for specific EAD labels, CWT claims, and CWT confirmation methods (e.g., EAD label 15).
+        *   Elaborate on situations where the RS supports multiple ciphersuites and methods, potentially exploring alternatives to audience-based differentiation.
+        *   Further elaborate on the privacy and security implications of placing access tokens in different EDHOC messages (ED2, 3, or 4).
+    *   **Discussion:**
+        *   A. Fette questioned the use of different audiences to indicate ciphersuites, suggesting higher-level information (available suites/keys) might be less complex for devices.
+        *   C. Amsüss emphasized the need for early IANA allocation for EAD labels (e.g., label 15) due to their use in software implementations. He also suggested simplifying areas where the draft allows excessive flexibility without concrete use cases (e.g., session IDs) to improve interoperability. Authors acknowledged these points and will review for simplification.
+
+## Decisions and Action Items
+
+*   **Decisions:**
+    *   **PubSub Profile (draft-ietf-ace-pubsub-profile-coap):** Ready to proceed to Working Group Last Call.
+    *   **EST OSCORE (draft-ietf-ace-est-oscore):**
+        *   For the "bag of certificates" issue (`certs` endpoint response): For ASN.1 encoding, maintain existing EST CoAP-S semantics. For CBOR encoding, explicitly specify "chains" of certificates to optimize for constrained environments.
+        *   For RFC 2119 "must" language in Section 3 (paragraphs 3 and 4): Replace lowercase "must" (when used non-normatively to restate requirements from other RFCs) with alternative phrasing like "has to" or explicitly state "required by another specification."
+*   **Action Items:**
+    *   **Chairs:** Review and approve the outstanding errata for RFC 9200.
+    *   **EST OSCORE Authors:** Publish `draft-ietf-ace-est-oscore-10` incorporating all resolved comments from Marco's and Esko's reviews (including syntax fixes, the "bag of certificates" resolution, and the "must" language clarification).
+    *   **EDHOC and OSCORE ACE Profile Authors:** Extend the request creation hints usage example with a message flow figure.
+    *   **EDHOC and OSCORE ACE Profile Authors:** Submit requests for early IANA allocation of specific EAD labels (e.g., label 15), CWT claims, and CWT confirmation methods. Ensure the IANA Considerations section is updated for any such requests.
+    *   **EDHOC and OSCORE ACE Profile Authors:** Elaborate on how an RS supporting multiple ciphersuites and methods can be handled, considering alternatives to audience-based differentiation.
+    *   **EDHOC and OSCORE ACE Profile Authors:** Further elaborate on the privacy and security implications of access token placement in EDHOC messages (ED2, 3, or 4).
+    *   **EDHOC and OSCORE ACE Profile Authors:** Review Christian Amsüss's comments regarding document flexibility and session IDs for potential simplification and justification with concrete use cases.
+
+## Next Steps
+
+*   **PubSub Profile:** The chairs will initiate the Working Group Last Call soon.
+*   **EST OSCORE:** Upon publication of version 10 and agreement from reviewers that all comments are addressed, the document will proceed to a shepherd write-up and IESG submission within the next few weeks.
+*   **ACE Workflows and Parameters:** Continue development to integrate feedback and address errata on RFC 9200.
+*   **EDHOC and OSCORE ACE Profile:** Continue development based on the identified next steps and review comments.
