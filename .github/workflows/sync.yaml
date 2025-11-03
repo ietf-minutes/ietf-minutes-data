@@ -7,7 +7,7 @@ on:
       - main  
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
   
@@ -55,6 +55,34 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           node src/index.js -v --summarize 124 --source agenda
+
+      - name: Commit new/changed .md files back to cache branch
+        working-directory: auto-minutes/cache
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure git user
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Ensure the origin remote will accept the workflow push using the GITHUB_TOKEN
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/ietf-minutes/ietf-minutes-data.git
+
+          # Add any new or changed markdown files in this working tree
+          git add -A '*.md' || true
+          git add -A || true
+
+          # If there are no staged changes, exit quickly
+          if git diff --cached --quiet; then
+            echo "No markdown changes to commit"
+            exit 0
+          fi
+
+          # Commit staged changes and push back to the cache branch
+          COMMIT_MSG="auto-minutes: add/update generated summaries ($(date -u +'%Y-%m-%d %H:%M:%S UTC'))"
+          git commit -m "$COMMIT_MSG" || true
+          # Push to the current branch (cache)
+          git push origin HEAD
 
       - name: Generate the MD files
         working-directory: auto-minutes
