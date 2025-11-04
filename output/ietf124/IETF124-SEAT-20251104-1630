@@ -1,0 +1,76 @@
+# SEAT
+
+## Summary
+
+This was the inaugural SEAT (Secure End-to-end Attestation for TLS) working group meeting. The chairs provided an introduction, outlined the working group's charter, and clarified its scope. Presentations covered the draft on SEAT use cases and properties, a formal analysis of design choices for attested TLS protocols (including pre-handshake, intra-handshake, and post-handshake attestation), the "Remote Attestation with Exported Authenticators" draft, and a report on its hackathon implementation. Discussions highlighted the need for practical, deployable solutions that address real-world operational challenges while ensuring strong cryptographic binding and security properties.
+
+## Key Discussion Points
+
+*   **Working Group Introduction and Scope**
+    *   The chairs, Nancy Cam-Winget and Yaroslav Rosomakho, welcomed participants and reminded them of the IETF Note Well.
+    *   **In Scope**: Documenting use cases, developing mutual attestation in TLS 1.3 to address these use cases, leveraging RATs working group documents.
+    *   **Out of Scope**: Defining new authentication/authorization methods, modifying DTLS/TLS protocol (e.g., key schedule), compromising privacy/security, and initially, attestation beyond TLS.
+    *   Mailing list is the primary avenue for discussion and formal decisions.
+
+*   **Use Cases and Properties Draft (Ionut Preda)**
+    *   **Purpose**: To establish consensus on scenarios and common requirements for SEAT protocol designs, initially for TLS.
+    *   **Identified Use Cases**:
+        *   **Confidential Data Collaboration**: Data clean rooms, secure multi-party computation.
+        *   **Secure Provisioning & High Assurance Operations**: Runtime secret provisioning, high assurance commanding execution.
+        *   **Network Infrastructure Integrity**: Verification of network device integrity (e.g., routers by orchestrators, orchestrators by administrators).
+    *   **Proposed Properties**:
+        *   **Binding & Freshness**: Cryptographic binding to communication channel (prevent relay attacks), cryptographic binding to machine identifier (prevent diversion attacks), attestation credential freshness (prevent replays).
+        *   **Protocol Mechanics**: Negotiation capability discovery, flexibility in attestation model (support for both "background check" using evidence and "passport" using attestation results), interaction with existing peer authentication.
+        *   **Lifecycle & Non-functional**: Credential lifecycle management (reattestation for long-lived connections), privacy preservation, performance and efficiency.
+    *   **Discussion on Use Cases**:
+        *   **Mark (Individual)** emphasized the "administrator's journey" and the operational challenges of deploying and managing attestation, particularly with low-level, fragile measurements (e.g., firmware hashes). He stressed the need for solutions that are easy to administer, accommodate upgrades/rollbacks, and avoid requiring client-side updates that could cause outages. He urged consideration for solutions that work with existing, unmodified TLS stacks.
+        *   **Unen (Individual)** proposed a use case concerning AI agent security in dynamic, rapidly evolving application sessions (models, tools, policies change unpredictably). This requires lightweight, in-band reattestation during long-lived TLS connections for peers to assess an agent's current posture before high-impact operations.
+
+*   **Design Space for Attested TLS Protocols and Insights from Formal Analysis (Usama Sardar)**
+    *   **Scope**: Formal analysis focused on confidential computing use cases (TLS server as the attester), specifically examining pre- and intra-handshake attestation. Post-handshake analysis is in progress.
+    *   **System Model**: TLS client, TLS server (as an attester within a confidential computing platform, e.g., Intel TDX/SGX, ARM RMM) hosted by an infrastructure provider. Emphasized the importance of infrastructure provider identity for preventing diversion attacks.
+    *   **Goals**: Integrity and freshness of evidence, protection of attestation keys, standard TLS properties, and specific composition goals (cryptographic binding of evidence to the TLS connection at different layers: Diffie-Hellman, handshake traffic secret, application traffic secret).
+    *   **Results for Pre- and Intra-handshake**:
+        *   Pre-handshake solutions (e.g., Interoperable RTLS) were found to violate several properties, including freshness of evidence.
+        *   Intra-handshake attestation solutions were found to violate server authentication properties and did not provide the required binding.
+        *   A fundamental paradox was identified: it's not possible to bind evidence to the *application traffic secret* within an intra-handshake approach without violating TLS integrity properties, as the application traffic secret depends on the server's Finished message, which must itself be included in the attestation evidence.
+    *   **Summary of Formal Analysis**: Infrastructure provider identity is crucial; cryptographic binding of RA to TLS is critical to avoid relay attacks (formal proof available). Pre- and intra-handshake solutions are not well-suited for strong binding properties.
+    *   **Discussion**:
+        *   **Giri (Individual)** questioned whether the formal analysis, particularly its conclusion about the necessity of cryptographic binding to session key material, was prematurely narrowing the working group's solution space, potentially excluding approaches like the earlier TLS-Attestation draft. Paul Wouters (AD) clarified that the working group is open to different solutions and encourages good conversations to select the best approach.
+        *   **Giri (Individual)** also suggested extending the formal analysis to consider how a Verifying Relying Party might take early actions based on intra-handshake attestation and how such actions could be mitigated if a later post-handshake attestation revealed issues. Nancy (Chair) reiterated the importance of aligning on use cases *before* analysis drives solutions.
+        *   Usama confirmed he would extend the analysis for post-handshake and combinations.
+
+*   **Remote Attestation with Exported Authenticators Draft (Yaron Raz)**
+    *   **Core Idea**: Utilize RFC 9261 (Exported Authenticators) as a substrate for conveying RA information *post-handshake* over an already established TLS channel. This provides session-bound, integrity-protected attestation.
+    *   **Mechanism**: Reuses existing TLS messages (certificate requests, certificate, certificate verify) and introduces a new `authenticator` message (similar to `Finished`) that is bound to the TLS exporter. A new TLS extension, `CMW-attestation`, is used post-handshake to encapsulate RATs artifacts (evidence or attestation results).
+    *   **Benefits**: Leverages TLS confidentiality and integrity, ensures cryptographic binding to the TLS exchange, and incorporates nonces for freshness. Supports both "passport" and "background check" attestation models.
+    *   **Open Questions**: The exact mechanism for negotiating CMW-attestation transport during the handshake, and whether application traffic should be allowed *before* attestation completion.
+    *   **Discussion**:
+        *   **Paul Wouters (AD)** expressed concern about the potential for additional round trips *after* the initial TLS handshake before the connection can be fully utilized, citing similar discomfort in earlier PAKE discussions. He favored solutions where the connection is ready immediately after the handshake.
+        *   **Jonathan (Individual)** noted that exported authenticators could theoretically be transmitted out-of-band, decoupling the order of operations, or involve separate handshake protocols. Usama countered that two separate connections might not be well-received by the confidential computing community due to latency concerns.
+        *   **Jonathan (Individual)** raised a specific technical point regarding the cryptographic binding: whether the `handshake context` from RFC 9261 is suitable for binding attestation evidence, or if a new key material exporter is required. Yaron agreed a new context string might be more appropriate.
+        *   **Stuart (Individual)** highlighted the trade-off of using data before full attestation, drawing an analogy to aviation where some information might be critical to act upon even if not fully vetted.
+
+*   **Hackathon Results (Ionut Preda)**
+    *   **Project**: A Rust implementation of the "Remote Attestation with Exported Authenticators" draft, built on top of a QUIC connection as a test harness.
+    *   **Status**: Running code demonstrating authenticator request/response exchange, mutual attestation, and initial integration with Intel TDX.
+    *   **Pain Points**:
+        *   Limitations in the Rust TLS ecosystem required reimplementing specific TLS messages and custom extension support.
+        *   Fragmentation and evolving APIs within the remote attestation software ecosystem (e.g., CMW library, integration with different attesters).
+    *   **Key Finding/Bug**: Uncovered an ambiguity in the draft specification regarding the cryptographic binding mechanism between the TLS session and remote attestation credentials. Specifically, whether the existing `handshake context` from RFC 9261 is suitable for this binding or if a new key material exporter needs to be defined.
+
+## Decisions and Action Items
+
+*   **Decision**: A formal call for adoption for the "Remote Attestation with Exported Authenticators" draft will be deferred and conducted on the mailing list after further discussion and alignment on use cases and addressing open questions.
+*   **Action Item**: Working group participants are to read the use cases draft and provide feedback on the mailing list or GitHub regarding the representativeness of the use cases and the level of abstraction for properties.
+*   **Action Item**: Working group participants are to read the "Remote Attestation with Exported Authenticators" draft and provide constructive feedback on the mailing list.
+*   **Action Item**: The proposed AI agent security use case by Unen will be discussed further on the mailing list to gauge broader community appetite.
+*   **Action Item**: Usama Sardar (and co-authors) will extend the formal analysis to include post-handshake solutions and combinations thereof, and share preprints with the working group for feedback from experts.
+*   **Action Item**: The authors of the "Remote Attestation with Exported Authenticators" draft are to clarify the cryptographic binding mechanism for attestation evidence within exported authenticators, specifically addressing whether a new key material exporter is needed or if the existing `handshake context` can be used.
+
+## Next Steps
+
+*   Continue the discussion on use cases and properties on the SEAT mailing list.
+*   Gather feedback on the "Remote Attestation with Exported Authenticators" draft via the mailing list.
+*   Further development and sharing of formal analysis results.
+*   Address open questions and ambiguities in the "Remote Attestation with Exported Authenticators" draft.

@@ -1,0 +1,114 @@
+# MOQ
+
+## Summary
+
+The MOQ session began with administrative announcements, including a new IETF Notewell, Meetecho instructions, and the session agenda. Two security-related drafts were adopted, and upcoming virtual and hybrid interims were announced. A poll was conducted regarding in-person attendance at the upcoming Boulder hybrid interim, with results indicating lower-than-expected interest.
+
+The session then delved into a MOQT Transport update, outlining changes in drafts 14 and 15, focusing on object model refinements, protocol negotiation (ALPN, `user_agent` parameter discussion), control plane parameters and messages, data plane compression, immutable extensions, and modularity for relay handling. A significant portion of the session was dedicated to the progress of the Filters Design Team, which presented a converged proposal for object filters and a new track selection filter, including discussion on setup negotiation, filter mechanics, and open issues.
+
+Finally, the session addressed several open MOQT transport issues, particularly around server-side and client-side Adaptive Bitrate (ABR) challenges, subscription synchronization, and bandwidth probing. The session concluded with a brief overview of advertising in MOQT, categorizing different approaches (client-side, server-guided, server-side) and suggesting that server-side ad insertion might require specific MOQT considerations for "application relays."
+
+## Key Discussion Points
+
+### Administrative Updates
+
+*   **Notewell and Meetecho:** Standard reminders and instructions were given.
+*   **Draft Adoption:** Two security-related drafts (a second authorization method and C-4M) were adopted.
+*   **Upcoming Schedule:** Virtual interims every other Monday, an online interop in December, and a hybrid interim in February in Boulder, CO (2 days discussion, 1.5 days interop). Draft 15 diff consensus call deadline is November 10th.
+*   **Boulder Hybrid Interim Poll:** A Meetecho poll on expected in-person attendance yielded 17 "Yes," 43 "No," and 5 "No opinion." The chairs will review these numbers and decide on the interim format.
+
+### MOQT Transport Update (Draft 14/15 Changes)
+
+*   **Object Model:**
+    *   `end_of_group_status` and `end_of_track_status` objects now disallow extensions; an empty object should be sent prior for extensions.
+    *   An open PR is addressing minor refinements to object status.
+    *   State-loss compatible publishing resumption logic was added.
+*   **Protocol Negotiation:**
+    *   ALPN negotiation for MOQT versions was merged, removing version negotiation from setup, pending WebTransport implementation (Chrome has implemented WT Available Protocols).
+    *   The `user_agent`-like parameter in setup for client identification sparked discussion. Colin noted it's typically bad practice for interop. Alan clarified its utility for debugging large-scale deployments by identifying client-specific bugs and enabling server-side workarounds, though the working group did not reach consensus on a structured versioning mechanism.
+*   **Control Plane:**
+    *   Multiple fixed fields were migrated to key-value `parameters` for flexibility.
+    *   Six `request_error` messages were consolidated into one, and `request_ok` was added for `subscribe_update` acknowledgments.
+    *   Renaming: `announced` to `published_namespace`, `subscribe_done` to `published_done`.
+*   **New Control Plane Features:**
+    *   `forward` parameter in `subscribe_namespace` (0 for no immediate forwarding, 1 for immediate) was introduced, expected to evolve with filter design.
+    *   `new_group_requests` allow subscribers to request new groups, with publishers explicitly opting into this behavior (e.g., for media conferencing, not large broadcasts). Relays include deduplication logic.
+    *   Subscriptions can now be widened, not just narrowed; an open PR further refines this.
+*   **Data Plane Compression:**
+    *   Object IDs within the same subgroup are now Delta encoded to save space.
+    *   Similar compression is planned for key-value pairs, extensions, and parameters.
+    *   Publisher priorities can be set at subscription establishment, omitting them from data plane objects.
+    *   MOQT overhead per datagram reduced to 3 bytes by optimizing object IDs when using a single datagram per group.
+    *   Fetch stream metadata was significantly reduced using a 1-byte flags field.
+*   **Immutable Extensions:** A mechanism for end-to-end authenticated data, where relays guarantee byte integrity, was merged. Private (encrypted) extensions will be discussed separately.
+*   **Modularity and Relays:** Applications can implement a subset of MOQT, but capital-R relays must implement all messages and rules (e.g., supporting multiple concurrent publishers).
+*   **Open Issues:** There are 122 open issues. The chairs urged participants to close non-transport issues, review open PRs, submit editorial PRs, and provide asynchronous opinions on discussion issues, requesting no new issues be filed.
+
+### Filters Design Team Progress (Mo)
+
+*   **Context:** Following positive but complex discussions in Toronto, a design team was formed to define object and track selection filters.
+*   **Setup Negotiation:**
+    *   Consensus to disable filter functionality by default in relays due to computational complexity concerns.
+    *   Two new setup parameters: `max_object_filter_ranges` and `max_track_selected`, both defaulting to 0 for no support. These are per-subscription and per-filter type, declarative and independent in each direction.
+*   **Object Filters:**
+    *   Intended for relay operation (ingress to egress), applied to most subscription messages (Fetch is an open issue).
+    *   Five new length-based, independent parameters for different filter types (Group ID, Subgroup ID, Object ID, Priority, Extensions). All specified filters are applied conjunctively.
+    *   Supports multiple inclusive start/end ranges (no negation). The `end` value is optional (shorthand for max_varint), with specific encoding for `end=0` meaning "no end" only if `start > 0`.
+    *   Extension filters use `(Extension ID, Start, End)` tuples.
+    *   Filters are updated by sending the full set of ranges in a `subscribe_update`; setting length to zero removes a filter.
+*   **Track Selection Filter:**
+    *   A new filter type to select the top N tracks in a namespace based on the highest values of a specified extension ID.
+    *   Use cases include selecting active speakers in a meeting, suspicious security cameras, viral videos, or specific sensor data.
+    *   Object filters run first, narrowing the set of tracks for the track selection filter.
+    *   Ron asked if this means automatic subscription/unsubscription by the relay; Mo confirmed yes.
+    *   Colin raised significant privacy concerns regarding a proposed "feedback track" use case, arguing that it turns the relay into an aggregator that needs to inspect application data, which is outside the current MOQT relay model and requires architectural discussion. Mo clarified that "feedback tracks" is an application construct and not a protocol feature, with no current WG consensus.
+    *   Configured in `subscribe_namespace` with `track_selection_filter` parameter (length, extension ID for metric, max tracks). The extension ID can now be any value, not just a single opaque `track_selector`.
+    *   When a track is selected, the relay sends `publish`. The handling of `published_done` for deselected tracks (potentially too chatty) and state management is an open question, with suggestions to tie it to an expiry parameter.
+    *   Rowan asked about the interaction between auto-subscribed and explicitly subscribed ("pinned") tracks. Mo clarified that the `max_tracks` in the selection filter must include all pinned tracks.
+*   **Open Issues (Filters Design Team):** Key open issues include removing the `subscription_filter` (and its "next group" functionality), challenges with Fetch (gaps in streams), and the exact expiry mechanism for deselected tracks.
+*   **Next Steps for Filters:** Mo proposed a design team meeting this week to resolve the six outstanding issues and decide on immediate PR merge or follow-on PRs for PR 1164.
+
+### Open MOQT Transport Issues (Ian)
+
+*   **General Approach:** The goal is to get clear direction or resolution on all open issues, prioritizing whether functionality belongs in core MOQT, an extension, or Warp, and the pain points if not addressed in MOQT.
+*   **Server-Side ABR (Issue 532):**
+    *   Existing design doesn't support server-side ABR. YouTube developers, who use fixed qualities, need it due to bandwidth sensitivity. Meeting developers using temporal scalability are more satisfied.
+    *   Options discussed included a group parameter for multiple subscribes (for average rate), but Mo suggested the new track selection filters might get close, if bandwidth estimates can be fed into extension IDs at each hop.
+    *   Alan and Yekui emphasized that any solution needs to be accessible to a standard MOQT relay, not encrypted or hidden within catalog data. Suhas suggested the need for "publisher-side switching" as a general capability, triggered by Warp, with MOQT providing agnostic means. Victor reiterated that ABR is fundamental for media, requiring bitrate knowledge, group boundaries, and buffer size, distinct from track properties like active speaker.
+*   **Keeping Subscribes in Sync (Issue 1102):** Warp uses group IDs for sync; question of adding a delivery timestamp to MOQT for A/V sync or similar needs. This could potentially be an extension.
+*   **Client-Side ABR (Bandwidth Probing, Issue 534):**
+    *   Current subscribers can probe by requesting a lower-priority track.
+    *   Options: adding a well-known padding track, a parameter for extra probe bandwidth, a control stream parameter, or doing nothing.
+    *   Ian's personal inclination was to do nothing, as other solutions exist. Colin and Mo agreed that MOQT shouldn't add more until Quick exposes better underlying mechanisms for probing. Victor noted that 534 specifically asked for a simple stream type that acts as a discard server due to WebTransport limitations.
+*   **Bandwidth Discovery (Issue 1105):**
+    *   Discussed whether priorities should indicate "less than best effort" or if a "headroom" parameter should be added to reserve congestion window space for high-priority frames (e.g., I-frames).
+    *   Mo suggested doing nothing unless Quick provided an underlying mechanism for lower-than-best-effort congestion control. Christian expressed concern about the complexity of standardizing window-based headroom due to fluctuations.
+
+### Advertising in MOQT (Will)
+
+*   **Motivation:** Advertising is complex, and MOQT's role needs clarification. An hour-long discussion is proposed for the Boulder interim.
+*   **Four Approaches:**
+    1.  **Client-side Ad Insertion:** Client subscribes to content, fetches ads from external servers, and inserts them based on in-band markers. (No MOQT changes needed).
+    2.  **Server-guided Ad Insertion:** Client subscribes to an "ad insertion track" providing instructions, then fetches and displays ads. (No MOQT changes needed, compatible with HLS/DASH interstitials).
+    3.  **Server-side Ad Insertion (Application Relay Server):** An application relay mixes ad content directly into the primary content stream. Client receives pre-mixed content.
+    4.  **Server-side Ad Insertion (Sequence-in Flavor):** Client receives small content blocks, is then instructed to play an ad, and only receives the next content block after the ad duration.
+*   **Key Conclusion:**
+    *   Client-side and Server-guided ad insertion require no changes to MOQT.
+    *   Server-side ad insertion would require two things:
+        1.  The notion of an "application relay" that can modify track content based on external configuration.
+        2.  A generic capability (an API for local code on the relay, not a MOQT control message) to substitute content from one track into another.
+*   Alan and Mo clarified that an "application relay" that modifies content is effectively an "application server" co-located with a relay. The concern is standardizing what this application server can do, not about changing the fundamental properties of a pure MOQT relay.
+
+## Decisions and Action Items
+
+*   **Boulder Hybrid Interim:** Magnus and the chairs will review the poll results (17 Yes, 43 No, 5 No Opinion) and decide on the format (potentially sending a message to the list).
+*   **MOQT Transport Issues:** Participants are urged to close non-transport issues, review open PRs, and provide feedback on discussion issues. A request was made to avoid filing new issues.
+*   **Filters Design Team:** Mo proposed a follow-up design team meeting during IETF 124 to address the six remaining open issues, decide on immediate PR merge or follow-on PRs, and then land PR 1164.
+
+## Next Steps
+
+*   **Hybrid Interim Decision:** A decision on the Boulder hybrid interim's format will be made by the chairs after reviewing poll results.
+*   **Filters Design Team Meeting:** The design team for filters will meet this week to resolve outstanding issues and prepare PR 1164 for landing.
+*   **Advertising Discussion:** The advertising topic will be revisited at the Boulder hybrid interim for a deeper, hour-long discussion to explore the implications for MOQT standardization.
+*   **ABR and Bandwidth Issues:** Ian will follow up offline with relevant individuals (Mo, Suhas, Victor) to advance discussions on server-side ABR and bandwidth probing, with the goal of defining subscriber expression, publisher information, and algorithms.
+*   **Issue Cleanup:** Participants are encouraged to contribute to reviewing and resolving open issues in the MOQT GitHub repository.
