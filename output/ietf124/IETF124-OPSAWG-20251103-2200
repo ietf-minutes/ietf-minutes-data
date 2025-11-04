@@ -1,0 +1,92 @@
+# OPSAWG
+
+## Summary
+
+The OPSAWG session provided updates on a range of Internet Drafts and recently published RFCs, focusing on network operations and management. Key topics included advancements in Yang Provenance, Scheduled OAM, and various IPFIX export mechanisms for Segment Routing, Encapsulation Layers, and QUIC. A new draft on Source Address Validation (SAV) telemetry via IPFIX was introduced. A significant portion of the meeting was dedicated to the "YANG Module Experiment," exploring methods to accelerate YANG module development and maintenance outside of traditional Internet Drafts. A working group adoption call will be initiated for the "Export of QUIC Information in IPFIX" draft.
+
+## Key Discussion Points
+
+*   **Note Well and Logistics**: Chairs Joe Clark and Benoit Claise reminded attendees of the IETF Note Well policy and Meetecho participation guidelines. The new secretary, Chung Feng, was acknowledged.
+*   **Recent Publications & Pipeline Status**:
+    *   Several RFCs published since IETF 123 Madrid, including "Export of UDP Options," "Attachment Circuit" related documents (TACS, TLS), and the "TACACS+ YANG Module."
+    *   "IPFIX on Path Telemetry" is in the RFC Editor queue.
+    *   "Prefix Lengths" document is with the IESG.
+    *   "Collected Data Manifest" is undergoing AD review.
+    *   "OAM Characterization" is in Working Group Last Call (WGLC).
+    *   "IPFIX GTP-U" WGLC recently closed.
+    *   **Drafts Not Presenting**: Updates provided for "Discard Model" (expected WGLC soon), "PCAP Link Type" (consensus call initiated for expert review registry to unblock other PCAP work), "UCL ACL" (awaiting touch-ups), "Other Marking" (needs more WG reviews), and an "IPFIX One" draft (progressing).
+*   **Yang Provenance (draft-ietf-opsawg-yang-provenance)**:
+    *   **Updates**: Modules refined for better alignment with procedures; signature generation/verification methods clarified; schema-driven processing demonstrated.
+    *   **Hackathon Demo**: Showcased integration with a Kafka message broker, including schema-driven signature processing.
+    *   **Next Steps**: Authors seek deep scrutiny by YANG doctors and security review, plan to improve the trust model (e.g., multiple signatures), address CBOR support, and align with other proposals.
+    *   **Discussion**: Concerns were raised regarding the placement of the provenance field potentially hindering data streaming, the specific canonicalization methods used, and alignment with YANG best practices for metadata placement. Authors are considering reducing the four initial enclosing methods to two core approaches (augmentation/annotation).
+*   **Scheduled OAM (draft-ietf-opsawg-scheduled-oam-yang)**:
+    *   **Updates**: Version 03 resolved 8 GitHub issues, implemented scale-mount support for reusing OAM YANG models without direct import, and included examples. Explored using generic YANG configure templates as a complementary approach.
+    *   **Discussion**: Chairs requested more feedback on the list. Contributor comments included issues with `T-WAMP` identity definition versus usage, and a need for more specified error conditions beyond a single enum type. Authors committed to clarifying these points.
+*   **Export of Past Segment Identifier Information in IPFIX (draft-ietf-opsawg-sr-psid-ipfix)**:
+    *   **Updates**: Adopted by the WG. Added SR-MPLS PSID (label, EXP, S field) alongside SRv6 PSID. Included PSID use cases and refined operational considerations.
+    *   **Discussion**: Suggestion to add "Segment Routing" to the draft title for greater clarity.
+*   **Export of Encapsulation Layer Information in IPFIX (draft-liu-opsawg-encap-layer-ipfix)**:
+    *   **New Draft**: Addresses the challenge of monitoring traffic flows with multiple layers of encapsulation (e.g., IP-in-IP-in-IP, SRv6) in IPFIX.
+    *   **Problem**: Current IPFIX struggles to differentiate which encapsulation layer information elements belong to when the same fields appear in multiple headers.
+    *   **Proposed Solution**: Define new IPFIX Information Elements (IEs) like `encapsulated-layer-top`, `encap-layer-2`, `encap-layer-3` to explicitly indicate the encapsulation layer for subsequent IEs in a template.
+    *   **Discussion**: Questions arose about the prevalence of such multi-layer encapsulation in deployed networks. Concerns were raised about potential interoperability risks if collectors don't understand these new IEs and the proposed solution introducing semantic dependency between IEs, which IPFIX typically avoids. RFC 6313 (Structured Data Export) was suggested as a possible alternative.
+*   **IPFIX over QUIC (draft-liu-opsawg-ipfix-over-quic)**:
+    *   **Motivation**: To leverage QUIC's benefits (reliability, TLS, multi-streaming, faster handshake, MTU adaptation, connection migration, user-space implementation) for IPFIX transport, offering advantages over SCTP/TCP.
+    *   **Key Feature**: Supports both single and multi-stream approaches, with multi-streaming enabling parallel flow record export and eliminating head-of-line blocking.
+    *   **Discussion**: A question was raised about supporting zero-RTT initialization, which was disallowed in NetConf over QUIC for security/stability reasons.
+*   **Export of QUIC Information in IPFIX (draft-liu-opsawg-quic-info-ipfix)**:
+    *   **Concept**: Defines seven IEs for exporting QUIC header information.
+    *   **Updates**: Clarified the definition of a "quick flow" for both long and short headers, and added operational considerations for handling protected vs. unprotected fields within the QUIC header (requiring decryption for protected fields).
+    *   **Working Group Adoption Poll**: A show of hands indicated strong support for adoption with no objections.
+*   **Export of Source Address Validation Information in IPFIX (draft-cao-opsawg-sav-info-ipfix)**:
+    *   **New Draft**: Introduced to provide operational visibility into Source Address Validation (SAV), which is currently a "black box" for operators.
+    *   **Approach**: Proposes new IPFIX IEs (`sav-type`, `sav-target-type`, `sav-matched-content-list`, `sav-policy-action`) to capture the context and specific rules that lead to a packet being dropped.
+    *   **Key Design**: Uses a sub-template list structure within `sav-matched-content-list` to detail the specific SAV rules evaluated.
+    *   **Use Cases**: Monitoring SAV enforcement, troubleshooting misconfigurations, forensic analysis, and compliance.
+*   **Metrics Exposure using ALTO (draft-ruiz-opsawg-alto-metrics)**:
+    *   **Context**: Builds on CATS WG work defining metrics for service instance steering and deployment in edge nodes.
+    *   **Proposal**: Use the ALTO protocol (an off-path mechanism) to expose these CATS-defined metrics, aiding service orchestrators in making deployment and selection decisions.
+    *   **ALTO Extensions**: Requires augmenting ALTO to incorporate CATS metrics and properties.
+    *   **Next Steps**: Seek OPSAWG as a potential home for ALTO protocol extensions related to this work.
+*   **Secure Hybrid Monitor (draft-kauiva-opsawg-secure-hybrid-monitor)**:
+    *   **Problem**: Monitoring path properties (security, multiple routes, misconfigurations) in hybrid networks (on-prem/public cloud) is complex due to multiple stakeholders.
+    *   **Solution**: Proposes a monitoring solution for security properties of communication paths, utilizing existing telemetry, application layer APIs for data exchange, policy checking, and anomaly detection.
+    *   **Design**: Emphasizes minimal changes to existing networks (add-ons/sidecars) and simple, possibly HTTP-based, APIs. Highlights the need for IETF standardization for cascading queries between operators.
+*   **Guidelines for Considering Operation Management in IETF Specification (RFC 5706bis)**:
+    *   **Motivation**: To update RFC 5706, encourage protocol designers to consider operational and management aspects early in the design process.
+    *   **Proposal**: Introduce a requirement for an "Operational Consideration" section in new RFCs, akin to security considerations.
+    *   **Status**: Shifted from an AD-sponsored document to an OPSAWG document. An adoption call is underway.
+    *   **Discussion**: The initiative was generally welcomed, with particular appreciation for including security operations. ADs have supported this approach. Concerns about it being perceived as "just another checkbox" were addressed by emphasizing the goal of early consideration.
+*   **YANG Module Experiment (Offloading YANG - draft-ietf-opsawg-yang-module-experiment)**:
+    *   **Goal**: An experiment to develop YANG modules outside the traditional Internet Draft (ID) process, aiming for faster development and maintenance (e.g., initial release target < 2 years).
+    *   **Assets**: Proposed to have the ID for high-level description and the YANG module code itself residing in a GitHub repository.
+    *   **ID Content**: The ID would contain a high-level tree diagram and descriptive text, with a stable reference pointing to the full YANG module and detailed diagrams in GitHub.
+    *   **Discussion Points**:
+        *   **Engagement**: How to ensure WG members remain engaged when changes occur primarily in GitHub.
+        *   **Need for ID?**: A "bold" question was posed whether an ID is strictly necessary, or if GitHub artifacts could suffice for IETF work. The consensus leaned towards retaining an ID for the IETF process and high-level documentation.
+        *   **BIS Process**: Extensive discussion on how to handle revisions. Suggestions included using semantic versioning (Semver) to differentiate minor/patch changes (GitHub-only) from major changes (requiring ID/RFC update), or having a lighter consensus process for updates.
+        *   **Stable References**: The need for both iterating (GitHub) and stable (e.g., IANA reference, Git tags/branches) versions of YANG modules was highlighted.
+        *   **Timeframe**: The proposed "two-year" target for an initial RFC sparked considerable debate, with some arguing it was still too long and others suggesting a target of two months for BIS versions. The chairs acknowledged the passion and indicated continued discussion on the mailing list.
+
+## Decisions and Action Items
+
+*   **Export of QUIC Information in IPFIX (draft-liu-opsawg-quic-info-ipfix)**:
+    *   **Decision**: A working group adoption call will be initiated on the mailing list.
+    *   **Action Item**: Chairs to initiate the adoption call on the OPSAWG mailing list.
+*   **YANG Module Experiment (Offloading YANG - draft-ietf-opsawg-yang-module-experiment)**:
+    *   **Action Item**: Kent Watsen to update the draft based on the discussion, specifically regarding ID content, stable references, and the BIS process, and submit it for WG adoption consideration.
+*   **Export of Encapsulation Layer Information in IPFIX (draft-liu-opsawg-encap-layer-ipfix)**:
+    *   **Action Item**: Author to notify the SRv6 Ops working group about the work.
+    *   **Action Item**: Author to consider elaborating on interoperability risks for collectors in the operational considerations section.
+*   **Scheduled OAM (draft-ietf-opsawg-scheduled-oam-yang)**:
+    *   **Action Item**: Working group members and chairs to provide more feedback on the mailing list.
+    *   **Action Item**: Author to clarify `T-WAMP` identity usage and enhance error condition specifications in the next version.
+*   **All Drafts**:
+    *   **Action Item**: Authors and chairs reiterated the call for more working group reviews and comments on the mailing list to facilitate the progression of all drafts.
+
+## Next Steps
+
+*   **YANG Module Experiment**: Continue the discussion on the mailing list to refine the process for YANG module development, including the role of Semver, methods for stable referencing, and establishing realistic timeframes for initial releases and updates.
+*   **RFC 5706bis**: Continue working group discussion and reviews for the proposed guidelines for operational considerations in IETF specifications.
+*   **General**: Authors are expected to integrate feedback into their drafts and submit new versions. Working group participants are encouraged to actively review drafts and provide comments on the mailing list.
