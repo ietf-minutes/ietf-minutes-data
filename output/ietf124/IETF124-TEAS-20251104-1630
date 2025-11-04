@@ -1,0 +1,79 @@
+# TEAS
+
+## Summary
+
+The TEAS working group session at IETF 124 included updates on several working group documents, discussions on newly adopted drafts, and presentations of individual contributions. Key topics included refining the TE topology model for broader applicability beyond TE-centric networks, enhancing RSVP authentication to support modern cryptographic algorithms, modeling compute domain resources within the TE topology, and improving bandwidth update mechanisms for RSVP-TE LSPs. A significant part of the session was dedicated to exploring the application of Multipath Traffic Engineering (MPTE) within data centers, particularly for machine learning clusters.
+
+## Key Discussion Points
+
+*   **Working Group Document Status:**
+    *   Three documents are in the RFC-Editor queue, with one recently submitted for publication.
+    *   Two documents in post-Working Group Last Call (WGLC) have last-minute nits being addressed, aiming for submission by end of week.
+    *   The L3T Topology document requires further edits.
+    *   The ACT and POI Applicability document is currently in WGLC, ending this week, with no discussion yet; review and feedback were requested.
+    *   NRP Scalability and NRP Selector documents had recent revisions addressing editorial changes and Adrian's comments. Authors believe NRP Scalability is ready. Chairs aim to progress both together before the next meeting and may consider an interim.
+    *   NRP Yang and Yang Topology Filter documents are awaiting Yang doctor review, with the latter deemed ready for WGLC.
+*   **Liaisons:**
+    *   An outgoing liaison to 3GPP groups regarding IETF network slices in 3GPP 5G received a response from RAN3. The feedback primarily noted that front-haul is not part of 3GPP scope. Authors will discuss comments on the mailing list and plan a new version.
+    *   An incoming liaison from ITU-T Study Group 15 will be addressed by chairs collaborating with CCAMP.
+*   **T-Topology Profile Data Model (draft-ietf-teas-yang-te-topology-profiles):**
+    *   **Motivation:** Clarify that RFC 8795 TE topology model can be applied to non-TE-centric scenarios (e.g., "what-if" analysis) and that subsets of the model can be implemented as profiles.
+    *   **Updates:** Introduced definitions for "T-aware" (information defined in 8795) and "TE-centric" (uses info for path computation/setup) vs. "non-TE-centric" (uses info for other purposes). Clarified the semantic differences between "support relationship" (RFC 8345) and "underlay/overlay relationship" (RFC 8795). Added descriptions for modeling multi-point and point-to-multipoint links using pseudo-nodes (RFC 8345) and connectivity constraints (RFC 8795).
+    *   **Open Issue:** How to report implemented profiles to clients. The document proposes this issue is out of scope for an informational RFC, suggesting it be addressed in NETMOD or via a new TEAS augmentation.
+    *   **Discussion (Nigel Bragg):** Argued that multi-point topology requirements are a more generic problem belonging in RFC 8345 (NMOD) rather than TEAS. Raised concerns about efficiency of pseudo-nodes.
+    *   **Discussion (Italo Busi):** Countered that 8795 already addresses connectivity limitations not covered in 8345, and removing it would be an incompatible change.
+    *   **Discussion (Daniel Casaceli):** Suggested renaming the document to avoid "TE" (e.g., as an 8345 enhancement) and moving it to NMOD or AIN to attract broader readership, acknowledging the challenge of creating a new, compatible YANG model.
+    *   **Co-chair (Pawan Biram):** Agreed the "TE" boundary is blurry and suggested further discussion on the mailing list regarding the scope.
+*   **RSP Authentication Enhancement (draft-ietf-teas-rsvp-auth-v2 and draft-ietf-teas-rsvp-auth-sha2):**
+    *   **Problem:** Legacy RSVP authentication based on HMAC MD5 is outdated. The authentication object structure in RSVP is hard-coded, preventing the use of stronger algorithms.
+    *   **Solution:** Two drafts propose a new, general authentication object structure (`Oth V2`) and specifically define HMAC-SHA2 (256, 384, 512) for use with it (`SHA2`). Goals include maximum backward compatibility, multi-vendor interoperability, supporting larger authentication data, peer-specific security associations, and an IANA registry for new authentication types. Key management can use YANG-based mechanisms (e.g., NetConf).
+    *   **Status:** Adoption poll sent to relevant groups, early security area directorate reviews completed with comments addressed.
+    *   **Discussion (Christopher):** Inquired about the security review process, given the crypto-specific content.
+    *   **Tony Li:** Confirmed reviews are ongoing, and feedback has been incorporated.
+    *   **Discussion (Lou Berger):** Suggested clarifying "NetConf" to "YANG-based" to be transport-agnostic.
+*   **DC-A-T Topology Model (draft-sanchez-teas-dc-aware-te-topology):**
+    *   **Objective:** Model resource-related information (CPU, memory, workloads) from compute domains (e.g., OpenStack, Kubernetes) and link it to the TE topology, showing resource reachability through the network.
+    *   **Approach:** Augments the existing TE model (RFC 8795) using an "attachment-circuit" to connect network topology elements with compute-side information provided by cloud managers.
+    *   **Updates:** Incorporated network resources into the YANG model, linked via the attachment circuit. Clarified potential applicability beyond TE networks, though its primary value is in TE. Refined models for Kubernetes and OpenStack.
+    *   **Discussion (Pawan Biram):** Confirmed the model augments the DCI's TE topology with compute information rather than modeling the DC internals.
+*   **In-Place Bandwidth Update for Auto Bandwidth Enabled RSVP-TE LSPs (draft-ali-teas-rsvp-in-place-bw-update):**
+    *   **Problem:** RFC 3209 recommends make-before-break (MBB) for LSP bandwidth increases, which can be inefficient (signaling churn, reprogramming, traffic movement). For bandwidth decreases, or increases where capacity is available, an in-place modification is more efficient.
+    *   **Proposal:** Specify in-place bandwidth modification for existing LSPs. If an increase fails due to insufficient resources, the head-end can fall back to MBB. This is an optional behavior controlled by policy. Transit nodes should accept bandwidth path changes and send non-destructive path errors if unable to admit.
+    *   **Status:** Mailing list discussion indicated general support, with multiple vendors already implementing similar functionality. The document positions in-place update as a general procedure, with auto-bandwidth as a use case.
+    *   **Discussion (Lou Berger):** Agreed with the document's value but cautioned against defining a "Best Current Practice (BCP) for auto bandwidth" within this document, suggesting a separate BCP for auto-bandwidth would be beneficial.
+    *   **Discussion (Shuon):** Asked if the document explicitly updates RFC 3209.
+    *   **Discussion (Matthew Bocci):** Stated the document is useful for documenting existing network behavior and likely does not update RFC 3209 but rather clarifies an optional behavior.
+*   **Multipath Traffic Engineering (MPTE) Drafts (draft-agrahara-teas-mpte-yang, draft-agrahara-teas-rsvp-mpte-ext, draft-agrahara-teas-pce-mpte):**
+    *   **Evolution:** MPTE, initially seen as an enhancement for WAN TE, is now strongly being considered for data center (DC) networks, especially those designed for ECMP (e.g., fat trees) and machine learning clusters.
+    *   **DC Application:** MPTE can enable traffic isolation and managed bandwidth allocation for multi-tenant or multi-job scenarios in symmetric DC networks with asymmetric loads. This allows for "network scheduling" to prevent GPU waste and job stalls in ML clusters, similar to reserving compute/memory resources.
+    *   **MCTE (Multicast TE):** A concept for multicast scenarios (gather, broadcast, reduce) using MPTE constructs is proposed.
+    *   **Implementation:** MPTE is a concept not tied to RSVP-TE or MPLS; it can be instantiated using BGP, IP tunnels (with entropy fields), PCEP, or programmable APIs backed by a YANG model. Prototypes are underway for RSVP and BGP.
+    *   **RSVP-TE Extensions:** Added a per-junction version number to reduce signaling churn, as opposed to an overall DAG version number.
+    *   **YANG Model:** Updated to include a junction version.
+    *   **Discussion (Zafar Ali):** Highlighted that SRv6 inherently supports multipath TE from day zero, noting the "AI backend" draft in SRv6 ops as an example.
+    *   **Discussion (Yacine Talbi):** Inquired about state at junctions (minimal, only P-hops, N-hops, load split), loop prevention (using CSPF algorithms), and failure handling (adjusting load balancing for multiple next-hops, falling back to RSVP-TE protection for single next-hops).
+    *   **Discussion (Janerik Nyström):** Requested real-world test data on performance improvements, especially when tied into the collective layer, to validate claims of efficiency.
+    *   **Kiran Agrahara:** Confirmed that implementations are in progress, and the goal is to provide comparative performance numbers (e.g., against container LSPs/TE++) by the end of the year.
+*   **PC Targeted Draft on Precision Availability Metrics (draft-sanchez-teas-pce-pam):**
+    *   **Motivation:** Traditional path computation based on instantaneous metrics is inadequate for services requiring statistical behavior (e.g., DetNet, network slicing SLAs requiring 99% availability). IPPM has standardized Precision Availability Metrics (PAM).
+    *   **Proposal:** Define a new PAM for PCE to compute paths based on statistical distributions (histograms, CDFs), allowing for guarantees of historical behavior (e.g., latency <10ms 99% of the time).
+    *   **Mechanism:** Defines fields for statistical behavior, to be used with PC messages (request, response, error).
+    *   **Status:** Presented in DetNet and IPPM; will be presented in the PC working group session.
+    *   **Discussion (Rakesh Gandhi):** Inquired about data collection (assuming telemetry to TED/external DB) and suggested adding objective functions for PAM metrics, similar to existing PCE RFCs.
+
+## Decisions and Action Items
+
+*   **L3T Topology Document:** Chairs to address last-minute nits for publication request this week.
+*   **RAN3 Liaison Response (IETF network slices for 3GPP 5G):** Authors to discuss comments on the mailing list and produce a new version of the draft.
+*   **ITU-T SG15 Liaison:** Chairs to collaborate with CCAMP to draft a response.
+*   **In-Place Bandwidth Update for Auto Bandwidth (draft-ali-teas-rsvp-in-place-bw-update):** The chairs will proceed with an adoption call for this document.
+*   **DC-A-T Topology Model (draft-sanchez-teas-dc-aware-te-topology):** Chairs will discuss with other Routing Area and Ops Area chairs to determine the most relevant working group before proceeding with adoption.
+
+## Next Steps
+
+*   **T-Topology Profile Data Model:** Authors to increase awareness of the draft, trigger work on reporting implemented profiles (potentially in NETMOD or via a TEAS augmentation), and seek further feedback. The document is considered ready for WGLC.
+*   **RSP Authentication Enhancement:** Documents are proceeding through security reviews, with comments being addressed.
+*   **DC-A-T Topology Model:** Authors to refine the models based on feedback and prepare a new version, aiming for better integration between network and cloud environments.
+*   **In-Place Bandwidth Update:** Authors to consider adding objective functions using PAM metrics.
+*   **MPTE Drafts:** Authors to continue implementations (RSVP, BGP, PCEP, API-based using YANG), with the goal of providing comparative performance data (e.g., against container LSPs/TE++) by the end of the year. Once validated, they intend to propose these documents as working group documents. The companion document in RTGWG on network scheduling for machine learning clusters will provide further justification for MPTE's application in data centers.
+*   **Precision Availability Metrics:** Authors will continue to collect feedback from various communities (DetNet, IPPM, PC, TEAS) to enrich the document.

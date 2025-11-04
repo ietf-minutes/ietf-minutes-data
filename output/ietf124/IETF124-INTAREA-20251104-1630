@@ -1,0 +1,63 @@
+# INTAREA
+
+## Summary
+
+The INTAREA session addressed current working group matters, notably the IESG's requirement of at least five independent reviews for a draft to progress from Working Group Last Call. Several drafts were discussed: an update to the Multicast Application Port draft (requesting IANA assignment for port 8730) and the ARP Yang Model draft (seeking WGLC).
+
+Significant technical discussions covered a proposal to update RFC 3819 guidance on packet reordering, aiming for better alignment with modern transport protocols and reduced latency, with its working group home still under consideration. A new ICMP extension for underlay information was presented to improve cross-layer visibility in overlay networks, receiving feedback on existing similar solutions and potential scope limitations. Two related proposals for IPv4 gateway resolution in IPv6-only networks were discussed, focusing on DHCPv4 options and a well-known IPv4 address for this purpose, with a request for DHCP WG input for one. Lastly, ICMP error handling in SRv6 networks was presented, also with open questions on working group ownership.
+
+## Key Discussion Points
+
+*   **Working Group Last Call (WGLC) Process:**
+    *   The IESG now mandates a minimum of five *independent* reviews for a draft to advance from WGLC. Reviews from authors are not counted towards this total.
+    *   Reviews are cumulative across multiple WGLCs, provided document changes are minor (e.g., addressing comments).
+    *   Chairs urged participants to dedicate 5-10 minutes to review drafts to facilitate their progression.
+*   **Multicast Application Port (`draft-lum-intarea-mc-app-ports-02`):**
+    *   The proposed UDP port for multicast applications was changed from 49 to 8730 (Hex 2222), selected for its easy identification in traffic captures and to avoid dynamic ranges. An IANA assignment for this port has been requested.
+    *   A discussion point was raised regarding discovery protocols: if a client sends a multicast request via this port and expects a unicast reply from a *different* source port, host firewalls might drop the unsolicited inbound packet. Options to address this include allowing unicast replies with the assigned port or adding an applicability statement disallowing its use for discovery protocols.
+    *   The presenter will research host firewall behavior and RFC 7288.
+*   **ARP Yang Data Model (`draft-zhong-intarea-arp-yang-05`):**
+    *   This draft defines a YANG model for ARP, extending the `ietf-ip` model to cover common vendor-specific implementations such as Proxy ARP, Gratuitous ARP, and statistics.
+    *   The draft is stable, having undergone only editorial changes in recent versions.
+    *   The authors requested a Working Group Last Call. Chairs called for more reviews and discussion on the mailing list to gauge sufficient group interest before proceeding.
+*   **Proposed Updates to Guidance on Packet Reordering (`draft-mirsky-intarea-packet-reordering-guidance-02`):**
+    *   The presentation highlighted that Layer 2 technologies (e.g., link aggregation, retransmissions) can cause out-of-order packet delivery, and many L2 standards mandate resequencing, often leading to increased latency.
+    *   RFC 3819's guidance acknowledges IP's non-guaranteed order but contains outdated caveats about TCP and header compression, which have led L2 layers to over-guarantee frame ordering.
+    *   The draft aims to update RFC 3819 to reflect modern protocol resilience (e.g., TCP with RACK, ROHC) and provide clearer guidance for both L2 and L4 protocol developers on acceptable levels of reordering.
+    *   Discussions included the appropriateness of INTAREA versus TSVWG (or a joint effort) as the working group home. Feedback also noted concerns regarding stateful middleboxes (CGNAT, NAT64) and IP fragmentation, which might still necessitate in-order L2 delivery.
+*   **ICMP Extension to Include Underlay Information (`draft-baba-intarea-icmp-extension-underlay-info-01`):**
+    *   Network operators lack visibility into underlying physical/logical network hops when troubleshooting overlay networks (e.g., IPv4 over IPv6 core) using traceroute. Existing ICMP extensions do not bridge address family gaps.
+    *   The proposal introduces an "Underlay Information Object" (UIO) within ICMP extensions to encapsulate underlay diagnostic details (e.g., interface objects from RFC 5837), allowing cross-address family error reporting.
+    *   This solution requires a specific exception to RFC 343's rule prohibiting an ICMP error from being generated in response to another ICMP error.
+    *   Feedback pointed to existing, similar drafts (`draft-ietf-intarea-icmp-extended-node-id` and a related v4/v6 translator document), suggesting potential overlap. Concerns were also raised about the necessity of limiting the types of ICMP options/types that can be encapsulated to prevent potential abuse or confusion in overlay networks.
+*   **DHCPv4 Option for IPv4 Gateway Resolution with IPv6 Next Hops (`draft-lamparter-intarea-dhcp-ipv4-gateway-v6-nh-00`):**
+    *   The objective is to enable IPv4 routes with IPv6 next hops for end hosts in IPv6-only networks, reducing IP address waste and ARP reliance for DHCP-managed hosts.
+    *   The draft proposes a new DHCPv4 option (akin to option 121) to convey an IPv4 destination (e.g., default route) with an IPv6 next hop (preferably link-local).
+    *   To ensure router reachability to the host, the proposal suggests using DHCPv4-in-DHCPv6 (RFC 7341) combined with router-side DHCP relay snooping.
+    *   Concerns were voiced about DHCP lacking an update strategy for routing information (unlike IPv6 RAs), which could lead to IPv4 connectivity issues if the IPv6 next hop changes. The DHCP Working Group is expected to provide significant input.
+*   **Defend the World from IoT Remote Threats and Malware (`draft-st-amand-intarea-defend-iot-00`):**
+    *   Addressing the growing security threat from insecure IoT devices in home networks, the draft proposes a JSON-based protocol. IoT devices would advertise their functional "categories" (e.g., video streaming) to the home router during DHCP negotiation. The router would then enforce policy, with a default to block anything not explicitly permitted.
+    *   A significant criticism was raised regarding the trustworthiness of the IoT device's self-declaration, especially if compromised by malware.
+    *   Suggestions included exploring existing solutions in the Connectivity Standards Alliance (Matter protocol), which offers cryptographic attestation and device certificates for genuine device role verification, or the MUD (Manufacturer Usage Description) specification.
+*   **IPv6 Resolved, IPv4 Gateway (`draft-van-mook-intarea-ipv6-resolved-ipv4-gateway-00`):**
+    *   This draft proposes a method for IPv4 gateway resolution in IPv6-only network cores where IPv4 addresses are treated as compatibility tags for hosts. The goal is to allow hosts to find an IPv4 default gateway without introducing IPv4 into the core.
+    *   A well-known IPv4 special purpose address, 192.0.0.11, is proposed as a default gateway. Hosts aware of this address would use their IPv6 default gateway's Layer 2 information to send IPv4 packets.
+    *   For backward compatibility, a router could be configured to reply to ARP requests for 192.0.0.11 without necessarily owning the address as a source.
+    *   The author requested working group adoption. Feedback included the need for BCP 14 language and further clarification on discovery mechanisms and handling multiple IPv6 default gateways.
+
+## Decisions and Action Items
+
+*   **Working Group Last Call (WGLC) Reviews:** Chairs urged all authors with drafts in WGLC to send reminders to the mailing list, emphasizing the requirement for five independent reviews.
+*   **Multicast Application Port (`draft-lum-intarea-mc-app-ports-02`):** Nate Lum will research host firewall behavior and RFC 7288 and continue the discussion on the mailing list regarding discovery protocols and unicast replies.
+*   **ARP Yang Data Model (`draft-zhong-intarea-arp-yang-05`):** Authors are requested to initiate a discussion on the mailing list to gather interest and support for a Working Group Last Call. Attendees are encouraged to read the draft.
+*   **ICMP Extension to Include Underlay Information (`draft-baba-intarea-icmp-extension-underlay-info-01`):** The presenters will review `draft-ietf-intarea-icmp-extended-node-id` and its companion document and engage in further discussion about the scope and limitations of encapsulated ICMP options/types.
+*   **DHCPv4 Option for IPv4 Gateway Resolution with IPv6 Next Hops (`draft-lamparter-intarea-dhcp-ipv4-gateway-v6-nh-00`):** David Lamparter will consult with the DHCP Working Group to solicit their input and feedback on the proposal.
+*   **IPv6 Resolved, IPv4 Gateway (`draft-van-mook-intarea-ipv6-resolved-ipv4-gateway-00`):** Remco van Mook will continue the discussion on the mailing list regarding working group adoption. The next draft version should incorporate BCP 14 language, elaborate on discovery aspects, and address IANA special purpose registry comments. Attendees are encouraged to read the draft.
+
+## Next Steps
+
+*   **Interior Tunnels Draft:** Authors are required to submit an updated draft promptly, as the current version is expiring and has outstanding feedback.
+*   **ICMP Extended Header Draft:** The IESG is currently discussing this draft. If it is not adopted, authors may need to consider resubmitting it for adoption.
+*   **Proposed Updates to Guidance on Packet Reordering (`draft-mirsky-intarea-packet-reordering-guidance-02`):** Further discussion is needed to determine the appropriate primary working group (INTAREA, TSVWG, or a joint adoption) and to gather more data on the impacts of L2 reordering and protocol sensitivities.
+*   **Defend the World from IoT Remote Threats and Malware (`draft-st-amand-intarea-defend-iot-00`):** Authors are encouraged to consider feedback on the trustworthiness of device self-declarations and to explore alternative solutions such as the Connectivity Standards Alliance (Matter protocol) or MUD for robust trust and device attestation.
+*   **ICMP Error Handling in SRv6 Networks (`draft-scharff-intarea-icmp-error-handling-srv6-00`):** Discussions will continue to identify the most appropriate working group for adoption among INTAREA, Spring, and 6man.
