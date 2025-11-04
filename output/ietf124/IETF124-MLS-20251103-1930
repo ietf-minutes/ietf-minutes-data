@@ -1,0 +1,78 @@
+# MLS Session IETF-124
+
+## Summary
+The MLS session at IETF-124 covered a range of topics including the status of the MLS Extensions and Combiner drafts, detailed discussions on two distinct approaches to Decentralized/Distributed MLS, and several individual drafts addressing specific MLS optimizations and new features. Key themes included post-quantum readiness, efficiency improvements (e.g., signature reduction, context hashing, new ratchets), and enhanced privacy for external operations. The chairs urged increased participation on the mailing list for adoption calls and working group last calls.
+
+## Key Discussion Points
+
+*   **MLS Extensions Draft Status:** The draft is in Last Call, with two PRs merged (disambiguating field in struct, 32-bit component ID to 16-bit). Three open issues remain, with one related PR under discussion. The document is awaiting further implementation experience feedback.
+*   **MLS Combiner / Cipher Suites:**
+    *   Cipher suite names in the draft were updated to match HPKEQ.
+    *   Strong support was noted for Shaw 384 (instead of Shaw 256) and AES 256 across cipher suites for level 128, based on recommendations.
+    *   Strong support for pure post-quantum cipher suites.
+    *   **Request**: Addition of a 192-level pure post-quantum cipher suite with ML-KEM 1024, ML-DSA 87, and both Shaw 512 and Shaw 384 options.
+    *   The HPKEQ documents are expected to be re-last called soon, after which the MLS Combiner can also proceed to Last Call once cipher suite choices are finalized.
+*   **Decentralized MLS (Conrad):**
+    *   Implements the 4-Grozilian continuous group key agreement paper to significantly improve forward secrecy in decentralized environments by handling forks in the commit chain using Puncturable Pseudo Random Functions (PPRFs).
+    *   Aimed at large groups with moderate forking probability (e.g., federated environments with network splits).
+    *   Has received interest from Matrix.org.
+*   **Distributed MLS (Mark):**
+    *   Approaches decentralized MLS from a different perspective, focusing on local state management where each participant's local state is an MLS group.
+    *   Aims to coordinate local actors to achieve shared cryptographic state evolution and Post-Compromise Security (PCS) across send groups.
+    *   Mechanism involves exporting/importing PSKs and copying committed leaf nodes.
+    *   Has preliminary implementations and is seeking working group adoption.
+*   **Discussion on DMLS/Distributed MLS Comparison:**
+    *   Concerns were raised about having two separate documents ("DMLS" and "Distributed MLS") addressing related problems, potentially confusing implementers.
+    *   **Clarification**: The two drafts address different threat models and use cases:
+        *   **Decentralized MLS**: Focuses on federated environments with potential reordering or slight disruptions, providing a mechanism to resolve forks with logarithmic scaling.
+        *   **Distributed MLS**: Targets highly disconnected environments like mesh networks, where each member controls commit ordering within their send group, actively avoiding forks. It does not offer logarithmic scaling.
+    *   Merging the drafts was deemed difficult due to their fundamentally different approaches (one resolves forks, the other avoids them).
+    *   Suggestion for an informational document outlining trade-offs and use case guidance for implementers.
+*   **Leaf Operation Intents (Conrad):**
+    *   Addresses the problem of offline clients cleanly leaving a group without needing the current group state.
+    *   Introduces "intents" that are tied to a leaf rather than group state, valid until the leaf changes.
+    *   A recent update added a flag to remove associated clients (e.g., multiple devices for one user).
+    *   The draft needs more review from the working group.
+*   **Virtual Clients (Conrad):**
+    *   Enables multiple devices per user to act as a single leaf in an MLS group, providing metadata privacy (e.g., hiding if a message is from phone or laptop).
+    *   Previous non-reuse challenges (PPRF vs. reuse guard) led to a consensus among authors to merge approaches and use the reuse guard.
+    *   Interest from MIMI working group.
+*   **Single Signature Key Packages (Conrad):**
+    *   Motivation: Post-quantum signatures are large, so reducing signature count is beneficial.
+    *   Proposal: Eliminate the outer signature on the key package by hashing the outer shell and incorporating this hash into the leaf node's signature. This requires a new wire format.
+    *   General interest in saving signatures, especially for commits, but further work is needed on the commit case due to MLS framing complexity.
+*   **Encrypted External Proposals (Rowan/Majd):**
+    *   Problem: External proposals in private message handshake DSs lack the privacy of proposals from existing group members (leaf node is visible).
+    *   Solution: Use HPKE to encrypt external proposals for the group using public encryption keys shared via the DS, ensuring contents remain private from the DS.
+    *   Discussion on traceability, metadata leakage, and ensuring the new joiner can verify the group keys.
+*   **Group Context Hash (Rowan):**
+    *   Problem: The `FramedContentTBS` structure currently includes the entire group context, leading to repetitive hashing of large, static data.
+    *   Proposal: Replace the full group context with a hash of the group context in `FramedContentTBS`, requiring an extension to negotiate its use. This is an easy optimization for MLS 1.1 or via extensions.
+*   **New Content Types (Rowan):**
+    *   Proposes adding "status" and "ephemeral" ratchets alongside the existing application ratchet.
+    *   Motivation: Improve performance and battery life for mobile clients by allowing aggressive fast-forwarding and selective decryption for less critical message types (e.g., presence updates, typing indicators).
+    *   Discussion on extensibility, metadata leakage (content type is visible, but generation is encrypted), and performance trade-offs of ratcheting vs. full decryption.
+*   **MLS Extensions Compatibility (Rowan):**
+    *   Presented a compatibility matrix of 24 current MLS extensions, highlighting potential interoperability challenges due to new wire formats or conflicting logic.
+    *   Suggests authors review their drafts for compatibility with other extensions.
+
+## Decisions and Action Items
+
+*   **Chairs**: Draft a working group adoption call for the **Virtual Clients** document after further internal discussion.
+*   **Chairs & Authors (Decentralized/Distributed MLS)**: Discuss and determine a way forward for the Decentralized MLS and Distributed MLS drafts, considering options such as adoption of both or an architectural/guidance document.
+*   **Authors (MLS Extensions)**: Address remaining open issues/PRs and collect more implementation experience.
+*   **Britta**: Raise an issue on GitHub for the request to add a 192-level pure post-quantum cipher suite with ML-KEM 1024, ML-DSA 87, and both Shaw 512 and Shaw 384 options for the MLS Combiner.
+*   **Conrad (Leaf Operation Intents)**: Clarify the user experience and use cases for associated members, and solicit more review from the working group.
+*   **Conrad (Single Signature Key Packages)**: Re-evaluate if a new wire format is strictly necessary and investigate the complexity of saving signatures for commits.
+*   **Rowan/Majd (Encrypted External Proposals)**: Further detail the draft, particularly regarding the threat model, traceability, and how joiners verify the correct group keys.
+*   **Rowan (MLS Extensions Compatibility)**: Authors are encouraged to review the compatibility of their drafts with other existing extensions.
+*   **Working Group**: Increase engagement on the mailing list for adoption calls and working group last calls to help chairs gauge consensus.
+
+## Next Steps
+
+*   Continue discussion on the mailing list for all drafts presented, especially for those seeking adoption or requiring further clarity on technical details.
+*   For the MLS Combiner, finalize the cipher suite choices and prepare for a working group Last Call after CFRG's HPKEQ documents proceed.
+*   For Virtual Clients, proceed with the adoption call after chair discussion.
+*   For Decentralized MLS and Distributed MLS, the chairs will work with authors to define the next steps.
+*   Review the Leaf Operation Intents draft to gauge interest and readiness for adoption.
+*   Further development and clarification are needed for Single Signature Key Packages (especially commits), Encrypted External Proposals, Group Context Hash, and New Content Types.

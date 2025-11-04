@@ -1,0 +1,104 @@
+# PIM
+
+## Summary
+
+The PIM working group session covered a diverse agenda, including discussions on improving PIM Designated Router (DR) election for faster convergence and stability, enhancements to the PIM Flood and Learn (PFM) mechanism, updates to the core PIMv6 specification (RFC 7761bis) with a significant focus on security, and new proposals for IGMP/MLD proxy multi-path support, optimized BEER usage in AI data centers, PIM multi-topology extensions, LISP multicast updates, and multicast deployment over SRv6/IPv6 networks. Several drafts requested working group adoption or moved towards Working Group Last Call.
+
+## Key Discussion Points
+
+*   **PIM DR Improvement Drafts (Sanizan/ZTE and Montgomery)**
+    *   **Problem Statement:** Rapid DR changes lead to packet loss and service disruption. New high-priority routers replacing an existing DR also cause downtime during tree rebuilding.
+    *   **Sanizan's Solution (`draft-sanizan-pim-dr-improvement`):** Proposes a "sticky DR" role and introduces a Backup Designated Router (BDR). New Hello message options (DR and BDR options) are used to signal and prevent DR changes unless the active DR fails. The BDR is elected via PIM's normal algorithm, joins multicast trees, but only forwards upon DR failure. The concept is inspired by OSPF DR election.
+    *   **Montgomery's Solution (`draft-montgomery-pim-dr-bdr-election`):** Suggests reusing existing PIM Hello mechanisms for BDR election, avoiding new Hello options or state machines. Sticky DR functionality is considered a separate mechanism, potentially achieved by a DR advertising a maximum priority.
+    *   **Discussion:**
+        *   The working group acknowledged two different approaches for DR stability and backup.
+        *   The solutions for "sticky DR" and "backup DR" are seen as potentially orthogonal, depending on deployment needs.
+        *   Existing implementations support variations of these concepts.
+        *   **Consensus:** The working group needs to decide whether to combine these approaches, adopt one, or maintain them separately. Further discussion on the mailing list is encouraged to find a unified solution, prioritizing a sticky DR solution first, then backup DR.
+
+*   **PIM Lessons Learned (Mike/Cisco)**
+    *   **RPT to SBT Switchover:** Discussed the threshold-based switchover from Shared Tree (RPT) to Source Tree (SBT). Operators often configure this to immediate (zero) or never (infinity), questioning the utility of intermediate thresholds and added complexity.
+    *   **RP Placement:** Mentioned the practice of placing the Rendezvous Point (RP) on the first hop router (FHOP) in data centers to achieve a shared tree that behaves like a shortest path, though this requires MSDP state.
+    *   **State Management:** Revisited the historical concern over state due to memory cost. It was noted that state impact now relates more to convergence time than memory capacity, describing some early optimizations as "premature."
+    *   **IGMP Snooping:** Highlighted that the lack of an early, explicit IETF standard for IGMP snooping led to diverse, non-interoperable implementations. While RFC 4541 exists, the lesson learned is the importance of early standardization.
+    *   **Other Protocols:** Discussion suggested including lessons learned for Anycast RP and MPLS/VPN multicast.
+    *   **Scope:** Emphasized that the draft should focus on PIM protocol-specific lessons, not general deployment advice.
+
+*   **PIM Flood and Learn (PFM) Enhancements (`draft-eckert-pim-pfm-enhancements`)**
+    *   **Overview:** Updates the PFM RFC by introducing a new TLV format that allows for sub-TLVs, enabling the announcement of additional flow-related information (e.g., flow rate, flex-algo context). It also includes optimizations for forwarding on multi-interface links between routers.
+    *   **Status:** The draft is considered mature by the authors and ready for Working Group Last Call.
+    *   **Discussion:**
+        *   Questioned if the draft should be an "update" to the base PFM RFC.
+        *   Interest in changing the document status from Experimental to Proposed Standard, given existing implementations.
+    *   **Decision:** The working group signaled strong support for moving forward. Working Group Last Call will be initiated next week.
+
+*   **PIM v6 Updates / RFC 7761 bis (`draft-ietf-pim-v6-update`)**
+    *   **Overview:** This is the second Working Group Last Call, incorporating feedback, primarily from Stig Venaas.
+    *   **Key Updates:**
+        *   Clarified terminology: "host group" is specific to ASM, while "SSM channel destination address" applies to SSM. IP multicast address is a superset.
+        *   Significantly expanded security considerations (six pages plus an appendix), covering network forwarding, sender/receiver control, packet spoofing, address management, Layer 2 to Layer 3 mapping, MAC filters, and issues with the BSD socket model for multicast.
+    *   **Next Steps:** The author requested that the Working Group Chairs initiate early reviews with the INT, TSV, and SEC directorates before closing the WGLC, to gather broader IETF feedback.
+
+*   **IGMP/MLD Proxy Enhancements (Jungsoo/ETRI)**
+    *   **Overview:** Focuses on multi-path support for IGMP/MLD proxies.
+    *   **Two Drafts:**
+        1.  **Static Upstream Interface Configuration:** Defines channel-based upstream interface selection, prioritizing (S,G) or (*,G) associations, with configuration options for interface priority. An open-source implementation exists.
+        2.  **Dynamic Upstream Interface Configuration:** Proposes protocol extensions to IGMP/MLD messages for dynamic upstream interface configuration.
+    *   **Decisions:** The authors decided to keep the two drafts separate.
+    *   **Discussion:**
+        *   The static draft could be Informational (as a local implementation guide) or Experimental (due to existing implementation).
+        *   The dynamic draft, proposing protocol extensions, should aim for Proposed Standard.
+        *   **Next Steps:** Address detecting inactive upstream interfaces, evaluate security threats (DoS attacks), and proceed with reviewing the dynamic configuration draft.
+
+*   **Optimized Use of BEER in AI Data Centers (Gang/ZTE)**
+    *   **Motivation:** Growing use of multicast in large AI data centers, especially for bursty, short-lived flows, where BEER (Bit Indexed Explicit Replication) is well-suited due to stateless forwarding.
+    *   **Optimization:** In AI data centers, sources often know all receivers. This allows for simplified signaling by removing traditional IGMP joins and BEER overlay signaling. GPUs can act as BEER Ingress/Egress Routers (BFERs). Leaf switches can perform penultimate hop popping, allowing receiver GPUs to not process BEER headers.
+    *   **Protocol Proposal:** If the source GPU NIC cannot encapsulate the BEER header, a new protocol extension is needed for the source to inform the first-hop router about the list of receivers. A "Receiver Proxy Report" as an IGMP/MLD extension is proposed for this.
+    *   **Discussion:** The proposal could potentially replace or augment technologies like NVLink. There are considerations about multiple control planes and whether this work belongs in the BEER working group. It was clarified that the IGMP extension part is relevant to PIM.
+
+*   **Multi-Topology in PIM (`draft-sanizan-pim-multi-topology`)**
+    *   **Problem:** PIM traditionally relies on the IGP's shortest path. Modern IGPs (OSPF, ISIS) support multi-topology (MT) and Flex-Algo (FA) for constraint-based path computation, but PIM cannot directly use these. This limits traffic engineering for multicast flows from the same source.
+    *   **Solution:** Proposes PIM message extensions to enable building multicast trees over specific topologies or constraint-based paths.
+        *   Uses the Group Source Info TLV (from PFM) with a new TED sub-TLV to advertise source information (algorithm, MT ID, DPID).
+        *   Introduces a new TED attribute for PIM Join/Prune messages.
+        *   DPID (Data Plane ID) signals the data plane context (Segment Routing, IPFlex, or a new "Soft" data plane) for FA participation. The Soft data plane allows FA deployment even when existing data planes like SRv6 or SR-MPLS are not available.
+    *   **Updates:** Restricted TED advertising to within an IGP domain. Modified examples for clarity.
+    *   **Request:** Requested working group adoption.
+    *   **Decision:** Adoption call to be taken to the mailing list.
+
+*   **LISP Multicast (`draft-ietf-lisp-pim-multicast-updates`)**
+    *   **Overview:** Updates existing LISP Multicast (RFCs 6830, 6832) towards Proposed Standard status. These RFCs were previously experimental.
+    *   **Mechanism:** Defines TLVs (Transport Attribute, Address Family Attribute) within PIM Join/Prune messages to signal to upstream routers how LISP encapsulation should occur (e.g., unicast/multicast, IPv4/IPv6 underlay). This supports mixed LISP deployments.
+    *   **Status:** Good amount of implementation exists for v4/v6 relay and unicast/multicast. The draft merges two previous experimental RFCs into one.
+    *   **Request:** Requested working group adoption.
+    *   **Decision:** Adoption call to be taken to the mailing list.
+
+*   **Multicast over SRv6/IPv6 (`draft-monkhamana-pim-srv6-ipv6-mc`)**
+    *   **Overview:** An informational draft describing how PIMv6 can be used to deliver multicast traffic over an IPv6 or SRv6 core network.
+    *   **Use Cases:**
+        *   End-to-end PIMv6 (no changes needed).
+        *   IPv4 sources over an IPv6 backbone (leveraging RFC 5549 for reachability).
+        *   PIM tree construction using Flex-Algo for constrained paths.
+        *   Controller-programmed replication points for traffic engineering (native multicast forwarding, but control plane driven by controller).
+        *   Multicast VPNs using RFC 5549 for reachability, with PIMv6 building the underlay tree.
+    *   **Forwarding:** Native multicast forwarding with an IPv6 provider header encapsulation.
+    *   **Discussion:** Acknowledged some overlap with other drafts in Mbonde, but this draft specifically focuses on PIMv6 in an SRv6/IPv6 context. Operators expressed interest in discussing these deployment options.
+    *   **Request:** Requested working group adoption.
+    *   **Decision:** Adoption call to be taken to the mailing list.
+
+## Decisions and Action Items
+
+*   **PIM Flood and Learn (PFM) Enhancements (`draft-eckert-pim-pfm-enhancements`):** Working Group Last Call (WGLC) to be initiated next week.
+*   **PIM v6 Updates / RFC 7761 bis (`draft-ietf-pim-v6-update`):** Chairs to initiate early reviews with INT, TSV, and SEC directorates.
+*   **IGMP/MLD Proxy Enhancements:** The two drafts (Static and Dynamic Upstream Interface Configuration) will remain separate documents.
+*   **Multi-Topology in PIM (`draft-sanizan-pim-multi-topology`):** Adoption call to be taken to the mailing list.
+*   **LISP Multicast (`draft-ietf-lisp-pim-multicast-updates`):** Adoption call to be taken to the mailing list.
+*   **Multicast over SRv6/IPv6 (`draft-monkhamana-pim-srv6-ipv6-mc`):** Adoption call to be taken to the mailing list.
+
+## Next Steps
+
+*   **DR Improvement Drafts:** Continue discussions on the mailing list to consolidate approaches for sticky DR and backup DR.
+*   **PIM F&L Enhancements:** Chairs to send the draft for Working Group Last Call.
+*   **PIMv6 Updates / RFC 7761 bis:** Chairs to coordinate external directorate reviews (INT, TSV, SEC).
+*   **IGMP/MLD Proxy Enhancements:** Authors to revise the static draft (considering Informational/Experimental status), address detection of inactive interfaces and security threats, and solicit review for the dynamic draft.
+*   **Multi-Topology in PIM, LISP Multicast, Multicast over SRv6/IPv6:** Chairs to initiate adoption calls on the PIM mailing list.

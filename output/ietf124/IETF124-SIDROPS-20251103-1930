@@ -1,0 +1,100 @@
+# SIDROPS Session
+
+## Summary
+
+The SIDROPS session primarily focused on the working group's re-chartering efforts, specifically discussing the implementation policy and proposed goals. A significant portion of the session was also dedicated to presentations on several RPKI-related drafts covering new synchronization protocols (ERIC), validation tools (CCR), approaches to RPKI trust anchors (Sibling TAs), and proposals for BGP security (Transitive BGPSEC, FCBGP). Discussions also touched upon optimizing RPKI data distribution (selective sync, RPKI-RTR over QUIC) and enhancing RPKI validator testing (Bari, Report).
+
+## Key Discussion Points
+
+*   **Re-chartering: Implementation Policy**
+    *   The proposed re-charter requires **two interoperable implementations for any protocol specification** emerging from the working group, with the intent of tracking these implementations during the document's lifecycle.
+    *   **Importance**: Job Snyders emphasized that this policy, similar to IDR's, is crucial for improving document quality, reducing future rework (BIS documents), and fostering collaboration between idea proposers and coders. RPKI's widespread adoption necessitates high standards.
+    *   **Interpretation of "Two Interoperable Implementations"**:
+        *   John Scudder raised whether one client and one server implementation would suffice. The chair, Luigi, confirmed this would be considered two implementations, but the working group would deliberate on specific cases.
+        *   Tim Ryan suggested that while one client with multiple servers is better than just one of each, ideally, there should be multiple implementations of both sides. He noted the difficulty in specifying this precisely in text and suggested a consensus-based assessment within the working group.
+        *   Rob Austin advocated for a stricter "two client and two server" requirement to ensure diverse implementation efforts and broader understanding, with a waiver possibility for sufficient reason.
+        *   Job Snyders clarified that the goal is to ensure the specification is understandable and implementable by someone *other* than the author, rather than strict numbers or production-grade quality.
+        *   Maria and Tobias stressed the importance of publicly available implementations to truly test interoperability and discover corner cases.
+    *   **Decision / Action Item**: The chair proposed to conduct a **consensus call on the mailing list** after the IETF meeting to clarify the interpretation of the implementation policy, particularly for client-side implementations (e.g., whether one or two client implementations are required).
+    *   Rudiger Folk reiterated that the purpose of interoperability testing is quality control of the standard, not providing implementations to users.
+
+*   **Re-chartering: Objectives/Goals**
+    *   Limited prior discussion on the mailing list regarding the working group's objectives.
+    *   Job Snyders questioned the specific mention of "Yang data models" in the charter, arguing it is a technology choice that should be covered by broader goals (e.g., "develop operational solutions") or placed in milestones.
+    *   Luigi (Chair) clarified that the charter defines the scope of work. While milestones specify *instantiations* of work, the charter needs to encompass the *type* of work, and Yang models for RPKI are a valid part of the scope.
+    *   Rudiger Folk supported including Yang, as it is the prevalent modeling technique in the IETF, providing clear direction and avoiding fragmentation.
+    *   **Action Item**: The chairs will review pending pull requests for the charter, incorporating discussion feedback, and propose a revised charter.
+
+*   **RPKI Sibling Trust Anchors (draft-schoenw-sidrops-sibling-trust-anchors)**
+    *   **Problem**: The current RPKI model with five RIR Trust Anchors (TAs), each claiming all resources, introduces risks of inter-RIR impact and issues with resource transfers. `draft-snyders-sidrops-rpki-client-filter` is a partial solution.
+    *   **Proposal**: Introduce a model where RIR TAs sign initial resource distributions and subsequent changes (e.g., transfers) as "Resource Distribution Events" (RDEs). These are published outside the core RPKI repository, with keys published within RPKI.
+    *   **Use Cases**: Directly used by Relying Party (RP) software, dedicated constraint validation software, or to feed a "pseudo-trust anchor" that issues certificates based on these signed constraints.
+    *   **Feedback**: Bob Beck suggested RIRs could simply not overclaim resources and recommended exploring Certificate Transparency (CT) logs. Rudiger Folk and Rob Austin acknowledged the draft addresses a long-standing and serious problem, despite the proposed solution being complex.
+
+*   **ERIC Synchronization Protocol (draft-snyders-sidrops-rpki-sync)**
+    *   **Context**: RPKI data is highly dynamic, with thousands of new objects daily (totaling ~900MB), requiring efficient distribution to ~5,000 validators.
+    *   **Limitations of Current Protocols**:
+        *   **R-Sync**: Inefficient handshake due to expensive recursive file hierarchy scans for diff calculation (e.g., 6MB for a sync check).
+        *   **RRDP**: Opaque data downloads (client doesn't know what it's downloading until after), leading to redundant downloads and ungraceful fallbacks (small diff failure leads to full download).
+    *   **Proposal**: The ERIC Synchronization Protocol uses Merkel trees, content-addressable storage, HTTP, and ASN.1. It introduces "ERIC Relays" as a new participant.
+    *   **Mechanism**: Clients connect to ERIC Relays to fetch an ERIC Index (list of partition hashes), then partitions (list of manifest hashes), and finally manifests (list of object hashes). Manifests serve a dual function in both signaling and validation.
+    *   **Benefits**: Efficient (only downloads newer/changed data), fast, cheap, and compatible with RFC 9020. Preliminary measurements suggest ERIC outperforms R-Sync and RRDP across various sync schedules. No persistent sessions allows clients to rotate between relays.
+    *   **Status**: A server implementation exists. The author seeks community engagement for client and relay implementations. A few relay operators (3-5 globally) would be sufficient.
+
+*   **CCR - Canonical Cache Representation (draft-snyders-sidrops-rpki-ccr)**
+    *   **Motivation**: To easily compare the state of different RPKI validator instances (e.g., for debugging or consistency checks), as existing JSON outputs are not canonical.
+    *   **Proposal**: An ASN.1/DER-encoded Canonical Cache Representation (CCR) format, conceptually similar to BGP's MRT dump.
+    *   **Structure**: CCR files contain multiple "states" (segments/tables), each a list of items with a canonical hash, allowing quick comparison of physical and semantic changes (e.g., manifest state vs. ROA payload set).
+    *   **Use Cases**: Handover format between validator and RTR server (smaller than JSON), diagnostics and debugging, historical data analysis, RIR pre-issuance/post-issuance verification, comparing different transport outcomes.
+    *   **Status**: Running code is available and usable. The author seeks an OID and working group adoption.
+
+*   **Transitive BGPSEC (draft-zhao-sidrops-transitive-bgpsec)**
+    *   **Problem**: BGPSEC suffers from a "chicken and egg" deployment problem due to its non-transitive nature; benefits only accrue with full path deployment.
+    *   **Proposal**: Modify BGPSEC to support transitivity, allowing security to traverse non-deployed ASes. This involves changes to BGP OPEN negotiations, preserving AS paths, and using pathlet signatures.
+    *   **Challenges**: The authors identified significant difficulties, including partial path signing, copy-and-paste attacks, issues with AS-path prepending, route aggregation, and breaking compatibility with native BGPSEC.
+    *   **Conclusion**: Building a transitive BGPSEC on the existing non-transitive design is difficult, if not infeasible, without major breaks. The focus should shift from "perfect security" to "deployable and viable path trust."
+    *   **Feedback**: Rob Austin and Rudiger Folk noted that these issues were extensively discussed and documented during the original BGPSEC design, concluding that "islands of security" were not a viable use case.
+
+*   **Forwarding Committee Commitment BGP (FCBGP) (draft-li-sidrops-fcbgp)**
+    *   **Motivation**: BGP lacks native AS path authentication. FCBGP aims for an incrementally deployable solution.
+    *   **Proposal**: Introduce an optional, transitive path attribute with cryptographic authorities for ASPASS attributes to authenticate BGP announcements.
+    *   **Implementation**: New H3C in collaboration with China Telecom and China University has implemented commercial upgrades to CR 16,000 and CR 19,000 routers to support FCBGP.
+    *   **Deployment & Results**: Prototype deployed on the VITI background network (31 ASes). Tests showed full protocol implementation, interoperability with legacy routers, and significant protection (17%+ of BGP paths protected with only 10% FCBGP deployment).
+
+*   **Selectively Synchronized RPKI Data to Routers (draft-yufu-sidrops-selective-sync)**
+    *   **Motivation**: IPv6-only networks only need IPv6 RPKI data. Selective synchronization can reduce operational complexity and router resource consumption.
+    *   **Tests**: Performance metrics on Cisco and Juniper routers showed significant reductions (e.g., 67% reduction in sync time, lower CPU/memory) for IPv6-only data compared to full RPKI data.
+    *   **Proposed Solutions**:
+        1.  Extend SLURM to support filtering by RPKI data type (preferred).
+        2.  Extend RTR protocol for subscription.
+        3.  Filtering messages by routers.
+    *   **Feedback**: Job Snyders questioned if the current SLURM prefix filtering mechanism (e.g., `0.0.0.0/0`) could already achieve the desired outcome for IPv4 data. The author will investigate existing SLURM capabilities.
+
+*   **RPKI Testing Tools (Bari, Report) (draft-cano-sidrops-rpki-testing-tools)**
+    *   **Context**: Lacnic is developing `fort`, an open-source RPKI validator. These tools assist in its testing.
+    *   **Bari**: A Python library that generates "bad RPKI" repositories (full trees, deltas, snapshots) for testing. It uses description files (text or JSON) to define the repository structure and can override fields to introduce specific errors.
+    *   **Report**: An online RPKI tester that uses Bari to create correct and incorrect repositories, feeds them to Relying Parties, and verifies their output. Currently works with `fort` but is extensible.
+    *   **Feedback**: The tools were highly praised. Job Snyders noted their value for proactive testing and suggested integrating with CCR. Rob Austin mentioned historical "demonic CA" implementations for inspiration on "demented" test scenarios. Robert suggested developing a "fuzzer" to generate random, crazy trees for Bari to create.
+
+*   **RPKI-RTR over QUIC (draft-hp-sidrops-rpki-rtr-over-quick)**
+    *   **Motivation**: Address Head-of-Line blocking and other shortcomings of TCP in existing RPKI-RTR connections.
+    *   **Proposal**: Implement RPKI-RTR over QUIC, leveraging its multiple-stream multiplexing capabilities over a single connection.
+    *   **Mechanism**: Router acts as a client initiating a QUIC connection to the cache (server). Both control (bidirectional) and data (unidirectional) channels would use separate streams, each with its own flow control.
+    *   **Feedback**: Jeff Haas requested more explicit documentation on *why* separate streams are beneficial and how the "end of data marker" would function. Maria raised concerns that the main bottleneck might be router ingestion, not the link, and multiple streams could complicate router processing. Rudiger Folk suggested that while multiple streams might not be immediately beneficial, they could be useful long-term for decoupling different data types (e.g., CA keys vs. ROAs) that populate different router tables.
+
+## Decisions and Action Items
+
+*   **Decision**: The discussion regarding the interpretation of the "two interoperable implementations" policy, specifically for client-side implementations, will be moved to the SIDROPS mailing list for a consensus call after the IETF meeting.
+*   **Action Item**: The working group chairs will initiate a mailing list discussion and consensus call on the interpretation of the re-chartering's implementation policy regarding client-side implementations.
+*   **Action Item**: The working group chairs will review pending pull requests for the re-charter and propose a revised charter, including updates to milestones and potentially stale wording, incorporating feedback from this session.
+*   **Important Note**: All standards track work in the SIDROPS working group is currently blocked until the re-chartering discussion is complete and the charter is approved.
+
+## Next Steps
+
+*   **Re-chartering**: Participate in the upcoming mailing list consensus call on the implementation policy.
+*   **Draft Authors**: Continue development of their respective drafts, incorporating feedback received during the session.
+*   **ERIC Synchronization Protocol**: Seek community involvement in developing client and relay implementations.
+*   **CCR**: Continue efforts to obtain an OID and seek working group adoption for the specification.
+*   **Selective RPKI Data Synchronization**: The author will investigate whether the desired functionality can already be achieved using existing SLURM syntax.
+*   **RPKI Testing Tools**: The community is encouraged to test Bari and Report, provide feedback, and potentially contribute to developing a fuzzer companion.
+*   **RPKI-RTR over QUIC**: The authors should enhance the draft by explicitly detailing the benefits of multiple streams and the handling of the "end of data marker," and consider the implications of router data ingestion bottlenecks.

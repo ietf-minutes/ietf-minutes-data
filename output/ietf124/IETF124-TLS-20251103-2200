@@ -1,0 +1,93 @@
+# TLS Session
+
+## Summary
+
+The TLS Working Group session addressed several draft statuses, including the outcome of appeals for ML-KEM and SLH-DSA, and updates on documents in IESG evaluation or awaiting implementation experience. Key decisions were made regarding the path forward for ECDHE ML-KEM experimental code points, initiating Working Group Last Calls for TLS_AES_128_GCM_SHA256_SSV_TLS13, Large Record Sizes, and ML-KEM-only registration. A significant discussion on TLS PAKE drafts concluded with a decision against modifying the TLS 1.3 handshake for multi-round PAKE algorithms, favoring an application-layer approach instead. The session also included an expert report on recent IANA registry updates.
+
+## Key Discussion Points
+
+*   **Administrative Updates**
+    *   The IETF Notewell and meeting tools were highlighted.
+    *   The agenda outlined two sessions, emphasizing time for consensus on controversial topics.
+*   **Document Status Overview**
+    *   **ML-KEM**: Appeal unsuccessful; draft remains a Working Group adopted draft.
+    *   **SLH-DSA**: Appeal successful; draft is *not* a Working Group adopted draft.
+    *   Two documents are in IESG evaluation: "Deprecating Obsolete Key Exchange Methods" and "TLS 1.3 PKCS1". Discusses are being resolved.
+    *   Two documents are awaiting implementation experience.
+*   **ECDHE ML-KEM Last Call Issues**
+    *   During chair review of ECDHE ML-KEM, it was identified that the document absolutes experimental code points registered prior to NIST standards completion. Marking these as 'D' (Discouraged) in the registry requires Standards Action.
+    *   Two options were presented for resolving this:
+        1.  Move the current Internet-Draft to Standards Track with the change to mark experimental code points 'D'.
+        2.  Pull the section out of the current document and create a new short document to obsolete those experimental code points.
+    *   **Discussion**: Option 1 was noted as quicker if consensus could be reached. This would require a short Working Group Last Call (WGLC) to confirm the change of track and deprecation.
+*   **TLS_AES_128_GCM_SHA256_SSV_TLS13 Draft (draft-ietf-tls-ssv-tls13)**
+    *   Draft-10 was published incorporating previous comments, including from Watson.
+    *   The document is considered ready for WGLC, with an intention to wait for further implementation experience if needed.
+    *   A new version (draft-11) will be spun to fix a link to an old Git repository.
+*   **Extended Key Update Draft (draft-ietf-tls-extended-key-update)**
+    *   Updates in draft-06 (presented, 07 published after cutoff):
+        *   **Terminology**: Converged to "post-compromise security" with added references.
+        *   **Code Points**: Moved from registering three separate TLS message types to a single `ExtendedKeyUpdate` message with three single-byte message subtypes (`XKeyUpdateRequest`, `KeyUpdateResponse`, `NewKeyUpdate`). An IANA registry for subtypes is requested.
+        *   **Failure Handling**: Removed error codes. If extended key update is negotiated, regular key update is disallowed. Failure to complete the EKU results in connection termination.
+        *   **Security Considerations**: Added sections on scope of key compromise, DoS, and operational guidance. TLS/DTLS state machines are included in an informative appendix.
+    *   **Next Steps for Draft**: Align HKDF labels with TLS 1.3, clarify impact on exporter APIs, finish non-normative state diagrams. Prototype implementations exist (EmbedTLS, Rust TLS).
+    *   **Discussion**:
+        *   **Post-Compromise Security (PCS)**: Clarification sought on what "long-term keys" are protected, and the scenario of compromising application keys but not long-term keys. Authors clarified PCS reduces the "blast radius" of a session key compromise, not necessarily full recovery if a server's private key (identity) is compromised. Further terminology refinement on "long-term key" was requested.
+        *   **DoS Resistance**: No explicit floor on byte exchange or timers mandated; left to implementation specifics, similar to SSH/IPsec.
+        *   **IANA Registry for Subtypes**: Concern raised about potential lack of negotiation for new message subtypes in the `ExtendedKeyUpdate` message, and how that interacts with "unrecognized message type" alerts.
+        *   **PCS and Session Tickets**: Prototype implementations discard session resumption tickets after an EKU.
+        *   **TLS Stack Challenges**: Split receive/transmit sockets in some TLS stacks can complicate EKU as it requires bi-directional data exchange.
+        *   **Formal Analysis**: Initial triage process has begun, and formal analysis is underway, with calls for further contributions.
+*   **Large Record Sizes for TLS with Reduced Overhead Draft (draft-ietf-tls-large-record-sizes)**
+    *   Updates based on IETF 123 discussions and mailing list/GitHub activity.
+    *   Clarification that behavior is consistent with RFC 8449.
+    *   Variable-length field now similar to MLS, requiring minimum size encoding (not as in QUIC).
+    *   AAD limits table updated to match MLS.
+    *   The draft is considered stable, with ongoing implementations.
+*   **ML-KEM only Registration Draft (draft-ietf-tls-mlkem-only-registration)**
+    *   Registers ML-KEM 512, 768, and 1024.
+    *   Language cleaned up and aligned with ECDHE ML-KEM regarding handling CHEM failures.
+    *   **Open Issue**: A pull request to change the 'Recommended' status from 'N' (Normal) to 'D' (Discouraged) was discussed. This change would require Standards Action and group ML-KEM cipher suites with known weak ciphers.
+    *   **Discussion**: Multiple implementations already exist (BoringSSL, OpenSSL, AWS-S2N, Rustls). There was strong sentiment against marking ML-KEM as 'D' as it is not considered broken or weak. No strong support for 'D' was voiced.
+*   **TLS PAKE Draft (draft-ietf-tls-pake)**
+    *   Adopted as a Working Group draft; repository moved to WG GitHub.
+    *   **Core Challenge**: Integrating PAKE algorithms into TLS 1.3. Current handshake supports two-message PAKEs (ClientHello, ServerHello, e.g., Spake2+, C-PACE, OaK-Wake).
+    *   **Multi-round PAKEs**:
+        *   Three-message PAKEs (e.g., C-PACE OaK-Wake, a hybrid classical+PQ PAKE run sequentially) would require a new handshake message or HRR semantics, increasing handshake time and complexity.
+        *   Five-message PAKEs (e.g., C-PACE OaK-Wake Plus, an augmented hybrid PAKE with explicit challenge-response) would be even more complex.
+    *   **Working Group Feedback on Multi-round PAKEs**: Strong sentiment against modifying the core TLS handshake for 3- or 5-message PAKEs due to increased complexity and round-trip times.
+    *   **Proposed Alternative**: For complex or multi-round PAKE/Short Authentication String (SAS) protocols, it might be more appropriate to perform the authentication *after* the TLS handshake, perhaps in a custom application-layer protocol with channel binding. This would avoid TLS handshake modifications but still allow authentication bootstrapping.
+    *   **Extension Format**: Discussion on whether to use a single PAKE extension with multiple `PakeScheme` code points or multiple distinct extensions for each PAKE algorithm. Preference was expressed for a single extension for simplicity and to avoid incoherent server advertisements.
+    *   **Multiple Identities**: Question about sending multiple client/server identities within the PAKE extension. Potential use case cited for server migrating PAKE algorithms or having disjoint verifier databases.
+    *   **Client Enumeration Risk**: Proposed text to clarify that server should choose between PSK/PAKE extensions based on authentication mechanism preference, not client identity, to prevent enumeration attacks.
+    *   **Context String**: Proposed adding a "TLS" prefix to the context string to prevent cross-protocol attacks.
+    *   **General PAKE Guidance**: PAKE is useful for low-entropy secrets when other options aren't available but requires rate-limiting. Hybrid PAKEs (like OaK-Wake, which fits the 2-message flow) are attractive for post-quantum security.
+    *   **Formal Analysis**: Analysis is underway, and further contributions are welcome.
+*   **IANA Registry Expert Report**
+    *   General editorial updates to TLS 1.2, RFC 8446bis, RFC 8447.
+    *   New `return_receipt_control` registry for DTLS.
+    *   New labels for SSL key log file for debugging.
+    *   ECH config extensions for HTTP binding.
+    *   New alert type: `general_error` (from 8446bis).
+    *   Three new signature schemes (from RFC 4487).
+    *   One new supported group (P384 to hybrid key exchange).
+    *   Four new cipher suites derived from NIST Lightweight Cryptography. This is a notable first for registering based purely on an external specification.
+    *   **SLH-DSA**: Despite not being a WG-adopted draft, 12 cipher suites (combining security levels, speed, and digest types) were registered, following designated expert registry instructions after initial pushback on the quantity of registrations.
+
+## Decisions and Action Items
+
+*   **ECDHE ML-KEM Code Points**: The Working Group achieved strong consensus to proceed with **Option 1**: Move the current `draft-ietf-tls-ecdhe-mlkem` document to Standards Track and explicitly mark the experimental code points as 'D' (Discouraged) in the IANA registry. A quick Working Group Last Call will be initiated to confirm this.
+*   **TLS_AES_128_GCM_SHA256_SSV_TLS13**: A Working Group Last Call (WGLC) will be issued after `draft-ietf-tls-ssv-tls13-11` (which fixes a Git repo link) is published, with an allowance for implementation experience.
+*   **Large Record Sizes for TLS**: A Working Group Last Call (WGLC) will be issued for `draft-ietf-tls-large-record-sizes`, with an allowance for implementation experience.
+*   **ML-KEM only Registration**: The pull request requesting to change the status of ML-KEM cipher suites from 'N' (Normal) to 'D' (Discouraged) will be closed. The draft (`draft-ietf-tls-mlkem-only-registration`) is ready for a Working Group Last Call.
+*   **TLS PAKE - Multi-Round PAKEs**: The Working Group decided *not* to modify the TLS 1.3 handshake to support multi-round (3-message or 5-message) PAKE algorithms. Instead, the authors are encouraged to explore an application-layer protocol with channel binding for bootstrapping complex PAKE/SAS authentication.
+*   **TLS PAKE - Extension Format**: The Working Group expressed a preference for a single PAKE extension that contains multiple `PakeScheme` code points, rather than defining multiple distinct extensions for each PAKE algorithm.
+*   **TLS PAKE - OaK-Wake**: Authors expressed willingness to register OaK-Wake, a pure post-quantum PAKE that fits the existing 2-message TLS 1.3 handshake flow.
+
+## Next Steps
+
+*   Working Group Last Calls will be initiated for `draft-ietf-tls-ecdhe-mlkem`, `draft-ietf-tls-ssv-tls13`, `draft-ietf-tls-large-record-sizes`, and `draft-ietf-tls-mlkem-only-registration`. An extra week will be given for comments due to IETF week.
+*   The TLS Working Group will reconvene for a second session on Wednesday to continue discussions, particularly on DTLS BIS and ECH-related drafts.
+*   Authors of `draft-ietf-tls-extended-key-update` will continue to refine the draft, focusing on aligning labels, clarifying exporter API impact, and completing state diagrams, and seek further implementations and reviews.
+*   Authors of `draft-ietf-tls-pake` will revise the document to reflect the decision against multi-round PAKE support in the TLS handshake, focusing on single-round PAKE integration and exploring the application-layer approach for more complex authentication flows. They will also consider incorporating guidance on when to use PAKEs and refine terminology.
+*   Formal analysis for the `draft-ietf-tls-pake` document will continue, with an open call for contributions.
