@@ -1,0 +1,90 @@
+# NMRG
+
+## Summary
+
+The NMRG session focused on Intent-Based Networking (IBN), with a strong emphasis on the application of Artificial Intelligence, particularly Large Language Models (LLMs) and Generative AI, for network and service management. Discussions covered updates on existing IBN drafts, innovative neurosymbolic approaches, and test-driven development methodologies for network configuration using LLMs, highlighting challenges like natural language ambiguity and LLM hallucinations, alongside proposed solutions for verification and reliability.
+
+## Key Discussion Points
+
+*   **Opening Remarks**:
+    *   The session began with reminders about IRTF's adherence to IETF IPR rules, meeting recording policies, privacy, and the code of conduct (referencing RFCs 7154, 7776, and 9775).
+    *   NMRG, as an IRTF research group, focuses on longer-term research issues related to the Internet, distinct from IETF's short-term engineering and standards-making. Research groups publish informational or experimental RFCs.
+    *   The morning session was dedicated to Intent-Based Networking, featuring five presentations: an update on the IBN Use Cases draft, three technical presentations from a recent CNSM conference, and a draft on Generative AI for IBN.
+
+*   **"Use Cases and Practices for Intent-Based Networking" (Paul Jung)**:
+    *   Presented updates from version 00 to 02 of the draft, noting that approximately 70% of co-chair Jerome's comments from the adoption call have been addressed.
+    *   New sections include "IBN for green service management" (contributed by Luis) and enhanced discussions on AI agents for IBN, as well as security considerations (insider and outsider attacks).
+    *   Key updates covered:
+        *   Adding references to technologies mentioned in Section 2 (IBN system).
+        *   Partially linking methodologies in Section 2 to use cases.
+        *   Polishing self-contained exploration for each use case for better readability.
+        *   Clarifying relationships with RFC 9315 concepts and definitions, including a new subsection on mapping between IBN systems and the intent lifecycle.
+        *   Planned addition of intent classification taxonomy (RFC 9316, Section 3) with a table for solution intent, user type, and network scope.
+        *   Enhancing Section 4 (practice & learning) with more use cases and numerical/colored results.
+        *   Clarifying the difference between policy verification and validation in Section 2.2.
+        *   Expanding intent translator options to include non-graphic user interface tools like LLMs (e.g., Plan T5, GPT-3) for prompt learning, and domain-specific languages (DSLs) like NDL and NEMO.
+        *   Enhancing the "on-path telemetry" use case with IBN.
+
+*   **"Extending Test-Driven Development to Intent-Based Networking with LLMs" (Davide)**:
+    *   Proposed applying Test-Driven Development (TDD) principles from software engineering to IBN, leveraging LLMs for network configuration.
+    *   Highlighted LLMs' ability to generate code but also their susceptibility to "hallucinations" (producing incorrect or non-functional outputs), especially with complex tasks (e.g., IPv6 regex parsing).
+    *   Introduced a test-feedback loop system where tests are designed *before* configuration generation.
+    *   Architecture: User provides intent -> LLM generates configuration (e.g., for an ONOS SDN controller) -> a policy verifier (Technicium) tests the configuration against predefined policies -> if tests fail, feedback is provided to the AI for re-generation. A human remains in the loop for initial requirements and final configuration acceptance.
+    *   Evaluated with three test cases: blocking HTTP traffic, allowing all traffic, and enforcing waypoints (traffic from A to C must pass through B).
+    *   Results showed high consistency (over 90%) in LLM output, with a 60-50% success rate for LLM interaction with ONOS, and about 50% of the generated configurations passing the tests.
+    *   Discussion covered the need to formalize roles in prompt/test development and the use of a minimal formal language for policy expression in Technicium (e.g., reachability, two-way points).
+    *   The TDD approach helps prevent hallucinations by providing immediate validation; policy conflicts are identified as verification failures.
+
+*   **"Large Language Models in Network Management" (Anwar Lakimi)**:
+    *   Addressed the challenge of manual, complex SDN configuration, proposing natural language as a simplified control layer through an LLM agent interacting with SDN controllers via REST APIs.
+    *   Acknowledged LLM capabilities (understanding complex patterns, generating human text) but also challenges: natural language ambiguity and unreliable generation (hallucinations).
+    *   Presented a pipeline to tackle these:
+        1.  **Context Injection**: Automatically adds static, required configuration parameters (e.g., SDN controller type, OpenFlow version, data path ID) to the user's natural language prompt.
+        2.  **Intent Regulation (Chat with LLM)**: Allows users to interactively refine the LLM-generated YAML configuration until ambiguities are resolved and the user is satisfied.
+        3.  **Retrieval Augmented Generation (RAG)**: Retrieves relevant API endpoints and JSON fields from a vector database to enrich the LLM's context.
+        4.  **JSON Payload Generation & Execution**: The LLM generates a JSON payload for an API request to the SDN controller (e.g., Ryu).
+        5.  **Flow Table Verification**: An LLM checks the SDN controller's flow table to confirm successful installation.
+        6.  **Error Recovery**: If an API call fails, a dedicated LLM attempts to correct the JSON payload and retries the configuration up to three times.
+    *   Evaluation used Mininet and Ryu controller, with a complexity score based on match/action fields. Experiments with GPT-4 Omni and Google Gemini Flash showed up to 96% accuracy for simple flow rules, with accuracy decreasing as complexity increased.
+    *   An ablation study indicated the pipeline's resilience, with individual components contributing to overall performance.
+    *   Future work includes multi-domain (e.g., optical) and multi-controller setups, exploring more LLM models (especially open-source), and addressing the challenge of generating large, high-quality datasets for fine-tuning LLMs.
+
+*   **"Neurosymbolic Approach for Intent-Based Service Management" (Lorenzo Colombo)**:
+    *   Proposed a neurosymbolic approach for Zero Touch Network and Service Management (ZSM), combining the flexibility of LLMs with the explainability and determinism of symbolic AI.
+    *   Acknowledged LLMs' strengths in text understanding but also their non-deterministic nature and proneness to hallucinations, contrasting with symbolic AI's reliability but limited flexibility.
+    *   Architecture:
+        1.  **Natural Language to JSON**: An LLM translates natural language intent into a structured JSON file.
+        2.  **Syntax Checker**: Validates the JSON for correct syntax, required keys, appropriate data types, and legal values. If invalid, the LLM is re-prompted with the syntax error (up to three "shots").
+        3.  **JSON to ASP Facts**: Valid JSON is parsed into Answer Set Programming (ASP) facts, a declarative programming language for search and optimization.
+        4.  **ASP Solver (Clingo)**: Computes all "stable models" (answer sets), representing possible service deployment solutions, using facts from the intent and current cluster metrics (e.g., from Kubernetes).
+    *   Experiments:
+        1.  **LLM Validation**: A small dataset of 100 simple intents was created (due to lack of public datasets). Few-shot prompting (re-prompting with syntax errors) improved accuracy. Gemma 2B (2.7 billion parameters) achieved near-perfect accuracy after two shots, with a mean inference time of less than 3 seconds.
+        2.  **ASP Solver Performance**: Clingo's inference time was measured, showing acceptable performance (under 5 seconds) even with 30 clusters, particularly with multi-threaded execution.
+    *   The current LLM validation focused solely on syntax correctness, and the ambiguity feedback loop is still theoretical.
+    *   Future plans include expanding reasoning for more complex deployment rules, incorporating optimization functions (e.g., multi-objective optimization, reinforcement learning), testing the full architecture, and expanding the dataset.
+
+*   **"Generative AI for Intent-Based Networking" (Giuseppe Fioccola)**:
+    *   Provided an update on the draft, a collaborative effort with the University of Cagliari, CNR, and Serious Technologies.
+    *   Scope: To describe how to specialize AI models, particularly using transfer learning techniques, to create generative models for IBN.
+    *   Highlighted Low-Rank Adaptation (LoRA) as an example for scalable transfer learning, allowing fine-tuning with significantly fewer parameters, thus reducing storage and computational load.
+    *   Introduced the concept of an "Adapter Hub" for storing, indexing, and sharing different LoRA adapters, promoting modularity and reusability.
+    *   Described "Adapter Flow" for combining multiple adapters to form composite models for complex intents.
+    *   Outlined a life cycle for these models: generation (fine-tuning), evaluation (accuracy, latency, resources), and deployment, including feedback loops for continuous adaptation using network telemetry.
+    *   Logical architecture: Intent reception -> model fusion and composition (querying the Adapter Hub) -> composite model deployment -> telemetry feedback -> possible re-specialization.
+    *   The latest version includes a new section on "network digital twin AI-enabled IBN architecture," where digital twins can abstract service requirements, integrate top-down/bottom-up feedback, and continuously learn to validate intents before deployment.
+    *   The draft is not limited to LoRA but uses it as a current implementation example.
+    *   Future updates will include detailed technical formulations, drawing from a paper currently submitted to Infocom. Consideration of IETF/3GPP data models (XML, YAML, JSON) and knowledge graphs for computational policy are future considerations.
+
+## Decisions and Action Items
+
+*   **Paul Jung**: Will continue to address the remaining comments on the "Use Cases and Practices for Intent-Based Networking" draft (draft-jung-nmrg-ibn-use-cases-practices), aiming for an IRTF last call by the July Vienna meeting.
+*   **Giuseppe Fioccola**: Plans to provide further technical details and updates to the "Generative AI for Intent-Based Networking" draft (draft-fioccola-nmrg-genai-ibn) after the associated paper is published in Infocom.
+
+## Next Steps
+
+*   **NMRG Chairs**: Convene the second NMRG session in the afternoon.
+*   **Paul Jung**: Incorporate outstanding comments into the IBN use cases draft and prepare for the IRTF last call.
+*   **Davide**: Continue work on formalizing the proposed neurosymbolic approach, particularly clarifying roles in test and prompt development, and exploring LLM-based test generation.
+*   **Anwar Lakimi**: Focus on extending the LLM-based network management pipeline to multi-domain (e.g., optical) and multi-controller setups, and investigate the use of various LLM models, including open-source options. Explore strategies for generating synthetic datasets to support fine-tuning efforts.
+*   **Lorenzo Colombo**: Expand the system's reasoning capabilities to manage more complex deployment rules, implement optimization functionalities (e.g., multi-objective algorithms, reinforcement learning), and integrate the theoretical feedback loop for ambiguity resolution. The overall architecture will be tested, and the dataset expanded.
+*   **Giuseppe Fioccola**: Await publication of the Infocom paper to integrate its technical formulations into the Generative AI for IBN draft, and continue welcoming comments.

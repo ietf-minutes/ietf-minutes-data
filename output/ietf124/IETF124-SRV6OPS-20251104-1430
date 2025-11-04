@@ -1,0 +1,91 @@
+# SRV6OPS
+
+## Summary
+
+The SRV6OPS session featured two operator presentations and updates on five working group drafts. Key discussions revolved around the practical aspects of SRv6 deployment, including moving SRv6 capabilities to hosts, advanced overlay architectures, migration strategies, protection mechanisms, OAM considerations, policy selection, and addressing best practices. Significant technical debates included the interpretation of SRv6 trust domains, concerns about "blast radius" with centralized control, and the specificity of drafts to SRv6 versus generic segment routing. The working group provided feedback on several drafts, particularly concerning terminology and the scope of migration options.
+
+## Key Discussion Points
+
+*   **Working Group Status:** One document, likely related to SRv6 data plane and operations, reached an adoption call and is now a working group draft. All presentations are posted on GitHub.
+
+*   **Presentation 1: Moving SRv6 Encapsulation Endpoints onto Hosts (Nick Morris, Verizon)**
+    *   **Concept:** Integrating SRv6 encapsulation/decapsulation capabilities directly into compute infrastructure (hosts, VMs, PNFs) to create a more unified network experience across core, edge, and compute domains.
+    *   **Phases:** Proposed a phased approach: (1) merging edge and compute into a single domain, (2) abstracting the core by running SRv6 over IPv6, and (3) achieving an end-to-end SRv6 "flat network."
+    *   **Trust Domain Debate:** A core discussion point arose regarding the assumption of a single trust domain. Joel Halpern (co-chair, Spring WG) emphasized that SRv6, as per RFC 8754, is defined to operate within a single trust domain. The presenter's model, involving SRv6 connectivity across potentially untrusted intermediate IPV6 networks, was noted as a significant departure from current RFCs and would require broader IETF discussion. The distinction between "operational domain" and "trust domain" was highlighted.
+    *   **Blast Radius Concerns:** Tom Hill (BT) raised concerns about the "Nirvana" end-state model, where a highly unified, centrally controlled (e.g., via a single PCE) SRv6 network could lead to an increased "blast radius" for systemic failures. The presenter argued that blast radius is more about implementation redundancy and segmentation than the protocol itself.
+    *   **Feedback/Action:** Presenter was encouraged to share practical deployment information (current status, scale) on the mailing list.
+
+*   **Presentation 2: SRv6 Overlay Architectures (Dan Voyer, Bell)**
+    *   **Motivation:** Bell's network modernization strategy to reduce footprint, leverage fiber/wireless/LEO, simplify network plumbing by reducing inventory complexity, and modernize products. SRv6 is viewed as an evolution of MPLS.
+    *   **Architecture:** Proposed layered SRv6 over SRv6 (or SRv6 over IPv6) as an overlay mechanism to build a service mesh across cloud, on-prem, and network footprints.
+    *   **Benefits:** Enables scaling by leveraging multiple, independent SID spaces without conflicts, allowing abstraction of transport and avoiding IGP flooding. This approach facilitates "carrier supporting carrier" models and a BGP-free core.
+    *   **Security:** Emphasized separating control planes (service routes in cloud control planes) from the data plane (underlay as a locator router only). eBPF is leveraged for application-level security and control.
+    *   **Migration:** A "mesh overlay" approach allows running new SRv6 services over existing network infrastructure (e.g., 6PE architecture) without immediate migration of legacy PEs, simplifying decommissioning.
+    *   **Cloud Integration:** Integrated with eBPF data path CNIs for multi-cloud environments, enabling locator auto-tuning.
+    *   **Key SRv6 Features:** Highlighted Next-Hop-On-Change, RFC 9252 sub-TLVs, and PVCCD L3 as critical enablers for control plane/data plane separation and auto-tuning locator space.
+    *   **Challenges:** Current SRv6 deployments often focus solely on MPLS VPN replacement, underutilizing other IP mechanics (e.g., DGPPPD) and leading to inefficient addressing (/48 for host workloads).
+    *   **Technical Detail (eBPF):** For cloud domains, a BGP speaker communicates with the rest of the network, while internal workloads use Cilium/eBPF to plummet policies directly without BGP on every host. Security is pushed closer to the application layer.
+    *   **Technical Detail (Underlay/Overlay):** The underlay handles traffic engineering between PEs using locators and anycast SIDs. The upper layer provides services, with the overlay tunnel using its own SID space, allowing separation of TE from service management.
+
+*   **Draft-ietf-srv6ops-deployment: SRv6 Deployment and Migration Options (01 version)**
+    *   **Status:** Working Group Draft, new co-author (Jacob Horn). Updates include PathMTU, references, inter-AS VPN, and a fourth migration option: "Dual Plane" (a completely separate SRv6 network rollout).
+    *   **Feedback Requested on Three Points:**
+        1.  **"Ships in the Night" Terminology:** Keep and explain in the draft, as it's an established metaphor (though not universally understood).
+        2.  **Operator Use Cases:** General consensus to keep the ID focused on deployment options. Extensive operational details could be in an appendix or a separate use case draft if needed.
+        3.  **Gradual vs. Direct Migration (SR MPLS as interim):** Strong feedback against encouraging SR MPLS as a stepping stone to SRv6. The draft should be factual about available options, but not imply SR MPLS is a necessary or recommended interim step, especially in an SRv6-focused working group.
+    *   **New Action Items:** Document strategies for *which part* of the network to migrate first, and include VXLAN migration as a use case.
+
+*   **Draft-ietf-srv6ops-protection: Operational Guide for SRv6 Protection Mechanisms**
+    *   **Content:** Outlined path protection (LFA, TLFA, micro loop avoidance, SR policy end-to-end protection) and egress protection (VPFR local repair). Recommendations for liveness checks (BFD for sub-100ms, T-WAMP/STAMP). Addressed multi-point failures, MSD, PMTU, and SRH length considerations.
+    *   **Feedback:** The chair questioned if the draft was sufficiently SRv6-specific, noting many concepts seemed generic to SR MPLS. Presenter acknowledged similarities and will discuss offline. Rakesh Gandhi highlighted STAMP as an alternative for sub-100ms liveness detection.
+
+*   **Draft-ietf-srv6ops-oam-deploy: SRv6 OAM Deployment Considerations (First Presentation)**
+    *   **Content:** Summarized SRv6-PM (connectivity/reachability) and SRv6-TRACEROUTE (path tracing/failure localization) as fundamental SRv6 OAM tools. Discussed deployment considerations based on network device roles (CE, PE, P), detection granularity (hop-by-hop, end-to-end), and detection paths (BE paths, SR policies with parallel testing using flow labels/DSCP). Covered technical considerations like encapsulation modes, asymmetric paths, Path MTU, and B-SID stitching.
+    *   **Feedback:** Rakesh Gandhi requested clarification on binding SID content for OAM, alignment of encapsulation terminology with existing Spring drafts (PM/BFD), and further elaboration on ECMP considerations (flow labels for multiple candidate paths might not pinpoint specific segment list failure).
+
+*   **Draft-ietf-srv6ops-policy-selector: SRv6 Policy Selector (Moved from Spring WG)**
+    *   **Motivation:** RFC 9256 defines composite SRv6 policies, but clear mechanisms for protection/switching of member policies based on performance degradation are lacking.
+    *   **Proposal:** Introduce an "SRv6 Path Selector" within a parent SRv6 policy, defining thresholds (latency, loss) and priority for constituent member SRv6 policies. If the currently selected policy degrades below the threshold, a switch to the highest-priority policy within acceptable limits occurs.
+    *   **Feedback:** The chair again questioned the SRv6-specificity, suggesting the concepts could be generic and that alignment with existing solutions (PCE, IDR) and RFC 9256's composite candidate paths is needed. The authors are seeking adoption.
+
+*   **Draft-ietf-srv6ops-addressing: SRv6 Addressing Design and Best Practices**
+    *   **Motivation:** Share 6 years of experience with SRv6 addressing from diverse deployments, emphasizing flexibility, extensibility, summarization, and traffic engineering (TE) efficiency.
+    *   **Principles:** Simplicity, summarization, and TE efficiency (avoiding large SRH due to non-contiguous blocks).
+    *   **Focus:** The draft primarily focuses on the F-32-16 (Block/Micro-SID) format, which is widely deployed.
+    *   **Addressing for Network Sizes:**
+        *   Small networks (~35,000 devices): Addressable within a single block.
+        *   Sets: Logical separation (e.g., /40 prefixes) for organic growth and summarization in larger networks.
+        *   Flexible Algorithms: Strongly recommended using *different* blocks for different Flexible Algorithms to maintain scalability and avoid sharing local ID blocks.
+        *   Large networks (up to 8 million devices): Regions encoded in the locator, typically aligned to nibble or byte boundaries, each region containing a "small network" equivalent.
+    *   **Feedback:**
+        *   Nick Brawio cautioned against stating 5F00 has the same properties as ULA.
+        *   Jeff (Metron Optics) argued that F-32-16 is "harmful" in data center environments and advocated for F-16-16, suggesting the draft should address DC requirements or consider a switch to F-16-16.
+        *   Rakesh Gandhi and Jeff pointed out that the draft title "SRv6 Addressing" is too broad, as it focuses only on the Next C-SID flavor (compressed SIDs). They requested clarifying the scope, including uncompressed SIDs, or renaming the draft, emphasizing that "widely deployed" isn't a sufficient technical argument for exclusivity.
+    *   **Action Items:** Clarify properties of 5F00 vs ULA. Address F-16-16 and data center requirements. Clarify scope of addressing modes (next C-SID, compressed/uncompressed) or rename the draft.
+
+## Decisions and Action Items
+
+*   **DSOV6's Adoption Call:** The document is moving forward as a working group draft.
+*   **draft-ietf-srv6ops-deployment (SRv6 Deployment and Migration Options):**
+    *   **Decision:** Retain the term "Ships in the Night" in the draft, with a clear explanation.
+    *   **Decision:** Operator use cases will primarily remain focused on deployment options within the draft. A separate document or appendix can be considered for extensive operational details if warranted.
+    *   **Action Item:** Authors to revise the "gradual versus direct migration" section to be factual about options, avoiding any implication that SR MPLS is a necessary or recommended stepping stone to SRv6.
+    *   **Action Item:** Add VXLAN migration as a significant use case to the draft.
+    *   **Action Item:** Document strategies for *which parts* of a network should be migrated to SRv6 first.
+*   **draft-ietf-srv6ops-protection (Operational Guide for SRv6 Protection Mechanisms):**
+    *   **Action Item:** Chairs and authors to discuss offline the draft's SRv6-specificity, given observed similarities to SR MPLS protection mechanisms.
+*   **draft-ietf-srv6ops-oam-deploy (SRv6 OAM Deployment Considerations):**
+    *   **Action Item:** Authors to align encapsulation mode terminology ("in-cap," "insert") with existing PM and BFD drafts in the Spring WG.
+    *   **Action Item:** Rakesh Gandhi to provide specific text on binding SID content for OAM and further elaboration on ECMP flow label behavior for the mailing list.
+*   **draft-ietf-srv6ops-policy-selector (SRv6 Policy Selector):**
+    *   **Action Item:** Authors to clarify the draft's SRv6-specificity and ensure alignment with existing solutions (e.g., PCE, IDR) and RFC 9256's composite candidate paths. The draft is being proposed for adoption.
+*   **draft-ietf-srv6ops-addressing (SRv6 Addressing Design and Best Practices):**
+    *   **Action Item:** Clarify the properties of the 5F00 SRv6 dedicated space in relation to ULA.
+    *   **Action Item:** Incorporate considerations for F-16-16 addressing and data center specific requirements.
+    *   **Action Item:** Authors to clarify the scope of the draft to reflect the focus on Next C-SID (compressed SIDs) or rename the draft to be more inclusive of other addressing mechanisms (e.g., uncompressed SIDs).
+
+## Next Steps
+
+*   All authors are requested to consider and incorporate the feedback received during the session and continue discussions on the mailing list.
+*   The chairs will follow up on the specific action items, particularly regarding the SRv6-specificity of certain drafts and the proposed adoptions.
+*   Operators are encouraged to engage with the working group, provide feedback on the usefulness of operator presentations, and present their unique SRv6 implementations.
