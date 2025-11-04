@@ -1,0 +1,73 @@
+# NTP
+
+## Summary
+
+The NTP working group session covered updates on existing documents (NTPv5, NTS Pools), introduced new experimental drafts (Time Synchronization over QUIC, Algorithms for NTPv5, Monotonic Clocks and Frequency Transfer), and reviewed a security study on NTP client vulnerabilities. Key decisions included a call for adoption for the NTS Pools document and a request for further prototyping and data collection for Time Sync over QUIC before deeper working group engagement. Significant discussion revolved around the design principles of NTPv5, particularly regarding algorithm specification and the implications of different clock sources for frequency transfer.
+
+## Key Discussion Points
+
+*   **Working Group Document Status**:
+    *   **NTP over PTP**: Passed IETF last call and IESG telechat; requires minor text addition for registry expert guidelines.
+    *   **Rough Time**: Submitted to IESG.
+    *   **NTS for PTP**: On hold pending progress in the IEEE 1588 working group's security subcommittee, with a face-to-face meeting planned for December.
+*   **NTPv5 Update (Tal Mizrahi)**:
+    *   Main changes since IETF 123: Detailed MAC extension field, updated message format for similarity to NTPv4, and reviewed/aligned with the requirements document (now expired).
+    *   Open issues: Reducing Reference ID extension field length (Miroslav working on it), handling unknown flags, clarifying monotonic received timestamp extension field.
+    *   David Schinazi noted a need to address "greasing" for extension fields before Working Group Last Call.
+*   **NTS Pools Update (David Schinazi)**:
+    *   An experimental NTS pool is fully functional and running at `experimental.ntspooltest.org`.
+    *   Major change in the draft: Switched from TLS certificates to TORPTHA for authentication due to simpler setup and deployment.
+    *   The working group was asked to consider adopting the document for early allocation of extension field types.
+*   **Time Synchronization over QUIC (TSQ) (Garrett McCann)**:
+    *   **Problem**: Traditional NTP (UDP/123) faces middlebox filtering; NTS adds handshake overhead. QUIC (UDP/443) offers a secure, multiplexed, congestion-controlled channel.
+    *   **Proposal**: TSQ is a lightweight protocol over QUIC, leveraging TLS 1.3 for security, using a simple TLV structure. It can use QUIC streams for reliable delivery or datagrams for low-latency one-way measurements.
+    *   **Benefits**: Built-in TLS 1.3 security, session mobility, zero-RTT resumption, no new port/handshake.
+    *   **Feedback Areas**: Whether to reuse NTP registries or define new TLV space, optimal timestamp encoding, and deployment models.
+    *   **Discussion**:
+        *   Tal Mizrahi questioned resource requirements (scalability, accuracy) compared to NTP/NTS and suggested extensive prototyping before further WG investment.
+        *   Miroslav suggested exploring "NTP over QUIC" (an existing experimental draft) instead of a new message format.
+        *   Mark questioned the premise of "UDP is a problem" as QUIC itself uses UDP, clarifying that port 443 is generally less filtered than port 123.
+        *   Jeff Houston raised concerns about potential added latency/jitter from QUIC's user-space processing compared to kernel-level NTP.
+*   **Algorithms for NTPv5 (Sarah Miller)**:
+    *   A new draft aims to describe algorithms for NTPv5, covering general information, extension fields, time scales, and leap seconds, specifically *without* normative language, formulas, or code.
+    *   Motivation stems from community discussions highlighting the need for such guidance.
+    *   **Questions for the WG**: Should algorithms be specified or merely referred to NTPv4's? Should the document be normative or informative? Are there other essential topics to include?
+    *   **Discussion**: David Schinazi stressed that NTPv5 design explicitly aimed for implementation-specific algorithm choices to avoid painful discussions. He cautioned against normative text on algorithms and noted issues with referring to RFC 5905 (NTPv4) due to its insufficient constraint and gaps. He suggested rough guidance or references to scientific literature might be sufficient.
+*   **Monotonic Clocks and Frequency Transfer in NTPv5 (Carolou)**:
+    *   **Proposal**: Use `clock_monotonic_raw` (Linux) in the NTPv5 timestamp extension field for improved frequency transfer, arguing it's more stable than `clock_monotonic` when the system clock is slewed.
+    *   Presented simulation and real-world testbed data suggesting `monotonic_raw` (especially with transmit timestamps for asymmetric networks) leads to more stable frequency recovery and reduced errors.
+    *   **Proposed Extension**: A "Frequency Drift Extension Field" to explicitly convey frequency offset and accelerate convergence.
+    *   **Discussion**:
+        *   David Schinazi and Miroslav highlighted the conceptual differences between Linux clock sources and the NTPv5 draft's requirements for a frequency-stable clock. They noted that Linux `monotonic_raw` might not have a stable frequency (due to hardware variations like temperature) despite not being impacted by phase corrections.
+        *   Miroslav suggested an improvement to allow clocks with an accurate, locally-referenced frequency standard via a new extension or flag.
+*   **NTP Client Vulnerabilities Study (Sirius)**:
+    *   **Focus**: Overlooked client-side vulnerabilities, testing 8 common NTP clients (system defaults, NTPD, chrony, etc.).
+    *   **Baseline Behavior**: Wide variation in query rates and server utilization. SNTP clients (macOS, Windows, time-sync-d) often used single servers or deviated from SNTP RFC 2030 (e.g., macOS/Windows using multiple servers).
+    *   **Ubuntu's NTS Adoption**: Switching to NTS increases data transfer 25x and queries 11x, a significant network impact Ubuntu is addressing by rolling out more servers.
+    *   **Time Shift Attacks**: All SNTP clients (macOS, time-sync-d, Windows) were vulnerable, with varying times to successful manipulation. Robust NTP clients (NTPD, chrony) resisted completely.
+    *   **Kiss-o'-Death (KoD) Attacks**: Most clients ignored KoD packets (beneficial deviation from RFC 8633). Some clients (NTPDRS, NTPD) exhibited anomalous behavior (e.g., sending excessive packets).
+    *   **Recommendations**: Major OSes should improve SNTP client robustness or switch to full NTP clients; Linux distributions should reconsider time-sync-d for more robust alternatives.
+    *   **Discussion**: Miroslav noted that testing in a local virtual environment might lead to higher polling rates than observed on the internet due to lower delays and jitter.
+*   **IEEE 1588 (PTP) Update**:
+    *   NTS is a key management option being considered for PTP.
+    *   IEEE 1588K is addressing PTP vulnerabilities and adding NTS.
+    *   A new effort, CSPTP (Connected Systems PTP), plans to base its security on NTS without requiring modifications to the IETF NTS specification.
+    *   A face-to-face meeting for NTS over PTP is scheduled for December 1st.
+
+## Decisions and Action Items
+
+*   **NTS Pools**: A call for adoption for the NTS Pools document will be initiated on the mailing list to enable early allocation of extension field types.
+*   **Time Synchronization over QUIC (TSQ)**: The working group will follow the progress of prototype implementation and testing. No decision on adoption will be made until solid data on resource usage, scalability, and jitter is available.
+*   **Algorithms for NTPv5**: Sarah Miller will take the open questions (specifying algorithms, normative vs. informative text, other topics) to the mailing list for broader working group feedback.
+*   **Monotonic Clocks and Frequency Transfer**: The new draft has been posted. Working group members are encouraged to read it and provide comments on the mailing list for further discussion.
+*   **NTP Client Vulnerabilities**: Working group members are encouraged to reach out to Sirius for follow-up questions and feedback on the study.
+
+## Next Steps
+
+*   **NTP over PTP**: Finalize the additional text for registry expert guidelines.
+*   **NTPv5**: Address open issues (Reference ID length, unknown flags, monotonic received timestamp clarification, greasing) and prepare for a Working Group Last Call.
+*   **NTS for PTP**: Await progress from the IEEE 1588 security subcommittee, especially following the planned December face-to-face meeting.
+*   **Time Synchronization over QUIC (TSQ)**: Garrett McCann will proceed with prototype implementation and gather performance data, particularly regarding resource usage, scalability, and jitter.
+*   **Algorithms for NTPv5**: Discuss open questions on the mailing list to determine the future scope and nature of the document.
+*   **Monotonic Clocks and Frequency Transfer**: Engage in detailed technical discussion on the mailing list regarding clock definitions, stability, and the proposed extension field.
+*   **IEEE 1588 Update**: Await outcomes from the December 1st face-to-face meeting on NTS for PTP.

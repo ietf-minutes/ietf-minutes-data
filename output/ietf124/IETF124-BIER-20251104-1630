@@ -1,0 +1,50 @@
+# BIER
+
+## Summary
+
+The BIER session addressed the status of the Fast Reroute (FRR) document, continued the discussion on BIER payload label semantics, and explored the use of BIER in AI/Data Center (AIDC) environments. Key discussions revolved around clarifying documentation for existing BIER features and proposing new mechanisms for AIDC, particularly addressing host interaction and signaling.
+
+## Key Discussion Points
+
+*   **BIER FRR (Fast Reroute) Document Update (draft-ietf-bier-frr-11)**
+    *   The document was sent back by IESG due to unresolved discuss points, including whether it functions as a "primer" and if it falls within the working group's charter.
+    *   Consensus in the working group is that the document should serve as an informational framework, explaining different FRR options and the landscape, rather than a standard, given the local applicability and variety of implementation choices.
+    *   Concerns were raised regarding the document's complexity and lack of clarity for unicast network engineers, particularly that examples did not match Unicast FRR architectures.
+    *   The need to integrate how BIER FRR relates to and extends existing unicast FRR configurations was highlighted.
+    *   **Decision:** Torles will lead an improved revision of the document by IETF 125. The revision will integrate unicast FRR architectures, simplify examples, and aim for a higher-quality, marketing-oriented document. This may necessitate another Working Group Last Call.
+
+*   **BIER Payload Label Discussion (draft-ietf-bier-payload-label-00)**
+    *   The discussion revisited the semantics of code points 1 (global table lookup) and 2 (context-specific table lookup) in the BIER protocol field for the next header.
+    *   Hulman argued that a single code point might suffice, especially with Distinct Code Block (DCB) labels, which are unique per service, making the context (global vs. specific) an implementation detail of the router.
+    *   Torles countered that two code points are necessary if a BFER capable of DCB needs to differentiate between global and context-specific lookups to optimize label space and memory, and to prevent interoperability issues between DCB-only and non-DCB implementations, particularly if the same label is used for different VRFs.
+    *   There was a debate on whether the RFC implies a "must" or "can" for global lookup with protocol field 1. It was agreed that the text should be refined to clearly state "can," allowing for implementation flexibility (e.g., Nokia's current implementation treating protocol 1 as context-specific).
+    *   Juniper's perspective clarified that for outgoing packets using DCB, the protocol field *must* be set to 1 to ensure lookup in the global table.
+    *   The working group acknowledged the importance of documenting implementation profiles and their interoperability, rather than mandating specific approaches like DCB, to allow for diverse operational considerations (e.g., SRGB not requiring a controller, DCB offering better scale).
+    *   **Action Item:** The BIER DCB RFC needs an update to explicitly state that when using BIER, the protocol field should be set to 1 for DCB labels.
+
+*   **BIER for AI/Data Center (AIDC) (draft-ietf-bier-use-in-aidc-00)**
+    *   Multicast is gaining traction in large AIDC environments, particularly for bursty and short-lived flows, where BIER is highly applicable due to its stateless nature (no tree setup/maintenance).
+    *   Compared to existing research on stateless multicast for specific topologies, BIER offers applicability to *any* topology.
+    *   The draft proposes optimizations for BIER in AIDC, where sources often know their receivers, simplifying traditional IGMP/PIM signaling.
+    *   Two main scenarios were presented for AIDC:
+        1.  **Source NIC encapsulates BIER header:** Ideal, but requires NIC capability.
+        2.  **Source tells first-hop router about receivers:** If the NIC cannot encapsulate, the source could send a new IGMP extension message (a "receiver proxy report") to the first-hop router, which then encapsulates the BIER header.
+    *   Concerns were raised about changing host applications/stacks (e.g., adding new IGMP messages) versus alternative approaches like static configuration of multicast groups to BIER bitstrings on first-hop routers.
+    *   The unique properties of AIDC (Layer 3, IP/UDP, near real-time decision making) necessitate decoupling control plane signaling from the data plane.
+    *   A long-term vision involved developing a user-level library for AI applications that abstracts BIER details, allowing applications to simply specify receivers and the library to handle BIER encapsulation (potentially via UDP for raw socket limitations).
+    *   The dynamic nature of receiver sets (packet-by-packet vs. static) dictates whether host-side bitstring crafting or router-side signaling is more appropriate.
+    *   **Discussion on Document Placement:** While the use case provides valuable context for the BIER WG, the IGMP extension itself would fall under the PIM Working Group's purview. It was agreed that having the draft presented in BIER WG for discussion is beneficial for now, but the IGMP-specific work would likely transition to PIM.
+
+## Decisions and Action Items
+
+*   **Decision:** The BIER FRR document (draft-ietf-bier-frr-11) will undergo an improved revision by IETF 125.
+    *   **Action Item:** Torles to revise draft-ietf-bier-frr-11, incorporating Unicast FRR integration, simplifying examples, and clarifying its role as a framework/information document.
+*   **Action Item:** The BIER Payload Label document (draft-ietf-bier-payload-label-00) will be updated to refine text around the "must" vs. "can" for global lookup with protocol field 1.
+*   **Action Item:** The BIER DCB RFC needs an update to explicitly state that when using BIER, the protocol field should be set to 1 for DCB labels.
+
+## Next Steps
+
+*   Continue working on the revised BIER FRR document towards IETF 125, addressing IESG feedback and working group comments.
+*   Continue discussion and revision of the BIER Payload Label document, particularly refining the text regarding protocol field semantics and implications for different implementations.
+*   Continue work on the BIER for AIDC draft, exploring the proposed signaling mechanisms, host integration challenges, and potential for a common library. Further discussions on the optimal placement for the IGMP extension work (likely PIM WG) will be necessary.
+*   The working group will continue to discuss and develop the "networking primitives" that can underpin AIDC applications, aiming for minimal CPU cycles spent on networking tasks.
