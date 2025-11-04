@@ -1,0 +1,61 @@
+# DKIM
+
+## Summary
+
+The DKIM working group session covered significant progress from a recent hackathon, detailed discussions on the "Mail Version" and "DKIM2 Header" drafts, and reviewed the group's foundational "DKIM2 Motivation" document. Key technical discussions revolved around the evolving syntax and semantics of DKIM2 signatures and mail versions, recipient handling, domain linkage, and header canonicalization. While several implementation details were clarified through hackathon efforts, open questions remain regarding policy flags, header signing scope, and the overall complexity for implementers. The group decided to schedule regular interim meetings and requested a new draft to explore alternative recipient handling mechanisms.
+
+## Key Discussion Points
+
+*   **Hackathon Outcomes**:
+    *   Initial DKIM2 specifications were found incomplete for implementation, leading to modifications.
+    *   The `D=` header (for deleting/adding headers) was replaced with an implicit removal mechanism: mentioning a header implies removing existing instances and replacing with the specified recipe.
+    *   All content (header and body recipes) will be Base64 encoded, dropping plain text versions due to risk and messiness.
+    *   DKIM2 signatures will only sign `Mail-Version` and `DKIM2-Signature` headers, simplifying the signing order.
+    *   Successful interoperability was achieved between two independent DKIM2 implementations.
+*   **Mail Version Draft (`Mail-Version` / `MSG-DIF`)**:
+    *   **Decoupling**: Proposed `Mail-Version` (MV) is decoupled from `DKIM2-Signature`, allowing independent versioning and signing.
+    *   **Content Hashes**: Inclusion of SHA-256 hashes for MIME parts, defined by IMAP part numbers, allowing detection of content changes even with re-encoding.
+    *   **Algorithmic Agility**: Support for specifying hash algorithms (e.g., SHA-256) in the header. Consensus to allow multiple hash algorithms for resilience against future breaks, by declaring A1, A2, etc., which would then require corresponding HH1, BH1, PH1, HH2, etc.
+    *   **Syntax**: Base64 encoding for line/range-based copies, implicit deletion, and retention of header field case.
+    *   **Line Length (`998` rule)**: Discussion on the practicality and origin of the 998-character line length, noting real-world emails often exceed this.
+    *   **Naming**: Strong sentiment against "Mail-Version" due to potential confusion with `Mime-Version`; "MSG-DIF" or "Message-Revision" suggested as alternatives.
+    *   **Initial Manifest**: Requirement for a `Mail-Version` header to be present from the message's origin, serving as a manifest even if no changes occurred.
+*   **DKIM2 Header Draft (Open Questions)**:
+    *   **Single vs. Multiple Recipients**:
+        *   Options discussed: single recipient per signature (bad for adoption), all recipients in one signature (privacy concerns, especially for BCC), multiple DKIM2 signatures in one message, or passing signatures via SMTP extensions.
+        *   Latimer's proposal for cryptographically derived hashes passed via SMTP to enable delayed writing of signatures at the terminal point was discussed, with a request for a draft to be written.
+    *   **Linkage Between Domains (Delegation)**:
+        *   Options for domains that don't control DNS: existing DNS CNAME method, sender specifying additional next domains (rejected), or new general delegation mechanism (e.g., using a `.P` record similar to ARC).
+        *   Preference for leveraging existing CNAME delegation due to industry familiarity. The `.P` mechanism could be an optional addition for flexibility without breaking existing methods.
+    *   **DKIM2 Support Detection**:
+        *   Challenges in reliably detecting DKIM2 support in the next hop (via DNS, SMTP extension, or "throw it out there").
+        *   Consensus leaned towards designing for the "throw it out there" model due to detection complexity and unreliability.
+    *   **Signing All Headers vs. Explicit List**:
+        *   Problem: DKIM1's explicit list can miss security-relevant headers; changes to unsigned headers go undetected.
+        *   Options: Sign all headers (except trace headers), explicitly list all instances of named headers, or an implicitly signed set.
+        *   Arguments for "sign all" focused on simplicity and preventing gaps. Arguments against cited issues with systems modifying headers unexpectedly and complexity for implementers. No clear consensus reached.
+    *   **Timestamp Format**: Preference for Unix timestamp (Option 1) for `t=` tag due to ease with existing code.
+    *   **Flags (Do Not Modify, Do Not Explode, Not Forward Exploded, Feedback)**:
+        *   `Do Not Modify`, `Do Not Explode`, `Not Forward Exploded` flags raised concerns about enforcement and potential negative impact on the ecosystem.
+        *   `Feedback` flag (for requesting feedback on a message) was generally seen as useful and already requested by the ecosystem.
+*   **DKIM2 Motivation Draft**: Discussion on whether this document should serve as a problem statement for the working group or a description of solutions. Consensus to refine it as a problem statement.
+*   **Canonicalization/Wrapping Rules**: Richard proposed simplifying DKIM2 signature wrapping rules by allowing arbitrary breaks (stripping all whitespace before signing) to ease implementation and reduce ABNF complexity. Braun noted this would require a specific canonicalization rule.
+*   **Forwarder Encoding/Bounce Handling**: A query about a standard for forwarders to encode the original recipient for bounce handling. Alan suggested the DKIM2 signature itself could provide this, while others noted the need for mechanisms like SRS or nonces for naive forwarders.
+
+## Decisions and Action Items
+
+*   **Interim Meetings**: The chairs will arrange regular interim virtual meetings (monthly, ~90 minutes) to expedite discussions and progress.
+*   **Latimer's Proposal**: Latimer is requested to write an Internet Draft describing his proposal for recipient handling (cryptographically derived hashes passed via SMTP) and share it with the mailing list.
+*   **DKIM2 Motivation Draft**: Bron will continue to refine the DKIM2 Motivation draft to emphasize problem descriptions over solutions. The working group is encouraged to review and provide feedback on this document, with the goal of guiding future work.
+*   **Philadelphia Meeting Summary**: Braun (and Dave if possible) will provide a summary of the discussions and open/closed issues from the Philadelphia meeting on the mailing list.
+*   **FOSDEM Speaker Request**: Richard expressed interest in speaking about DKIM/DKIM2 at FOSDEM.
+
+## Next Steps
+
+*   **Schedule Interim Meetings**: Chairs to poll for availability for regular monthly interim meetings, aiming for early January.
+*   **Latimer's Draft**: Latimer to prepare and submit an Internet Draft on his recipient handling proposal for group review.
+*   **Review Motivation Draft**: All working group members are encouraged to read and provide feedback on the updated DKIM2 Motivation draft.
+*   **Philadelphia Meeting Summary**: Braun to post a summary of the Philadelphia meeting discussions to the mailing list.
+*   **Continued Discussion on Open Questions**: Discussions on recipient handling, domain linkage, header signing scope, and policy flags will continue on the mailing list.
+*   **Canonicalization Review**: The proposal to simplify DKIM2 signature wrapping rules by stripping all whitespace during canonicalization will be discussed further.
+*   **Timestamp Format**: Assuming no strong objections, Unix timestamp will be adopted for the `t=` tag.

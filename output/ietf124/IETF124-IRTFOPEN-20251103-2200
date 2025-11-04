@@ -1,0 +1,101 @@
+# IRTFOPEN Meeting Minutes
+
+## Summary
+
+The IRTFOPEN session provided a comprehensive overview of the Internet Research Task Force's current activities, including updates on new research groups, upcoming events, and funding opportunities. The session featured two ANRP (Applied Networking Research Prize) winning presentations: a formal analysis of SCTP and a discussion on host congestion control. An invited talk from Netflix explored the challenges and opportunities of streaming over Low Earth Orbit (LEO) satellite networks, particularly Starlink. Key discussions revolved around the application of formal methods in protocol design, emerging bottlenecks in data center host networks, and the implications of highly variable LEO networks for application performance and protocol design.
+
+## Key Discussion Points
+
+*   **IRTF Updates**
+    *   The IRTF now has 16 Research Groups (RGs).
+    *   A new research group, **Space RG** (Systems and Protocol Aspects for a CircumStellar Environment), has been proposed and is scheduled to meet on Thursday at 2:30. This group will focus on broader research issues related to space-related protocol developments.
+    *   Several IRTF-related "site meetings" are taking place, including T2TRG, Distributed Inference Network, AI Network, ARMoR (Internet traffic tampering), and PAN P (adversarial traffic identification).
+    *   An **ACM CoNEXT workshop** on "Internetworking Challenges for AI" is planned for December in Hong Kong.
+    *   **Internet research workshops** will be organized the week before IETF 125 in Shenzhen (March), likely on Thursday, at HKUST or Guangzhou.
+    *   **Travel grants** are available, with the deadline for IETF 125 (Shenzhen) on November 14th.
+    *   The next **Applied Networking Research Workshop (ANRW)** will be held in Vienna in the summer, with a Call for Papers expected in December. Thomas Schmidt and Suresh Krishnan are the TPC chairs.
+    *   Nominations are open for the next round of the **Applied Networking Research Prize (ANRP)**, with the selection process starting in December.
+
+*   **Formal Analysis of SCTP (Jake Jannsen, ANRP Talk)**
+    *   **Context**: SCTP (Stream Control Transmission Protocol) is a transport layer protocol widely used in telecommunications (SMS, 4G, 5G) and WebRTC, offering features like multi-streaming and multi-homing. It uses a four-way handshake.
+    *   **Problem**: A 2020 CVE allowed an unauthenticated, malformed initialization packet to trigger an authenticated abort, tearing down established SCTP connections. The Linux kernel patched this.
+    *   **Methodology**: Formal methods were used to rigorously analyze the protocol logic, focusing on state and message handling, and denial-of-service.
+        *   **Spin**: An automated finite-state model checker using Promela (Protocol Modeling Language) for protocol representation.
+        *   **Corg**: An attack synthesizer for distributed systems, used to automatically synthesize attacks on stateful protocols by exhaustively reasoning about the state space with defined attacker models (e.g., insert, replay).
+    *   **Findings**:
+        *   The research successfully **rediscovered the 2020 CVE** and formally **proved that the patch did not introduce new bugs**.
+        *   SCTP was found to be generally **secure under off-path and replay attacker models**, with a minor opportunistic attack found under replay.
+        *   **Two ambiguities were identified in RFC 4960 (SCTP specification, Section 8.5)** concerning the processing order of initialization and verification tags. One interpretation was provably insecure, leading to off-path attacks. An errata for the RFC was published in March based on this finding.
+    *   **Discussion**:
+        *   **Improving RFCs**: Suggestion for every RFC to include a formal model specifying and proving security properties, potentially involving PhD students.
+        *   **Computational Cost**: Model checking can run on laptops for trimmed state spaces; state space explosion requires larger compute. Human effort for the SCTP model was substantial (2 years for an undergraduate, estimated 1 semester for an experienced PhD).
+        *   **Future Tooling**: Emphasized bridging the gap between protocol specification and implementation (e.g., using Rust verification tools like VeriFast and Kani).
+        *   **Spec vs. Implementation Gap**: Acknowledged the challenge of identifying gaps, especially in legacy systems (e.g., DNS workarounds). Differential testing was suggested as an approach.
+        *   **IETF Culture**: Highlighted the IETF's "rough consensus and running code" mantra, where implementation experience informs spec revisions.
+
+*   **Host Congestion Control (Sachsham Agarwal, ANRP Talk)**
+    *   **Problem**: Unexpected packet loss and performance degradation observed within server hosts in data centers, termed "host congestion," even when network links have ample bandwidth. This phenomenon was previously unreported and impacts high-speed data transfers.
+    *   **Root Causes**:
+        *   **Contention at shared memory interconnect**: Data transfers from NIC to memory compete with CPU reads/writes to memory. Even with high memory bandwidth, combined traffic can overwhelm it.
+        *   **IO memory protection mechanisms (IOMMUs)**: Used to protect against buggy/malicious I/O. High-speed I/O can cause cache misses and contention during virtual-to-physical address translation.
+    *   **Mechanism**: Nanosecond-scale latency inflation in NIC-to-memory data transfers, exceeding the latency budget required to keep up with the NIC's arrival rate, leading to throughput degradation and packet drops at NIC buffers.
+    *   **Impact**: Significant packet drops (e.g., 0.3% in small-scale tests, observed in Google production clusters), reduced throughput, increased retransmission, and inflated tail latencies. Affects common protocols like TCP, DCTCP, and RDMA.
+    *   **Why Now?**: The peripheral interconnect bandwidth (e.g., PCIe) has grown significantly, for the first time surpassing memory interconnect bandwidth (e.g., 1.5x by 2026), making the memory interconnect more susceptible to being overwhelmed.
+    *   **Limitations of Existing Congestion Control**:
+        *   **Congestion Signals**: Traditional CC assumes queuing/drops happen at network bottlenecks (e.g., switch buffers) and fails to capture intra-host congestion (e.g., NIC buffers).
+        *   **Congestion Response**: Host-local traffic does not employ CC, allowing it to starve network traffic. Network CC operates at RTT timescales (tens-hundreds of microseconds), too slow for sub-microsecond host-level changes.
+    *   **Proposed Solution: HostCC (Host Congestion Control)**
+        *   **Architecture**: Introduces a congestion response mechanism *local to the host* operating at sub-network RTT granularity, coordinated with network congestion response.
+        *   **Host Congestion Signals**: Utilizes IIO (Integrated I/O Controller) buffer occupancy, which measures in-flight NIC-to-memory requests. This is measurable on commodity hardware via MSR reads (<600ns).
+        *   **Host Local Congestion Response**: Aims to maximize the sum of network and host-local traffic rates while minimizing host congestion. Uses a state-space model to converge to a Pareto-optimal regime by dynamically adjusting the host-local traffic rate (e.g., using Intel's Memory Bandwidth Allocation - MBA).
+        *   **Network Congestion Response**: Uses both host and network congestion signals. The sending rate is determined by the minimum of network fabric and end-to-end host bottlenecks. For ECN-based protocols, hosts can mark ECNs in IP headers based on IIO occupancy before the transport layer.
+        *   **Implementation**: A Linux kernel prototype uses a dedicated core for sub-RTT granularity detection and response.
+    *   **Discussion**:
+        *   **Receiver Window**: TCP's receive window is based on socket buffer size (per-flow), whereas host congestion occurs at NIC buffers. For high-speed networks with many flows, NIC buffers can be overwhelmed before socket buffers limit the sender, rendering the receive window ineffective for host congestion.
+
+*   **Low Orbit, High Impact: Netflix Streaming over Starlink (Renata Teixeira, Invited Talk)**
+    *   **Context**: LEO satellite constellations (Starlink, Project Kuiper) offer global coverage, lower latency, and higher bandwidth compared to geostationary satellites. Streaming is the largest traffic category on the internet.
+    *   **LEO's Role in Netflix Delivery**:
+        *   Streaming over LEO is rapidly growing; Starlink ranks 19th among 20,000+ ISPs by Netflix viewing seconds.
+        *   LEO expands Netflix's reach globally, operating in nearly 150 countries. Significant growth seen in Latin America and Africa.
+        *   Helps bring streaming to previously less-connected areas (e.g., Easter Island).
+    *   **Starlink Architecture and Challenges**:
+        *   Customer dish connects to a satellite, which uses inter-satellite links or ground gateways to connect to the internet. Netflix servers are often located near Starlink Points of Presence (PoPs), close to users.
+        *   Starlink reconfigures its network every 15 seconds, leading to **high variability** in network performance.
+        *   **Periodic shifts in RTT baselines** (every 15 seconds) due to reconfigurations.
+        *   **Periods of high packet loss** due to "hard handovers" between satellites.
+        *   **Location-dependent variability** in RTT, losses, and coverage (e.g., Mexico vs. Brazil/Nigeria).
+        *   Some challenges (high mobility, handovers, reconfigurations) are inherent to any LEO-SP, not just Starlink-specific engineering decisions.
+    *   **Netflix Quality of Experience (QoE) over Starlink**:
+        *   **Video Quality (VMAF)**: Generally comparable to terrestrial ISPs in the same market, and in some cases (e.g., Malawi, Zambia) even better than local alternatives.
+        *   **Bitrate Switches**: Netflix observes **~200% more bitrate switches** for 75% of sessions on Starlink. This is attributed to lower overall throughput, frequent throughput fluctuations, and slower recovery from dips.
+        *   **Rebuffers**: While rare, rebuffers are **~200% more likely** on Starlink than other top 10 ISPs. They often occur when the player is already at the lowest quality (indicating either late adaptation or insufficient buffer to mitigate short outages). More frequent in Africa and Latin America.
+    *   **Mitigating Bitrate Switches and Rebuffers**:
+        *   **Congestion Control (CC)**: Experimented with a less reactive TCP variant (Multi-CP) to increase throughput. While it provided a smoother stream, it led to more retransmissions and higher latency, making it unsuitable for deployment. Current CC mechanisms struggle with LEO's high variability. BBR and pacing show promise.
+        *   **Adaptive Bitrate (ABR) Algorithms**: Tuning standard ABR parameters (e.g., throughput discount) helped partially but couldn't fully close the performance gap. Existing ABRs often rely on "point throughput estimates," which are inadequate for highly variant LEO environments; **variance-aware throughput prediction** is needed.
+    *   **Research Opportunities for LEO Streaming**:
+        *   **New Applications**: Explore the implications for live streaming and cloud gaming, which are highly sensitive to jitter, loss bursts, and have minimal buffering.
+        *   **ABR and CC Evolution**: Need protocols that expect moving bottlenecks and can handle non-congestive losses. Rate-based CC and pacing are promising.
+        *   **Network Hints**: Investigate LEO-aware hints from the network to end hosts (e.g., stability windows, reconfiguration alerts). This could potentially be standardized within the IETF.
+        *   **Testing and Benchmarks**: The community needs better, more reproducible evaluation benchmarks and simulators for LEO networks.
+        *   **Don't Ignore LEO**: Developers of network systems and applications should consider LEO users in their designs and testing.
+    *   **Discussion**:
+        *   **Rebuffering in Africa**: Attributed to ground station locations, satellite coverage, customer types (e.g., maritime vs. stationary), and network utilization.
+        *   **LEO Network Profile**: Request for a typical LEO network connection profile (latency, jitter, loss characteristics over a media playback session) to aid research and CC evaluation.
+        *   **Engaging Starlink**: Netflix has a good working relationship with Starlink for research. The speaker offered to help connect IETF/IRTF members with Starlink contacts.
+        *   **Non-congestive Loss**: Discussed the challenge of distinguishing non-congestive loss (e.g., handoff) from overload conditions. Protocols that aggressively retransmit on all losses risk re-creating congestion collapse if the loss *is* due to overload.
+
+## Decisions and Action Items
+
+*   **Decision**: The proposed Space RG has been approved and is scheduled to meet.
+*   **Action Item**: Call for Papers for the next ANRW in Vienna will be issued in December.
+*   **Action Item**: Nominations for the next round of the ANRP are open, with selection starting in December.
+*   **Action Item**: Renata Teixeira (Netflix) offered to facilitate connections between the IETF community and Starlink for research and dialogue.
+*   **Action Item (Community)**: The IETF/IRTF community should consider standardizing LEO-aware network hints and investing in better testing and benchmarks for reproducible evaluation over LEO networks.
+
+## Next Steps
+
+*   Attend the **Space RG meeting** on Thursday at 2:30.
+*   Look out for details on the **Internet research workshops** before IETF 125 in Shenzhen (March).
+*   Prepare submissions for the **ANRW Vienna** (Call for Papers in December).
+*   Explore advanced **ABR and congestion control algorithms** for highly variable LEO networks, and research into LEO-aware network hints.

@@ -1,0 +1,171 @@
+# OAUTH Session Minutes
+
+## Summary
+
+The OAUTH session covered a broad range of topics, including updates on current working group drafts, detailed presentations on SD-JWT VC, Identity Assertion and Authorization Grant (ID-JAG), and targeted fixes for OAuth 2.0 JWT Client Authorization Authentication and Authorization Based Authorization Grants. Discussions also included updates on OAuth 2.1, potential browser swapping attacks, an extension proposal for DPoP for non-HTTP transports (DPoP Proof), and a new framework for OAuth delegated authorization. Key decisions were made to move forward with working group last calls for SD-JWT VC and the JWT Client Auth document, and to refine guidance for OAuth 2.1 and browser-swapping attack mitigations.
+
+## Key Discussion Points
+
+### Working Group Draft Status Update
+*   **Tokens Status List**: With IESG for last call, expected to end soon.
+*   **Browser-Based App**: With RFC Editor Queue.
+*   **MISREF Document**: With IESG (status update pending from AD).
+*   **SDJOT**: With RFC Editor Queue; waiting for an RFC Editor.
+*   **Cross-Device Flows**: Write-up ready; awaiting final IPR disclosure confirmation.
+*   **ID Training**: In Working Group Last Call; waiting for shepherd's write-up.
+
+### SD-JWT VC (Selective Disclosure for JWTs)
+*   **Overview**: Describes data format and validation rules for verifiable credentials using JSON payloads, building on SDJOT, with support for selected disclosure.
+*   **Key Updates (Draft 11 & 12 since Madrid)**:
+    *   Clarified extended support of claim metadata and type extensions.
+    *   Added privacy concerns regarding remote key retrieval (X5U, JWKs), strongly suggesting against their use for issuance/validation.
+    *   Added section on credential type extensions and issuer authorization.
+    *   Fixed inconsistency, added `VCT#integrity` to non-selectively disclosable claims.
+    *   Removed `glue-type` metadata document (deemed complicated and not strictly necessary).
+    *   Editorial updates, specified status list tokens must be in JOT format.
+    *   Defined VCT data type as a string.
+    *   Changed `lang` to `locale` for consistency.
+    *   Removed JSON schema and its validation requirements from type metadata (too complicated for provided benefit).
+    *   Clarified `ignore if not understood` rules.
+    *   Aligned terminology for SD-JOT BC and KB-JOT.
+    *   Removed redundant requirement to ignore unknown claims.
+    *   Moved CNF claim and JWK references to normative sections.
+    *   Listed VCT as required in type metadata, clarified document integrity use.
+    *   Removed status claim discussion from introduction (covered in token status list document).
+    *   Added `background_image` property to simple rendering.
+    *   Provided guidance on versioning credentials using VCT value.
+    *   Added security considerations for trusting type metadata.
+    *   Guidance on using data URIs for non-JSON supported types.
+    *   Required X5C header to be in the protected header.
+    *   Clarified SD-JOT BC presentations do not always require key binding.
+    *   Updated PID example as hypothetical, not normative.
+*   **Current Status**: Zero open issues, with one new pull request submitted.
+*   **External Factors**: European Union is interested in producing work relying on this document, necessitating stable references.
+*   **Call for WG Last Call**: Document is considered ready.
+*   **Discussion**: Concerns raised about the number of recent changes. Volunteers requested for review.
+
+### Identity Assertion and Authorization Grant (ID-JAG)
+*   **Problem Statement**: Addressing the enterprise IDP blind spot where IDPs are unaware of data sharing between applications via OAuth grants, making it hard to control access.
+*   **Solution**: Extends single sign-on concepts to include access between applications, improving user experience and security by making the IDP aware of inter-app data sharing. Uses Identity Chaining Across Domains (ICAD) framework for token exchange (ID token -> ID-JAG -> access token).
+*   **Key Changes (since draft 00)**:
+    *   ID-JAG concept pulled out as a top-level item.
+    *   Renamed terms to align with standard OAuth terminology (client, resource AS, IDP AS).
+    *   Added explicit references to ID token claims that can be pulled into ID-JAG.
+    *   New section on refresh token recommendations.
+*   **Open Issues for Next Version**:
+    *   Improve discussion on user/client ID mapping between parties.
+    *   **Refresh Tokens for ID-JAG**: Proposal to allow refresh tokens directly for acquiring new ID-JAGs, avoiding redundant ID token requests.
+        *   **Discussion**: Jeff Lombardo noted refresh tokens don't always yield new ID tokens, making direct ID-JAG acquisition useful. Justin Richard suggested defining a semantic way to signal this behavior via scopes, acknowledging the `token_exchange` request context changes the semantics. Aaron proposed adding refresh token as an input type to `token_exchange`.
+        *   **Decision**: Will explore adding refresh token as a direct input to the token exchange request for an ID-JAG.
+    *   Proof of Possession (DPoP) binding.
+    *   Multi-tenancy in applications.
+    *   Discoverability of applications supporting ID-JAG (considered out of scope for this protocol).
+*   **Core Restriction**: Both applications involved (requesting and target) must have a single sign-on relationship with the *same* IDP, which issues and consumes the ID token/refresh token.
+
+### OAuth 2.0 JWT Client Authorization Authentication and Authorization Based Authorization Grants
+*   **Background**: Addresses a security vulnerability discovered in OpenID Federation related to metadata-published authorization servers and private key JWT client authentication.
+*   **Targeted Fixes**:
+    *   Updates JWT-based client authentication.
+    *   Requires issuer identifier from AS to be the sole audience (`aud`).
+    *   Explicitly types the JOT.
+    *   Removes SAML-based client authentication (admitting it's unused).
+    *   Provides advice for authorization grants (JAGs) to prevent misuse, pushing onus on the client.
+*   **Key Updates (Draft 03 since Madrid)**:
+    *   Updated registry pointers for security fixes.
+    *   Does not restrict `aud` claim type (allows array or single string).
+    *   Advises client to ensure `aud` of authorization assertion makes sense.
+    *   Updated abstract and introduction to reflect targeted scope.
+    *   Removed an irrelevant example.
+    *   Updated title to be more accurate (and abbreviated title to remove "ass" references).
+*   **Call for WG Last Call**: Document is considered ready.
+
+### OAuth 2.1 Updates
+*   **Goal**: To consolidate modern OAuth 2.0 best practices into a new baseline RFC, incorporating security BCP (RFC 9700) and browser-based app BCP.
+*   **Key Updates (Draft 14 since draft 12)**:
+    *   Updated references to security BCP.
+    *   Added references to client secret post/basic definitions.
+    *   Clarified that native app BCP advice primarily applies to mobile, not desktop, platforms.
+    *   Clarified no requirement for AS to support both public/confidential clients.
+    *   Editorial changes.
+*   **Open Issues**:
+    *   **Redirect URI Query Parameters (Issue 171)**: What happens if `redirect_uri` includes a parameter like `code` or `state`?
+        *   **Discussion**: Philip and Justin Richard agreed that using OAuth-reserved query parameter names in `redirect_uri` is problematic and undefined.
+        *   **Decision**: Add a "should not" recommendation against using OAuth registry query parameter names in `redirect_uri` or other OAuth endpoints, with a warning about undefined behavior if violated.
+    *   **Invalid Client Error Response (Issue 162)**: The spec allows AS to list supported client authentication methods in an `invalid_client` (401) response, but private key JWT has no associated scheme. Is this mechanism useful?
+        *   **Discussion**: Most comments suggested this mechanism isn't used by clients for dynamic selection. Philip noted removing the "may" clause entirely would make existing 401 implementations non-compliant.
+        *   **Decision**: Seek to remove the specific problematic text about listing supported client authentication schemes while preserving the ability for AS to return 401 `invalid_client` for general client authentication failures. The exact wording needs refinement.
+    *   **2.0/2.1 Client Support**: How can an AS support both OAuth 2.0 and 2.1 clients? (Open question, discussion on mailing list).
+
+### Browser Swapping Attacks in OAuth 2.0
+*   **Presentation by Jonas**: Described a browser swapping attack where an attacker leaks an authorization code by tricking a user into initiating a flow, then sending the resulting redirect URL (containing the valid but un-resolved authorization code) back to the attacker. This relies on the client rejecting the code due to a state mismatch, but the code remaining valid and visible in the URL.
+*   **Why Pixy Doesn't Help**: Pixy (PKCE) protects against code injection, but not code leakage; the attacker can define their own code challenge/verifier.
+*   **Leakage Vectors**: URL sharing, referrer headers (e.g., external analytics, static files), logging.
+*   **Proposed Solutions**:
+    *   **Response Mode Fragment**: For front-end apps, keeps code out of URL bar/backend logs.
+    *   **Response Mode Form Post**: For backend apps, sends code as POST parameter, not in URL.
+    *   **Challenge**: Downgrading attack where attacker specifies `response_mode=query`. Philip argued client implementation would prevent this (expecting specific response mode).
+    *   **Authorization Code Invalidation**: Allow clients to explicitly invalidate an authorization code after detecting a CSRF (e.g., state mismatch) before it's exchanged for a token. Currently, no standard way to do this without getting an access token.
+*   **Recommendations for OAuth 2.1**:
+    1.  **Deprecate `response_mode=query`?**: Controversial, likely needed for legacy.
+    2.  **Mandatory Response Mode Enforcement**: AS should enforce a specific response mode configured by the client to prevent downgrading attacks.
+    3.  **Standardize Authorization Code Invalidation**: Define a mechanism for clients to invalidate codes at the AS.
+*   **Discussion**: Aaron Perakey acknowledged the attack scenario but noted the low value of fixing this compared to other OAuth attack vectors (bearer token theft, phishing). Preferred implementation advice (e.g., removing code from redirect URI, not using ad trackers) over protocol churn or new functionality in 2.1. Justin Richard agreed on prevention vs. mitigation, suggesting sanitizing parameters. FAPI 2.0 covers some aspects but not this specific leakage.
+
+### DPoP Proof (Media Quick)
+*   **Presentation by Sohas**: Proposal to extend DPoP (Proof-of-Possession) to support non-HTTP transports, specifically for Media Quick (Pub/Sub API for media distribution).
+*   **Motivation**: Media Quick uses a Common Access Token (CAT) format that supports HTTP DPoP. Need similar security properties for Media Quick actions.
+*   **Approach 1 (Abandoned)**: Mapping every Media Quick action to HTTP actions (GET/POST/PUT). Difficult due to semantic differences (e.g., `client_setup`, `server_setup`).
+*   **Approach 2 (DPoP Proof)**: Define a transport-agnostic `authorization_context` object within the DPoP proof. This object would specify the transport type (e.g., `mock`), actions, and resources needing authorization.
+*   **Comparison with RFC 9449**: Moves from HTTP-specific methods/URIs to generic `authorization_context` for transport flexibility while maintaining cryptographic properties.
+*   **Ask**: Guidance from OAUTH experts on whether this approach is suitable and if it should be an OAUTH WG document or a Media Quick WG document.
+*   **Discussion**:
+    *   Justin Richard asked if this extends DPoP for HTTP as well; Sohas confirmed it could.
+    *   Brian noted that DPoP (RFC 9449) intentionally does not cover much of HTTP (e.g., full URL, headers, body) by design. Suggested it might be more appropriate in Media Quick, questioning the value of genericizing at another layer versus a Mock-specific variant, and potentially using `aud` claims.
+    *   Roxana agreed generalizing DPoP is a good direction, noting overlap with DPoP for rich tokens (to be presented Friday). Suggested bringing it to DISPATCH.
+    *   Colin Jennings questioned if OAUTH WG is the only chartered group for DPoP changes, though acknowledged precedent for other WGs extending OAuth.
+    *   ADs to discuss with WG chairs.
+
+### OAuth Delegated Authorization
+*   **Presentation by Rochen**: Proposed a delegated authorization framework to enable downscoping of access tokens by clients.
+*   **Problem**: Traditional OAuth 2.0 lacks native downscoping capability without token exchange, and token generation relies solely on the AS.
+*   **Solution**: Client gets a `delegation_token` from the AS. The client then locally issues subordinate `delegated_access_tokens` (DATs), downscoping permissions and validity. DATs are used to access resource servers, potentially via a third-party delegated party.
+*   **Key Concepts**:
+    *   Digital signature-linked token chain (similar to PKI certificates).
+    *   Only DATs accepted by RS/AS; delegation tokens are not.
+    *   Resource owner requests one token; client performs local downscoping.
+    *   DATs include a `delegation_key` (public key) from the parent token for signature validation.
+    *   New `Delegated-Authorization` HTTP header for requests to delegated parties.
+    *   DP metadata structure for discovery.
+*   **Discussion**: Aaron Perakey noted strong similarities to Identity Assertion and Authorization Grant (ID-JAG) and DPoP. Suggested checking if existing work covers these use cases and identifying any missing elements. Peter noted a potential advantage of local DAT verification at the RS without round trips.
+
+## Decisions and Action Items
+
+*   **SD-JWT VC**:
+    *   **Decision**: Proceed with Working Group Last Call for `draft-ietf-oauth-sd-jwt-vc`.
+    *   **Action Item**: Working Group Chairs to initiate the WG Last Call after receiving sufficient reviews.
+    *   **Action Item**: Volunteers (Nat, Dan, Tim, and others) to review the latest `draft-ietf-oauth-sd-jwt-vc` and provide feedback on the mailing list.
+*   **Identity Assertion and Authorization Grant (ID-JAG)**:
+    *   **Decision**: Explore adding refresh token as a direct input type to the `token_exchange` request for an ID-JAG.
+    *   **Action Item**: Aaron to update the draft to reflect the decision to allow refresh tokens as an input to the token exchange for ID-JAGs.
+*   **OAuth 2.0 JWT Client Authorization Authentication and Authorization Based Authorization Grants**:
+    *   **Decision**: Proceed with Working Group Last Call for `draft-ietf-oauth-jwt-bearer-client-auth`.
+    *   **Action Item**: Working Group Chairs to initiate the WG Last Call.
+*   **OAuth 2.1 Updates**:
+    *   **Decision (Issue 171 - Redirect URI Query Parameters)**: Add a "should not" recommendation to avoid using OAuth registry query parameter names in `redirect_uri` or other OAuth endpoints, with a warning about undefined behavior.
+    *   **Decision (Issue 162 - Invalid Client Error Response)**: Modify the `invalid_client` error response section to remove the problematic text about listing supported client authentication schemes in the `WWW-Authenticate` header, while ensuring AS can still return a 401. Exact wording to be refined in the draft.
+    *   **Action Item**: Aaron to incorporate these decisions into the next draft of OAuth 2.1.
+*   **Browser Swapping Attacks**:
+    *   **Action Item**: Jonas (and collaborators) to work on incorporating implementation advice regarding code leakage prevention (e.g., removing code from redirect URI, avoiding ad trackers) into the OAuth 2.1 document as non-normative guidance. Discussion about mandatory response mode enforcement and code invalidation mechanisms to continue.
+*   **DPoP Proof (Media Quick)**:
+    *   **Action Item**: Sohas to discuss the DPoP Proof proposal with ADs and WG chairs to determine the most appropriate working group for this work (OAUTH or Media Quick), and consider Brian's suggestion to focus on a Mock-specific variant rather than genericizing DPoP at an additional layer, or using `aud` claims.
+*   **OAuth Delegated Authorization**:
+    *   **Action Item**: Rochen to review existing drafts like Identity Assertion and Authorization Grant (ID-JAG) and DPoP to identify similarities and differences, and propose how this work could leverage or complement existing efforts.
+
+## Next Steps
+
+*   Working Group Chairs will initiate the WG Last Calls for SD-JWT VC and the JWT Client Auth document.
+*   Volunteers will provide reviews for the SD-JWT VC draft.
+*   Aaron to update the ID-JAG and OAuth 2.1 drafts based on the discussions and decisions made.
+*   Jonas to refine recommendations for browser swapping attack mitigations for OAuth 2.1.
+*   Sohas and Rochen to engage with ADs and other relevant working groups to determine the best path forward for their respective proposals, considering integration with existing OAuth frameworks where possible.
+*   Further discussions on DPoP Proof (Media Quick) and OAuth Delegated Authorization are expected in subsequent meetings or on mailing lists.
