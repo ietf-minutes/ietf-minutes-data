@@ -1,0 +1,94 @@
+# SPICE Session Meeting Minutes
+
+## Summary
+
+The SPICE working group meeting covered updates on four drafts: Use Cases, GLUE (Globally Unique Enterprise Identifiers), OIDC Claims for CWTs, and SD-COSE (Selective Disclosure CBOR Object Signing and Encryption). A significant portion of the discussion focused on the URN namespacing for GLUE, the semantics and recommended values for the "gender" claim in OIDC CWTs, and proposed CBOR encoding restrictions for SD-COSE. The Architecture draft was also presented, seeking working group adoption. Key decisions included moving forward with `urn:glue` for GLUE identifiers and proceeding with an adoption call for the Architecture draft.
+
+## Key Discussion Points
+
+*   **Working Group Introduction (00:02:01)**
+    *   SPICE aims to fill gaps in digital credentials and presentation, developing profiles for various use cases, particularly in supply chain.
+    *   Focuses on security and privacy, including confidential computing and remote attestation.
+    *   Collaborates with other IETF groups (OAuth, RATS).
+    *   Does *not* do general key discovery, new cryptographic primitives, or its own crypto.
+    *   Resources: mailing list, GitHub repository, website.
+*   **Use Cases Draft (00:05:01)**
+    *   An informal draft, not intended to become an RFC, serving as a collection of examples for the three-party model.
+    *   Updates since IETF 123: Added mobile driver's license and embedded credential use cases. Mr. Tim Pauley added as co-author.
+    *   Open issue: Tim Pauley volunteered for a digital wallets use case.
+    *   Authors encouraged participants to submit new use cases or suggest changes.
+*   **Globally Unique Enterprise Identifiers (GLUE) Draft (00:07:01)**
+    *   **Purpose**: Provides a way to unify different organizational identifiers (e.g., LEI, tax ID) by namespacing them to create a global identifier. Addresses data models requiring URNs.
+    *   **Current Structure**: `urn:ietf:spice:glue:<external-authority-identifier>:<identifier>`.
+    *   **Problem with Current Structure (00:16:01)**:
+        *   IANA advised that IETF working group identifiers should fall under `urn:ietf:params:<group>`. This would make the URN `urn:ietf:params:spice:glue:...`, which is excessively long and semantically incorrect (identifiers are not parameters).
+    *   **Proposed Solutions (00:17:01)**:
+        1.  Create a top-level URN namespace: `urn:glue`. (Recommended by presenter).
+        2.  Make "our own thing" (rejected).
+    *   **Discussion on GLUE URN (00:18:01)**:
+        *   **Rohan**: Suggests investigating if the IETF URN document can be updated to allow `urn:ietf:glue` without `params` for better discoverability/trust.
+        *   **Tim Gagan**: Favors `urn:glue` due to length concerns, but agrees IETF context would be nice.
+        *   **Martin Thomson, Mike O'Neill, Lori Steele, Karsten Bormann**: Express strong support for `urn:glue` due to conciseness and following precedent (OIDs, UUIDs, Public IDs).
+        *   **Carsten**: Questions about existing namespaces (e.g., `urn:lei`) and how GLUE relates, suggesting that additional context might be needed beyond just the namespace, possibly through "type" fields as seen in Public IDs.
+        *   **Mike Jones**: Emphasizes that GLUE is for those *storing* identifiers and needs to be bidirectional if other IDs can be embedded.
+*   **OIDC Claims for CWTs Draft (00:24:01)**
+    *   **Purpose**: Map 19 OpenID Connect claims (excluding `sub`) to the CBOR Web Token (CWT) claims registry to allow for two-byte representations, saving space for common PII-related claims.
+    *   **Updates since IETF 123**: Improved descriptions (birthday rules, verified claims) to directly copy OIDC definitions; updated timestamp fields to allow floats.
+    *   **Discussion: Syncing OIDC Changes (00:28:01)**:
+        *   **Presenter recommendation**: OIDC is stable, so there's no need to anticipate syncing changes.
+        *   **Mike Jones**: Confirmed OIDC is final. Advocated for instructions to registrants to consider registering in both JWT and CWT registries where sensible, but not a shared registry as it complicates things due to type differences.
+    *   **Discussion: Gender Claim Semantics (00:30:01)**:
+        *   **Questions**:
+            1.  Is it "birth gender" or "chosen gender"? OIDC definition is elusive.
+            2.  Should recommended values remain "male/female" or be broader?
+            3.  Should concise values (F/M) be used for CBOR?
+        *   **Rohan**: Semantics should be "according to the issuer." Medical definitions are too complex for this structure.
+        *   **Mike Jones**: Definition should be exactly the same as OIDC. Claims are often underspecified and gain meaning from context. To achieve interoperability, copy OIDC's recommended values.
+        *   **Justin Richer**: Agreed on issuer-defined context. Noted that OIDC specified two values for interoperability but allowed others. Suggested adding text that "this is only defined in the context of the issuer" and that "other values may be used." Cautioned against trying to define complex gender/sex concepts within a simple claim.
+        *   **Hank Burkholz**: Emphasized interoperability first, with the option for a registry for broader values over time.
+        *   **Ori**: Suggested a delineation between standard definition and separate implementation/legal implications.
+*   **SD-COSE Draft (00:43:01)**
+    *   **Status**: Nearing completion, mostly non-normative changes.
+    *   **Normative Changes**: Guidance on AAD encryption algorithms (tags >= 16 bytes), fixed Kuseki example, clarified verifier processing of unknown claims, sorted CBOR map keys for test vectors.
+    *   **Non-Normative Changes**: Removed "Spice" from title, moved validation language to appendix, added terminology mapping between RATS and SD-COSE.
+    *   **Open Issues**: IANA pre-registration for numeric assignments, better examples, decoy digests (planned for end of November), time claim bounds (expiration time of KBT shouldn't exceed contained CWT).
+    *   **Proposed CBOR Encoding Restrictions (00:47:01)**:
+        *   Forbid indeterminate length in Key Binding Tokens (KBTs) and SD-COSE.
+        *   Maximum depth for nesting (e.g., 16 levels).
+        *   Time claims as finite numbers (no NaN or infinity).
+        *   Constraint encoding of map keys inside map keys for KBTs/SD-COSE (e.g., canonical B-string encoding).
+    *   **Discussion on Encoding Restrictions**:
+        *   **Karsten Bormann**: Agreed with proposals, clarified distinction between encoding constraints (wire format) and data model constraints (what can be modeled).
+        *   **Bel-Tom**: Implementing the indeterminate length restriction (to reject it) might be tricky.
+        *   **Mike Jones**:
+            *   Against limiting time claims to integers; floats for fractional seconds are legitimate and used in practice.
+            *   Strongly against requiring any form of canonicalization (like shortest encoding) for map keys, as it adds complexity for implementers to verify.
+        *   **Response to Mike Jones**: The time claim proposal was about preventing non-finite numbers (NaN/infinity), not integers. The map key proposal was about constrained encoding for specific cases, not canonicalization in general.
+    *   **Implementations**: One and a half Python implementations, one Rust implementation. JavaScript implementation planned. A test harness is being built.
+*   **Architecture Draft (00:58:01)**
+    *   **Status**: Significant rewrite since last IETF, including new authors (Tim and Brent).
+    *   **Purpose**: Provide normative language for the three-party model of verifiable digital credentials, and establish terminology.
+    *   **Motivation**: Distinguish the three-party model from generic messaging, provide high-quality guidance for government entities and the market.
+    *   **Changes**: Improved terminology, moving away from "wallet" to more neutral language; aims for cleaner normative language.
+    *   **Request for Adoption**: The authors have renamed the draft and repo and are seeking WG adoption.
+
+## Decisions and Action Items
+
+*   **GLUE URN Namespacing**: The working group will proceed with changing the GLUE URN namespace to `urn:glue`.
+    *   **Action Item**: GLUE draft authors to update the draft with `urn:glue` and present to the mailing list for review.
+*   **OIDC Claims for CWTs - Gender Claim**: The definition and recommended values for the gender claim will remain consistent with OIDC, with additional text clarifying that semantics are issuer-defined and other values may be used.
+    *   **Action Item**: OIDC CWT Claims draft author to incorporate text clarifying issuer-defined semantics and optional additional values for the gender claim.
+*   **SD-COSE CBOR Encoding Restrictions**: The proposals for forbidding indeterminate length, setting a maximum nesting depth, and ensuring time claims are finite numbers will be incorporated into the draft. The map key encoding proposal will be discussed further offline with Mike Jones.
+    *   **Action Item**: SD-COSE draft author to incorporate the agreed-upon CBOR encoding/data model restrictions.
+*   **SD-COSE IANA Pre-registration**: The working group aims to pursue IANA pre-registration soon to unblock related issues.
+    *   **Action Item**: SD-COSE author to initiate IANA pre-registration process.
+*   **Architecture Draft Adoption**: The working group will conduct an adoption call for the Architecture draft.
+    *   **Action Item**: Architecture draft authors to publish a new version of the draft under a non-working group name.
+    *   **Action Item**: Chairs to initiate an adoption call on the mailing list once the new draft is published.
+
+## Next Steps
+
+*   Continue to track progress and discussions on GitHub and the mailing list.
+*   Authors to publish updated drafts as per action items.
+*   Chairs to initiate adoption calls and progress drafts through the IETF process.
+*   Implementers are encouraged to engage with the developing test harness and provide feedback.

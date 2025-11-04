@@ -1,0 +1,52 @@
+# SNAC
+
+## Summary
+
+The SNAC working group session focused on two main technical areas: the ongoing development and integration of state machines into the `snack-simple` draft, and a detailed discussion on how `snack-simple` should handle multiple Access Infrastructure Links (AILs). Significant progress has been made on the state machines, with a plan to refine their structure and clarify their normative status. For multi-AIL scenarios, the group reached a consensus that `snack-simple` should mandate stub networks to select a single primary AIL, with Snack Routers on non-primary AILs disabling non-forwarding services to ensure clear failure indications to users, rather than attempting complex multi-AIL routing.
+
+## Key Discussion Points
+
+*   **`snack-simple` Draft Status and Milestones**:
+    *   20 issues were closed in September/October. Approximately 30 items remain, with the state machine integration being the primary substantive task.
+    *   Revision 8 of the `snack-simple` draft was published on October 10th, with a future update expected to include the refined state machine content.
+    *   The working group aims for a Working Group Last Call (WGLC) for `snack-simple` by early December, targeting IESG publication in March, contingent on the state machine work and review.
+    *   The `6man-snack-router-RA-flag` draft is awaiting the publication of `snack-simple`.
+
+*   **State Machine Development**:
+    *   Ted presented updates on the state machine work, which aims to formalize various aspects of `snack-simple` operation, including NAT64 prefix advertisement, NAT64 translation state, router advertisement monitoring (for both infrastructure and stub networks), router monitoring, prefix delegation, and router interface advertisement.
+    *   The initial NAT64 state machine was deemed overly complicated and is being broken down into multiple, simpler state machines for clarity.
+    *   A key feature discussed was the use of unicast Neighbor Discovery (ND) messages every 60 seconds to probe router reachability, ensuring a suitable prefix is advertised if no other router is available for a client's Router Solicit.
+    *   Concerns were raised regarding the need for explicit normative text in the main body (Section 5) of the draft, as the state machines (currently envisioned in Section 7) are intended to be descriptive and not strictly normative.
+
+*   **Normative vs. Descriptive Content**:
+    *   There was extensive discussion about the nature of the state machines: should they be normative (must be implemented this way) or descriptive (illustrative example)?
+    *   General consensus emerged that the state machines should serve as a descriptive aid for implementers (possibly in an appendix, similar to RFCs like Neighbor Discovery), while the core normative requirements must be clearly articulated in the main text of the specification.
+    *   Lorenzo Khalidi highlighted that Section 5 currently lacks sufficient normative detail, making the state machines appear more prescriptive than intended.
+
+*   **Multi-AIL (Access Infrastructure Link) Handling**:
+    *   Esco presented scenarios where multiple AILs can inadvertently or intentionally exist in home networks (e.g., unplugged Ethernet cables, IoT Border Routers, CE routers with multiple subnets, VLAN misconfigurations).
+    *   The current `snack-simple` specification would lead to unpredictable and potentially broken functionality (e.g., half of devices not working, MDNS discovery failures) in such multi-AIL environments.
+    *   Three options were presented:
+        1.  Maintain the current `snack-simple` approach, leading to random failures.
+        2.  Snack Routers on "less good" AILs disable all non-forwarding functions (SRP registrar, DNS resolver, discovery proxy) to make failures clear to the user.
+        3.  Maintain minimal IPv6 forwarding on "less good" AILs but disable discoverability.
+    *   The problem of mesh nodes selecting an SRP registrar when multiple Snack Routers are present was highlighted, as sending SRP updates to multiple registrars would generate excessive mesh traffic. Heuristics for selecting a "best" AIL (e.g., presence of a CE router, global vs. ULA addresses) were discussed.
+    *   Stuart Cheshire emphasized that when failures occur, they should be clear and understandable to the user, preventing random device malfunctions that confuse users and reflect poorly on product vendors.
+
+## Decisions and Action Items
+
+*   **Decision**: For `snack-simple`, if a stub network is connected to multiple AILs, the stub network *must* have a mechanism for choosing a single primary AIL. Snack Routers on any AIL not chosen as primary *must* disable their non-forwarding functions (e.g., SRP registrar, DNS recursive resolver, discovery proxy) to provide a clear indication of a non-functional state to the user. (This aligns with Option 2 from the multi-AIL discussion).
+*   **Action Item (Ted S.):**
+    *   Update the `snack-simple` draft to clearly define the normative requirements in the main sections (e.g., Section 5), ensuring they are sufficient for implementation without relying solely on the state machines.
+    *   Integrate the refined state machine content into Section 7 (or an appendix), ensuring it is explicitly presented as descriptive rather than normative.
+    *   Send an early review of the updated state machine content to the working group mailing list for feedback.
+*   **Action Item (Working Group):**
+    *   Read Revision 8 of the `snack-simple` draft and review the upcoming state machine updates.
+    *   Provide feedback on the clarity and completeness of the normative text, especially concerning multi-AIL handling.
+
+## Next Steps
+
+*   **`snack-simple` WGLC**: The working group will aim to initiate a Working Group Last Call for `snack-simple` as soon as the state machine integration and normative text clarifications are complete, targeting early December, with IESG publication in March.
+*   **Multi-AIL in "Snack Complex"**: More sophisticated and general solutions for complex multi-AIL scenarios (e.g., those involving two uplinks or advanced routing) will be addressed in future documents, such as the "Snack Complex" draft.
+*   **Stub Network Responsibilities**: Stub network technologies (e.g., Thread) are responsible for defining and implementing the specific heuristics for AIL selection and the communication mechanisms among Border Routers to enable the decision on which AIL is primary and which Snack Routers should disable non-forwarding functions.
+*   **DNS & SRP on Wi-Fi**: The working group will continue to monitor related work in DNS for advertising SRP services on Wi-Fi links, which is relevant to future "SNAC complex" use cases.
