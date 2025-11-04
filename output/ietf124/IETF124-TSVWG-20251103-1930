@@ -1,0 +1,75 @@
+# TSVWG Meeting Minutes
+
+## Summary
+
+The TSVWG session covered significant updates on L4S/Prague congestion control, including Linux kernel mainlining progress and field experiences. An L4S interoperability report highlighted recent advancements like Chrome Canary's experimental L4S support. A new discussion was initiated on a draft addressing Layer 2 packet reordering, aiming to update outdated guidance in RFC 3819. The Flow Queue PI (FQPI) draft was adopted as a working group item following a presentation on its performance. Finally, updates were provided on the DTLS/SCTP DTLS chunk draft, focusing on a liaison statement to 3GPP and several technical issues requiring working group feedback.
+
+## Key Discussion Points
+
+*   **Working Group Status Update:**
+    *   Two drafts have been published as RFCs, three are at the RFC Editor, and one is at the IESG (User Experience draft, with AD review comments and pending shepherd write-up).
+    *   Last Call for UDPECN has concluded, with one outstanding GitHub issue to be resolved before submission to the AD.
+    *   The experimental reports draft has serious IESG issues requiring resolution.
+    *   The importance of working group members reviewing drafts was reiterated, with specific mention of an upcoming Ops draft.
+    *   Work related to RCP was decided to remain in the TEAS working group for use case understanding, with TSVWG involvement during last call/finalization.
+    *   New working group milestones were announced.
+    *   A liaison statement regarding TSVWG, TLS, and SCTP DTLS decisions is being prepared.
+
+*   **L4S/Prague Congestion Control Update (Kuhn):**
+    *   **Linux Mainlining:** Progress is intensive but slow, taking over a year. `pi^2` is mainlined in kernel 6.17. Accurate ECN is being split into three parts; preparations are in 6.15, the main protocol is expected in 6.18, and the final part (activation, testers) has seen five iterations. TCP Prague mainlining is still dependent on these.
+    *   **Accurate ECN Field Experience:** Sanity checks for middleboxes (checking for cleared ICE fields) produced false negatives due to dropped or reordered ACKs; removal of this check from upstreaming and other implementations (Apple, FreeBSD) was recommended.
+    *   **Application Feedback:** It was noted that application fallback status due to L4S should be queryable via socket API extensions (e.g., `TCP_INFO`).
+    *   **Network Improvements:** Guidelines for `dual pi^2` in Wi-Fi have been released by the WBA. The presenter advocated for using EDCA parameters over WMM and for "static rate management" or "active rate management" as alternatives to active queue management for L4S flows, which can simplify network deployment.
+    *   **Application Integration:** The Prague congestion control module can be used directly in applications (e.g., QuickStack, TCP stack) to avoid internal queues, allowing for better tuning and measurements.
+    *   **Errata for Accurate ECN (at AUTH48 stage):** Discussion emphasized making any necessary changes before the document is published as an RFC, rather than via errata.
+
+*   **L4S Interop Report (Greg White):**
+    *   Eight interop events have been held at IETF hackathons, plus additional events at Cable Labs facilities.
+    *   **New Development:** Chrome Canary now supports an experimental L4S congestion controller (Scream from Ericsson) in LibWebRTC, enabled via command-line flags.
+    *   **Bug Discovery:** RTCP feedback packets in Chrome Canary were found not to be marked as ECT1; a bug has been filed.
+    *   **Cloud Gaming Testing:** Additional tests with Netflix and NVIDIA cloud gaming services identified a negotiation issue with RFC 8888 for NVIDIA.
+    *   **Performance Demos:** Plots illustrated L4S's effectiveness in maintaining low latency for gaming streams when coexisting with classic TCP Cubic flows.
+    *   **Upcoming Events:** Cable Labs will host another L4S interop early next year (Jan/Feb), with the next IETF interop planned for summer 2024.
+
+*   **Layer 2 Packet Reordering Draft (Greg White):**
+    *   **Problem Statement:** Some Layer 2 link technologies (e.g., link aggregation, retransmissions) cause packet reordering, and current L2 standards often mandate receiver-side resequencing.
+    *   **Outdated Guidance:** RFC 3819, while generally advising L2 to avoid reordering, includes caveats about TCP performance and header compression breaking, which are now considered historical.
+    *   **Draft Goal:** Provide updated information for L2 technologies and SDOs to make informed decisions about resequencing, as it can increase latency, add cost/complexity, and often provides no value.
+    *   **Discussion:**
+        *   The original RFC 3819 guidance was partly influenced by IPsec's reordering window.
+        *   While some Wi-Fi experiments showed minimal delay from reordering buffers (<0.1ms), others cited significant delays (>100-250ms) in real-time applications, particularly in mobile networks.
+        *   Mobile carriers (3GPP) often have requirements for reordering buffers, making changes difficult to implement.
+        *   Modern TCP stacks (e.g., RACK) are more resilient to reordering than older ones.
+        *   There was broad agreement that the advice in RFC 3819 is outdated and that a "roadshow" to other SDOs (IEEE, 3GPP) would be beneficial.
+
+*   **Flow Queue PI (FQPI) Update (Mohit):**
+    *   **Overview:** The draft combines Flow Queuing (FQ) with the PI algorithm, similar to FQ-Codel. A key modification is the use of timestamps for queue delay calculation, deviating from RFC 8033's recommendation for Little's Law.
+    *   **Implementations:** FQPI has implementations in Linux, FreeBSD, and NS3.
+    *   **Timestamp Experimentation:** Experiments were conducted (simultaneous/staggered TCP flows, different RTTs, pulse wave, UDP background) to compare timestamp-based vs. Little's Law-based queue delay estimation.
+    *   **Results:** No significant observable difference was found between the two schemes in the conducted experiments. Live network experiments are ongoing.
+
+*   **DTLS/SCTP DTLS Update (Magnus Westland):**
+    *   **Liaison Statement:** A draft liaison statement to 3GPP, addressing DTLS/SCTP DTLS, was sent to the mailing list for review, with a request for rapid feedback to send it by the end of the week.
+    *   **Technical Issues Discussed (seeking feedback):**
+        *   **Negotiation of DTLS Chunk:** Clarifications on the initial SCTP association process, including a prioritized list of protection solution identifiers and a downgrade protection mechanism involving key derivation based on negotiation parameters.
+        *   **Alignment of DTLS Record:** A proposal to add 0-3 bytes of padding to align the beginning of encrypted information to a 32-bit boundary for improved implementation efficiency (e.g., FreeBSD).
+        *   **ASCONF and DTLS Chunk:** DTLS Chunk encrypts other chunks, preventing ASCONF from identifying an association from an unknown source address. The proposal is to accept this limitation and use existing paths for ASCONF announcements ("make before break"), updating RFC 5061 to recognize DTLS Chunk as replacing SCTP-AUTH for authenticity. (It was noted 3GPP may not need this extension).
+        *   **DTLS Record Limits:** A proposal to not support the RFC 8449 extension for negotiating smaller maximum DTLS record sizes, as the primary use cases are not resource-constrained and 16KB records are generally acceptable.
+        *   **Invocation Limits and Application Interactions:** Questioned the benefits of event-based notifications for encryption/decryption invocation counts (successful/failed) for applications, as opposed to periodic polling, to indicate potential attacks or rekeying needs.
+
+## Decisions and Action Items
+
+*   **Decision:** The Flow Queue PI draft (`draft-ietf-fqpi`) is officially adopted as a TSVWG working group item.
+*   **Action Item:** Chairs will formally adopt `draft-ietf-fqpi` in Datatracker. Mohit is free to submit the `draft-ietf-fqpi` working group version at his leisure.
+*   **Action Item:** For the Accurate ECN draft (currently at AUTH48 stage), authors and the AD are to discuss and resolve the identified field experience issues (e.g., removal of sanity checks) and coordinate any necessary changes *before* its publication as an RFC. Gori (AD) should be kept in the loop.
+*   **Action Item:** For the DTLS/SCTP DTLS chunk draft, working group members are requested to provide feedback on the proposed liaison statement to 3GPP via the mailing list within the next two days to enable its sending by the end of the week.
+*   **Action Item:** For the Layer 2 Packet Reordering draft, the authors are encouraged to consult with the IPsec community, the PILC working group, IEEE, and 3GPP for broader input and to identify the appropriate working group home.
+*   **Action Item:** For the DTLS record limits in the DTLS/SCTP DTLS chunk draft, Magnus and co-authors are to verify with the TLS working group whether supporting smaller record sizes is a mandated functionality in upcoming DTLS 1.3 updates.
+
+## Next Steps
+
+*   Continue the process of Linux kernel mainlining for L4S and Prague congestion control, including the remaining parts of Accurate ECN.
+*   Continue conducting experiments and interpreting results for FQPI, particularly on live networks.
+*   Incorporate the discussed proposals and editorial fixes into the `draft-ietf-dtls-sctp-chunk` by the end of the year to maintain momentum.
+*   Prepare for upcoming L4S Interop events at Cable Labs (early 2024) and IETF 128 (summer 2024).
+*   Further discussions and outreach on the Layer 2 Packet Reordering draft within relevant working groups and SDOs.
