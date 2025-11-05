@@ -1,0 +1,100 @@
+# COSE
+
+## Summary
+The COSE Working Group session at IETF 124 covered significant progress on several drafts, with multiple documents moving into the RFC Editor queue. Key updates included the COSE HBKE draft nearing its second Working Group Last Call, and discussions around the post-quantum Falcon (FNDSA) and SLHDSA (Sphinx+) algorithms, including their integration challenges and appropriate use cases. The BLS Key Representations draft discussed shifting to Zcash encoding and its dependencies on other foundational cryptography work in CFRG. New work proposals for Composition Claims and Split-Signing algorithms were presented, garnering interest and review volunteers for potential adoption. Finally, a draft for C509 Test Vectors was introduced, and plans for new work on KMAC and Ketchek-based hashes and MACs were outlined.
+
+## Key Discussion Points
+
+*   **Working Group Status Updates**:
+    *   The Dilithium (now MLDSA), Merkel Tree Proofs, Hash Envelope, and Timestamp Header Parameter drafts are currently in the RFC Editor Queue.
+    *   COSE and JOSE COORD points have been allocated and are in production use.
+    *   BLS Key Representations draft is awaiting progress on related drafts.
+    *   CBOR Encoded Certs (C509) requested publication and is with the AD for IESG review.
+
+*   **COSE HBKE Update**:
+    *   The contentious issue of context information was resolved by adopting a new recipient structure proposed by Lawrence and including it in the `info` parameter as suggested by Sophie.
+    *   Clarification was made regarding the use of one-shot APIs from RFC 918 (the original HPKE specification), with a note that references will be updated to the HPKE BIS version if it publishes first, but without impact on implementations relevant to this document.
+    *   COSE_MAC support was removed.
+    *   An algorithm registration for a combination used by Apple was requested for inclusion.
+    *   The document has reached maturity for further progression.
+
+*   **Falcon (FNDSA) for COSE**:
+    *   Hannes Tschofenig has taken over as lead editor. The title was changed from "Falcon" to "FNDSA".
+    *   Editorial improvements were made, leveraging feedback from the MLDSA draft's IESG review.
+    *   Examples for JWK and signature headers were added.
+    *   **Discussion**: Scott raised concerns about the aspirational two-month timeline for last call, given NIST's FNDSA finalization is unlikely within that period. Hannes clarified that the intent is to prepare the draft with meaningful examples and test vectors, and then wait for NIST's final specification before moving to publication. Google and Michael reinforced the complexity of FNDSA implementation and the extended timeline for NIST's FIPS-206.
+
+*   **SLHDSA (Sphinx+) for COSE**:
+    *   Hannes Tschofenig has become the lead author. The title was changed to "SLHDSA".
+    *   Similar to FNDSA, editorial improvements were applied, and examples (CBOR Web Key, COSE Sign) were added.
+    *   **Discussion**: Philip Ventura questioned the choice of parameter sets due to extremely poor signing performance observed in benchmarks (single digits per second compared to thousands for other algorithms). Sophie Schmid explained that SLHDSA is not intended for performance-critical, interactive use cases. Its strength lies in very conservative security for long-lived public keys, primarily for applications like firmware verification where low-end hardware (hash functions only) and limited signing frequency are acceptable. Philip suggested including this intent clearly in the draft for readers.
+
+*   **BLS Key Representations**:
+    *   The draft shifted from using uncompressed X,Y coordinates to the Zcash encoding for public keys (single value using the octet key pair key type). This change was driven by real-world implementation practice and the normative definition of Zcash encoding in the BBS Signatures draft, which includes it in cryptographic computations.
+    *   An appendix was added to define the Zcash-like encoding for BLS48581, with open discussion on whether this definition should reside in a more central location like the pairing-friendly curves draft.
+    *   **Dependencies**: This draft is dependent on progress in the pairing-friendly curves draft (Yumi Sakimi), the BBS Signatures draft (currently stalled awaiting cryptographic review), and the BLS Signatures draft (John Bradley and Dan Bonae are restarting work). It also impacts JOSE/CBOR Web Proofs drafts.
+    *   **Discussion**: John Bradley highlighted the historical challenge of consistently defining key representations (tied to curves vs. algorithms) and expressed intent to push for a CFRG virtual interim to resolve the deep dependency chain affecting the BBS family of drafts.
+
+*   **Composition Claims**:
+    *   **Motivation**: To enable expression of complex CWT policies beyond simple "AND" (for claims) or "OR" (for multi-value claims), addressing limitations where claims like `sub` lack multi-value support or duplicate claims are not allowed.
+    *   **Solution**: Introduced logical claims (`or`, `and`, `nor`) represented as arrays of claim sets, and a `crit` claim for indicating required and understood extensions.
+    *   **Changes**: The "enveloped claim" was removed due to lack of energy and reduced necessity (selective disclosure can achieve similar goals). More examples were added, and issues noted on the mailing list were fixed.
+    *   **Use Cases**: This work is crucial for Media Over QUIC (Mock/C4M) and the Consumer Technology Alliance's Common Access Token (CAT) standard, which both require flexible policy expression and have delegated this general-purpose work to the IETF.
+
+*   **Split-Signing Algorithms for COSE**:
+    *   **Motivation**: To address scenarios where the private key holder has limited bandwidth (e.g., Bluetooth LE, NFC) or computational ability, enabling the application (digester) to perform part of the signing (e.g., hashing data) before passing it to the keyholder (signer). This is a common, non-novel technique used in smart cards, HSMs, and FIDO.
+    *   The resulting signatures are cryptographically indistinguishable from standard single-party signatures.
+    *   **Changes**: Abstract and introduction clarified the technique, registrations for two prehash algorithms were added, parameter names from ARKG were tracked, and security considerations were included. The draft references the new "Fully Specified Algorithms for Jose and Cozay" RFC.
+    *   **Use Cases**: WebAuthn signing extension for raw data, and the W.W. Wallet implementation (German digital identity wallet) which uses COSE algorithm identifiers.
+    *   **New Algorithm Identifiers**: Necessary to signal to the keyholder that the pre-hashing step has already been performed by the digester, allowing the keyholder to execute the correct, second part of the signing operation.
+    *   **Discussion**: Sophie Schmid raised concerns about the cryptographic security of applying split-signing to algorithms like Schnorr and Falcon, which might lead to private key recovery attacks due to differences in how they use hashes. Hannes Tschofenig agreed to analyze these algorithms in more detail and contribute to security considerations. Lawrence inquired about the necessity of new algorithm IDs; Emel Lundberg and Mike Jones clarified these IDs are for negotiation between the application and signer, not for the verifier, as the output signature is identical.
+
+*   **Test Vectors for C509**:
+    *   **Motivation**: C509 is currently in IESG review, and test vectors are critical for improving implementation quality and interoperability, similar to past efforts for JOSE.
+    *   **Content**: The draft provides 25 examples of X.509 certificates and corresponding C509 certificates, covering various features (subjects, public keys, signature algorithms, attributes, extensions). It also includes Certificate Signing Requests (CSRs).
+    *   A brief recap of C509 structure, including "Type 2" (signature over CBOR) and "Type 3" (signature over ASN.1) versions, was provided.
+    *   **Discussion**: Bob Moskowitz offered to review, noting the need for X520 serial number support.
+
+*   **New Work: Kmac/Ketchek-based hashes and MACs (Proposed by Karsten Bormann)**:
+    *   **Motivation**: There is currently no standard way to do KMAC in COSE, and an IETF consensus document is needed to formally recommend IRTF-defined algorithms like Kangaroo12 (for parallel hashing) and TurboSHAKE (for ordinary hashing), which are already in the IANA registry but lack an IETF "Recommended" status.
+    *   **Proposal**:
+        *   Part 1: An IETF document to recommend Kangaroo12 and TurboSHAKE.
+        *   Part 2: Register other NIST-specified or hinted algorithms, including KMAC. Also, define MACs using these hashes, such as Hobsmac (side-channel resistant) or a prepend-key construction.
+    *   **Discussion**: Bob Moskowitz offered assistance for KMAC-related work. Karsten noted the challenge of accurately translating hints from the IRTF documents into concrete hash algorithms.
+
+## Decisions and Action Items
+
+*   **COSE HBKE**:
+    *   **Decision**: The chairs will issue a second Working Group Last Call (WGLC) for the COSE HBKE draft after the additional algorithm (requested by Matt from Apple) is incorporated.
+    *   **Action**: Hannes Tschofenig to add the requested algorithm registration (already aligned with JOSE HPKE) via a new Pull Request and submit an updated version of the draft.
+    *   **Action**: Implementers are encouraged to reach out to Hannes Tschofenig or Daisuke for further interoperability testing.
+*   **Falcon (FNDSA) for COSE**:
+    *   **Action**: Hannes Tschofenig to continue work on the draft, focusing on updating implementations and adding meaningful examples and test vectors.
+    *   **Decision**: The working group will wait for NIST to finalize its FNDSA specification before publishing this draft, to ensure alignment and stability.
+*   **SLHDSA (Sphinx+) for COSE**:
+    *   **Action**: Hannes Tschofenig to update implementation for examples and add clarifying text to the draft to articulate the specific use cases and performance characteristics of SLHDSA.
+*   **BLS Key Representations**:
+    *   **Action**: Mike Jones to follow up with Yumi Sakimi regarding the pairing-friendly curves draft and the appropriate placement of the BLS48581 Zcash-like encoding definition.
+    *   **Action**: John Bradley committed to helping organize a virtual interim meeting within the CFRG to address the "BBS family of drafts" and their deep dependency chain.
+    *   **Action**: Sophie Schmid volunteered to write up security considerations for split-signing, particularly analyzing its applicability and cryptographic implications for algorithms like Schnorr and Falcon.
+*   **Composition Claims**:
+    *   **Action**: Lawrence, Mike Jones, Nicole Bates, Philip Ventura, and Yug Shah volunteered to review the draft.
+    *   **Action**: Chairs to make a judgment call regarding working group adoption after receiving feedback from these reviews, aiming to do so before the December holidays.
+*   **Split-Signing Algorithms for COSE**:
+    *   **Action**: Lucas Prevold, Sophie Schmid, and Lawrence volunteered to read and review the draft.
+    *   **Action**: Chairs to gather reviews and consider a call for working group adoption.
+*   **Test Vectors for C509**:
+    *   **Action**: Kirsten Borman, Bob Moskowitz, and Evo (co-chair) volunteered to review the draft.
+    *   **Decision**: The chairs indicated a strong intent to call for working group adoption for this draft, pending reviews.
+*   **New Work: Kmac/Ketchek-based hashes and MACs**:
+    *   **Action**: Karsten Bormann to write a new draft based on the presented outline and upload the presentation slides to the meeting record. Bob Moskowitz offered assistance.
+
+## Next Steps
+
+*   The COSE working group chairs will initiate the second Working Group Last Call for the COSE HBKE draft once the requested algorithm update is completed.
+*   Hannes Tschofenig will continue development on the FNDSA and SLHDSA drafts, focusing on examples, test vectors, and security considerations, while also coordinating with NIST for FNDSA finalization.
+*   Reviewers for the Composition Claims and Split-Signing Algorithms drafts are encouraged to provide feedback promptly.
+*   Chairs will assess the review feedback for Composition Claims and Split-Signing to determine the next steps, including potential calls for working group adoption.
+*   The CFRG is expected to schedule a virtual interim to address the dependencies within the BBS family of drafts.
+*   Karsten Bormann will proceed with authoring the new draft for Kmac/Ketchek-based hashes and MACs.
+*   The C509 Test Vectors draft is expected to move towards working group adoption following the completion of reviews.

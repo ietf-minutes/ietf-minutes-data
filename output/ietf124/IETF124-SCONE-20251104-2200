@@ -1,0 +1,68 @@
+# SCONE
+
+## Summary
+
+The SCONE working group meeting at IETF 124 in Montreal covered progress on hackathon interoperability, significant discussions on the SCONE protocol document, and a crucial decision regarding the adoption of the Applicability and Manageability document. Hackathon participants demonstrated successful SCONE implementations, including web streaming and a Facebook client. Discussions on the protocol document focused on clarifying the definition of "network element" (evolving towards "function") and the semantics of rate reduction signals. The working group achieved rough consensus to adopt the Applicability and Manageability document as a working group draft, with a clear directive to limit its initial scope to generic applicability and manageability principles, deferring specific network architecture details to an appendix or future work.
+
+## Key Discussion Points
+
+*   **Meeting Logistics and Notewell**: Chairs welcomed participants, reminded them of the IETF Notewell, meeting etiquette, and current working group status (interim meetings, GitHub repositories for SCONE-based protocol and future scalability/manageability work).
+*   **Hackathon Status Update (Wesley)**:
+    *   **Highlights**: Marcus's web streaming video demo, Matt's Android Facebook client receiving SCONE signals, increased experience with internet traversal of SCONE packets, open-source contributions, and successful multi-element scenario testing.
+    *   **Participants**: Dozens of participants from multiple companies and a university, working on Quick servers, NG clients, and open-source network elements.
+    *   **Future Plans**: Establish continuous interoperability capability via a Slack channel, and potentially hold interim meetings for interrupt testing.
+*   **Hackathon Demonstrations**:
+    *   **Marcus's Video Streaming Demo**: Showcased a SCONE network element operating in two modes:
+        1.  Sending SCONE signals: Client prunes video manifest to select appropriate quality track. Observed 0% packet drop rate, lower overall network volume, and stable video quality.
+        2.  Enforcing bitrate via token bucket policer: Drops non-conforming packets. Observed high packet drop rates (up to 30%), significant video stalling, and unpredictable quality fluctuations, highlighting the inefficiency and poor user experience of active policing.
+    *   **Matt's Android Facebook Client Demo**: Demonstrated SCONE integration into a real-world application (Facebook Reels).
+        *   **Throttling**: At 1 Mbps, the experience was essentially unusable, with frequent stalls ("spinner of death") due to the complexity of short-form video (pre-fetching, varied encodings).
+        *   **SCONE**: With SCONE signals overriding the ABR estimator, no spinners were observed, providing a usable experience even at a lower target bitrate than the throttled scenario.
+    *   **Demo Discussion**: Participants requested demo availability (action item). Jordi inquired about ABR estimator's inability to detect maximum bandwidth under throttling, suggesting ABR improvement by sharing context across videos. Christian expressed a desire for assurances that "non-SCONE" cases were genuinely suboptimal and not artificially constrained, to which Matt responded that Facebook's ABR is highly optimized.
+*   **SCONE Protocol Document Discussion**:
+    *   **Issue: Definition of "Network Element" (PR 83)**:
+        *   Jahad noted ambiguity in the current definition, especially concerning flow awareness, policy, and monitoring roles.
+        *   Brian presented a minimal definition: "something that knows how to look at a SCONE packet and, when it sees a signal, knows how to write something into that signal." This focuses on the essential protocol interaction.
+        *   Martin Thompson suggested that the current pull request was too broad; the key is the "essential property" of understanding and communicating a desired state.
+        *   Discussion arose about potential IESG and operator confusion if "network element" was redefined. Christian and Lars proposed shifting terminology from "network element" (a noun) to "function" (a verb) to describe the capabilities (e.g., "SCONE network function," with "Sconer" being jokingly suggested).
+        *   Sanjay (Verizon) emphasized the need for clearer definition to guide network engineers on their responsibilities, favoring a "SCONE network element" that has intelligence to make decisions. Zheng (T-Mobile US) highlighted the generic nature of "network element" and the desire not to preclude deployment in various nodes (e.g., radio).
+        *   It was agreed that the protocol document should define the minimal interaction necessary for other SDOs to reference, separating implementation/deployment commentary to other documents.
+    *   **PR: Clarifying Access Networks**: PR 83 aims to clarify that SCONE elements are not limited to access networks. This was seen as uncontroversial.
+    *   **PR: Terminology Switch (Rate Limits to Throughput Advice)**: This change was deemed straightforward and generally supported, shifting from specific "rate limits" to the more general "throughput advice." Jahad noted a broader need for terminological consistency across the document.
+    *   **Older Issues Review (Congestion Control, Greasing, Semantics, Bursty Sending)**: Several long-standing issues (Interaction with Congestion Control, Greasing, Semantics for "finish," Bursty Sending) were reviewed and deemed either already covered, resolved by current text, or merged into other discussions (e.g., Issue 65).
+    *   **Issue 65: Grace Period for Rate Reduction**:
+        *   Discussed the need for guidance on when a network element should start enforcing a lower signaled rate, allowing endpoints time to react.
+        *   Ted Hardy argued against highly detailed specifications, suggesting that the document should warn about consequences of insufficient time but avoid prescriptive solutions, as media and network constraints vary.
+        *   Martin Thompson argued that the semantics of the signal *must* be defined, including expectations for monitoring and enforcement. He suggested an asymmetric approach: client stays within the lowest rate received in the last monitoring period, while the network enforces based on the maximum sent during that period.
+        *   Kazou and Jahad expressed concerns about specifying concrete values or algorithms, fearing they might become outdated or limit innovation.
+        *   Brian Trammell framed the discussion as defining the "operating envelope" for the protocol, questioning if normative publication of parameters is needed. Martin re-emphasized that this is not a "congestion control algorithm" where flexibility is key, but rather the *definition* of a signal's meaning, which requires agreement.
+*   **Applicability and Manageability Document Discussion**:
+    *   **Background**: Sanjay Mishra (Verizon) presented the evolution of the `draft-ietf-scone-applicability-manageability` document, from use cases/requirements to its current form focusing on applicability and manageability considerations. Key updates in `03` included removing normative text, adding a generic applicability section, and a specific 5G mobile use case section (with placeholders for others).
+    *   **3GPP Specifics Rationale**: Sanjay explained that 3GPP details serve to clarify the boundary between IETF SCONE protocol and 3GPP specifications, ensuring SCONE can coexist and run on 3GPP networks without requiring changes to 3GPP standards. This aims to demonstrate viability to network operators.
+    *   **Audience and Scope Debate**:
+        *   Lars questioned the primary audience, suggesting network operators primarily engage with vendors and 3GPP directly, not IETF applicability documents. He advocated for a much shorter, high-level document, potentially pointing to 3GPP liaison statements or architecture-specific documents.
+        *   Sanjay reiterated the need to assure operators that SCONE can run without costly 3GPP modifications.
+        *   Martin Thompson expressed discomfort with Section 4 (specific network architectures) and Section 5 (TBDs), believing the IETF should not dictate deployment within other SDOs' architectures. He suggested these could be appendices or examples.
+        *   Zheng and Costa highlighted the value of the document for 3GPP personnel and vendors to understand SCONE's applicability.
+        *   Gary (AD) underscored the charter's requirement for an applicability and manageability document that is general and readable by various network types, suggesting a clear separation of generic principles (Section 3) from specific use cases (which could be in an appendix or a separate document).
+    *   **Proposed Resolution**: Brian (chair), Martin, and Jahad converged on a proposal: adopt the document up to Section 3 as the initial working group `00` draft. The more specific network architecture sections would be removed for now, with their future as an appendix or a separate work item to be discussed within the working group process. This addresses scope concerns and facilitates faster adoption.
+
+## Decisions and Action Items
+
+*   **Hackathon Demos**: Marcus and Matt will make their hackathon demos available, likely through screen recordings and posting on the working group wiki/list.
+*   **SCONE Protocol Document - Network Element Definition**:
+    *   **Decision**: Redefine "network element" in the SCONE protocol document to emphasize its functional role (e.g., "SCONE network function," "Sconer") rather than implying a physical network component.
+    *   **Action Item**: Jahad and Martin to update PR 83 and associated text in the protocol document to reflect this change.
+*   **SCONE Protocol Document - Grace Period for Rate Reduction (Issue 65)**:
+    *   **Decision**: The document needs to provide crisp and clear guidance on the minimum set of expectations for endpoints and network elements regarding the grace period for rate reduction, without over-specifying implementation details.
+    *   **Action Item**: Martin to lead the effort to write down this guidance and annotate it in Issue 65.
+*   **SCONE Applicability and Manageability Document Adoption**:
+    *   **Decision**: Adopt `draft-ietf-scone-applicability-manageability-03` as a working group `00` draft.
+    *   **Scope Directive**: The initial working group `00` draft will be limited to Section 3 (generic applicability and manageability considerations). Any content beyond Section 3 (e.g., specific 5G use cases, TBD sections) will be removed for the `00` version, with its future to be determined through the working group process (e.g., as an appendix or a separate document).
+    *   **Action Item**: Document editors (Sanjay, Zahid, Anup) to prepare the document for submission to the working group GitHub repository, adhering to the revised scope.
+
+## Next Steps
+
+*   **SCONE Protocol Document**: Editors will continue to resolve outstanding PRs and issues (particularly the "network element" definition and Issue 65). This will be followed by mailing list discussion and preparation for a Working Group Last Call.
+*   **SCONE Applicability and Manageability Document**: Editors will revise and submit the document (scoped to Section 3) to the working group repository. The working group will then discuss how to handle the removed sections and potentially solicit input from other SDOs (e.g., 3GPP) on specific network architecture applicability.
+*   **Interoperability Meeting**: The chairs will work with the working group to schedule an interoperability-focused interim meeting in early 2025 (between IETF 124 and Chenzhen) to continue testing and development, with scheduling details to be circulated on the mailing list.

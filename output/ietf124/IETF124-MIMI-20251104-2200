@@ -1,0 +1,76 @@
+# MIMI Session Minutes
+
+## Summary
+
+The MIMI working group meeting covered significant ground on identifier and identity management, updates to the MIMI Content and Protocol drafts, advancements in Room Policy, and a new proposal for detecting malicious hub behavior. Key discussions revolved around establishing clear categories for identifiers, defining cryptographic credential types for robust interoperability, and addressing practical implementation details for message handling and group policies. Decisions were made regarding the adoption of a message status document and the method for calculating message IDs, while a path forward was set for identity-related documents and a new proposal for malicious hub detection.
+
+## Key Discussion Points
+
+*   **MIMI Identifiers (presented by Raphael on behalf of Conrad):**
+    *   **Proposed Categories:** Three categories of identifiers were introduced:
+        *   **Connection Establishment Identifiers:** Globally unique, user-facing, often ephemeral, used primarily to initiate contact (e.g., Signal usernames).
+        *   **Administrative Identifiers:** Immutable, globally unique, provider-generated, internal to the system, referencing a specific user account for its lifetime (e.g., UUIDs in iMessage, crucial for MLS group leaves/credentials).
+        *   **Display Names:** User-chosen, not globally unique, for user interface presentation (e.g., Signal, Matrix display names).
+    *   **Discussion on Decoupling:** A concern was raised by John Peterson about completely decoupling user-facing display names from cryptographically provable underlying identifiers, especially for trusted business communications (e.g., bank communications). Raphael clarified that the proposal aimed to establish categories, not prescribe UX, and that administrative identifiers would provide cryptographic roots.
+    *   **User Ownership & Persistence:** Victor Roberto stressed the importance of allowing users to own public-facing identifiers that persist across different messaging providers to enable mobility and break free from "walled gardens."
+    *   **iMessage/Signal Clarification:** Mark Schrey clarified that iMessage uses an immutable UUID as its administrative identifier, with mutable email addresses and phone numbers as user-facing elements, supporting the proposed taxonomy.
+
+*   **MIMI Identity (presented by Rowan):**
+    *   **Need for Credential Types:** The working group currently lacks specified MLS credential types, which are essential for secure cross-provider interoperability. Basic MLS credentials were deemed insufficient.
+    *   **Proposed Credential Types:**
+        *   Multi-credential and Weak Multi-credential for combining various types.
+        *   X.509.
+        *   SD-JOTS (Selective Disclosure JSON Web Tokens) and SD-COTS (CBOR Web Tokens), which allow for flexible claims to assert multiple types of identifiers (e.g., UUID, email, phone number) more effectively than X.509's subjectAltName.
+    *   **Interop Considerations:** Critical elements for interop include managing trust roots, configuring valid issuers for JOTS/COTS, finding valid key sets, defining trust for provider domain names with MIMI URIs, and implementing revocation mechanisms.
+    *   **Historical Context:** John Peterson reminded the group of previous discussions on "service-specific" vs. "service-independent" identifiers, suggesting that this lens could be valuable for the identity work.
+
+*   **MIMI Content (presented by Rowan):**
+    *   **Updates:** Minor fixes to message ID generation, clarification on salt length (16 octets), and the `mimi-message-status` format was moved to a separate document.
+    *   **Message ID Calculation Issue:** A potential for duplicate message IDs was identified due to overlapping sender and room URIs when generating a hash. Solutions discussed included null separators (rejected), non-URI ASCII character separators (e.g., pipe), CBOR encoding, and explicit length prefixes for URI components.
+
+*   **MIMI Protocol (presented by Rowan):**
+    *   **Franking Enhancements:** Merged fixes and refactored franking context into a TLS struct for improved readability.
+    *   **Pending Proposals:** A PR was introduced to ensure that valid pending proposals (self-removed, app data update, app ephemeral) are included when retrieving group info and the ratchet tree, enabling their use in external commits.
+    *   **Sharing Encrypted State (Issue #133):** Discussion on the need for a mechanism to share encrypted state exclusively among group members, bypassing the hub, particularly for asynchronous group joins. This is considered essential for privacy-preserving mode and not adequately addressed by application messages alone.
+
+*   **MIMI Room Policy (presented by Rowan):**
+    *   **New Content:** Incorporated MLS operational parameters (from RFC 750, Section 7) covering extended capabilities, pending proposal strategy, and message policies. Also introduced asset policies for managing download/upload types and sizes.
+    *   **Capabilities Table:** A PR to reorganize the capabilities table with distinct code point ranges for different capability types (e.g., membership, media/assets) and align names with IANA was noted.
+
+*   **Malicious Hubs (presented by Trinidad Amuri on behalf of Dr. Berger):**
+    *   **Client-Driven Audit Layer:** A proposal for a client-driven audit layer was re-introduced. It uses Merkle-tree-based proofs to detect malicious hub behavior (reordering or dropping messages). Clients maintain local message lists, randomly broadcast proofs, and receiving clients verify these proofs.
+    *   **Tombstones for Deletion:** A new aspect of the proposal is the use of "tombstones" – null placeholders that replace original messages upon deletion. This preserves the message list indices, maintaining auditability and verifiability, and preventing the hub from removing "proof of existence" of deleted messages.
+    *   **Protocol Clarity:** Raphael requested a more detailed overview of the protocol, including specific triggers for clients to generate, request, and broadcast Merkle proofs.
+    *   **Integration:** Rowan suggested that this mechanism might best be implemented as an optional extension to MIMI Protocol, rather than being part of the base protocol, possibly signaled via versioning or extension negotiation. Franking was clarified to address different types of attacks than those targeted by the malicious hubs proposal.
+
+## Decisions and Action Items
+
+*   **MIMI Content - Message Status Document:** The chair will confirm on the mailing list the working group's consensus to adopt the `mimi-message-status` document.
+*   **MIMI Content - Dispositions:** Rowan will draft a Pull Request (PR) for an I-IN-RED (Internet-Draft intended for RFC Editor) on dispositions.
+*   **MIMI Content - Message ID Calculation:** The working group decided to use an explicit length prefix for URI components (sender URI, room URI) in the message ID hash input to prevent collisions. Rowan will draft a PR for this change.
+*   **MIMI Protocol - Valid Pending Proposals:** Rowan's PR to include valid pending proposals when fetching group info and ratchet tree will be merged.
+*   **MIMI Room Policy - Open Issues:**
+    *   Rowan will reach out to Timo regarding his two outstanding issues.
+    *   Rowan will create a PR for link policies (part of Issue #8).
+    *   Rowan will add more non-normative text regarding bans.
+
+## Next Steps
+
+*   **MIMI Identity / Identifiers:**
+    *   The `mimi-identifiers` draft will not be adopted as a standalone document, but its concepts may be integrated into the `mimi-identity` document.
+    *   The working group is encouraged to re-read the discovery document and use existing terminology where applicable.
+    *   Participants are invited to contribute PRs, comments, or mini-outlines to the `mimi-identity` document to help define requirements and integrate identifier concepts.
+*   **MIMI Content:**
+    *   Rowan will finalize and merge PRs for dispositions and the explicit length prefix in message ID calculation.
+    *   A Working Group Last Call (WGLC) for `mimi-content` may follow.
+    *   Rowan will continue work on an interoperability repository for testing.
+*   **MIMI Protocol:**
+    *   Develop Knox and versioning schemes.
+    *   Address open issue #133 regarding sharing encrypted state among members without hub access, determining if it's essential for the protocol.
+    *   Further implementation and interop testing are needed.
+*   **MIMI Room Policy:**
+    *   Address the remaining open issues as planned.
+*   **Malicious Hubs:**
+    *   The authors are encouraged to provide a more detailed overview of the protocol's flow and triggers.
+    *   Consider interactions with franking.
+    *   Explore how this functionality could be integrated as an optional extension to MIMI Protocol.

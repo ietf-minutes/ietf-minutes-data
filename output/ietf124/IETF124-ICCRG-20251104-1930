@@ -1,0 +1,94 @@
+# ICCRG
+
+## Summary
+
+The ICCRG session covered updates on several drafts and presented a new research proposal. LEDBAT++ is nearing publication after IRSG review. The "Pacing in Transport Protocols" draft is moving towards last call, with recent updates addressing an old paper's claims and adding FreeBSD implementation details. A new research proposal, "Congestion Notification for Multi-Resource Allocation Control" (MRECN), was introduced, focusing on in-band signaling for resource allocation in multi-operator 5G slicing environments. Finally, significant progress was reported on L4S and Prague Congestion Control, including Linux mainlining efforts, network improvements, and a new C++ implementation for UDP-based applications. Discussions highlighted the need for clear terminology, security considerations for novel signaling, and precise documentation for congestion control algorithms.
+
+## Key Discussion Points
+
+### Pacing in Transport Protocols (Michael)
+
+*   **Draft Updates:**
+    *   Cited specific Linux kernel long-term stable version for consistency.
+    *   Added detailed FreeBSD text from macotixen, covering socket options for enabling/disabling pacing, configuring burst size, and pace rate for slow start, congestion avoidance, and recovery.
+    *   Addressed an older paper ("Understanding the performance of TCP pacing") that identified pacing downsides. Michael argued the paper's conclusions are misleading due to reliance on simulations only, an unrealistic pace rate calculation (CWND/RTT with no factor), use of Reno, and small buffer sizes.
+    *   Explained a specific issue (double drop after slow start) where TCP's factor 0.5 backoff is too aggressive for packet loss caused by exceeding capacity limits (rather than burst size), which pacing tends to encourage. This is presented as a TCP bug, not a pacing flaw.
+*   **Discussion:**
+    *   **Implementations:** Confirmed that Scream version 2 text had been addressed in the draft regarding real-time traffic.
+    *   **Feedback:** Gori indicated he would carefully read the draft and provide comments, potentially adding experience from Quick and UDP-based interfaces.
+    *   **Next Steps:** Elaborate FreeBSD text for clarity, add Mac OS description (pending VD's input), and a general call for community feedback and issues on GitHub.
+
+### Congestion Notification for Multi-Resource Allocation Control (Mario Potetta)
+
+*   **Context:** Proposed MRECN to address multi-resource bottlenecks, initially for 5G network slicing but applicable to any multi-operator/multi-controller infrastructure with tailored resource allocation.
+*   **Problem:** Sudden resource diminution (e.g., device failure, link degradation, high-priority traffic) requires rapid allocation adjustment, which the hierarchical control plane cannot provide quickly due to negotiation and vertical delays.
+*   **MRECN Concept:** Aims to bypass the control plane hierarchy by injecting notifications directly into affected data plane packets (in both directions) so that traversed equipment (not end devices) can adjust resource allocations.
+*   **Definitions:**
+    *   **Congestion:** Defined as the amount of resource "lost" for a slice, normalized by original allocation. This means an over-commitment that cannot be delivered.
+    *   **Waste:** Cumulative sum of the difference between allocation adjustment and resource loss over time.
+    *   *Discussion on Terminology:* Stewart and Ingemar noted that "congestion" in this context might be misleading or different from its traditional IETF meaning (which often implies a desirable state of the network being utilized, not a "loss" of resource). Mario acknowledged this and was open to feedback on terminology.
+*   **Signaling:**
+    *   Proposed use of DSCP bits as an illustrative example: 1 bit for congestion flag, 2 bits for resource ID (supporting 4 values), 3 bits for congestion severity (magnitude of loss).
+    *   Flexibility: Severity encoding and allocation adjustments can be tailored per slice (e.g., max observed, average, proportional).
+*   **Implementation:** An FPGA-based switch prototype supporting MRECN has been developed.
+*   **Alternatives to DSCP:** MPLS header (similar to TE), dedicated L2/L3 header (like INT), IPv6 extension headers.
+*   **Discussion:**
+    *   **Scope of Resource:** Roland noted that placing values in an IP header assumes the congested resource is "networked."
+    *   **Action Takers:** Mario clarified that devices *traversed* by the traffic are the recipients and take action, not necessarily endpoints.
+    *   **Security Concerns:** Cisco Muraki raised significant concerns about "weaponization" (maliciously marking high congestion to reduce legitimate traffic) and exposure of internal network service provider resource IDs. Mario acknowledged these points, suggesting MRECN might be more suitable in trusted environments (e.g., within a single organization with hierarchical divisions).
+    *   **Signaling Method:** Gary Fairhurst questioned if marking *all* affected packets is better than an out-of-band OAM packet, and expressed "niggles" about using DSCP/EXP for experimental purposes. Mario mentioned OAM as a potential alternative.
+    *   **Path Symmetry:** Rüdiger Geith questioned if the protocol assumes identical up/downstream paths. Mario stated this was not directly tackled, but the protocol's design (where a device receiving a notification propagates it) could handle asymmetry.
+    *   **Event Duration:** MRECN aims to accelerate responses to resource changes compared to slower control plane re-negotiations.
+
+### L4S and Prague Congestion Control (Kuhn)
+
+*   **Linux Mainlining:**
+    *   Ongoing and complex process due to dependencies and iterations.
+    *   Linux versions with upstream patches are available and being used in labs and fields.
+*   **Network Improvements:**
+    *   Prague requirements aim to enable "active rate management" rather than "active queue management," by removing the need for packets to be delayed to control rate. Senders should be managed directly by ECN marks.
+    *   *Clarification on Queues (Stuart, Chris Box):* Queues are still necessary in networks for physical constraints (e.g., Wi-Fi aggregation, slow link interfaces) and protocol needs. However, L4S/Prague aims to avoid building *queues for the purpose of rate control* when the physical capacity allows sending more, but contractual limits or traffic shaping are desired. ECN marking in such scenarios can guide senders to the contracted rate without needing to buffer packets.
+*   **Impact on Congestion Controls:**
+    *   L4S allows for very low latency even under maximum load.
+    *   Prague requirements emphasize Round Trip Time (RTT) independence for RTTs below 25ms, pacing below a minimum window of two, and reduced slow start overshoot when rate management is effective.
+*   **Prague Congestion Control (C++ Module):**
+    *   A C++ object, `PragueCongestionControl`, is available for UDP-based applications (e.g., QUIC). It mirrors TCP Prague's behavior.
+    *   Minimal dependencies, platform-independent, designed for stable API.
+    *   Supports bi-directional sender/receiver mechanisms.
+    *   Integrated into IPERF2 and NS3 (currently private).
+    *   **Discussion on Prague's Nature (Martin):** Martin asked if Prague is a congestion control algorithm or a template. The consensus was that it is more about *how to respond accurately to CE marking*, which can be applied to underlying loss-based CCs like Cubic or Reno. Neil N. added that BBRv2/v3's current ECN response is *not* compatible with Prague's, and future work is needed for BBR to interoperate well. Neil also suggested adding guidelines to the draft for making existing CCs Prague-compliant.
+    *   **Application Control:** The module provides pacing rates and windows directly to the application, allowing for non-blocking data generation and bypassing traditional socket API limitations. This is particularly useful for real-time video, enabling direct adaptation of encoding frame rate/size.
+    *   **API Structure:** Detailed the C++ object's API for handling timestamps, CE/loss counters, sequence numbers, and obtaining pacing information (rate, window, burst, size).
+*   **Prague Features (New/Explored):**
+    *   **Rate/Window Update Switch:** For very small RTTs (<2ms), where jitter can be a large relative factor, the module switches to updating the pacing rate directly and deriving the fractional window, stabilizing throughput.
+    *   **Sub-RTT Pacing:** A +/-3% variation in pacing rate within an RTT to avoid "on-off" marking behavior on step AQMs and improve RTT fairness on stable links.
+    *   **Multiplicative Increase:** Experimenting with a multiplicative increase (1ms/sec) after a period of additive increase if expected marks are not received, to quickly adapt to increased capacity. This aims for faster convergence than Reno.
+    *   **Loss-based RTT Independence:** Applying similar logic to make loss-based responses RTT independent for larger RTTs.
+*   **Discussion:**
+    *   **High Bandwidth Scaling (Roland Blais):** Kuhn stated calculations show Prague can compete with or outperform Cubic at 10/100 Gbps, maintaining 1ms latency. Concerns about jitter and timer issues at high speeds require robust variable sizing and careful integer calculations.
+    *   **Video Applications (Gori, Stuart, Dale):** Discussion revolved around the impact of different video encoder models (adaptive vs. constant bitrate, free-running vs. "just-in-time" frame generation) on how the pacing information from Prague is used. Kuhn emphasized that the Prague module provides the *rate*, and the application is responsible for adapting its video pipeline accordingly for low-latency scenarios. Stuart and Dale highlighted the need for agile systems that can generate frames on demand for true low-latency.
+    *   **Fallback and Interoperability:** Martin stressed the need to clarify fallback mechanisms (Cubic, Reno) and how different Prague-compliant CCs interact. Neil reiterated that BBRv2's ECN response is not Prague-compatible for the public internet.
+
+## Decisions and Action Items
+
+*   **Pacing in Transport Protocols:**
+    *   **Action:** Michael to elaborate FreeBSD text in the draft and add Mac OS description.
+    *   **Action:** All participants are encouraged to review the draft, file issues, and submit Pull Requests (PRs) on GitHub.
+    *   **Action:** Gori to provide comments on his experience with Quick and UDP-based pacing implementations.
+*   **Congestion Notification for Multi-Resource Allocation Control:**
+    *   **Action:** Mario to consider refining the terminology (e.g., "congestion") to better align with IETF context.
+    *   **Action:** Mario to address security implications, particularly regarding weaponization and exposure of internal network details, and consider deployment in trusted environments.
+    *   **Action:** Mario to explore alternative signaling mechanisms beyond DSCP, such as OAM packets or dedicated L2/L3 headers.
+*   **L4S and Prague Congestion Control:**
+    *   **Action:** Kuhn to update the draft to clarify Prague's positioning (template for ECN response vs. standalone CC), its fallback behavior, and how it interacts with delay-based congestion controls.
+    *   **Action:** Kuhn to explore providing guidelines (possibly an appendix) in the draft for how implementers can make existing congestion controls Prague-compliant.
+    *   **Action:** Kuhn to continue Linux mainlining efforts and release the UDP Prague C++ module for broader use.
+    *   **Action:** All participants are encouraged to use the UDP Prague C++ module and provide feedback on its API and performance.
+
+## Next Steps
+
+*   Continue the Linux mainlining process for L4S functionality.
+*   Publish updated versions of the "Pacing in Transport Protocols" and "L4S and Prague Congestion Control" drafts incorporating feedback and clarifications.
+*   Further evaluation and testing of new features in Prague Congestion Control, especially the multiplicative increase and RTT independence for loss-based algorithms.
+*   Continued discussion within the group on the MRECN proposal, focusing on terminology, security, and signaling alternatives.
+*   Encourage community engagement and adoption of the UDP Prague C++ module to gather real-world experience and feedback.

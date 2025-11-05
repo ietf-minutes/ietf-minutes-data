@@ -1,0 +1,122 @@
+# DINRG Session Minutes
+
+## Summary
+
+The DINRG session featured four technical presentations and a panel discussion on decentralizing social media. Ingeny Gupta discussed a recent AWS outage, highlighting cascading failures and new risks from automation. Nick Feamster presented research on the concentration of DNS and web hosting, sparking a discussion on ongoing measurement and its implications. Gianpaolo Scalone introduced a proposal for a Customer-Facing Relay to address centralization issues arising from ECH deployment. Diogo Jesus presented a generic framework for building dynamic decentralized systems. The session concluded with a lively panel comparing the design philosophies of AT Protocol and ActivityPub, focusing on identity, portability, scale, and abuse moderation in decentralized social networks. Recurring themes included the challenges of true decentralization, the impact of concentration, and the need for new approaches to protect user privacy and combat abuse in an evolving threat landscape.
+
+## Key Discussion Points
+
+### 1. The AWS October 2023 Outage: Cascading Failures and Automation Risks (Ingeny Gupta)
+*   **Root Causes of Outages**: Historically, human error (70-85%) is the leading cause. However, the recent AWS outage points to increasing risks from automated programs.
+*   **AWS Outage Timeline**: The outage (October 19-20) began with an empty DNS entry for `dynamo.useast1.amasonaws.com` at 11:48 PM.
+    *   DynamoDB failures cascaded to EC2 via the Droplet Workflow Manager (DWFM), causing lease timeouts and new lease creation overwhelming the system.
+    *   The cascade continued to the Network Load Balancer (NLB), where health checks for failing EC2 instances further overloaded DNS.
+*   **Root Cause Analysis**: A race condition between two automated DNS "enactors" led to a slow enactor deleting a newly created plan, resulting in an empty DNS entry. This was not programmed to account for asynchrony/arbitrarily slow processes.
+*   **Lessons Learned**:
+    *   **Asynchrony is a way of life**: Distributed systems must account for arbitrary delays in processes.
+    *   **Breaking Dependency Chains**: Need new principles/research to prevent cascading failures across interconnected services.
+    *   **New Fault Tolerance**: Current fault tolerance (crash, Byzantine, rack) is well understood, but large-scale cloud outages often lack solutions.
+    *   **Rise of AI/Automated Errors**: Increasing use of automated programs (including LLMs) may lead to more outages rooted in "machine error," necessitating safety specification and guardrails.
+*   **Q&A**: No questions were posed during the session; further discussion was encouraged on the mailing list.
+
+### 2. Measuring Concentration of DNS and Web Hosting Providers (Nick Feamster)
+*   **Motivation**: Concerns regarding internet infrastructure consolidation, specifically how popular websites rely on concentrated infrastructure.
+*   **Methodology (2021 study)**:
+    *   Analyzed Tranco Top 1 Million and Top 10,000 websites.
+    *   Performed DNS lookups for authoritative name servers and A records.
+    *   Crawled Top 10,000 sites for external resources (jQuery, Bootstrap, fonts, trackers).
+    *   Mapped IP addresses to Autonomous Systems (AS) and organizations.
+    *   Defined "affected" (some part of site relies on service) and "unreachable" (entire site relies on service).
+*   **Key Findings**:
+    *   Dominance of Cloudflare and Amazon (AWS) in both DNS and web hosting.
+    *   Amazon exclusively hosts about 30% of domains.
+    *   ~70% of the Top 1 Million domains use a single organization for DNS resolution.
+    *   These trends were consistent across different popularity tiers and globally distributed vantage points.
+*   **Discussion**:
+    *   **Brian Trammell**: Suggested analyzing consolidation within cloud providers by availability zones (e.g., US-East-1) using IP geo-location, noting this data might exist in the study's raw output. Nick expressed strong interest in re-doing the study and making the measurement pipeline publicly available, proposing it as an ongoing DINRG activity.
+    *   **Pete Resnick**: Differentiated between front-end services (like Cloudflare for DDoS protection) and exclusive back-end hosting (like AWS), asking if the study captured this distinction. Nick clarified the study primarily measured front-end reliance and acknowledged the back-end would be a valuable expansion.
+    *   **Gianpaolo Scalone**: Suggested including domains behind Encrypted Client Hello (ECH) in future measurements, noting significant deployment.
+    *   **Christian Ritsema**: Shared that ICANN conducts a similar ongoing study focused on DNS, finding comparable results, and proposed collaboration. Nick welcomed this.
+    *   **Andrew Kempling**: Highlighted additional risks of consolidation: vast power for surveillance/intelligence gathering and "digital colonialism" (e.g., a host's refusal to act on harmful content like Kiwi Farms).
+
+### 3. ECH, Privacy, and Centralization (Gianpaolo Scalone)
+*   **Topic**: Explored the trade-offs between ECH's privacy benefits and potential centralization issues.
+*   **ECH Benefits**: ECH is a step towards end-to-end encryption by encrypting the Server Name Indication (SNI), making the client-to-client-facing-server traffic fully encrypted.
+*   **Centralization Problem**: Client-facing servers (CDNs) still have visibility of the client's source IP address and the destination domain, enabling correlation and profiling across a significant portion of internet traffic (up to 30% of humanity's traffic). This creates a "jurisdictional mismatch" where users might be subject to laws outside their local jurisdiction.
+*   **Proposed Solution (Customer-Facing Relay - CFR)**:
+    *   Aims to prevent client-facing servers/CDNs from gaining extensive visibility.
+    *   Proposes "randomization of source IP address" via intelligent, non-deterministic NAT at the ISP or enterprise network edge.
+    *   Designed as a new functionality on existing network elements to be sustainable (economically viable, simple, low latency).
+    *   Focuses on the "customer" aspect, leveraging existing contractual relationships with ISPs for stronger privacy protection.
+    *   CFR would decouple the source IP from encrypted transport, providing randomization and rotation without altering ECH or TLS semantics.
+*   **Discussion**:
+    *   **Christian Ritsema**: Compared CFR to Oblivious HTTP (OHTTP). Gianpaolo argued CFR is simpler, avoids additional proxies and associated latency/cost by focusing on existing network elements.
+    *   **Andrew Kempling**: Praised the proposal for enhancing end-user accountability, as users have a contractual relationship and recourse with their ISP, unlike with distant CDNs.
+    *   **Fig**: Raised a concern that the jurisdictional mismatch (e.g., using a foreign ECH service to bypass local censorship) could be a *desired feature* for some. Gianpaolo clarified that CFR *adds* protection of source identity, complementing ECH's protection of destination, aiming for *more* privacy, not less.
+    *   **Aldo**: Emphasized the importance of redistributing and stopping centralization, linking the proposal to the EU's Digital Operational Resilience Act (DORA).
+*   **Chairs' Feedback**: The proposal is an interesting direction, but requires further analysis of additional aspects and deployment risks in real-world networks. Encouraged continued discussion on the mailing list.
+
+### 4. A Generic Framework for Building Dynamic Decentralized Systems (Diogo Jesus)
+*   **Problem Statement**: Centralized applications suffer from single points of failure and privacy concerns, while decentralized systems face complexity in state management, consistency, and synchronization.
+*   **Proposed Solution**: A generic framework (documented in an Internet Draft) for simplifying the development and management of scalable and resilient dynamic decentralized systems.
+*   **Framework Architecture**:
+    *   **Core Components**: Set of abstractions and best practices.
+    *   **Protocol Layer**: Modular protocols, each responsible for specific tasks, interacting via events.
+    *   **Key Managers**:
+        *   **Discovery Manager**: Facilitates node discovery (e.g., MDNS, DLT).
+        *   **Resource Manager**: Monitors CPU, bandwidth, storage; notifies protocols of updates.
+        *   **Timer Module**: Schedules tasks.
+        *   **Communication Manager**: Handles various communication interfaces (TCP, UDP, Bluetooth) with fallbacks.
+        *   **Configuration Manager**: Handles node configuration at startup and during system evolution.
+        *   **Security Manager**: Supports identity, secure communication channels, and basic security primitives.
+*   **Use Cases**: Swarm systems (drones, robots), IoT, peer-to-peer applications (file sharing, messaging), Web3 (blockchain, smart contracts).
+*   **Challenges**: Completeness of design for diverse scenarios, API validation, seamless deployment across a wide variety of devices.
+*   **Related Work**: Distinguished from Iqdrasil (routing library) and LibP2P (transport layer focus), aiming to offer a higher level of functionality composition.
+*   **Implementation**: MicroBubble (prototype, continuously updated, used for demonstrators like decentralized storage, federated learning, ad-hoc messaging).
+*   **Discussion**:
+    *   **Roland Bless**: Asked if the speaker was familiar with Vailet (a Rust framework with similar goals). Diogo was not, but expressed interest in learning more.
+*   **Chairs' Feedback**: Encouraged further connections and discussion on the mailing list, specifically asking for more details on the framework's features related to decentralization.
+
+### 5. Panel Discussion: Decentralizing Social Media (AT Protocol vs. ActivityPub)
+*   **Panelists**: Christine Limmer-Weber (co-author, ActivityPub), Brian Truong (main developer, AT Protocol/Blue Sky), Ted Hardie (moderator/discussant).
+*   **Context**: Upcoming AT Protocol BOF at IETF; discussion on fundamental design choices for decentralized social applications.
+*   **ActivityPub (Christine Limmer-Weber)**:
+    *   Decentralized, email-like message passing over HTTP.
+    *   Used by Mastodon and over 100 other applications.
+    *   Focus on wide deployability without a central player, local node relevance.
+    *   Early work explored content addressing, which AT Protocol adopted.
+*   **AT Protocol (Brian Truong)**:
+    *   Multi-application social web protocol, flagship app Blue Sky.
+    *   Started by a single company, now decentralizing.
+    *   **Design Goals**: Global public views (consistent search, aggregation like centralized platforms), "no compromises" on user experience, modularity/swap-ability (hosting, feed algorithms), account portability (move without breaking social graph).
+    *   **Architecture**: Public data; similar to public Git repositories (JSON objects) efficiently synchronized. Large views require large servers, but competition among providers is intended.
+    *   **Identity**: Uses W3C DIDs (Decentralized Identifiers) for persistent account identifiers (like phone numbers) that resolve to current hosting locations, allowing transparent host changes. DPLC system for DID resolution, currently centralized but actively decentralizing.
+*   **Ted Hardie's Commentary**:
+    *   Drew parallels to mailing lists and email evolution regarding portability and identity.
+    *   Noted ActivityPub's emphasis on social graph portability (identity tied to server), while AT Protocol (shared heap architecture) emphasizes identity control separate from hosting.
+    *   Raised concerns about pseudonyms and traceability, particularly for activists.
+*   **Discussion on Portability and Identifiers**:
+    *   **Brian**: Emphasized AT Protocol's layer of indirection (DID resolves to host, not embedded). Stressed not forcing users into "semi-permanent decisions" early on. Persistent DIDs allow transparent host changes. Acknowledged current centralization of DID resolution but committed to decentralizing it.
+    *   **Christine**: Agreed with the principle of decentralized identifiers, noting her own early proposals for ActivityPub to use W3C DIDs and content addressing (circa 2017), though implementer interest was low then. Suggested the "right design" might be a combination of ActivityPub's directed delivery and AT Protocol's content addressing, enabling mutable addresses for user profiles to facilitate server moves while retaining identity.
+*   **Discussion on Centralization, Scale, and Abuse**:
+    *   **Ted**: Compared ActivityPub's distributed nature (resilient to single server attacks) to AT Protocol's scalable design (can withstand attacks by deploying more resources). Questioned blending these advantages. Noted email's evolution toward centralization due to spam fighting costs, potentially leading to a "small club" of mail servers.
+    *   **Brian**: Acknowledged ActivityPub's community-based anti-abuse model works well for smaller scales. AT Protocol takes a "default unjust" approach, requiring more centralized (but not globally monopolized) professional anti-abuse efforts for large-scale systems (spam, DDoS, brigading). Believes AT Protocol can support "missing middle" communities (5k-100k users) with reasonable server costs. Mentioned developers running full indexes on Raspberry Pi.
+    *   **Christine**: Expressed concern that neither ActivityPub (as deployed) nor AT Protocol (with its "God's eye view") are fully equipped for current threats (state actors, surveillance, protecting activists, "capture" of media). Praised Blue Sky as one of the few media sources not yet fully captured.
+    *   **Ted**: Reiterated the critical need for pseudonymity for activists given nation-state and attention-economy threats.
+    *   **Andrew Kempling**: Raised concerns about social media being browser-centric, limiting cryptographic options. Criticized Blue Sky for not giving users control over private keys and Signal for public key trust issues. Advocated for user-controlled private keys for DID signing, with delegated authority for posting.
+    *   **Brian**: Countered that mobile apps are dominant, not browsers. Noted that phones have secure enclaves for key generation, and AT Protocol has paths to hardware key control (e.g., YubiKey), requiring product engineering.
+
+## Decisions and Action Items
+
+*   **Ingeny Gupta's Talk**: Participants interested in further discussion on cloud outages and centralization are encouraged to engage on the main mailing list.
+*   **Nick Feamster's Talk**: Nick will make the code and data from his 2021 study publicly available. There is strong interest from the DINRG community, including ICANN, in collaborating on an ongoing study to measure internet infrastructure concentration, potentially expanding to include availability zones and ECH.
+*   **Gianpaolo Scalone's Talk**: Participants are encouraged to continue discussing the Customer-Facing Relay proposal, ECH, and related privacy/centralization issues on the main mailing list, with a focus on further technical analysis and deployment risks.
+*   **Diogo Jesus's Talk**: Diogo is encouraged to engage with interested parties on the mailing list and provide more details about the framework's specific features related to decentralization.
+*   **Panel Discussion**: The DINRG chairs highlighted the importance of clarifying problem definitions for future research in decentralized social media.
+
+## Next Steps
+
+*   Continue discussions on the DINRG mailing list for all presented topics.
+*   Explore collaboration opportunities for an ongoing study on internet infrastructure concentration, potentially under the DINRG research group.
+*   Attendees interested in the AT Protocol are encouraged to attend the AT Protocol BOF.
+*   DINRG will continue to serve as a forum for constructive research work on decentralization, focusing first on clear problem definition.

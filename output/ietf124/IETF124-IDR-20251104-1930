@@ -1,0 +1,132 @@
+# IDR Session
+
+## Summary
+
+The IDR session covered a broad range of topics including a discussion on the working group's charter scope, a comprehensive status update on current drafts and RFCs, and detailed presentations on several key BGP enhancements. John Scudder outlined the ambitious project to update RFC 4271 to Internet Standard, detailing a proposed scope and process leveraging GitHub while maintaining mailing list engagement. Updates were provided on RFC 4360bis, EBGP Weighted ECMP, Inter-AS RT Constraint, BGP Best Path Next-Hop Selection, and a new BGP error handling mechanism for NLRI parsing. The session also saw a decision to split the Entropy Label draft to expedite the Next Hop Characteristics portion. Finally, a new proposal for Enhanced Dynamic Capabilities and an update on Global Load Balancing for BGP fabrics were presented. A recurring theme was the need for implementation reports and active working group review to advance drafts.
+
+## Key Discussion Points
+
+*   **Working Group Charter Discussion**:
+    *   Kaeton raised a concern about "enough cycles" for core BGP work, proposing solutions for a more focused IDR working group for core BGP, potentially moving other work to a different working group.
+    *   Robert commented, asking why core BGP work isn't just done in IDR and everything else moved.
+    *   A sense of those present indicated a current high focus on core BGP.
+    *   The chairs posed the question of whether this constitutes a problem and if there's a benefit to giving different groups of people their own focus. Feedback on the mailing list is welcome.
+
+*   **Working Group Status Update (Chairs)**:
+    *   **GitHub Adoption**: IDR is actively using GitHub for draft status, notes, and action items. Authors are encouraged to put drafts into GitHub.
+    *   **RFCs and Pipeline**: Five RFCs recently published (thanks to John Scudder); `draft-ietf-idr-vtls-rvtn-mt` is at RFC Editor.
+    *   **Implementation Reports Needed**: Urgent plea for implementation reports for `draft-ietf-idr-ts-flowspec-b6-policy` (specifically Flow Spec Redirect 04 from Nokia or others beyond Cisco) and `rpd-wide-communities` / `registered-wide-communities` to unblock progress.
+    *   **Shepherd's Queue**: `NRP` draft awaiting spring consensus, `BGP-CT-SRv6` also needs spring WG consensus. `SDWAN` needs revision based on routing director review. `VPN prefix` sent to IESG.
+    *   **Working Group Last Call Pending**: `43bis` (after Nate's discussion), `flowspec-redirect`. `next-hop` split from `entropy-label` is done, awaiting implementation report. `rt-derived-community` being reviewed.
+    *   **New Work/Adoption Calls**: `service-metadata`, `link-local-capability`, `bgp-lsiss-flood-redirect` (needs new draft with two implementations), `wide-community-days`, `elc`, `bgp-fism-iana`.
+    *   **Adoption by Category**: Chairs are proactively tracking and driving `BGP-LS` and `BGP-SR` related drafts as a category, encouraging authors to not delay and respond to pings to move drafts through early allocation and WGLC.
+    *   **Explicit Adoption Requests**: `draft-uttara-idr-bgp-oa-d`, `draft-sm-idr-inter-domain-ibgp`, `draft-singh-idr-tunneling-label-stack` are under shepherd review.
+
+*   **RFC 4271bis - BGP-4 Internet Standard (John Scudder)**:
+    *   **Goal**: Move RFC 4271 to Internet Standard, primarily by incorporating errata and widely deployed updates.
+    *   **Process**: Use GitHub for issue tracking and Pull Requests (PRs). The mailing list remains critical for all normative changes and major structural rearrangements. A project plan will be integrated into Section 2 of the draft, referencing GitHub for dynamic details.
+    *   **Proposed Integrations**: Updates include AS wide Identifier (BGP ID is 32-bit int), FISM subcodes (for a single table), RFC 7606 revised error handling (a significant but necessary change), AS processing, and deprecation of AS Set and AS CONFED Set (with backward compatibility knob based on RFC 9774).
+    *   **Items Not for Integration**: TTL considerations, AS migration mechanisms (will be referenced instead).
+    *   **Discussion Points (Deployment & Standardization)**:
+        *   **Send Hold Time**: Needs proof of widespread deployment to be integrated.
+        *   **Afi-Safi 1-1 Legacy Encoding**: Discussion on whether to add language discouraging its use, even if conservative approach is to leave as-is.
+        *   **Graceful Restart**: Updates the state machine, so rebasing the state machine into the bis is desired.
+        *   **Avoid BGP Best Path Transitions**: Integrate the rule to avoid transitions from one external to another.
+        *   **IPV6 and Four-octet ASNs**: These are considered mandatory updates. Discussion on deprecating two-octet ASNs (data needed to prove non-use).
+        *   **Extended Message Size, Route Refresh, Enhanced Route Refresh**: Considered "table stakes" due to wide assumption in implementations, but still need discussion on integration given the "minimal revision" goal.
+    *   **Working Group Feedback**: Participants are encouraged to review GitHub issues, raise new ones, and contribute PRs. Chairs will guide the process for mailing list engagement. It was clarified that using GitHub is encouraged but not mandatory; authors can submit changes via email to chairs/editors.
+
+*   **RFC 4360bis - BGP Extended Communities (Nekal)**:
+    *   **Scope**: Fix known errata, clarify non-transitive Extended Communities behavior over EBGP, refer to RFC 7606 for error handling, update IANA considerations (referencing 7153, 91), and address early registry procedures.
+    *   **Current Status (v01)**: Errata fixed, EBGP session behavior clarified (Section 6), error handling reference added (Section 7), IANA considerations and Extended Communities registries updated.
+    *   **Next Steps**: Review for EBGP text and IANA alignment. Seek feedback on original author listing and early registry procedures.
+    *   **Discussion**: Rudiger Folk raised a point about the lack of clarity regarding 32-bit AS numbers in existing 16-bit AS number IANA registries for Extended Communities. John Scudder clarified that large communities cover general 4-byte ASNs, and Extended Communities have limited use for VPNs, but the document should reference 4-byte representations.
+
+*   **EBGP Weighted ECMP (Stefan Prevost)**:
+    *   **Use Case**: Optimizing Weighted ECMP (WECMP) in large-scale data centers and ISP/P scenarios using BGP Link Bandwidth community. Proposal to elevate to standards track due to widespread implementation.
+    *   **Key Concepts**:
+        *   Initial link bandwidth set dynamically from interface bandwidth.
+        *   WECMP considers both remote (received) and local link bandwidths (e.g., using a minimum function to prevent congestion).
+        *   Accumulation mechanism for total available bandwidth across multiple paths when re-advertising.
+    *   **Discussion**: Jeff Tantsura strongly supported standardizing this, citing large-scale deployment and its critical role in network stability. Chairs noted co-ownership with Bess WG and committed to continuing discussion on the document's home while encouraging review.
+
+*   **Inter-AS RT Constraint Problem Statement (Stefan Prevost)**:
+    *   **Problem**: RFC 4684's inter-AS RT constraint specification (picking only the best path for RT NLRI) leads to a single distribution branch for VPN routes. This causes slow convergence, suboptimal routing (especially across geographically diverse ASBRs), and prevents route propagation in multi-data center Option B topologies where DCs use the same ASN.
+    *   **Proposal**: Allow considering multiple paths for inter-AS RT NLRI (similar to intra-AS behavior) to improve optimality and resiliency. Implementation options could include "all paths" or "best + N best".
+    *   **Ambiguity**: Noted existing implementations differ on "per NLRI type pruning" (based on origin AS) vs. "per type pruning" (based on EBGP/IBGP receipt).
+    *   **Request**: Working group adoption.
+
+*   **BGP Best Path Next-Hop Selection (Stefan Prevost)**:
+    *   **Problem**: RFC 4271's assumption of "hop-by-hop IP routing" is no longer valid with modern data planes (MPLS, SR, SRv6, Tunnel Encaps). BGP's default next-hop resolvability can lead to traffic drops (e.g., no LSP for chosen next-hop) or suboptimal routing (e.g., not meeting SR policy intent).
+    *   **Proposal**: Document existing field behaviors and generalize concepts:
+        *   Identify the "actual forwarding address" and its "forwarding context" (characteristics like tunnel type, VNI).
+        *   Introduce "resolution constraints" to look up in the proper forwarding table with specific path characteristics.
+        *   Modify internal cost computation to get actual costs from these specific tables.
+        *   Introduce a "preference" mechanism (like administrative distance) to compare costs from incomparable sources (e.g., SR policy metric vs. IGP cost).
+    *   **Discussion**: Keer Patel highlighted the importance of uniform algorithms within a domain to avoid loops and the need to normalize for different encapsulations.
+    *   **Request**: Working group adoption.
+
+*   **BGP Error Handling for NLRI Field (Bruno Decraene)**:
+    *   **Problem**: Parsing complex NLRI fields (e.g., Label Unicast, EVPN, BGP-LS, BDBKR) increases error probability. RFC 7606's session reset option for errors is highly disruptive and unhelpful when the error persists.
+    *   **Proposal**: Define a new non-transitive BGP attribute called "NLRI Key List", acting as a withdrawal.
+        *   Format is like MP_UNREACH_NLRI.
+        *   Encoded *before* the MP_REACH_NLRI.
+        *   If a receiver encounters a parsing error in MP_REACH_NLRI, it can use the "NLRI Key List" as a graceful withdrawal, avoiding a session reset.
+    *   **Benefits**: Limits error impact to specific routes, avoids network-wide disruption, allows for human intervention and software fixes without continuous session resets.
+    *   **Costs**: Sender needs to encode NLRI list twice, slight increase in update size/CPU.
+    *   **Request**: Working group review and adoption.
+
+*   **Entropy Label Draft Split (John Scudder)**:
+    *   **Problem**: The `entropy-label` draft contains two distinct parts: Next Hop Characteristics (NHC) and Entropy Label Characteristic (ELC). NHC has multiple implementations and is ready for WGLC, but ELC does not, blocking the entire draft.
+    *   **Decision**: The working group previously agreed to split the draft. Two new individual drafts, `draft-ietf-idr-nhc` and `draft-ietf-idr-elc`, were published.
+    *   **Next Steps**: Update NHC implementation report, reconfirm WGLC for `draft-ietf-idr-nhc`, and push for its RFC publication. `draft-ietf-idr-elc` will proceed once two implementations are available.
+
+*   **Enhanced Dynamic Capability for BGP (Sri Hari)**:
+    *   **Problem**: Existing dynamic capability (RFC 8654) does not support capabilities that change BGP message formats (e.g., AD-Path, 4-octet ASNs), requiring a session reset for changes.
+    *   **Proposal**: Introduce an "Enhanced Dynamic Capability" (EDC) message and capability.
+        *   Advertised in OPEN message, can also revise itself for hitless upgrades.
+        *   Supports *all* capabilities.
+        *   Uses `Init`, `Act`, `Act Confirm`, `Nack` message subtypes. `Nack` includes reasons for rejection.
+        *   Supports multi-instance capabilities (e.g., AD-Path per AFI/SAFI).
+        *   Introduces a "Demarcation Indicator" (DI) to signal when the new format takes effect, enabling a hitless transition.
+        *   Detailed FSMs for capability revision process for both unidirectional and bidirectional capabilities.
+    *   **Next Steps**: Update draft with use cases, state diagrams, and implementer notes. Request working group adoption.
+
+*   **Global Load Balancing for BGP Fabrics (Jeff Tantsura)**:
+    *   **Context**: Addresses congestion in BGP fabrics (clos topologies), especially for AI/ML traffic, where local dynamic load balancing is insufficient.
+    *   **Proposal**: "Global Load Balancing" leverages information from a step or more away (next-next hop) to bias local load balancing decisions.
+    *   **Mechanism**:
+        *   Requires a signaling mechanism for remote congestion (e.g., Broadcom API, or the generalized IETF mechanism in `routing-info` draft).
+        *   Utilizes the Next Hop Dependent Characteristics (NHC) to carry next-next hop bindings (Router ID, AFI/SAFI) as a lightweight hint.
+    *   **Benefits**: Test data shows significant improvement in avoiding traffic drops and excellent results with remote congestion, providing a lightweight solution.
+    *   **Status**: Document adopted, implemented, and shipping by vendors.
+    *   **Next Steps**: Improve document quality. Open to expanding for extended use cases within the framework.
+
+## Decisions and Action Items
+
+*   **RFC 4271bis**:
+    *   **Decision**: The working group will proceed with the effort to update RFC 4271 to Internet Standard.
+    *   **Action Item**: John Scudder (Editor) to define and capture a project plan in Section 2 of the draft, referencing GitHub for dynamic details.
+    *   **Action Item**: Working group participants to provide feedback on the proposed scope and process, preferably on the mailing list.
+*   **Implementation Reports**:
+    *   **Action Item**: Authors and implementers of `draft-ietf-idr-ts-flowspec-b6-policy` (Flow Spec Redirect 04) are requested to provide an implementation report to unblock progress.
+    *   **Action Item**: Authors and implementers of `rpd-wide-communities` and `registered-wide-communities` are requested to provide implementation reports.
+*   **Entropy Label Draft Split**:
+    *   **Decision**: The `draft-ietf-idr-entropy-label` has been formally split into `draft-ietf-idr-nhc` and `draft-ietf-idr-elc` following a consensus call.
+    *   **Action Item**: John Scudder (Editor) to update the implementation report for `draft-ietf-idr-nhc` and request reconfirmation of Working Group Last Call.
+*   **General WG Process**:
+    *   **Action Item**: Chairs encourage participants to use IDR's GitHub for draft review and contributions (issues/PRs).
+    *   **Action Item**: Participants uncomfortable with GitHub are reminded they can send feedback directly to the mailing list, chairs, or editors.
+
+## Next Steps
+
+*   **Charter Discussion**: Continued discussion on the mailing list regarding IDR's scope and focus areas.
+*   **RFC 4271bis**: Working group members are encouraged to review the draft, check GitHub issues, raise new issues, and contribute Pull Requests. Provide data on deployment for items under discussion (e.g., Send Hold Time, 2-octet ASNs).
+*   **RFC 4360bis**: Review the current text, especially concerning EBGP session behavior and IANA alignment.
+*   **EBGP Weighted ECMP**: Further discussion on the mailing list regarding the appropriate working group home (IDR or Bess). Review the draft for advancement to last call.
+*   **Inter-AS RT Constraint Problem Statement**: Working group adoption requested; participants are asked to review and provide feedback.
+*   **BGP Best Path Next-Hop Selection**: Working group adoption requested; participants are asked to review, especially regarding the uniformity of algorithms and loop prevention.
+*   **BGP Error Handling for NLRI Field**: Working group review and adoption requested. Further discussion on the mailing list is anticipated.
+*   **Enhanced Dynamic Capability**: The authors will update the draft with use cases, FSMs, and implementer's notes, then request working group adoption.
+*   **Global Load Balancing**: Continue efforts to improve document quality and consider expanding for additional use cases within the framework.
+*   **All Drafts**: Participants are strongly encouraged to review drafts, provide feedback on the mailing list, and contribute to the technical discussions.
