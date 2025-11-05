@@ -1,0 +1,75 @@
+# ANIMA
+
+## Summary
+
+The ANIMA session focused on reviewing the status of several key drafts, including those in the RFC Editor queue, drafts undergoing Working Group Last Call (WGLC), and drafts in active development. Significant discussion centered on updates to the Constrained BRISK (cBRISK) and Constrained Join Proxy (cJP) drafts, the proposed new IANA registry structure for BRISK Discovery, and the ongoing challenges with YANG SID allocations for `draft-ietf-anima-voucher-rfc8366bis`. A new proposal on AI agent communication in network devices was presented, leading to discussion about its scope within ANIMA and the broader IETF `agent-to-agent` context.
+
+## Key Discussion Points
+
+*   **Chair's Updates on Document Status:**
+    *   **RFC Editor Queue:** `draft-ietf-anima-jws-voucher` (JWS Voucher) and `draft-ietf-anima-brski-cloud` are awaiting publication, both referencing and blocked by `draft-ietf-anima-voucher-rfc8366bis` (8366bis). One non-ANIMA Working Group (WG) document is also waiting on BRISK Cloud.
+    *   **BRISK PRM:** `draft-ietf-anima-brski-prm` (BRISK PRM) completed IESG processing by end of July and is unchanged since IETF 123. A sense of those present was that it should be pushed into the RFC editor cluster, with the caveat that it could be pulled back if significant changes from 8366bis arise.
+    *   **8366bis:** The WGLC in October was successful. A few remaining "nits" will be addressed.
+    *   **BRISK Discovery:** Has undergone IANA early review.
+    *   **GRASP, ANIMA Registrar Considerations, MAAS Considerations:** These drafts are currently "parked" and will be revisited, potentially at IETF 125 or 126, to allow for better author availability.
+    *   The chairs noted the update to RFC 5706 in the Ops area, encouraging attention to operational considerations.
+    *   An additional slot was requested by individuals for an active item under investigation, though no slides were prepared.
+
+*   **Constrained BRISK (cBRISK) and Constrained Join Proxy (cJP) (Presented by Esco)**
+    *   **cBRISK (`draft-ietf-anima-constrained-voucher-029`)**:
+        *   **Updates:** Clarified how a Pledge uses the link-local address from a discovery response to contact a Join Proxy. Added support for multiple registrars and BRISK variants to prepare for future work from the BRISK Discovery draft.
+        *   **`uri-path-abbrev` CoAP Option:** Discussion on whether to mandatorily support this new CoAP option in cBRISK Registrars. It can significantly shorten message paths (e.g., `rv` path from 21 to 3 bytes), beneficial for constrained networks and mitigating relay overhead. Esco noted the Core WG expects quick progress on this option.
+    *   **Constrained Join Proxy (cJP) (separate draft)**:
+        *   **Updates:** The scheme name was renamed from `coaps+jp` to `jpy`. The rationale includes allowing `jpy` to carry any protocol data, not just CoAP, and aligning with Core WG's guidance to discourage new `coaps+foo` transport schemes. A security requirement was added: protocols carried within a `jpy` message must be resilient to IP/UDP header modifications, as the Join Proxy modifies these headers during relaying.
+        *   **`uri-path-abbrev` for cJP Discovery:** This option could reduce cJP discovery messages by about 15 bytes (75 to 59 bytes).
+        *   **JPY Generality and Liaison with Thread:** Michael questioned if JPY could be a generic relay mechanism beyond BRISK, specifically noting similarities with Thread's internal DTLS relay. Esco clarified that Thread's solution is proprietary and UDP-only, whereas JPY is designed to be more generic, supports different statefulness options, and can also support TCP. A suggestion was made to formally liaise with the Thread group to explore convergence or shared approaches; Esco will consider this.
+        *   **`me.arpa` for CoRE Link Format Discovery:** The idea is to use `me.arpa` as a special hostname in CoRE Link Formats to shorten payloads and remove hexadecimal link-local address strings. Concerns were raised by Torles regarding potential issues if proxies rewrite payloads, potentially invalidating signatures or changing semantics, though Join Proxies reconstruct messages rather than strictly proxying them.
+
+*   **BRISK Discovery (`draft-ietf-anima-brisk-discovery-07`) (Presented by Torles)**
+    *   The draft had no technical changes since IETF 123, with work focusing on editorial improvements and IANA early review.
+    *   A significant outcome is a restructured IANA registry model, splitting three complex tables into five more granular ones (discovery mechanisms, context, service name, transport parameters, variation type choices, variation string).
+    *   The draft includes update sections for existing RFCs: BRISK AE (RFC 8994), BRISK PRM, DNS-SD, and CoRE Link Format (RFC 6690), detailing how they should leverage the new discovery mechanisms. Torles noted a need to add an update section for cBRISK as well.
+    *   Scott Eich raised concerns about the growing complexity of the document for implementers. Torles acknowledged this, suggesting an "implementer considerations" section or reordering the document to highlight the most relevant information (e.g., the `variation string` table) upfront.
+
+*   **8366bis (`draft-ietf-anima-voucher-rfc8366bis-16`) (Presented by Michael)**
+    *   The draft is in its "last gasp" phase, with version 17 to be posted soon after incorporating all comments.
+    *   **YANG SID Allocation Issues:** A significant and ongoing problem is the tooling for allocating SIDs (Structured Data Identifiers) for YANG modules. Michael described difficulties with existing tools and manual workarounds. Mahesh (AD) highlighted that while IANA can allocate blocks of SIDs, the programmatic allocation of these SIDs to leaf nodes in YANG files is where the tools struggle. This raises a concern about who will support IANA if they encounter tool bugs, as `draft-ietf-anima-voucher-rfc8366bis` is the first document to require such an allocation. It was noted that this tool support is currently outside the IETF Tools Team's mandate.
+
+*   **ANIMA Registrar Considerations / MAAS Considerations (Presented by Michael)**
+    *   These documents (potentially merging) provide prescriptive advice for manufacturers on maintaining Private Key Infrastructures (PKI) for IDevIDs and for operators on appropriate PKIs for registrars in various network types (home, small, large enterprise).
+    *   The discussion covered PKI hierarchy tradeoffs (e.g., 2-level PKI for IDevIDs, 1-level for home routers), voucher signing keys, trust anchors, and design considerations for scalable registrars (e.g., replicating private keys vs. using multiple end-entity certificates).
+    *   Michael highlighted the need for more operator and PKI expert feedback, emphasizing that the document contains non-normative operational advice.
+    *   Torles noted that `draft-ietf-anima-brski-ae` (RFC 8994) already contains relevant suggestions, such as using sub-CAs for offline locations, which should be referenced.
+
+*   **Constrained GRASP (cGRASP) (Presented by Longwey Zhu)**
+    *   `draft-ietf-anima-constrained-grasp` was adopted by ANIMA in July.
+    *   **Current Work:** Refactored cGRASP as a CoAP application, retaining a 32-bit session ID. Clarified application signals and stable encoding.
+    *   **Target Scenario:** Designed for C-RAM and OC2 class devices (RFC 7228) with CoAP-only support, focusing on industrial device management (e.g., factory embedded controllers) for discovery and synchronization of capabilities and parameters without a central server.
+    *   **Mechanism:** cGRASP runs over CoAP, mapping GRASP discovery, finding, negotiation, and synchronization into CoAP request/response patterns using CoAP tokens and session IDs for correlation.
+    *   Esco suggested adding an "implementation status" section to the draft to track code and experiments.
+
+*   **AI Agent Communication Considerations (Presented by Joey Mao)**
+    *   **Proposal:** AI agents deployed in network devices can perform tasks based on natural language requests (e.g., troubleshooting). To overcome the limitation of local context, cross-device communication between AI agents is proposed.
+    *   **Framework:** Categorizes agents into "Communication Agents" (entry point, capability aggregation, task dispatch) and "Worker Agents" (specific subtasks). These AI agents are seen as similar to ANIMA's Autonomous Service Agents (ASA).
+    *   **Protocol Requirements:** Support for capability discovery/negotiation, task assignment/result collection, authentication/security, synchronous/asynchronous/streaming/bidirectional interaction, and structured/unstructured messages. Existing protocols like A2A MCP or GRASP could be extended.
+    *   **AD (Mahesh) Guidance:** Recommended that all AI agent-related work be redirected to the IETF `agent-to-agent` mailing list. This list centralizes such proposals to determine if a new WG or area is needed and to prevent "WG shopping." Mahesh emphasized that ANIMA's existing work (connectivity, discovery, key distribution for A&I/ASA) should be leveraged by the AI community to avoid re-invention.
+    *   **Discussion on Scope:** Esco and Sheng Yan commented that GRASP could be effectively used for discovering AI agent endpoints and announcing their capabilities, abstracting the "intelligence" which could reside off-device. Sheng Yan further suggested that "AI agent" might not represent fundamentally new behaviors for message exchange beyond what existing protocols like GRASP can handle. Ebbing, however, argued that this work is an "AI-enhanced ASA" and thus directly aligns with ANIMA's charter, making it a suitable discussion point for the WG.
+
+## Decisions and Action Items
+
+*   **BRISK PRM:** The chairs will tentatively instruct the AD to push `draft-ietf-anima-brski-prm` into the RFC editor cluster, with the understanding that it can be recalled if changes in 8366bis necessitate.
+*   **cBRISK / cJP `uri-path-abbrev`:** Authors will await feedback from the Core WG meeting this week before finalizing the decision on mandatory support.
+*   **JPY Generality / Thread Liaison:** Esco will consider initiating a formal liaison with the Thread group to discuss potential convergence or shared approaches for relay mechanisms.
+*   **8366bis YANG SID Allocation:** Michael will publish `draft-ietf-anima-voucher-rfc8366bis-17` soon. Esco will submit a Pull Request (PR) for final nits. The broader issue of tooling support for IANA in mechanically allocating SIDs for YANG files was flagged to Mahesh (AD) for further discussion and resolution.
+*   **BRISK Discovery Implementer Experience:** Torles will consider options to simplify the document's presentation for implementers, possibly by adding an "implementer considerations" section or reordering content to prioritize immediately usable information (e.g., the `variation string` table).
+*   **cGRASP Implementation Status:** Esco suggested adding an "implementation status" section to `draft-ietf-anima-constrained-grasp` to track prototype and experimental work.
+*   **AI Agent Communication:** The AD (Mahesh) strongly recommended that the authors of `draft-joey-anima-ai-agent-comm-considerations` submit their draft and continue discussions on the IETF `agent-to-agent` mailing list to centralize AI-related work within the IETF.
+
+## Next Steps
+
+*   **cBRISK / cJP:** Decisions are pending on the `uri-path-abbrev` CoAP option and the `me.arpa` domain. Once these are resolved, the drafts are expected to proceed to Working Group Last Call.
+*   **BRISK Discovery:** The draft needs further reviews, particularly for the update sections to existing RFCs. Torles aims for a WGLC by early December.
+*   **8366bis:** Michael will post version 17 and Esco will submit a PR with final nits. The chairs will take the YANG SID allocation tooling discussion offline with the AD.
+*   **ANIMA Registrar/MAAS Considerations:** Michael will continue to seek operator feedback. The WG will need to decide on merging these two documents and defining a consolidated table of contents.
+*   **cGRASP:** The draft will be updated as soon as possible. A public prototype is planned for IETF 124, with POC validation experiments ongoing.
+*   **AI Agent Communication:** Authors are encouraged to engage with the `agent-to-agent` mailing list for broader IETF community discussion and scope determination. The ANIMA WG will consider how its existing A&I/ASA work can contribute to these discussions.

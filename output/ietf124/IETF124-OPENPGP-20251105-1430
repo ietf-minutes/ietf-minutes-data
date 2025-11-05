@@ -1,0 +1,86 @@
+# OPENPGP
+
+## Summary
+
+The OPENPGP Working Group session included follow-ups from the recent interim meeting on NIST Brainpool curves, the signature context parameter, key replacement, and persistent symmetric keys. The second half of the session focused on potential new work items, including a proposed update to HKP, a mechanism for external secret keys (hardware tokens), new PGP media types, the "GREASE" mechanism for OpenPGP, and a substantial "Semantic Cleanup" draft addressing long-standing ambiguities and underspecifications in the OpenPGP format. Several drafts were proposed for working group adoption, and chairs committed to soliciting feedback and implementer interest on the mailing list.
+
+## Key Discussion Points
+
+*   **NIST Brainpool Curves Composites (draft-ietf-openpgp-nist-brainpool-curves)**
+    *   Falco presented a proposal for 8 code points, aiming to simplify the parameter sets. This includes dropping the smallest parameter set and ensuring security levels are equally paired (e.g., 192/192). The proposal suggests using larger 512/521 bit curves.
+    *   A question was raised about the practical use of P521 due to its slowness, with a suggestion to consider X-Wing as an alternative, though this draft is focused specifically on NIST and Brainpool curves.
+    *   BSI noted that the proposed sets (level 3 and 5, e.g., 384 and 512 bit Brainpool) align with their technical guidelines and current usage.
+    *   It was noted that striking out code points might not significantly reduce code complexity or size, as these are randomized curves often handled by a single implementation.
+    *   The discussion touched on the scaling differences between elliptic curves (cubic) and ML-KEM (quadratic), suggesting ML-KEM might be more palatable for higher security levels.
+*   **Signature Context Parameter (related to draft-ietf-openpgp-nist-brainpool-curves)**
+    *   The working group did not see a strong vote for using the context parameter during the interim.
+    *   The decision was to align with the base draft, which does not use the context parameter, to avoid inconsistencies (PQC-only use) and implementation risks for marginal security gains against cross-protocol attacks.
+    *   Falco plans to release a new version of the draft including these changes and test vectors.
+*   **Key Replacement (draft-ietf-openpgp-key-replacement)**
+    *   Andrew presented an update on the draft, which defines a new signature subpacket to provide a hint for a newer certificate in self-signatures and revocation signatures, establishing "identity equivalence" between certificates.
+    *   The wire format and draft text are considered stable.
+    *   A key blocker is the lack of test vectors and interoperability testing, which depends heavily on exposing an interface in the SOP (Stateless OpenPGP) tool. There are open merge requests and issues in the SOP repository.
+    *   Implementers were encouraged to express interest to facilitate test vector development.
+*   **Persistent Symmetric Keys (draft-ietf-openpgp-pqc-kem-persistent-symmetric-keys)**
+    *   Daniel presented a new iteration that proposes using an Authenticated Encryption with Associated Data (AEAD) construction for both symmetric encryption and message authentication. This involves encrypting an empty message and using the data to be authenticated as AAD.
+    *   This approach aims to simplify the proposal by reducing the number of primitives, allowing symmetric-only encryption with public key algorithm ID 0.
+    *   The draft defines a packet for storing a persistent symmetric key.
+    *   This particular approach using AEAD for MAC was a new development after the interim, and feedback from the mailing list is awaited. No test vectors are included in the current draft version.
+*   **HKP Protocol Update (draft-gallagher-openpgp-hkp-protocol-update)**
+    *   Andrew presented a redesign for HKP, aiming for a unified, restful API (V2 style) that combines functionalities of legacy HKP, WKD, and VKS.
+    *   Key features include:
+        *   Pre-authenticated email verification ("prove then submit").
+        *   Key discovery using WKD style via SRV records.
+        *   Canonical certificate bundles (supporting multiple key versions and replacement).
+        *   Deprecating ASCII armor in favor of binary for the new API.
+        *   Formalized JSON status responses.
+        *   New V2 endpoints for certificate lookup, canonical WKD, and a "prefix log" for privacy-preserving updates.
+        *   Submission endpoints for traditional and canonical bundles, and a `send-token` endpoint for email-based verification to combat spam.
+    *   Outstanding ideas include using JSON-LD for machine-readable email tokens (requiring coordination with the SML group) and recursive lookups.
+    *   Andrew requested working group adoption, noting existing implementation work in HockeyPuck and plans for Haggard.
+*   **External Secret Keys (draft-farrell-openpgp-external-secret-keys)**
+    *   Stephen presented a proposal to standardize the use of hardware tokens and other "external secrets" (TPMs, smart cards, enclaves) with OpenPGP.
+    *   The proposal introduces minimal wire format changes, adding an S2K usage octet (252) to indicate an externally stored secret key. The secret key material is not stored in the packet itself, but implied to be locatable via the public key material.
+    *   An optional "external locator hint" registry is defined, but no hints are specified yet.
+    *   This proposal would "burn" one symmetric algorithm code point (252) due to the shared registry space.
+    *   Prior experimental work by SmartGPG uses a different S2K specifier approach.
+    *   The draft aims to provide a clear, interoperable way to support a common user desire, despite some author concerns about the security implications of such offload mechanisms.
+    *   Implementer interest is sought for adoption.
+*   **PGP Media Types (draft-gallagher-openpgp-media-types)**
+    *   Andrew proposed defining new media types for binary OpenPGP formats, as existing RFC 3156 types are ASCII-armored.
+    *   Proposed types: `application/pgp-secret-keys` and `application/pgp-message`.
+    *   Introduces an `armor=true/false` parameter, with `true` as default for backward compatibility but `false` recommended for new APIs.
+    *   Includes a minor fix for prefixing detached signatures in certificate bundles.
+    *   Initial feedback from media types experts was generally positive. Andrew intends to implement this in HockeyPuck.
+*   **Grease for OpenPGP (draft-gallagher-openpgp-grease)**
+    *   Andrew proposed implementing a "GREASE" (Generate Random Extensions And Sustain Extensibility) mechanism for OpenPGP, similar to TLS.
+    *   This involves reserving 8 unallocated code points across most OpenPGP registries for interoperability testing. Implementations are expected to gracefully ignore artifacts containing these GREASE code points.
+    *   The goal is to proactively identify and fix parsing brittleness in implementations before new features cause widespread compatibility issues.
+    *   The reserved code points follow a pattern difficult to parse specially, encouraging generic unknown-value handling.
+    *   Also aligns the private experimental area size to 16.
+    *   The existing OpenPGP interoperability test suite could utilize these GREASE code points.
+*   **Semantic Cleanup / Message Grammar (draft-gallagher-openpgp-semantic-cleanup)**
+    *   Andrew presented a substantial draft addressing historical underspecifications and ambiguities in the OpenPGP format, stemming from RFC 1991.
+    *   Issues range from vague wire format descriptions (e.g., type 40 time-stamping signatures) to undefined semantics for various signature types, potential for recursive embedded signatures, handling conflicting subpackets, and clarifying key flag usages.
+    *   The document serves as a "to-do list" with suggested fixes, aiming to allow full implementation from scratch based solely on RFCs without tribal knowledge.
+    *   It is a large document and could potentially be split into multiple smaller drafts or adopted as a "workbook" for future updates to RFC 9580.
+    *   Clarifications in this draft would likely require changes in existing implementations.
+    *   More working group members are encouraged to read and provide feedback on this document.
+
+## Decisions and Action Items
+
+*   **NIST Brainpool Curves Composites**: Falco will update the draft with the proposed 8 code points and test vectors and post it to the mailing list for further review. The chairs will then assess readiness for a Working Group Last Call (WGLC).
+*   **Signature Context Parameter**: The decision is to omit the signature context parameter from `draft-ietf-openpgp-nist-brainpool-curves` to align with the base draft.
+*   **Key Replacement**: Implementers interested in supporting this mechanism are requested to come forward to help with test vector generation and interoperability testing, particularly regarding SOP integration.
+*   **HKP Draft**: Andrew requested working group adoption. The chairs will send an email to the mailing list to gauge interest and commitment for review and implementation. Coordination with the SML group for JSON-LD aspects will be encouraged.
+*   **External Secret Keys**: The chairs will send a message to the mailing list seeking implementer interest for this draft before considering a call for adoption.
+*   **PGP Media Types**: The chairs will raise this draft on the mailing list and, if adopted, ensure coordination with IETF media types experts.
+*   **Grease for OpenPGP**: The chairs will inquire on the mailing list about the working group's comfort with registering the proposed GREASE code points.
+*   **Semantic Cleanup**: Working group members are encouraged to read and provide feedback on this substantial draft. The chairs will consider how best to proceed with it (e.g., splitting it into smaller documents, using it as a working group "workbook").
+*   **General Chair Action**: The chairs will follow up on these various proposals on the mailing list, likely presenting them one at a time, to gauge working group interest and seek commitments for review and potential implementation.
+
+## Next Steps
+
+*   Falco to post an updated version of `draft-ietf-openpgp-nist-brainpool-curves` to the mailing list.
+*   Chairs to solicit interest for adoption and implementation commitments for `draft-gallagher-openpgp-hkp-protocol-update`, `draft-farrell-openpgp-external-secret-keys`, `draft-gallagher-openpgp-media-types`, and `draft-gallagher-openpgp-grease` via the mailing list.
+*   Working group members are encouraged to review `draft-gallagher-openpgp-semantic-cleanup` and provide input on its scope and potential paths forward.

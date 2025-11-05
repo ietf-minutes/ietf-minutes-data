@@ -1,0 +1,89 @@
+# LISP Session Minutes
+
+## Summary
+
+The LISP working group session covered updates on several existing drafts and introduced one new proposal. Key discussions included progressing the reliable transport and multicast documents to standard track, resolving conflicting views on IID length in the DDT specification, and a new approach for delegated mapping from network controllers. The session concluded with an update on SAVI integration in LISP networks. Many documents are nearing Working Group Last Call, with specific issues slated for further discussion on the mailing list.
+
+## Key Discussion Points
+
+*   **Working Group Status Update**
+    *   **Reliable Transport (8111bis)**: Noted as already an RFC.
+    *   **LISP Traffic Engineering** and **LISP GEO**: Require new revisions and area reviews before IESG review.
+    *   **Multicast documents**: Close to Working Group Last Call (WGLC), pending reviews.
+    *   The chairs expressed a goal to achieve WGLC for the two BIS documents (DDT and NAT Traversal) before Christmas, contingent on collaborative effort to address reviews.
+
+*   **LISP Reliable Transport (draft-ietf-lisp-reliable-transport)**
+    *   **Update**: The latest revision addressed comments, and IANA requests were submitted. An updated version will be uploaded to conform to IANA text.
+    *   **Protocol Signaling**: Decided to use the 'R' bit to signal TCP for reliable sessions, deferring Quick or other protocols for future extensions due to a lack of current implementations.
+    *   **Message Clarification**: New sections clarify the use of registration refresh, rejection, and withdrawal messages, and distinguish between reused and new messages from RFC 9300.
+    *   **State Machine**: Simplified the state machine by splitting it, improving readability.
+    *   **DCV Notification**: Reused the Map-Notify format for DCV notifications, including authentication semantics.
+    *   **Deployment Experiences**: Added a section detailing three use cases where periodic registrations did not scale well.
+    *   **Standard Track**: A sense of those present indicated support for progressing directly to standard track, citing improved readability and potential for use by other LISP features (e.g., SAVI).
+    *   **Authentication (L. Prasad)**: Raised a point on whether the reliable reject message's authentication failure option is relevant if initial authentication is over UDP and optional subsequent authentication over TCP. The presenter clarified it applies if validation continues with every registration message.
+    *   **Quick/Multicast Quick (D. Farinacci, P. Thaler)**: Discussed the potential future need for Quick or multicast Quick, especially for improved handshakes in mobility scenarios or for scaling map servers, but acknowledged the decision to keep it separate for now. Mentioned looking at why Netconf and BMP are moving to Quick for possible overlap in requirements.
+
+*   **LISP DDT (draft-ietf-lisp-8111bis)**
+    *   **Status**: Adopted as a working group document. Lauren Chappell volunteered as a co-author.
+    *   **Changes**: Fixed typos and added stronger security options.
+    *   **XEID Definition (IID and Database ID)**:
+        *   **IID Length**: A contentious discussion regarding the IID field length. RFC 8111 initially specified 32 bits, but RFC 9300 (core LISP) defines it as 24 bits. The proposal is to align with 24 bits in DDT, with text on backward compatibility for 32-bit implementations mapping to the lower 24 bits for the data plane. D. Farinacci strongly argued for maintaining 32 bits in the control plane for flexibility (similar to VLAN IDs) and only mapping the lower 24 bits to the data plane, citing existing implementations. The presenter argued for consistency with RFC 9300 to avoid IESG review issues.
+        *   **Database ID**: Proposed to either drop the field (as it's not shared on the wire and currently fixed at zero) or define an IANA registry for it.
+        *   **Decision**: Due to ongoing debate, it was decided to move the discussion on **IID length** and **Database ID** to the mailing list to gather broader input and seek convergence.
+    *   **Outstanding Tasks**: Error handling (Luigi) and deployment experience (Lauren) are pending.
+
+*   **LISP NAT Traversal (draft-ietf-lisp-nat)**
+    *   **Status**: Resubmitted in September, adopted and renamed.
+    *   **Main Change**: Addressed backward compatibility by replacing the unprotected F-F-F-F-F-F instance ID for data plane messages with an encapsulated ECM Notify, ensuring protection and authentication using mechanisms similar to Map Register/Notify.
+    *   **Readiness**: Considered ready for WGLC, pending any new comments.
+    *   **Map Info Request/Reply (D. Farinacci)**: Commented that the Map Info Request/Reply format is not identical to Map Register (contains NAT-specific info not in EID records), suggesting a potential bug if they are treated as having the same structure. The presenter committed to reviewing the draft.
+
+*   **LISP Delegated Mapping (New Draft)**
+    *   **Motivation**: To allow centralized network controllers/orchestration engines (referred to as "XTR controllers") to manage EID attachment and distribution in LISP networks.
+    *   **Mechanism**: The XTR controller directly interfaces with the mapping system, sending a Map Register with a new "delegated mapping" ('D') flag. The mapping system then sends a Map Notify to the relevant ETR, which validates and confirms the mapping (making it authoritative).
+    *   **Signaling**: Proposes a new 'D' bit in Map Register/Notify to signal delegated mappings.
+    *   **Assumptions**: XTR controller knows EIDs/RLOCs and implements LISP control plane procedures (e.g., RFC 9301's Map Register).
+    *   **ELP/ELC Reuse**: When sending a delegated mapping, the controller can use ELP to instruct the ETR on how to reach the onboarded EID and ELC for specific encapsulation needs.
+    *   **Discussion (D. Farinacci, L. Prasad, P. Thaler, A. Ashwin)**:
+        *   Clarification on XTR controller's implementation (only Map Register?), use of reliable transport.
+        *   **Authority and Multi-homing**: Concerns about who is authoritative (XTR controller vs. ETR) and how multi-homing scenarios (e.g., multiple RLOCs) are handled when an XTR controller provides mappings to multiple ETRs. The presenter clarified the ETR makes its own mapping authoritative for its RLOC.
+        *   **Authentication**: XTR controller should implement full authentication procedures and share keys with the mapping system.
+        *   **Multiple Controllers**: Questioned how contradicting information from multiple XTR controllers for the same host would be resolved.
+        *   **Transitions/Error Handling**: Noted insufficient detail on handling transitions (e.g., host movements) and error conditions.
+        *   **Key Sharing**: Discussed the assumption that ETRs and XTR controllers share keys within a controlled domain, or that the Map Server accepts multiple keys.
+
+*   **LISP Multicast (Merge 8059 and 9798 to Standard Track)**
+    *   **Motivation**: To combine RFC 8059 and RFC 9798 into a single standards-track RFC, as it is a critical piece needed by 6831bis.
+    *   **Content**: Combines concepts from both experimental RFCs, including PIM Join/Prune attributes, LISP Transport attribute (unicast/multicast, v4/v6 underlay), and Receiver RLOC attribute to signal preferences for multicast traffic reception.
+    *   **IANA Code Points**: Confirmed reuse of existing IANA code points for backward compatibility with existing implementations.
+    *   **PIM WG Involvement**: The original documents involved the PIM working group, and the intent is to keep both PIM and LISP WGs informed and involved.
+    *   **Switching Underlays (J. Stigman)**: Discussed the ability to switch between unicast and multicast underlays by sending new join messages with different attributes.
+    *   **Request**: Requested a working group adoption call, noting the content's stability.
+
+*   **SAVI in LISP Network (draft-kova-lisp-savi)**
+    *   **Purpose**: Document procedures for Source Address Validation (SAVI) in LISP networks, focusing on how SAVI and LISP can work together, particularly using a "first-come, first-serve" approach.
+    *   **Benefits**: Addresses EID mobility, theft prevention, fast roaming.
+    *   **Updates**:
+        *   Added a section on interaction with "ephemeral EIDs" to help detect potential address conflicts.
+        *   Highlighted how DHCP-based address validation (another SAVI approach) could supplement the first-come, first-serve method.
+        *   Did not expand on interaction with MAC randomization.
+    *   **Discussion (D. Farinacci, A. Ashwin)**:
+        *   **Multicast Group Validation**: Questioned if SAVI could validate group members for multicast groups, especially when hosts move. This distinction between validating the source vs. the receiver for multicast was explored.
+        *   **IGMP Snooping**: D. Farinacci suggested that with IGMP snooping on switches, the identity of joining members could be known. A. Ashwin noted potential difficulties with IGMP in a LAN where multiple devices might send reports.
+        *   **MAC as Anchor**: It was noted that SAVI uses the MAC address as an anchor.
+    *   **SAVI WG**: Confirmed that the SAVI working group is closed. Discussion should continue on the LISP mailing list.
+
+## Decisions and Action Items
+
+*   **LISP DDT (8111bis)**: The discussion on **IID length (24-bit vs 32-bit)** and the **Database ID** definition will be continued on the LISP working group mailing list to reach consensus.
+*   **LISP Multicast (8059/9798 merge)**: The chairs will issue a working group adoption call for the draft, ensuring it is forwarded to both the LISP and PIM mailing lists for broader participation and consensus.
+*   **LISP Delegated Mapping**: The authors will make an effort to detail authentication procedures, clarity on authority and transitions, multi-homing cases, and error handling in future revisions.
+*   **LISP NAT Traversal**: The author will review the draft regarding the Map Info Request/Reply format similarities with Map Register based on Dino Farinacci's comments.
+
+## Next Steps
+
+*   Continue discussions on IID length and Database ID for LISP DDT on the mailing list.
+*   Participate in the adoption call for the LISP Multicast draft.
+*   Review and provide comments on the LISP NAT Traversal document.
+*   Provide feedback on the LISP Delegated Mapping and SAVI in LISP drafts on the mailing list.
+*   The next working group meeting is planned for Shenzhen.
