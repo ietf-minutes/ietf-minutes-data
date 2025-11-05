@@ -1,0 +1,88 @@
+# MBONED
+
+## Summary
+
+The MBONED session covered updates on active working group documents, an announcement for an upcoming side meeting on live streaming and multicast, and two detailed technical presentations. Document updates included Multicast YANG models and AMT YANG entering Working Group Last Call, and the Redundant Ingress Failover draft undergoing significant revisions. The "Dorms" draft is nearing Working Group Last Call, while "C-back" is undergoing a significant re-evaluation of its circuit breaker mechanisms and "Amby" remains on hold. Discussions on non-source routed SR Multicast highlighted options like Ingress Replication, BIER, and controller-based trees, with the authors requesting a Working Group Last Call. Finally, two presentations introduced real-world multicast deployment in venues (Aircast) and novel proposals for enabling multicast in web browsers and quantifying multicast network reach (Blockcast's Sonar draft).
+
+## Key Discussion Points
+
+*   **Administrative Overhead**: Standard IETF Note-well reminder, Meetecho attendance tracking, mic queue management, and stating name/affiliation.
+*   **Active Working Group Document Status**:
+    *   **Multicast YANG Models**: Completed Yang Doctor review, updated, currently in Working Group Last Call (WGLC). Authors requested broad community feedback beyond just authors.
+    *   **AMT YANG**: Completed Yang Doctor review, updated, also in WGLC, seeking wider feedback.
+    *   **Redundant Ingress Failover**: Received significant comments from Ops and Routing ADs indicating need for enhancements. Greg confirmed a recent con-call led by Sandy resulted in significant language and abstract improvements, clarifying its objective as an operator framework rather than configuration or invention. It's now considered ready for re-review.
+    *   **Dorms, C-back, Amby Cluster**: Max provided updates.
+        *   **Amby**: Still "a ways away" and on hold, pending progress on the multicast security draft and clarifying its intended purpose.
+        *   **Dorms**: Received early reviews from Ops, Gen-ART, and Yang Doctors. Minor issues were addressed. It is awaiting a SecDir review and then considered ready for WGLC.
+        *   **C-back**: Significant internal re-evaluation. Concerns were raised that its current reactive mechanism (using metadata for estimated bandwidth) does not fully align with RFC 8084's "circuit breaker" definition, which implies active measurement.
+            *   **Proposed Changes**: Max and Kyle proposed moving towards a more proactive approach (checking capacity *before* joining a channel) and incorporating active ingress/egress measurements to detect congestion.
+            *   **Congestion Control Aspects**: The congestion control aspects of C-back are being discussed with the Congestion Control Working Group (CCWG). A key challenge is the "blunt instrument" nature of circuit breakers (all-or-nothing cuts) compared to fine-grained TCP congestion control, especially when "unmovable load" (media) competes with TCP traffic. Real-world experiments are deemed necessary.
+            *   **Priority Field**: Discussion on the utility and placement of the "priority" metadata field within C-back. Kyle highlighted that network priority is often driven by business relationships, not just source declarations. The current thinking suggests pushing such logic to the client or removing the field from C-back for now, potentially reintroducing it as a separate, more thoughtfully designed Dorms extension if a clear use case emerges.
+            *   **Overall Vision**: Middleboxes act as preemptive circuit breakers, signal actions to a network controller, and clients receive network-specific metadata (e.g., via local DNS) to make informed join decisions, reducing unexpected data loss or non-joins.
+        *   **Cluster Status**: It was noted that the three drafts (Dorms, C-back, Amby) no longer need to advance as a cluster, as Amby is far behind.
+    *   **Multicast Security**: Kyle noted the draft was adopted last month but hasn't seen much movement since adoption. He requested reviews to determine if it's complete or needs further work, and feedback from SecDir.
+*   **Side Meeting Announcement: Live Streaming and Multicast (Lenny Giuliano)**:
+    *   A side meeting is scheduled for tomorrow at 11:00 AM in McGill.
+    *   **Purpose**: Address the significant increase in live streaming traffic (up to 17% of internet traffic, with major events causing huge peaks) and its demanding requirements (low latency, high join rates) compared to on-demand video.
+    *   **Challenge**: Multicast solutions are emerging in two separate worlds (network-centric like SSM/AMT, and application-centric like MABR, Open Casting, Quick extensions).
+    *   **Goal**: Bring participants from both worlds together to discuss challenges, perform a gap analysis (what's working, what's missing), focusing on Layer 4 and above (reliability, ABR, encryption, DRM, congestion control, ad insertion).
+*   **Non-Source Routed SR Multicast (Jeffrey Zhang)**:
+    *   This informational draft discusses options for multicast in Segment Routing (SR) networks, adhering to SR principles of no per-flow/per-tunnel state and optional controller use.
+    *   **Options Presented**:
+        *   **Ingress Replication**: Simple, mature, inefficient but suitable for low-rate, low-fanout, sporadic flows. Can use SR or non-SR paths.
+        *   **BIER (Bit Index Explicit Replication)**: Efficient replication without per-tree states, considered a prime solution for SR Multicast. Deployment lags due to hardware requirements but is gaining traction with pioneering vendors/operators.
+        *   **Controller-based Trees**:
+            *   **SRP-2MP**: Uses SR Replication Segments (RFC in Spring WG) with policy defined in PIM WG (in RFC editor's queue). Data plane similar to MLDP/P2MP, control plane differs.
+            *   **BGP-signaled MLDP**: Defined in BEST WG, ready for WGLC (waiting for IDR review). Facilitates transition from traditional MLDP.
+        *   **Traditional Solutions**: PIM, MLDP, P2MP tunnels, and plain IPv6 multicast (for SRv6) can still be used if they meet use cases and operators don't mind running older protocols.
+    *   **Operator Choice**: Whether to shed "old" protocols (LDP/RSVP) for multicast or continue using them is a matter of preference and network strategy.
+    *   **Request**: Authors believe the draft is ready for WGLC and seek feedback to confirm. Touched Telecom supported WGLC.
+*   **Aircast: Sub-Second Latency In-Venue Streaming (Craig Harbin, Aircast)**:
+    *   **Problem**: Achieving sub-second latency and consistent quality for real-time streaming in high-density environments (stadiums) where unicast streaming causes congestion.
+    *   **Solution**: Aircast's in-venue platform leverages multicast distribution, delivering real-time content via an SDK integrated into user devices (e.g., US Open deployment).
+    *   **Architecture**: Ingests SDI/unencrypted feeds from production, distributes them over the local IP network using multicast. Features include instant stream switching and multicast authentication.
+    *   **Lessons Learned**: Key dependencies on underlying IP transport, importance of IGMP tuning and coordination (on the network, not host stack), consistent AP firmware, SDK-managed buffer minimization for ultra-low latency, and topology optimization. Noted that multicast often makes IT departments "nervous" but attitudes are changing.
+    *   **Q&A Highlights**:
+        *   **Rate Control**: Set a minimum Wi-Fi multicast rate (e.g., 48 Mbps) to ensure sufficient bandwidth; good Wi-Fi infrastructure is critical. Streams were around 3-5 Mbps each.
+        *   **IGMP Tuning**: Involved many network-side tweaks (e.g., query interval, max response time) to manage multicast tracking and prevent flooding from rogue clients, not host stack changes. IGMPv2 was used over a pure Layer 2 network with snooping.
+        *   **5G MBMS**: No current conversations with Qualcomm or other vendors, but interest was expressed.
+        *   **Reliability**: UDP transport, no retransmissions due to latency constraints. Relies on forward error correction (FEC) and the inherent resilience of audio/video to minor packet loss. For catastrophic loss, clients can switch to lower bitrate streams. AP fine-tuning was done.
+        *   **Adaptive Bitrate**: Multiple *static* streams at different bitrates were provided, allowing clients to choose, rather than true adaptive bitrate. MPEG-TS was the underlying stream format.
+*   **Multicast in the Browser and Other Topics (Omar Alami, Blockcast)**:
+    *   **Goal**: Bring multicast capabilities to third-party ISP networks (WAN) and enable native multicast applications, specifically in web browsers.
+    *   **Tridion Architecture**: Omar highlighted Tridion's potential for efficient, router-card-based packet replication (using ASICs instead of x86 servers), encouraging ISP participation and offering an incremental path to multicast adoption.
+    *   **Multicast in the Browser**: The W3C's Direct Socket API (rolled out Oct 2023) now allows UDP and multicast in browsers via native JavaScript.
+        *   **Caveats**: Limited to "isolated web applications" (sandboxed, elevated permissions, explicitly installed). Chrome currently restricts publishers to enterprises/managed devices, but aims for broader access pending security considerations.
+        *   **Limitations**: Currently only supports Any-Source Multicast (ASM), not Source-Specific Multicast (SSM). AMT relays can overcome SSM limitations.
+    *   **Proof of Concept (POC)**: Demonstrated an isolated web app compiling Go to WebAssembly to decapsulate AMT traffic, manage relays/groups, and run an output server. Showed raw MPEG-TS playback from a Tridion source via an AMT relay, noting challenges with loss (stalling if keyframes are lost) as MPEG-TS is not loss-tolerant.
+    *   **Open Capacity Marketplace**: Proposal to integrate ISP edges into a marketplace for content delivery. Addresses the challenge of commercializing multicast for third-party content providers.
+    *   **Sonar Draft (Statistical Observation Network Attesting for Receiver Coverage)**:
+        *   **Purpose**: A new draft for quantifying the value and reach of multicast in a WAN. Aims to allow content providers to verify ISP/broadcaster multicast capabilities.
+        *   **Mechanism**: Uses content authentication, verifiable random functions, and ZK Snarks (zero-knowledge succinct non-interactive arguments of knowledge) to collect anonymized, aggregated, and verifiable attestations from receivers on a blockchain-like ledger.
+        *   **Fraud Detection**: Utilizes statistical methods (e.g., Poisson distribution, "German tank problem") to detect loss patterns, sniffing out cases where providers might be unicast-replicating instead of genuinely multicasting.
+        *   **Sybil Attack Prevention**: Requires a staking mechanism (financial stake) for both receivers and provers to ensure trustworthiness and penalize cheating.
+        *   **Relationship to Open Caching**: The marketplace uses Open Caching standards, with "Open Casting" as an extension for multicast-specific parameters.
+    *   **MA Architecture (Multicast Adaption HTTP Proxy)**: Requires source involvement for TLS termination and manifest specification for live video.
+    *   **Future Work**: Further develop Sonar draft. Integrate multicast adaption HTTP proxy into browser extensions. Explore multicast extensions for Media Over Quick, which could incentivize Chrome to make Direct Sockets more broadly accessible.
+    *   **Call to Action**: Seeking feedback on the Sonar draft, participants for the open capacity marketplace, and interest in Media Over Quick multicast extensions.
+
+## Decisions and Action Items
+
+*   **Multicast YANG Models**: Working Group Last Call is underway. **Action Item:** All working group members are encouraged to review the draft and provide comments on its advancement.
+*   **AMT YANG**: Working Group Last Call is underway. **Action Item:** All working group members are encouraged to review the draft and provide comments on its advancement.
+*   **Dorms**: Waiting for SecDir review. Afterwards, the document is expected to proceed to Working Group Last Call.
+*   **C-back**: The working group indicated a general sense of agreement to remove the "priority" field from the C-back draft for now, or to re-evaluate it as a separate Dorms extension. **Action Item:** Max and Kyle to propose updates to the C-back draft based on this discussion. **Action Item:** Kyle to send an introductory email to the CCWG mailing list to continue discussions on the congestion control aspects of C-back.
+*   **Non-Source Routed SR Multicast**: The authors requested a Working Group Last Call. **Action Item:** Working group chairs to consider initiating a WGLC. **Action Item:** All working group members are encouraged to review the draft.
+*   **Multicast Security**: **Action Item:** Kyle requested reviews of the draft from the working group and from SecDir.
+*   **MBONED Side Meeting**: A side meeting on Live Streaming and Multicast is scheduled for **tomorrow, 11:00 AM, in McGill**. **Action Item:** Attendees encouraged to participate and invite others from the streaming community.
+*   **Sonar Draft**: **Action Item:** Omar Alami is seeking feedback on the sonar draft, participants for an open capacity marketplace, and interest in Media Over Quick multicast extensions.
+
+## Next Steps
+
+*   Continue discussions and reviews for documents in Working Group Last Call (Multicast YANG, AMT YANG).
+*   Await SecDir review for the Dorms draft before proceeding to WGLC.
+*   Refine the C-back draft based on discussions regarding active measurement and the priority field, and continue engagement with the CCWG.
+*   Initiate Working Group Last Call for the Non-Source Routed SR Multicast draft.
+*   Review the Multicast Security draft.
+*   Attend the MBONED side meeting on Live Streaming and Multicast.
+*   Engage with the Blockcast proposals (Sonar draft, multicast in browser, Media Over Quick extensions) through mailing list discussions and feedback.

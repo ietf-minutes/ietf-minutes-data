@@ -1,0 +1,136 @@
+# PLANTS
+
+## Summary
+
+The PLANTS session served as a Birds-of-a-Feather (BOF) meeting to discuss the formation of a new IETF Working Group. The primary motivation for this work is to address significant challenges in the current Certificate Transparency (CT) ecosystem, particularly in the context of integrating Post-Quantum Cryptography (PQC) which introduces substantial size and performance penalties in TLS handshakes.
+
+Presentations highlighted the operational difficulties and high costs associated with running CT logs today due to redundant logging, high read/write loads, and data duplication. The proposed solution, "Merkle Tree Certificates" (also referred to as "issuance by logging"), aims to fundamentally redesign certificate issuance by integrating log construction directly into the Certificate Authority (CA) process. This approach promises drastic reductions in log entry size (up to 97x smaller), fewer redundant log entries (up to 20x decrease across the ecosystem), and a mechanism to amortize PQC signature costs in TLS handshakes through pre-distributed tree checkpoints, potentially reducing handshake overhead significantly (e.g., to ~700 bytes for inclusion proofs).
+
+The discussion on the proposed charter covered its evolution through community feedback, addressing concerns about scope, different types of PKIs (public vs. private/internal), and the balance of addressing revocation. While the PQC size problem is a major driver, participants also noted broader benefits such as improving general PKI scaling and auditing.
+
+A series of BOF questions were posed to the attendees, yielding strong consensus:
+*   The problem statement is well understood, solvable, and useful to solve.
+*   The IETF is the right place to do this work.
+*   The initial scope of the charter is generally correct.
+*   The initial deliverables are generally correct (with slightly more abstentions/minor disagreements than other questions, but no explicit objections raised).
+*   A working group should be formed on this topic with the proposed charter.
+*   Many participants expressed willingness to write or review documents.
+
+Based on this strong community support, the chairs intend to proceed with chartering a PLANTS working group.
+
+## Key Discussion Points
+
+### Introduction and Agenda (00:00:02-00:04:30)
+*   The session is a BOF to discuss forming a new working group based on a proposed charter and prior discussions in DISPATCH.
+*   The main goal is to answer BOF questions regarding the problem statement, IETF suitability, charter scope/deliverables, and willingness to participate.
+*   The agenda includes background on CT challenges, PQC impact, proposed solutions (Merkle Tree Certificates), charter discussion, and BOF questions.
+
+### Certificate Transparency (CT) Today (00:04:30-00:16:00)
+*   **How CT Works**: CAs submit issued certificates to CT logs. Logs commit to incorporating submissions into a Merkle tree and provide Signed Certificate Timestamps (SCTs). Monitors verify CA behavior.
+*   **Motivation for Logs**: Browser requirements (multiple SCTs for trust), transparency.
+*   **Challenges in Running CT Logs**:
+    *   **Operational Demands**: Max Merge Delay (MMD) of 24 hours is strict; failure to meet it or incorporate all promised entries leads to logs being untrusted (3 logs untrusted for MMD, 6 for non-incorporation in last 10 years).
+    *   **High Read Load**: Monitors fetch entire log history, leading to absurdly high read load. Rate limits prevent new monitors from catching up.
+    *   **High Write Load**: CAs can write to any log. Redundant data logging (pre-certificates, final certificates, third-party cross-logging) duplicates entries many times over.
+    *   **Data Size & Cost**: A typical WebPKI log is ~10 terabytes disk storage for 6 months, and ~10 terabytes bandwidth *daily*. This is very expensive, especially on cloud platforms.
+*   **Foreshadowing PQC Impact**: These costs will increase further with larger PQC public keys and signatures.
+*   **Benefits of "Issuing by Logging" (pre-discussion of solution)**: If the act of issuing is signing a Merkle tree head, benefits include smaller leaves (no full cert storage), no pre-certs, no merge delays (CA runs its own log), no third-party writes, no duplicate leaves. This massively reduces data size and bandwidth, making log operation much more palatable. Failure to process the queue becomes a failure to issue, not a log-killing event.
+
+### Post-Quantum Cryptography (PQC) Impact (00:16:00-00:29:40)
+*   **TLS Handshake Components**: Public key cryptography is used extensively (key exchange, leaf certificates, intermediate certificates, SCTs, handshake signatures, OCSP).
+*   **Size Increase**:
+    *   Current ECC-based crypto: ~600 bytes total.
+    *   Switching only key exchange to PQC (e.g., Kyber): Jumps to 2.2 KB.
+    *   Replacing all authentication signatures with PQC (e.g., MLDSA L3): Jumps to over 18 KB. MLDSA L5 is even larger. Falcon/Dilithium L3: 7.4 KB, L5: 15 KB. Mayo (future NIST candidate): ~6 KB.
+    *   Overall: PQC increases crypto sizes by at least 10x.
+*   **Performance Impact (due to size, not computation)**:
+    *   **Initial Congestion Window (ICW)**: The default ICW (typically 10 MSS, ~15 KB) means messages larger than this incur an extra Round Trip Time (RTT) penalty. Most PQC configurations exceed this.
+    *   **Empirical Data**: Early benchmarks (Cloudflare) show a 25% slowdown for 18 KB of data. Some argue their larger ICW (30 MSS) may understate the problem compared to the default 10 MSS.
+    *   **Real-world Impact**: Google Chrome observed a 4% median latency increase just from PQC key exchange, with worse tail latencies. Their goal is to keep handshake size under 7 KB including key exchange.
+    *   **Conclusion**: PQC sizes pose a significant practical problem for TLS deployment, as server operators will resist changes that slow down their websites.
+*   **Discussion**:
+    *   A participant asked about LMS/XMSS algorithms. While LMS is faster for verification, the primary issue discussed is size, not speed of computation.
+
+### Solution Space: Merkle Tree Certificates (00:29:40-00:54:30)
+*   **Core Idea**: "Don't log what you issue, but issue by logging."
+    *   **Traditional PKI/CT**: CA signs cert, then logs it to CT logs, then collects SCTs. This layers CT on an existing PKI, leading to complications.
+    *   **Proposed (Merkle Tree Certificates)**: CA *first* logs an entry to its *issuance log*, then signs a *checkpoint* (the state of the Merkle tree), then collects *co-signatures* from witnesses/mirrors.
+*   **Certificate Structure**: Certificates themselves do not contain traditional X.509 signatures from the CA. Instead, they are structures that *prove* an entry in the log via an inclusion proof, and include co-signatures over the tree's state. The X.509 TBS (To Be Signed) certificate content goes into the log entry.
+*   **Benefits**:
+    *   **Smaller Log Entries**: No PQC tax per-signature on individual leaves. Signatures are removed from entries and moved to the tree top (checkpoint signature). Public keys can be replaced with hashes in log entries. A simulation shows a 97x size decrease for logs compared to MLDSA-4-4 in traditional CT.
+    *   **Fewer Log Entries**:
+        *   No pre-certificate/final certificate duplication (one entry per issuance).
+        *   Eliminates third-party cross-logging between N logs (each issuance creates one entry in one per-CA tree). This could mean up to a 20x decrease in ecosystem-wide entry count.
+    *   **Optimized TLS Handshake**:
+        *   TLS clients can pre-distribute "landmarks" (hashes of periodic checkpoints, signed ahead of time).
+        *   Servers only need to prove inclusion to these landmarks, sending a smaller inclusion proof (~700 bytes) instead of multiple large PQC signatures. This amortizes the PQC signature cost.
+        *   Caveat: New certificates might not immediately have a landmark. A transition strategy could involve two certificates: one immediately available (larger) and one optimized for landmarks (smaller), chosen via TLS negotiation.
+*   **Relationship to Existing Work**:
+    *   **CT Ecosystem**: Roles are similar (CAs run logs, CT logs become co-signers/witnesses/mirrors). Reuses RFC 6962/9162 Merkle tree structures. Builds on TILE (Transparency Logs for Immutable Logs) and existing CT witness/mirror concepts.
+    *   **X.509/TLS**: The inclusion proofs and co-signatures can conceptually fit into the X.509 signature field. TLS negotiation (RFC 8446 extensions) can handle selecting different certificate types.
+*   **Broader Solution Space/Future Work**:
+    *   Sub-tree optimizations, improved revocation (e.g., Merkle tree ladders), better monitoring/lookup protocols.
+    *   Initial focus for WG: getting foundations right, then building extensions.
+*   **Discussion**:
+    *   **Revocation**: A participant (Philip) suggested including revocation as a first-class object, potentially saving work by making certificates valid unless explicitly revoked, leveraging Merkle trees for efficient revocation. David Benjamin noted browser world constraints (clients only talk to servers), making short-lived certs common. Acknowledged as a WG discussion point. John Gray also supported exploring revocation efficiencies. Amir stressed that if it can be solved "for free" it should be considered.
+    *   **CA Willingness**: Representatives from CAs are present and indicate willingness. It was noted that many large CT log operators are also large CAs. It was clarified that the design should support smaller CAs, potentially with browser policy supporting mirrors.
+    *   **CA Log Failures**: If a CA messes up its log, what happens? This is a question for the working group.
+
+### Proposed Charter Discussion (00:54:30-01:26:50)
+*   **Charter Evolution**: The charter went through several drafts and iterations based on community feedback.
+    *   **V1 Feedback**: Vague PQ cost mitigation, "comparable" properties unclear, CT log operational costs underestimated.
+    *   **V2 Changes**: Defined what was being built, expanded scope to monitoring/auditing/revocation, added trade-off language, concretized liaison relationships (LAMPS, TLS), clarified deliverables (log structure, certificate construction, provisioning, TLS integration).
+    *   **V2+ Feedback**:
+        *   Extend RFC 580 (IETF focus).
+        *   Disambiguation of PKI types (not just "web PKI").
+        *   Disagreement on PQC being a problem / TLS metrics.
+        *   Focus on TLS vs. other use cases (enable consideration, re-charter later).
+        *   Explicitly state how solution addresses size growth.
+*   **Incorporated Changes (via GitHub PRs)**: Transparency requiring >1 party collusion for subversion, external monitorable log properties, inclusion of private/limited-scope PKIs, specifying two interoperable implementations, clarifying amortization/batching, direct address of size growth.
+*   **Open Questions for BOF Discussion**:
+    *   Have all necessary changes been chartered, or should some be tabled for the WG?
+    *   Have different PKI types/protocol usages been properly addressed?
+    *   Is the balance on revocation mechanisms correct (in/out of scope)?
+    *   Should the WG standardize general Merkle tree constructions as building blocks for other things?
+*   **Discussion on Open Questions**:
+    *   **General Merkle Tree Constructions**: Strong sentiment to focus on constructions suitable for *this specific application*, rather than general abstractions, to avoid "forest of trees and weeds" and prevent scope creep.
+    *   **Motivation (Eckers' Question)**: If a "magic" small PQC signature appeared, would this work be abandoned?
+        *   **Response**: No, because this work also addresses other fundamental CT/PKI problems (scaling, auditing, operational costs) and offers a fundamentally different, compressed certificate mechanism. PQC is a trigger, but not the sole problem being solved. The current lack of trust in new PQC algorithms also makes existing solutions valuable.
+    *   **Scope**: General agreement to keep the scope small and focused on the immediate problems discussed.
+    *   **"Transparent PKI"**: DKG argued for explicitly stating other motivating factors in the charter (shrinking validity windows, increasing endpoints, CT scaling), not just PQ size. Aaron Gable emphasized retaining "transparent" to focus on PKIs that *care* about auditability/monitorability, even if internal. John Gray initially questioned if it would exclude improving general revocation, but agreed with the clarification that it means transparency *properties*.
+    *   **Revocation (revisited)**: John Snyders suggested explicitly stating whether logging revocation is in/out of scope to prevent future bike shedding. Amir suggested keeping it optional/exploratory, so good solutions can be adopted if they arise.
+    *   **"Alternate trust models are not in scope"**: A participant found this unclear; chairs explained it was to prevent "wild bad ideas" but acknowledged the wording could be improved.
+    *   **Provisioning Mechanisms**: ACME was cited as an example, not an exclusive mechanism; compatibility with others (like EST) is expected.
+    *   **"Explore mechanisms"**: Suggested to make this more concrete ("define mechanisms") as "explore" is too broad for a deliverable.
+
+## Decisions and Action Items
+
+The following BOF questions were put to a poll of the room (and remote participants):
+
+1.  **Do you think that the problem statement is well understood, solvable, and useful to solve?**
+    *   **Outcome**: Overwhelming "Yes" (two "No" votes, no one spoke up to explain "No").
+
+2.  **Do you think the IETF is the right place to do this work?**
+    *   **Outcome**: Overwhelming "Yes" (five "No" votes, no one spoke up to explain "No").
+
+3.  **Do you think the initial scope of the charter is correct?**
+    *   **Outcome**: Strong "Yes" (more "No" votes/abstentions than previous questions, but no one spoke up for "No").
+
+4.  **Do you think the initial deliverables are correct?**
+    *   **Outcome**: Majority "Yes" (more "No" votes/abstentions than previous, but no one spoke up for "No"). It was noted this might indicate a need to work on milestones.
+
+5.  **Do you think a working group should be formed on this topic with the charter, based on the draft charter we just discussed?**
+    *   **Outcome**: Overwhelming "Yes" (two "No" votes, no one spoke up to explain "No").
+
+6.  **Are you willing to help write or review documents to achieve this charter?**
+    *   **Outcome**: At least 50 participants indicated "Yes".
+
+**Decision**: Based on the overwhelming support for all key BOF questions, the chairs will proceed with chartering a working group for PLANTS.
+
+**Action Item**: Participants willing to contribute by writing or reviewing documents are requested to submit their names to the PLANTS mailing list.
+
+## Next Steps
+
+*   The BOF chairs will work to formally charter the PLANTS working group.
+*   Further refinement of the charter text (e.g., clarifying deliverables, "explore mechanisms," and the balance of revocation scope) may occur during the chartering process.
+*   Interested participants are encouraged to join the PLANTS mailing list to contribute to future discussions and document development.
