@@ -1,0 +1,113 @@
+# SATP
+
+## Summary
+
+The SATP working group meeting focused on updates to the core protocol documents nearing submission to the Area Director, and in-depth discussions on several proposed new work items. Key technical updates were provided for the core SATP document, including clarifications on network identifiers, credential terminology, and the handling of crash recovery. Extensive presentations and discussions were held on Stage Zero setup, the concept of State Views and data sharing, the Secure Asset Transfer Protocol (SATP) implementation guide, a new terminology document, the Verifiable Legal Entity Identifier (VLEI) binding, and the Secure Asset Exchange Protocol. The chairs reiterated the need to finalize the existing drafts before formally considering adoption of new work items, though these discussions serve to shape the next charter.
+
+## Key Discussion Points
+
+### Core Document Updates (Thomas)
+
+*   **Network ID:** Text was added to SATP Core to describe the necessity of network identifiers, especially for gateways serving multiple asset networks, addressing a previously unstated requirement in the document.
+*   **Credential Terminology:** The term "credential" was found to be confusingly used in two contexts: client-to-gateway (out of scope, referred to as API 1) and gateway-to-gateway TLS setup. The latter was renamed to "Gateway TLS scheme" to reduce ambiguity. The minimum cipher requirements specify TLS 1.2 or later.
+*   **Crash Recovery and Session Resumption:** This section was moved from SATP Core to a new, dedicated draft, as it was deemed too extensive and distinct to remain in the core document. Parameters related to logging and access control profiles for crash recovery were also moved.
+*   **Error Codes:** A significant discussion arose regarding the placement and management of error codes.
+    *   **Position 1 (Thomas):** Initially placed in an appendix, Thomas questioned if this was the norm for RFCs.
+    *   **Position 2 (Ori):** Recommended moving normative requirements, such as error codes that implementers must understand, into the main body of the document. If additional error codes are expected to be added in future documents, they should be managed via an IANA registry.
+    *   **Decision:** The working group will move the error codes from an appendix into an IANA registry, with a defined process for adding new values (e.g., standards track document, first-come-first-served, or expert review).
+*   **URN Scheme for Message Types:** A question was raised about the URN scheme for API message types.
+    *   **Clarification (Ori):** It was confirmed that a single URN prefix (e.g., `urn:ietf:satp`) should be registered, under which all specific message types can be defined. The document should describe why each name is necessary.
+
+### Stage Zero and Registry (Dennis)
+
+*   **Purpose:** Stage Zero (the setup phase) precedes the core SATP transfer and defines the negotiation of all necessary parameters between gateways, including registration facets and network access.
+*   **Transfer Context:** A data structure that binds gateways, networks, and assets for a specific SATP transfer instance. It contains gateway IDs, network IDs, asset IDs, and session history, and is immutably registered in the SATP registry.
+*   **Flow Overview:**
+    1.  Client App 1 initiates a transfer request to Gateway 1.
+    2.  Gateway 1 creates and registers a "transfer context" with the SATP registry.
+    3.  Client App 1 binds the specific assets to the transfer context on Network 1.
+    4.  The transfer context is propagated from Client App 1 to Client App 2 (transport mechanism is not specified).
+    5.  Client App 2 uses the context to engage Gateway 2, which validates the context and asset information.
+    6.  Gateway 2 binds the destination assets to the context on Network 2.
+    7.  Gateway 2 and Gateway 1 establish a link based on the transfer context.
+    8.  Once all components are set in the transfer context, Gateway 1 informs Client App 1 that SATP execution can begin.
+*   **Role of Registry:** The registry is a critical component for immutably storing artifacts (transfer contexts, gateway IDs, network IDs, asset IDs, asset profiles) to guarantee the safety and liveness properties of the SATP protocol.
+*   **Pre-Stage Zero:** Thomas clarified that significant "pre-stage zero" business agreements happen between parties (e.g., in traditional finance) before line 1 of the Stage Zero flow is initiated.
+*   **Registry Optionality:** Dennis stated that while the registry *could* be distributed, consensually, the concept of a dedicated registry is considered important for proper configuration and immutable storage of SATP-related artifacts.
+*   **URNs in Stage Zero:** The draft demonstrates the use of URNs for various artifacts, reinforcing the need for a registered `urn:ietf:satp` prefix.
+
+### State Views and Addresses (Rama)
+
+*   **Motivation:** Digital asset systems need to expose internal state, and external entities need to request and validate this state. In DLTs, no single authority is trusted to convey consensus state, necessitating standardized approaches.
+*   **Interoperability Mode:** Data sharing (state queries) is a distinct interoperability mode from asset transfer and asset exchange.
+*   **Complement to SATP Core:** State queries can be used in Stage Zero for cross-network discovery of capabilities or asset characteristics, and in crash recovery (Stages 2/3) to verify lock commitments or mint conclusions.
+*   **"View":** A term borrowed from databases, representing information derived from a ledger that carries *proof of state*.
+*   **Addressing:** A standardized, URL-like address for ledger states.
+*   **Standardization Focus:** A universal communication format and mechanism for applications relying on gateways, a structured and agnostic way to describe state, and a general-purpose request/response protocol for different DLT stacks.
+*   **Data Structures:** API for gateway-to-gateway (in scope for SATP Core) and client-to-gateway, as well as policies (access control, view verification).
+
+### SATP Implementation Guide (Hyojin)
+
+*   **Motivation:** Inconsistent/non-interoperable APIs observed during implementation (e.g., Korean CBDC pilot), and a need for guidance on supplementary APIs not covered by SATP Core.
+*   **Proposed Contents:**
+    *   Basic implementation guidelines (e.g., message format, encoding).
+    *   Supplementary API requirements with example code.
+    *   Conformance test suites (lightweight library, stand-alone gateway).
+*   **Discussion:** The challenge of an implementation guide is distinguishing between hints for implementers and what might be missing from the core protocol. Early implementations are expected to inform future revisions of the core RFC. The idea of standardizing API definitions using tools like Open API was suggested.
+
+### Terminology (Thomas)
+
+*   **New Draft:** A new draft (`draft-ietf-satp-terminology`) has been introduced to capture terminology specific to SATP (e.g., artifacts registry) that complements existing terminology documents from other SDOs.
+*   **Purpose:** To clarify concepts and provide a common language for participants and external organizations interacting with SATP.
+*   **Diagram:** A layer diagram will be added to clarify the architectural pieces.
+*   **Long-term:** Anticipated to become an informational RFC, with potential for updates as the field evolves. Existing terminology in core documents will remain.
+
+### SATP VLEI Binding (Ned)
+
+*   **Context:** Introduction of Verifiable Legal Entity Identifier (VLEI) within the SATP architecture.
+*   **Entities:** Originator/Beneficiary, Orchestrator Owner, Network Owner, Gateway Owner are typically conceptualized as "Legal Entities" in the VLEI lexicon.
+*   **"Legal Entity" Discussion:** A concern was raised by the chair about the generality of "legal entity" for a global protocol, suggesting "entity" might be more universal to avoid implying a specific legal framework. Ned acknowledged this.
+*   **VLEI Hierarchy:** Global Legal Entity Identity Foundation (GLEIF) issues Qualified VLEI Issuers (QVI), who issue Legal Entity IDs (LEIDs) to organizations (holders). Holders can issue Official Organizational Role (OOR) or Engagement Context Role (ECR) credentials.
+*   **Key Event Receipt Infrastructure (KARI):** KARI establishes self-sovereign control of key-wielding entities. Trust in a key is based on evaluating its digitally signed key event log (inception events, interaction events).
+*   **VLEI as ACDC:** VLEI is a type of Authenticated Chain Data Container (ACDC), binding application data to key state, extending KARI's structure to handle VLEI authority hierarchy.
+*   **Binding to SATP:**
+    *   Bind VLEI credential issuance to SATP hosts.
+    *   Identify SATP payloads containing VLEI content using IETF media types and content format identifiers.
+    *   Proposes a CDDL-represented content wrapper for richer payloads (e.g., instead of just a public key).
+*   **Open Issues:** How SATP Core should handle external payloads like VLEI, and how the Phase Zero context verification process should integrate with VLEI and manage the lifespan of trusted contexts.
+*   **Chair's Closing Comment:** While SATP needs to be flexible, the IETF's role is to define generic protocols, not to encode specific legal constructs directly into them. This balance needs further mailing list discussion.
+
+### Secure Asset Exchange Protocol (Alex)
+
+*   **Scope Expansion:** Proposes expanding SATP to support secure two-way transfer (exchange) of digital assets, agnostic to network technology and asset nature.
+*   **Motivation:** Lack of a standardized mechanism for verifiable, confidential exchange; existing ad-hoc solutions create interoperability gaps and security risks.
+*   **Design Goals:** Security-first, interoperability, extensibility (message types, chain profiles), minimal trust assumptions (gateways trust each other), protocol clarity, deterministic behavior.
+*   **Architecture:** Leverages the existing SATP Gateway-to-Gateway communication model (API 2).
+*   **Protocol Flow:** Follows a similar three-stage, two-phase commit pattern as SATP:
+    1.  **Transfer Initiation:** Agreement on exchange parameters.
+    2.  **Lock Assertion:** Initiating gateway asserts lock on its asset.
+    3.  **Commitment Preparation/Finalization:** Receiving gateway asserts lock on its asset, then assets are assigned to beneficiaries.
+*   **Status:** Draft-00 available, reference implementations in progress (Hyperledger Cacti, Quant).
+*   **Open Questions:**
+    *   **IETF Venue:** Is IETF the right venue? (Chair's opinion: Yes, it's a natural follow-on to SATP work).
+    *   **Naming:** Should it be a separate document, or an extension/option within the existing SATP protocol?
+    *   **Integration:** How does it extend the existing protocol? The current design aligns well.
+
+## Decisions and Action Items
+
+*   **Thomas:**
+    *   Ensure TLS version consistency (1.2 or later) in the core documents.
+    *   Move error codes from the appendix of SATP Core into an IANA registry, including defining column names and the policy for adding new values.
+    *   Consult IANA on the `urn:ietf:satp` prefix registration and associated obligations for defining sub-components for message types and other artifacts.
+*   **Working Group:**
+    *   Current SATP core documents (Core, Use Cases, Architecture) are being prepared for submission to the Area Director (Ori) within weeks.
+    *   Discussion on all presented new work items (Stage Zero, State Views, Implementation Guide, Terminology, VLEI Binding, Asset Exchange) will continue on the mailing list.
+    *   Formal adoption calls for new drafts will be considered after the existing core documents have been submitted and are moving through the IETF process.
+
+## Next Steps
+
+*   Thomas to implement the required changes in the core documents regarding TLS versions and error code management, and initiate the IANA registry process for error codes and the URN prefix.
+*   Presenters of new drafts (Dennis, Rama, Hyojin, Thomas, Ned, Alex) are encouraged to continue refining their drafts based on the discussions and feedback received, and to drive further discussion on the SATP mailing list.
+*   The chairs will evaluate the consensus and readiness of the proposed new work items for potential adoption as working group drafts during the next rechartering cycle, which will occur once the current documents are advanced.
+*   Further discussion on the mailing list regarding the appropriate level of specificity for "legal entity" versus "entity" in SATP protocols.
+*   Further discussion on the mailing list regarding the naming and integration strategy for the Secure Asset Exchange Protocol (separate document vs. extension of SATP).

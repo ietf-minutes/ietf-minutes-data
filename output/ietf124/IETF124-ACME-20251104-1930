@@ -1,0 +1,104 @@
+# ACME
+
+## Summary
+
+The ACME session at IETF-124 covered updates on several adopted and candidate drafts. Key discussions revolved around the technical merits, security considerations, and implementation status of DNS Persist, ACME Profiles, JWT Claim Constraints, Open ID Federation, Profile Sets, and ACME RATS. The working group formally adopted the JWT Claim Constraints draft and indicated strong interest in proceeding with calls for adoption for Open ID Federation, Profile Sets, and ACME RATS after further review and clarification.
+
+## Key Discussion Points
+
+*   **Administrative**
+    *   The session began with a reminder of the Note Well and anti-harassment policy, emphasizing debate on technical merits, not authors.
+    *   Aaron Gable and John Gray volunteered as note-takers.
+    *   Peter Liu requested an agenda bash for ACME RATS to allow him to attend another session first.
+
+*   **DNS Persist (draft-ietf-acme-dns-persist)**
+    *   **Status Update**: The draft was adopted by the ACME WG on October 16. The CA/Browser Forum passed ballot SCA V3 on October 9, allowing this validation type. IP rights review is expected by November 9.
+    *   **Implementation Commitments**: Fastly (Boulder), Let's Encrypt (Boulder) anticipate implementation in 2024. Amazon is assessing. Interoperable POCs exist in Pebble and forks.
+    *   **Motivation**: Addresses issues with existing challenges (TLS/HTTP port access/geo-blocking, DNS-01 propagation delays/automation complexity/API key compromise), account-01's lack of persistence, and CNAME vulnerabilities/collisions.
+    *   **Key Insight**: Leverages ACME account URIs for durable, cryptographically secure binding, surviving account key rotations without new trust anchors. Per-issuer TXT records allow multiple CAs without coordination.
+    *   **Flexibility**: `persistentTill` for explicit expiration, `policy` for subdomain (wildcard) coverage. Unknown parameters are ignored for future extension.
+    *   **Security Constraints**: DNS TTL must be respected, CA policy limits apply, DNSSEC recommended.
+    *   **Evolution**: Evolved from draft-s-hyric-acme-dns-persist by adding just-in-time validation and a larger security consideration section.
+    *   **Working Group Input Sought**:
+        *   **DNSSEC Requirement**: Should it be "should" or "must" validate?
+        *   **Security Considerations**: What other aspects are important?
+        *   **Multiple URIs for Account**: Discussion on GitHub for EAB and privacy controls, but adds complexity.
+    *   **Discussion**:
+        *   **Tim Hollebeek**: Requested clarity in the draft on how certificate renewal works, specifically re-verification of the CAA record. The authors confirmed the CA re-verifies.
+        *   **Corey Bonnell**: Advocated for DNSSEC as "should" to maintain flexibility for non-Web PKIs, citing CA/B Forum SC85's "must" for Web PKI. Suggested making the `policy` parameter more flexible than a single wildcard value.
+        *   **Michael Richardson**: Asked about interaction with DNS-01 or HTTP-01 if DNS Persist is in place. It was clarified that a separate draft on CAA records could forbid other methods, but DNS Persist itself doesn't. Raised concern about potential confusion for DNS maintainers.
+        *   **Stefan Ebbing**: Asked about awareness of the `d-notops` domain verification draft; authors confirmed it was a non-normative reference in early versions and found useful.
+        *   **Deb Cooley (SEC AD)**: Advised on the "should" vs. "must" distinction for DNSSEC, suggesting clarification on when violating a "should" is acceptable for IESG review. Confirmed this is a TXT record, not a CAA record, avoiding conflict with LAMP WG's CAA work.
+
+*   **ACME Profiles (draft-ietf-acme-acme-profiles)**
+    *   **Status Update**: Call for adoption held in August, leading to a downgrade of a "must" to a "should" and a slight format change.
+    *   **Implementation**: Implemented in Boulder and Pebble (servers) and at least seven clients.
+    *   **Use Cases**: Let's Encrypt actively uses this for smooth migrations (e.g., removing TLS client EKU, transitioning to 47-day validity, "brownouts").
+    *   **Next Steps**: Authors seek more feedback from other server operators, especially those not based on Boulder. Expected to be stable for Working Group Last Call.
+
+*   **ACME DNS Account Label & ACME Client**
+    *   No slides or updates received for ACME DNS Account Label; deferred to AOB if authors appear.
+    *   ACME Client discussion deferred to a future meeting despite some list activity.
+
+*   **JWT Claim Constraints (draft-ietf-acme-jwt-claim-constraints)**
+    *   **Purpose**: Defines a new profile for authority tokens, specifically for constraining claims in JWTs used within the STIR-Shaken ecosystem (RFC 8226). This is a dependency for the STIR working group.
+    *   **Relevance**: Actively being used in the industry, including references by the FCC.
+    *   **Previous Adoption Call**: An earlier call for adoption (September) did not receive responses, which the chair attributed to an oversight during the chair handover.
+    *   **Discussion**:
+        *   **Deb Cooley (SEC AD)**: Questioned who the implementers are. Chris Wendt confirmed they are STIR CAs and other entities in the telco ecosystem, which are not typically IETF participants. Emphasized the need for ACME WG to review for correctness, even if not direct implementers.
+        *   **Aaron Gable**: Noted that the ACME wire protocol aspects are clear, but the description of the STIR-specific validation method is difficult for ACME experts to review due to lack of domain knowledge.
+        *   **Author Response**: Chris Wendt expressed willingness to simplify the validation description and reference external STIR documents for details.
+
+*   **Open ID Federation (draft-demarco-acme-oidf-federation)**
+    *   **Purpose**: Enables ACME to issue X.509 certificates that attest the subject is a member of an Open ID Federation. Defines a new ACME identifier type and challenge type for Open ID Federation (OIDF).
+    *   **Analogy**: Described as building hierarchical trust similar to X.509 PKI, but using JOTs (JSON Object Tokens) instead of certificates.
+    *   **Use Cases**: European university networks (e.g., eduroam Wi-Fi authentication where an ACME CA trusts an OIDF federation to issue X.509 client certs), European Wallet project (issuing certificates to relying parties based on OIDF registered information). Michael Richardson proposed a "killer app" use case for outsourced maintenance personnel needing network credentials at remote sites.
+    *   **Changes (since IETF 123)**: Significantly reorganized to align with RFC 8737, moved extensive explanatory material to an appendix, focused strictly on defining the ACME identifier and challenge, removed discussion of OIDF discovery and revocation (deferring to OIDF specifications).
+    *   **Implementation**: Client in Lego, server side in Pebble, test harness (IDF box) developed.
+    *   **Risks**: OIDF specification is still in draft at the Open ID Foundation, meaning dynamic requirements. Mitigation strategy is to define the draft's scope crisply and reference OIDF for details.
+    *   **Comparison to DNS Persist**: Acknowledged similarities in delegating trust. Distinguished by OIDF entities potentially lacking DNS names, and OIDF having its own key scoping mechanisms.
+    *   **Discussion**:
+        *   **Stefan Ebbing**: Raised several questions regarding the necessity of sending the trust chain in the request (suggesting OIDF resolvers could handle this), defining a specific key for ACME vs. using OIDF entity keys, and requiring the client to use OIDF for configuration. Also asked about how information from OIDF records is matched to the CSR.
+        *   **Author Response**: Agreed that the trust chain might be simplified. Clarified that the draft defines a new Subject Alternate Name (SAN) type for OIDF entity identifiers, but does not impose specific issuance or certificate profiles.
+        *   **Jan Friedrichs (DFN Germany)**: Questioned the eduroam example as a direct use case, noting eduroam already has a federation. The author acknowledged it was hypothetical but useful for illustration.
+        *   **Mike Ounsworth**: Found the name validation ("OIDF bundle") confusing for PKI experts, seeking clarity on whether certificates are for humans, clients, or servers, and how the OIDF bundle addresses this.
+        *   **Author Response**: Reaffirmed the goal is to prove control of an OIDF entity identifier, but stressed avoiding redefining OIDF concepts.
+        *   **Kathleen Moriarty (former AD)**: Stated this type of work aligns with the original vision for ACME, which was intended to support diverse certificate types and challenge mechanisms beyond just web servers.
+        *   **Aaron Gable**: Reiterated the difficulty for ACME experts to review environment-specific validation routines and the need for OIDF experts to ensure correctness, suggesting cross-referencing OIDF specifications for validation procedures.
+
+*   **ACME Profile Sets (draft-bennett-acme-profile-sets)**
+    *   **Problem**: Modern servers need to support a variety of TLS clients (old, new, different root stores, algorithms, post-quantum). Manually managing multiple certificates for different client profiles is complex.
+    *   **Solution**: Proposes extending the ACME Profiles draft with "profile sets" – named collections of profiles defined by the ACME server. ACME clients, configured with a profile set, would obtain certificates for each profile in the set.
+    *   **Benefits**: Offloads complexity of navigating the diverse PKI ecosystem from the client to the server, automates PKI transitions, and facilitates smooth adoption of new security features (e.g., post-quantum).
+    *   **Discussion**:
+        *   **Query**: How do old/unupdated ACME clients participate? **Response**: This is for the *next* generation of transitions; older clients would not.
+        *   **Aaron Gable**: Questioned whether this should be a separate document or integrated into the existing ACME Profiles draft.
+        *   **Consensus (sense of the room)**: Leaned towards keeping it a separate document to avoid delaying the ACME Profiles draft, which is considered stable.
+
+*   **ACME RATS (draft-liu-acme-rats)**
+    *   **Purpose**: Grants certificates to devices that pass security checks (attestation), separating the attestation process from the ACME process.
+    *   **Use Cases**: Internal network access for enterprise employees/inspectors (e.g., connecting to Wi-Fi via EAP-TLS after device attestation), ACME server enforcing security policy on an ACME client (e.g., cloud provider verifying platform attributes of a tenant's private key).
+    *   **Changes**: Updated use cases for specificity. Identifier changed to a constant "trustworthy identifier." Introduced two challenge types: `attestationResult` (pure attestation) and `attestationEvidence` (background check model). Encrypted evidence made optional.
+    *   **Current Story (7-step process)**: Covers certificate order creation, client obtaining authorization, using ACME token as a nonce for remote attestation, posting attestation result/evidence to challenge URL, server verification, and certificate retrieval.
+    *   **Closed Design Decisions**: Location for attestation results, freshness nonce, attestation claim hints in challenge object, and server trust for attestation results (out of scope, assumed pre-established).
+    *   **Open Issues**: Format for evidence/results (JOT/COSE), preferred attestation model (passport/background check/CBOR). Authors currently favor the passport model (JOT) as it's closer to completion and simpler to implement.
+    *   **Discussion**:
+        *   **Implementation Status**: Authors are working on a hackathon implementation; no production implementations yet.
+        *   **Aaron Gable**: Similar to JWT Claim Constraints and OIDF Federation, expressed that the ACME wire protocol aspects are clear, but the environment-specific validation routines for attestation need expert review to ensure correctness and well-specified procedures.
+        *   **Suggestion**: If too complex, consider splitting the draft to advance the simpler passport model first. Authors agreed this makes sense.
+
+## Decisions and Action Items
+
+*   **Decision**: The working group **adopted** `draft-ietf-acme-jwt-claim-constraints`.
+    *   **Action Item (Authors)**: Simplify the description of the validation process, focusing on ACME-specific aspects and referencing external STIR documents for detailed validation procedures.
+    *   **Action Item (Chairs)**: Issue a formal adopted version of the draft.
+*   **Action Item (Chairs)**: Issue a formal call for adoption on the mailing list for `draft-demarco-acme-oidf-federation`.
+    *   **Action Item (Authors)**: Improve clarity within the draft for PKI experts, providing sufficient context on OIDF to understand the security and validation implications, potentially adding simple examples.
+*   **Action Item (Chairs)**: Circle up to discuss the timing and scope of a call for adoption for `draft-liu-acme-rats`, including the potential to split the document to prioritize the passport model.
+*   **Action Item (Chairs)**: Circle up to discuss the timing and scope of a call for adoption for `draft-bennett-acme-profile-sets`, noting the sense of the room leans towards it being a separate document to avoid delaying `draft-ietf-acme-acme-profiles`.
+*   **Action Item (Chairs)**: Prepare `draft-ietf-acme-acme-profiles` for Working Group Last Call soon, incorporating minor editorial feedback (e.g., adding explanation for when a client might violate a 'should').
+
+## Next Steps
+
+*   The ACME chairs will coordinate to issue the formal calls for adoption and Working Group Last Call as discussed.
+*   Authors of all drafts will continue to incorporate feedback received during the session and on the mailing list, focusing on clarifying technical details and security considerations for the ACME working group audience.
