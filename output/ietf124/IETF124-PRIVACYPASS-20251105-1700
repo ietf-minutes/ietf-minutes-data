@@ -1,0 +1,54 @@
+# PRIVACYPASS
+
+## Summary
+
+The PRIVACYPASS session at IETF 124 featured significant updates on Anonymous Rate Limited Credentials (ARC) and Anonymous Credit Tokens (ACT), including their recent adoption into the working group and progress on cryptographic building blocks. A discussion also covered architectural patterns for composing these different token types, particularly the "reverse flow" model, and explored how Privacy Pass technologies could address challenges in Media over QUIC (MoQ) deployments, specifically for authorization and rate-limiting distribution services while preserving client privacy.
+
+## Key Discussion Points
+
+*   **Document Status Overview:**
+    *   Several documents (Privacy Pass Issuance Protocol and Public Metadata, Private Token HTTP Authentication, Bash Token Issuance Protocol) have completed Working Group Last Call (WGLC). Authors were encouraged to respond to comments to finalize shepherd reports.
+    *   Two new drafts, "Anonymous Rate Limited Credentials" (Privacy Pass ARC Issuance Protocol) and "Privacy Pass Crypto Arc" (the cryptographic parts), were recently adopted by the working group.
+    *   Expired drafts need review to determine their future.
+*   **Anonymous Rate Limited Credentials (ARC) Updates (Presented by Kathy)**
+    *   **Refresher:** ARC offers a more general anonymous credential workflow compared to the one-to-one issuance/presentation model of traditional Privacy Pass tokens. It uses longer-lived, multi-use credentials with baked-in per-client rate limits. Benefits include creating many tokens from one issuance, complex rate-limiting policies, and "late origin binding" (defining different rate limits for different origins at presentation time).
+    *   **Adoption:** Both the ARC issuance and crypto specifications have been adopted by the working group. The crypto specification will undergo a CFRG panel review before WGLC.
+    *   **Nonce Hiding:** The working group previously identified a privacy issue with sending the nonce in the clear. A solution was presented: commit to the nonce and use a zero-knowledge range proof to demonstrate it's within the rate limit. This was achieved for arbitrary rate limits (not just powers of two) and simplified ZKP compiler complexity by using two 'and' statements instead of an 'or' statement. Benchmarks will be updated to reflect the performance impact of range proofs (expected to scale logarithmically). The specification is complete, with reference implementation in progress. This work is also reusable for other specs (e.g., CFRG FLP proofs).
+    *   **Zero-Knowledge Proofs (ZKPs):** ARC is moving to use the recently adopted interactive Sigma protocol and Fiat-Shamir transform building block specifications, replacing its bespoke Schnorr compiler. Implementation updates are pending.
+    *   **Post-Quantum Risk:** Currently, ARC provides post-quantum unlinkability between issuance and presentation but linkability between multiple presentations under a quantum attack. Robust solutions for rate-limiting tags without significant overhead are still being explored. Guidance on tag handling (e.g., deletion) could be added to the draft.
+    *   **Performance vs. Use Case:** Cloudflare benchmarks suggest ARC has ~4x the CPU cost of BashP-RF. ARC is seen as more useful when issuance is costly (e.g., human interaction), or when a credential needs to be redeemable across many origins/epochs but not necessarily fully utilized.
+*   **Anonymous Credit Tokens (ACT) Updates (Presented by Sam)**
+    *   **Updates:** A Privacy Pass Integration Draft has been published. Progress is being made to integrate the crypto draft with Sigma Protocol and Fiat-Shamir drafts. Chrome and Firefox are exploring web integration, and Cloudflare and Google are exploring deployment for AI agent rate limiting.
+    *   **Motivation:** ACTs offer specific properties: concurrency control (one request/token simultaneously), dynamic revocation by the issuer, and per-session rate limiting (distinct rates per user without privacy impact).
+    *   **State Machine:** ACTs involve a state machine where a credential with credits is spent (nullifying the original token), and a refund token is reconstructed, creating a chain of non-concurrently usable credentials.
+    *   **Protocol Flow:** Similar to Privacy Pass, involving issuance requests and spend proofs (presentations), with a refund mechanism. A previous idea of dynamically setting "request context" in the credential itself was deemed a privacy problem and will not be pursued; the client should determine the request context.
+    *   **Abuse Mitigation (Blocklisting):** ACTs support blocklisting by either refusing to reissue a token (a "hard hammer") or by deducting value from the credit token over time. The feasibility of hidden blocklisting (invisible to the user) for ACTs is being explored but no fully satisfactory solution has been identified yet.
+*   **Composing Anonymous Credential Tokens (Presented by Tibow and Lina)**
+    *   **Reverse Flow Architecture:** This pattern involves deploying the Privacy Pass architecture twice. An origin, acting as an issuer, can re-issue tokens in response to client requests, maintaining context without linking requests. This is a general architectural pattern, not a new token type.
+    *   **Limitations of Original Privacy Pass:** One-to-one issuance/redemption, inefficiency for late origin binding, and lack of revocation capability.
+    *   **ARC + ACT Composition:** A proposed composition strategy involves using an ARC token (with a presentation limit of 1) to establish an "anonymous identity" with an origin. The origin then validates the ARC token and issues a stateful ACT with a set number of credits. Subsequent interactions use the ACT, allowing for dynamic revocation (by refusing reissue or issuing with zero balance) and per-session policy.
+    *   **Use Cases for Composition:** Web Application Firewalls (WAFs), Media over QUIC (MoQ), anti-fraud, and rate-limiting AI agents.
+*   **Informing the Working Group of MoQ Privacy Pass (Presented by Colin Jenes)**
+    *   **MoQ Context:** Media over QUIC (MoQ) is a pub/sub system for video conferencing and live streaming, aiming to improve scale and reduce latency. Relays (CDN nodes) aggregate client subscriptions and distribute publisher content.
+    *   **Problem Statement:** Publishers need assurance of payment from relays, while clients desire privacy from relays (not revealing all information).
+    *   **Data Model:** Authorization is for "tracks" (audio, video, languages), which can be long-lived.
+    *   **Privacy Pass Applicability:** Privacy Pass appears to be a good fit for this use case.
+    *   **Access Control:** The primary goal is access control to the distribution service (to ensure relays are paid), not necessarily to the data itself, which is often end-to-end encrypted (e.g., MLS, DRM). The threat model includes attackers consuming bandwidth/resources without being able to access content.
+    *   **Protocol Requirements:**
+        *   **Local Validation:** CDN relays ideally need to validate tokens locally without contacting a central service.
+        *   **Latency:** Zero Round Trip Time (RTT) is highly desirable for initial setup to minimize "time to first video," though multiple RTTs (like HTTP auth) are possible.
+        *   **Granularity:** Token granularity would typically be per conference or per bundle of tracks (e.g., a YouTube video), not per individual frame or object.
+    *   **Blinded vs. Signed Tokens:** There's an open question about whether MoQ requires privacy-preserving (blinded) tokens or if cheaper signature-style tokens (where the issuer knows the client) would suffice, potentially for abuse mitigation. This is an area for further discussion between the MoQ and Privacy Pass working groups.
+
+## Decisions and Action Items
+
+*   **ARC/ACT Authors:** To continue integrating adopted ZKP building blocks (Sigma protocol, Fiat-Shamir transform) into their specifications and implementations.
+*   **ARC Authors:** To add guidance to the specification on handling rate-limiting tags for post-quantum considerations (e.g., deletion).
+*   **Chairs:** Follow up with authors of Privacy Pass Issuance Protocol and Public Metadata, Private Token HTTP Authentication, and Bash Token Issuance Protocol to address WGLC comments and complete document shepherds.
+*   **Working Group:** Discuss the future of expired drafts.
+
+## Next Steps
+
+*   **Token Type Analysis:** The working group needs a clearer understanding of when to use specific token types (ARC, ACT, future types like Anonymous Tokens with Hidden Metadata - Adam), considering their trade-offs in performance, features, and use cases.
+*   **MoQ Integration:** The MoQ and PRIVACYPASS working groups will continue to collaborate, leveraging PRIVACYPASS expertise to apply Privacy Pass technologies to MoQ's authorization and rate-limiting requirements, particularly around questions of token properties, local validation, and privacy trade-offs.
+*   **Post-Quantum Anonymity:** Continued investment in post-quantum or everlasting anonymity schemes for anonymous credentials is encouraged.
