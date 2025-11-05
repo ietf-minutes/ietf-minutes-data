@@ -1,0 +1,134 @@
+# SCHC
+
+## Summary
+
+The SCHC working group met to discuss several ongoing drafts and new proposals. Key topics included updates on SCHC protocol number allocations, revisions to CoAP header compression (RFC 8824bis), a novel approach to SCHC seed allocation, and progress on CoreConf-based context management. Significant architectural discussions were held, including a review of SCHC's minimal architecture and a conceptual exploration of CoreConf management over point-to-multipoint links, which also sparked debate regarding the working group's charter. The session concluded with a brief update on SCHC for disruption/delay-tolerant networks.
+
+## Key Discussion Points
+
+*   **Administrative**
+    *   The session began with the IETF Note Well reminder.
+    *   The agenda was confirmed without changes.
+    *   Note takers (Alejandro, Marco) and Jabberscribe (Renzo) were acknowledged.
+    *   Updates on document status were briefly mentioned, highlighting ongoing work on the architecture draft and documents nearing completion (CoreConf, ICMPv6, compressed payload).
+
+*   **Hackathon Report: SCHC CoreConf Management**
+    *   Alejandro presented an overview of the hackathon's focus on SCHC CoreConf management capabilities.
+    *   The goal is to enable dynamic context management to adapt to evolving traffic patterns, integrating CoreConf for manipulating rule sets (fetch, patch, post operations).
+    *   This allows starting with generic rules and specializing them as traffic patterns are detected, leading to better compression and a hierarchical rule set.
+    *   A proof-of-concept demo showed compression improving from 72 bytes to 43 bytes, then further to 37 bytes, demonstrating efficient on-the-fly optimization.
+
+*   **Evolution of SCHC Protocol Numbers (Bob Moscovitz)**
+    *   Bob Moscovitz presented the group draft, which now includes contributions from Anna and Carl Stam.
+    *   The draft expands SCHC usage beyond EtherType to transport levels, specifically UDP and generalized connection-oriented communication.
+    *   **UDP:** SCHC compressed data units can be carried atop UDP, using port numbers to identify a SCHC stratum, avoiding the need for specific IANA port assignments. This offers a generalized approach for scenarios like CoAP compression where 6LoWPAN-style compression isn't defined.
+    *   **SCHC Identifiers:** The document clarifies how SCHC protocol numbers (layer 3) and port numbers (layer 4) serve as identifiers in the discriminator, to avoid confusion.
+    *   **EtherType:** For Ethernet, a specific EtherType delegation from IEEE 802.1 RAC is still required, with an existing procedure for this.
+    *   The document is believed to be ready for Working Group Last Call.
+    *   **Discussion:**
+        *   Mark Glachet proposed adding a section for CCSDS (space networking) code points, similar to EtherType, to facilitate SCHC adoption in that domain. Bob Moscovitz agreed to incorporate this.
+        *   Eric (AD) inquired about formal liaison procedures with CCSDS if no official SDO liaison exists.
+        *   Donald Lee mentioned RFC 9542 details the EtherType allocation procedure.
+        *   The Chair suggested an early review by TSVWG (Transport Area Working Group) before the Working Group Last Call, especially after adding the satellite text.
+
+*   **Update on RFC 8824bis (Marco)**
+    *   Marco provided an update on version 6 of the document, which aims to formally obsolete RFC 8824 and provide clarifications, particularly regarding SCHC for CoAP in the presence of proxies.
+    *   **Key Updates:**
+        *   Clarifications on using FL (Field Length) info descriptors for variable-length fields, defining units for `VAR` (bytes) and introducing `VAR_BIT` (bits).
+        *   Generalizing compression of CoAP Token Length (TKL) and Token fields to align with RFC 8974, which introduced an extended format for TKL. The TKL function was updated to parse this extended format without structural changes to the data model.
+    *   **IANA Early Review:** A comment from IANA concerned a new registry intended to catalog documents defining SCHC usage for CoAP options. Marco proposed creating a new "SCHC parameters" registry group. The Chair supported this, suggesting the text for creating the group could reside in whichever SCHC document reaches the IESG first.
+    *   **Oscar Option Extension:** Marco considered extracting content related to the OSCAP option extension (currently in a Core WG document) from this draft to avoid normative reference blocking, making the reference informative instead. Karsten Amzulescu (CoRE WG Chair) indicated no strong preference on where the text resides, as long as it's clear.
+    *   **Next Steps:** Marco will produce a new version incorporating the IANA registry group proposal and potentially moving the OSCAP option text. The Chair will then initiate a Working Group Last Call, encouraging members to review.
+
+*   **SCHC Seed Allocation (Laurent Toutain)**
+    *   Laurent Toutain presented a proposal for SCHC seed allocation. Current RFC 9363 (YANG data model for SCHC rules) has an allocated seed range (200 values, manually allocated for efficiency).
+    *   **Problem:** New YANG data models from other drafts (CoCoA, 8824 update, ICMPv6, Universal Options, CoreConf management) would require separate seed ranges, leading to larger delta values and less efficient compression.
+    *   **Proposal:** Revise RFC 9363 to incorporate all YANG data model definitions from these new documents. This allows all definitions to share the same seed range, improving compression efficiency by reducing delta sizes.
+    *   **CoAP Options:** Specifically, the proposal suggests *not* allocating seeds for CoAP options currently defined in RFC 9363, as the "Universal Options" draft will make them obsolete, and many are not in commercial use.
+    *   **Discussion:**
+        *   The Chair expressed personal support for the neat idea of revising RFC 9363 to consolidate seed allocation.
+        *   The Chair raised concerns about not allocating seeds for existing CoAP options in an RFC.
+        *   Karsten Amzulescu clarified that the designated expert has control over seed file generation and can explain missing items. It is acceptable *not* to allocate seeds for elements that will never be used, but crucial to never re-assign a seed that previously had meaning, to avoid database inconsistencies.
+        *   A sense of those present indicated support for the proposal, including the decision not to allocate seeds for obsolete CoAP options.
+        *   Laurent indicated a need for careful review of the manually allocated seed file.
+
+*   **CoreConf Management Update (Alejandro)**
+    *   Alejandro elaborated on the CoreConf management draft, building on the hackathon results.
+    *   The aim is to enable remote context management for dynamic traffic patterns. The updated approach now focuses on *adding* new rules, *deleting* existing rules, and triggering RPCs (e.g., `duplicate-rule`), rather than modifying rules directly, to prevent context synchronization instability.
+    *   Management traffic itself is compressed using specific rules. Security considerations emphasize encryption and protected rules.
+    *   A demo showcased the `duplicate-rule` RPC optimizing compression on the fly, demonstrating a return on investment (cost of management packet vs. bytes saved).
+    *   **Discussion:**
+        *   Eric (AD) questioned the term "dynamically adapting to ongoing traffic" for a working group whose name includes "static context." Laurent, Quentin, and Karsten clarified that "static context" refers to the stateless nature of SCHC's compression/decompression process *during packet processing*, where rules don't evolve implicitly with packets. Context management happens on a separate control plane, updating the stable rule set explicitly.
+        *   Marian asked about replay protection and reliability for management messages, noting the importance for rule changes. Alejandro acknowledged these are future considerations, suggesting confirmed CoAP messages for reliability.
+        *   The Chair emphasized the need for precise wording in the draft, especially regarding the "static context" clarification. He also highlighted the need to scope the use cases for management, suggesting it might not be a "universal solution," and called for detailed review from the working group before seeking adoption.
+
+*   **SCHC Minimal Architecture (Kantan and Mario)**
+    *   Kantan presented the "SCHC Minimal Architecture" draft, aiming to clarify the objectives and terminology of the SCHC architecture document.
+    *   The methodology involved starting with simple LPWAN scenarios and gradually building complexity to derive requirements, entities, and terminology.
+    *   **Terminology Proposals:**
+        *   `Endpoint`: A generic network host running SCHC processes.
+        *   `Instance`: The actual piece of running code configured to do SCHC compression/decompression on an endpoint (currently often called "instance" in published RFCs).
+        *   `Session`: The association between SCHC components (currently called "instance" in the architecture draft). This change in terminology has broader implications for other SCHC documents.
+    *   **Functional Requirements:** The draft stresses the need for consistent field descriptor ordering to ensure interoperability.
+    *   **Multi-Device Scenarios:** Introduced the concept of an `administrative domain` and `domain manager` to configure fleets of similar endpoints, proposing the use of common rules (templates) alongside specialized rules for individual devices.
+    *   **Dynamic Traffic:** Discussed use cases (e.g., smart building seasonal changes) requiring mechanisms to deploy new contexts/rules. This implies storing and versioning contexts.
+    *   **Multiple Instances on an Endpoint:** Identified challenges in `datagram dispatch` (routing compressed packets to correct SCHC instance) and `instance/context identification`. Proposed a `dispatcher` entity for routing based on discriminators, which is currently missing in the two-tiered stratum/data endpoint architecture.
+    *   Karsten praised the work as an "amazing deep review" for clarifying terminology and architecture. Laurent stressed the urgency of resolving terminology inconsistencies given SCHC's growing usage by other groups.
+
+*   **Considerations for CoreConf Management for Point-to-Multipoint Links (Alejandro)**
+    *   Alejandro presented considerations for extending CoreConf management to point-to-multipoint (P2MP) and multipoint-to-multipoint (MP2MP) links, acknowledging this is for future solutions.
+    *   **Management Options:** Beyond CoreConf, other existing protocols like DLMS (for SHC state in IEC standard), NetConf (for routers), and SDN controllers (for mesh topologies) could manage SCHC rule sets.
+    *   **Terminology:** Proposed `factory default`, `configured`, and `runtime` rule sets.
+    *   **P2MP Examples:** Unicast management to configure devices one-by-one, and multicast for data (e.g., firmware updates).
+    *   **Principles for Robust Management:**
+        *   Clear rule ownership (e.g., central node).
+        *   Create/delete (not modify) rules for idempotence.
+        *   Utilize SCHC's stateless nature to allow for `transient states` during configuration, where rules are enabled for decompression but not compression, allowing for eventual consistency across nodes.
+    *   **Discussion:**
+        *   Laurent Toutain raised strong concerns:
+            *   The SCHC charter mentions "a pair of nodes," suggesting P2P scope. Moving to P2MP would require re-chartering.
+            *   Distinction between multicast protocols and SCHC (which is a compression mechanism).
+            *   Historical SCHC work (fragmentation, direction) is P2P.
+            *   Guarantees for management (e.g., acknowledgements) in P2MP are complex.
+        *   Karsten Amzulescu noted that 6LoWPAN context management (area contexts) addresses multi-point situations and that reliable multicast *is* possible when expectations are scaled back.
+        *   Eric (AD) confirmed that if the charter is explicit on "point-to-point," formal work on P2MP is not allowed without re-chartering. He suggested discussing it as a non-adopted document is fine, but not going further.
+        *   Karsten Amzulescu (CoRE WG Chair) highlighted the utility of CoAP multicast for scenarios like smart lighting and encouraged investigation.
+
+*   **SCHC over Disruption/Delay Tolerant Networks (Rodrigo/Sandra)**
+    *   Sandra briefly presented an update to the draft, now generalized from "Satellite IoT" to "Disruption/Delay Tolerant Networks" (DTN).
+    *   The new version (v01) shifts the encoding process from the byte level to the symbol level.
+    *   Each profile defines symbol size based on error correction code, and error detection is at the SCHC fragment level.
+    *   A new name (e.g., including "DTN") for the draft was suggested and agreed upon, as the "DTS" (Delay Tolerant Satellite) is being removed.
+
+## Decisions and Action Items
+
+*   **SCHC Protocol Numbers (Bob Moscovitz)**
+    *   **Action:** Bob Moscovitz to update the draft to include considerations for CCSDS code point allocation.
+    *   **Action:** Chairs to initiate an early review by TSVWG (Transport Area Working Group), followed by a Working Group Last Call, once the draft is updated.
+*   **Update on RFC 8824bis (Marco)**
+    *   **Decision:** A new IANA registry group, "SCHC parameters," will be proposed for SCHC-related registries.
+    *   **Action:** Marco to produce a new version of the draft addressing the IANA comment (proposing the new registry group) and moving the OSCAP option extension text to the Core WG document to avoid normative reference blocking.
+    *   **Action:** Chairs to initiate a Working Group Last Call after the new version is published.
+*   **SCHC Seed Allocation (Laurent Toutain)**
+    *   **Decision:** The working group supports the proposal to revise RFC 9363 to incorporate all new YANG data model definitions from current SCHC drafts and *not* to allocate seeds for CoAP options that will be obsoleted by the Universal Options draft.
+    *   **Action:** Laurent Toutain to prepare the revision of RFC 9363 and request careful review from the working group.
+*   **CoreConf Management Update (Alejandro)**
+    *   **Action:** Alejandro to release a new version of the draft, paying close attention to precise wording, especially regarding "static context" and the scope of management solutions.
+    *   **Action:** Working Group members are encouraged to thoroughly review the draft to help scope its use cases for potential working group adoption.
+*   **SCHC Minimal Architecture (Kantan and Mario)**
+    *   **Action:** Continue discussion on the mailing list and during interims to integrate findings and address terminology into the main SCHC Architecture draft.
+*   **Considerations for CoreConf Management for Point-to-Multipoint Links (Alejandro)**
+    *   **Decision:** Current SCHC charter (mentioning "a pair of nodes") limits formal working group activity on point-to-multipoint (P2MP) management.
+    *   **Action:** If the working group wishes to pursue formal P2MP work, discussion on re-chartering will be required.
+*   **SCHC over Disruption/Delay Tolerant Networks (Rodrigo/Sandra)**
+    *   **Decision:** The draft will be republished with a new, more generic name (e.g., including "DTN").
+
+## Next Steps
+
+*   **Evolution of SCHC Protocol Numbers:** Complete draft updates, proceed with TSVWG early review and WG Last Call.
+*   **RFC 8824bis:** Publish new version, proceed with WG Last Call.
+*   **SCHC Seed Allocation:** Refine and review the RFC 9363 revision proposal.
+*   **CoreConf Management:** Publish new version of the draft, initiate deep working group review for adoption scoping.
+*   **SCHC Minimal Architecture:** Ongoing discussion and integration of architectural insights into the main SCHC architecture document.
+*   **Point-to-Multipoint:** Further discussion within the working group on the desirability and feasibility of P2MP scope, and potential re-chartering if there is consensus to pursue.
+*   **SCHC over DTN:** Republish the draft with a new name reflecting the broader scope.
