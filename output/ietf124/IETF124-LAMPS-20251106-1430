@@ -1,0 +1,38 @@
+# LAMPS
+
+## Summary
+The second LAMPS session focused on a proposed Extended Key Usage (EKU) for attestation keys and a new proposal for one-time signature certificates. The discussion around the attestation EKU centered on whether the EKU mechanism is suitable for expressing constraints like "only sign evidence," given the additive nature of EKUs, with alternative suggestions of critical extensions or policy OIDs emerging. For one-time signature certificates, there was broad interest in the use case for archiving and simplified management, but a significant debate arose regarding whether the proposed document binding extension should be critical to truly enforce the "one-time" property. Additionally, an ad-hoc discussion revisited the structure of private keys for composite KEMs, where the authors stated that embedding the public key within the private key is necessary for compatibility with existing Java cryptographic libraries.
+
+## Key Discussion Points
+
+*   **EKU for Attestation Keys:**
+    *   Jean-Pierre-Fizier presented a draft proposing a new EKU for attestation keys, which are digital signature keys dedicated solely to signing evidence. The goal is to provide a generic EKU, separate from existing specialized OIDs (e.g., TPM, DICE).
+    *   Proposed constraints included that the key should not sign anything other than evidence and remain under the attester's control, with the CA ensuring this.
+    *   **Concerns:** Bob Beck questioned the need for a new EKU, suggesting the use of existing general OID space for post-handshake validation. Daniel Kant-Gilmore raised a significant concern that EKUs are additive per RFC 5280, making it problematic to define an EKU that prohibits other uses, potentially leading to divergent validator behaviors. Stefan Santesson (co-author of RFC 5280) clarified that the EKU framework defines what a key *is for*, not what it *is not for*.
+    *   **Alternatives:** Suggestions were made to consider a novel critical extension or to pair the EKU with a policy OID, which could be asserted by the CA.
+    *   **Proof of Possession (PoP):** Deb Cooley suggested that the need for a "special" PoP mechanism for attestation keys might not be necessary, as existing methods allow signing CSRs even for keys not primarily intended for signing.
+
+*   **One-Time Signature Certificates:**
+    *   Stefan Santesson presented a draft proposing one-time signature certificates, motivated by 15 years of experience in Sweden using dynamically generated keys and certificates for single signatures, which effectively address legal and operational requirements but face archiving challenges due to expiration.
+    *   The proposal includes certificates that never expire (using RFC 5280's "notAfter" field), have no revocation mechanism, and feature a new extension that binds the certificate to the hash of the single signed document. The private key is immediately destroyed after use.
+    *   **Debate on Criticality:** Dennis Jackson and Daniel Kant-Gilmore strongly argued that the document binding extension *must* be critical. They contend that if it's non-critical, verifiers unaware of the extension would treat the certificate as indefinitely valid and reusable, thus undermining the "one-time" security property and making misuse undetectable.
+    *   **Author's Perspective:** Stefan Santesson argued against a mandatory critical extension, stating it would require all validation engines to update, rendering the solution impractical for widespread adoption. He proposed that the non-critical binding serves as a clear basis for repudiation if misuse occurs, leaving the ultimate reliance decision to the relying party.
+    *   **Support for Adoption:** Several participants, including Tim Hollebeek, expressed strong support for the adoption of this work, citing its importance for use cases like code signing and the EU Wallet initiative, emphasizing the value of standardizing such a model regardless of the critical/non-critical decision.
+
+*   **Private Key Composite KEMs (Any Other Business):**
+    *   Mike Olsworth revisited the embedding of public keys within private key structures for composite KEMs, which was discussed on Tuesday.
+    *   **Problem Statement:** New information indicates that embedding the public key is *necessary* for compatibility with existing Java cryptographic libraries (e.g., JCA, Bouncy Castle, potentially Oracle Java). Classes like `ECPrivateKey` and `RSAPrivateKey` in JCA do not consistently provide APIs to derive the public key from the private key without changes that would violate the design requirement of not forcing changes to FIPS-certified traditional modules.
+    *   **Concerns:** Victor and John Gray expressed concerns about the increased size of private keys due to embedding the full post-quantum public key, noting potential impacts on storage costs, particularly in FIPS-certified or resource-constrained environments.
+    *   **Technical Detail:** David Benjamin clarified that for EC keys, the public key *can* be derived using existing ECDH APIs, and for RSA keys using the CRT form, the public exponent is available. However, issues persist for non-CRT RSA private key formats.
+
+## Decisions and Action Items
+
+*   **Attestation EKU:** No adoption decision was made. The authors are encouraged to incorporate the feedback received, particularly regarding the suitability of EKUs for negative constraints and exploring alternative mechanisms, and revise the draft.
+*   **One-Time Signature Certificates:** No adoption decision was made. Authors are to publish the -00 draft. They will consider the feedback, especially on the critical/non-critical nature of the document binding extension, and are encouraged to include a detailed discussion in the security considerations section on the implications of both approaches. A revised draft and a call for adoption on the mailing list are expected.
+*   **Private Key Composite KEMs:** A small group of experts (including David Benjamin, Scott, John Gray, Chris, Sophie, David Hook (Bouncy Castle), and Sean Mullen (Oracle)) was formed to investigate the technical feasibility and implications of deriving public keys from private keys in Java cryptographic libraries. This group will coordinate offline to clarify the constraints and inform the path forward for the composite KEM private key format.
+
+## Next Steps
+
+*   **Attestation EKU:** Authors to revise the draft based on the session's technical input, focusing on the EKU framework and exploring whether a critical extension or policy OID might be a more suitable mechanism for the intended constraints. Close coordination with the RATS working group is anticipated.
+*   **One-Time Signature Certificates:** Authors to publish the -00 draft. A revision addressing the critical vs. non-critical debate for the document binding extension, potentially with enhanced security considerations, is expected. A call for adoption on the LAMPS mailing list will follow.
+*   **Private Key Composite KEMs:** The newly formed expert group will research and report on the technical realities of public key derivation from private keys in Java, aiming to provide clarity to the working group on the composite KEM private key format.
