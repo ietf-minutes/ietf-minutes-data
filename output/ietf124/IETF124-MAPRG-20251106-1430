@@ -1,0 +1,92 @@
+# MAPRG
+
+## Summary
+
+The MAPRG session featured a diverse set of research presentations covering various aspects of network measurement and analysis. Discussions included a longitudinal study on Wi-Fi bottlenecks in home networks, the identifiability of VPN traffic by middleboxes, a newly identified "covered hijack" threat within the RPKI ecosystem, an evaluation of Happy Eyeballs v2 implementations across major web browsers, observations from Common Crawl's HTTP/2 adoption, and an analysis of TCP connection characteristics and Post-Quantum TLS adoption trends from a large CDN. A recurring theme was the significant divergence in protocol adoption rates and implementation details across different network components and services.
+
+## Key Discussion Points
+
+*   **Prevalence of Wi-Fi Bottlenecks in Home Access Networks (Ranya Sharma)**
+    *   A longitudinal study using Raspberry Pis in 52 households over 24 months measured both access (ISP) and Wi-Fi throughput.
+    *   89% of households experienced at least one Wi-Fi bottleneck, where Wi-Fi speed was lower than ISP access speed.
+    *   A strong correlation was found between higher ISP speed tiers and increased Wi-Fi bottleneck prevalence. Households with 800+ Mbps plans experienced Wi-Fi bottlenecks 100% of the time in observed measurements.
+    *   The magnitude of throughput disparity increased with speed tiers; for 800+ Mbps tiers, the median household experienced actual speeds 600.3 Mbps lower than purchased.
+    *   This suggests many households fail to fully utilize their purchased ISP throughput due to limitations in their home wireless networks.
+    *   *Discussion:* Questions arose regarding concurrent users, potential latency impacts (identified as future work), and the generalizability of the 52-household sample size (acknowledged as an introductory study with plans for expansion).
+
+*   **VPN Traffic Identification (Tan May)**
+    *   Research explored the identifiability of VPN traffic by Deep Packet Inspection (DPI) middleboxes for protocols like OpenVPN, WireGuard, TLS-based, and SSH-based VPNs.
+    *   The study assumed an ISP-level threat model with DPI capabilities but no real-time arbitrary offset parsing or large-scale ML-based detection.
+    *   Many commercial VPN providers are vulnerable at the initial authentication step, often hosted on major cloud providers.
+    *   OpenVPN (older versions) has plain text identifiers (e.g., P-Hart control reset). While pre-shared key mode encrypts fully, it's not scalable for large deployments.
+    *   WireGuard is touted as next-gen but also has scalability challenges with pre-shared keys and distinct plain text identifiers (e.g., string of zeros). Some providers like NordLynx use double NAT for scaling.
+    *   TLS-based VPNs attempt to mimic browser traffic to avoid blocking, but non-standard SNI, cipher suites, or certificates can still be markers. Blocking them carries high collateral damage.
+    *   Evasion strategies include SNI poisoning (decreasingly effective) and MTU manipulation (with performance impact). Firewalls rely on static signatures, leading to a "cat and mouse game."
+    *   *Discussion:* The possibility of Quick-based VPNs (e.g., Cloudflare Warp, Apple Private Relay) and multi-server architectures (e.g., ProtonVPN's two-hop) was raised as future research directions.
+
+*   **The Threat Landscape of IP Leasing in the RPKI Area (Waitong)**
+    *   IP leasing, driven by IPv4 exhaustion, involves renting IP blocks where the leaser retains official ownership in IR records and control over RPKI Root Origin Authorizations (ROAs).
+    *   A new threat, "covered hijack," was identified: a malicious leaser can create different ROAs for different RPKI validators. They can present a lease-compliant ROA to the broker/leasy's validator while presenting a different ROA to other internet validators, causing the lease's BGP announcement to be seen as invalid and filtered in some networks.
+    *   This results in traffic falling back to the leaser's less specific prefix, achieving a covert hijack without BGP conflicts, undetectable by traditional means.
+    *   Practical tests using AWS and Cloudflare environments achieved over 80% success rates for covered hijacks.
+    *   Currently, ~76% of leased prefixes have ROAs controlled by leasers, and over 1,000 are already RPKI invalid. In 27% of these cases, traffic flows through the leaser's AS.
+    *   *Mitigations:* Short-term: brokers/leasees check ROA consistency from multiple points. Mid-term: RDP protocol design needs consistency enforcement and anti-fingerprinting. Long-term: RIRs should enable partial delegation of ROA access.
+
+*   **Happy Eyeballs v2 Implementation Status (Johannes Zirngibl)**
+    *   The presentation evaluated how major web clients (Chrome, Firefox, Safari) implement Happy Eyeballs (HEv1 and HEv2) as input for HEv3 standardization.
+    *   A web-based testing tool (happy.eyeballs.dev) was developed for this.
+    *   *Findings:*
+        *   Chrome/Chromium use a static connection attempt delay of 300ms.
+        *   Firefox uses a static connection attempt delay of 250ms.
+        *   Safari dynamically adjusts its connection attempt delay based on historical results, more closely aligning with HEv2 suggestions.
+        *   HEv2's DNS resolution delay mechanism (waiting for quad A before falling back to A) is implemented only by Safari. Chrome and Firefox do not use this, often waiting longer for responses or failing if resolvers delay.
+    *   *Implications:* Implementing the DNS resolution delay via system APIs is challenging, and resolver behavior significantly impacts outcomes.
+    *   *Discussion:* The tool's availability provides a valuable resource for developers to test their HE implementations against HEv3 drafts.
+
+*   **HTTP/2 Observations from Common Crawl (Tom Vaughn)**
+    *   Common Crawl, a large-scale web crawling project, enabled HTTP/2 support in July 2024.
+    *   Analysis of the January 2025 crawl (3 billion pages from 49 million hosts) showed that 61% of all fetches (including failed attempts) used HTTP/2.
+    *   HTTP/2 adoption varies significantly by Top-Level Domain (TLD), with some (e.g., .au) having high adoption and others (e.g., .cn) predominantly using HTTP/1.1.
+    *   Enabling HTTP/2 led to a 2.5% reduction in CPU time spent fetching for the entire crawl job, demonstrating significant efficiency gains at scale.
+    *   Careful handling was required to maintain compatibility with existing WARC file readers downstream, especially since HTTP/2 lacks a reason phrase for status codes.
+    *   *Conclusion:* HTTP/2 now dominates large-scale web traffic, offering performance benefits, and Common Crawl data supports open research on real-world web technology adoption.
+
+*   **Characteristics of TCP Connections from a CDN's Perspective (Suleiman Ahmad)**
+    *   Cloudflare passively collects a 1% uniform sample of TCP connections at its client-facing CDN servers (for HTTP/1 and HTTP/2 traffic).
+    *   Analysis focused on gracefully closed, non-idle connections carrying at least one successful HTTP request (11% of all observed TCP connections).
+    *   *Key observations:*
+        *   **Response Packet Counts**: Median was 12 packets, with 90% of connections carrying under 107 packets ("mice flows"). A heavy tail indicated "elephant flows" for large transfers. HTTP/2 connections tended to be slightly larger (median 16 packets) due to multiplexing and control messages.
+        *   **Asymmetry**: The median ratio of bytes sent to bytes received was 3.8, meaning servers sent nearly four times more data than they received in half the cases, highlighting high asymmetry.
+        *   **Connection Durations**: Half of all connections completed under five seconds, but some were very long-lived (days), indicative of persistent sessions.
+        *   **Requests per Connection**: The median was one request per connection for both HTTP/1 and HTTP/2. However, HTTP/2 showed a 90th percentile of ~10 requests (amplified by connection coalescing), while HTTP/1 rarely exceeded two requests.
+        *   **Congestion Window (CWIN)**: Median CWIN was 464KB (310 packets). This was notably higher than the median BBR-estimated bandwidth-delay product (77KB/50 packets), which is an intentional aspect of BBR's design.
+    *   *Implications:* The analysis suggests revisiting the default initial congestion window size (10 packets in RFC 6928) could impact performance for the dominant small connections.
+
+*   **Post-Quantum TLS Adoption (Tommy Pauly)**
+    *   An analysis of client-side observations on server support for Post-Quantum TLS (PQTLS, specifically X25519 ML-KEM-768).
+    *   A widening divide was observed between populations that update to new protocols and those that don't.
+    *   **Browser-based connections**: 20% adoption of PQTLS for TCP-based connections, but 91% for Quick-based connections, indicating a strong correlation between Quick adoption and TLS stack upgrades.
+    *   **Non-browser connections**: Showed more TLS 1.2 usage and less PQTLS adoption in both TCP and Quick, though Quick still had 80% PQTLS.
+    *   **IPv4/IPv6 Correlation**: Quick connections without PQTLS were 60% IPv4-only, while Quick connections with PQTLS were 90% likely to support IPv6 and have IPv6 win. A similar trend was observed for TCP connections.
+    *   *Conclusion:* Strong correlations exist: if a server updates to Quick and PQTLS, it's highly likely to also support IPv6.
+    *   **Performance Impact**: PQTLS adds data to the client hello (two packets). While PQTLS connections are slightly less efficient when normalized by RTT (due to a higher likelihood of packet loss recovery), the fastest connection setup times are observed for PQTLS users. This is attributed to PQTLS adopters generally having better-optimized server deployments that are closer to the edge.
+    *   *Discussion:* Confusion regarding PQTLS speed (clarified that observed speed benefits come from overall server optimization, not PQTLS itself) and the persistent nature of the early/late adopter divide across protocol updates. The challenge of making anonymized data available for broader research was raised.
+
+## Decisions and Action Items
+
+*   No formal decisions were made, as is typical for an IRTF Research Group session.
+*   **Presenters** committed to pursuing future work identified during their presentations, including:
+    *   **Ranya Sharma:** Further investigating concurrent Wi-Fi users, latency impacts, and expanding the geographic and participant scope of their Wi-Fi bottleneck study.
+    *   **Tan May:** Researching Quick-based VPNs (e.g., Cloudflare Warp, Apple Private Relay), analyzing multi-server VPN architectures, and exploring app-specific server ideas for increased blocking resistance.
+    *   **Waitong:** Encouraging RIRs to consider policy changes for partial ROA delegation and contributing to working group efforts on RDP consistency.
+    *   **Johannes Zirngibl:** Expanding the Happy Eyeballs testing tool to support HEv3, further debugging Safari's dynamic behavior, and adding IPv4 delay scenarios. He also expressed willingness for their team to help test HEv3 implementations.
+    *   **Suleiman Ahmad:** Seeking community input on the usefulness of various connection-level characteristics and sparking discussion on revisiting the default initial congestion window size.
+    *   **Tommy Pauly:** Continuing to monitor and report on adoption trends, and engaging in broader discussions about models for sharing anonymized measurement data.
+
+## Next Steps
+
+*   The research presented will continue to evolve, with identified future work being pursued by the presenters and their teams.
+*   The community is encouraged to engage with the open-source tools (e.g., Happy Eyeballs testing tool) and public datasets (e.g., Common Crawl data, Cloudflare blog insights) discussed.
+*   The measurement data and observations provide valuable input for IETF working groups, particularly the Happy Eyeballs working group for its HE v3 efforts.
+*   Further discussion is warranted within the IRTF/IETF on how to facilitate broader sharing of anonymized measurement data to support open research.
+*   Attendees were encouraged to update their network stacks and contribute more measurement data.

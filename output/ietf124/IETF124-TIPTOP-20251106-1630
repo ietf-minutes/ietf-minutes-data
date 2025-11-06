@@ -1,0 +1,122 @@
+# TIPTOP
+
+## Summary
+
+The TIPTOP session featured several presentations and discussions covering security considerations for deep space communications, performance measurements of Quick in lunar environments, a report from the recent hackathon, the proposed IP architecture for deep space, storage alternatives, and the use of COAP in space. Key themes included the impact of high latency and intermittency on security protocols and transport layer performance, the need for robust architectural guidance, and ongoing efforts to adapt existing IETF protocols to the unique deep space environment. While no formal decisions were made during the session, a working group adoption call for the IP Architecture draft was announced to be sent to the mailing list, and participants were encouraged to engage further on the mailing list.
+
+## Key Discussion Points
+
+### Detailed Requirements for Security Considerations in Deep Space (Ben)
+
+*   **Core Need**: Establish secure communication (confidentiality, authenticity) in deep space environments, considering intermittent communications and significant delays.
+*   **Threat Model**: The discussion should account for a realistic adversary with full control of the network (delay, drop, delete, modify messages) and the ability to compromise secrets (short-term channel keys, long-term authentication keys).
+*   **Impact of Delays on Security Protocols**:
+    *   Intermittent communication and delays significantly impact security handshakes (e.g., key establishment, key refresh).
+    *   Higher round-trip time (RTT) handshakes (0.5-RTT, 1-RTT) are more susceptible to failure due to packet loss compared to 0-RTT handshakes, potentially preventing secure channel establishment.
+    *   Asynchronous handshakes offer resilience, allowing key establishment/refresh even if parties are offline or messages are delayed.
+*   **Fine-Grained Security Properties**:
+    *   **Perfect Forward Secrecy (PFS)**: Ensures confidentiality of past communications even if long-term secrets are compromised.
+    *   **Post-Compromise Security (PCS)**: Enables recovery of security after a compromise if the adversary becomes passive.
+    *   These properties often rely on frequent key updates requiring communication, making them vulnerable to packet loss and delays.
+*   **Document Suggestions**: Expand on the impact of delays, interruptions, and packet loss on security design choices, including PFS and PCS, and their interaction with deep space characteristics.
+*   **Discussion**:
+    *   Martin Duke (Google) asked if any existing IETF security protocols meet these requirements. Ben cited MLS (Messaging Layer Security) as a protocol designed for asynchronous communication and achieving PFS/PCS, unlike current Quick drafts.
+    *   Rick Tina questioned the criticality of supporting group communication topologies (requirement #3), suggesting it might be a "nice-to-have" compared to other fundamental security properties. Ben clarified it's relevant for enclaves in space.
+
+### Quick to the Moon Measurements (Natya)
+
+*   **Scope**: Evaluation of Quick implementations (Quinn, Kish) in lunar-like scenarios with high RTT (1-9 seconds), outages (2-60 seconds), and packet loss (0-5%).
+*   **Metrics**: Flow completion time (FCT) and recovery time after outages, defined as reaching 90th percentile of baseline congestion window post-outage.
+*   **Key Findings**:
+    *   **Careful Resume**: Significantly improved performance for both Quinn and Kish; Quinn's FCT halved in some cases.
+    *   **ACK Frequency**: No significant improvement observed for Quinn; may require further parameter reconsideration.
+    *   **Recovery**: Surprisingly, recovery generally worked more reliably for higher RTTs.
+    *   **Kish "Crypto Fail Issue"**: A specific bug was observed where Kish's server would sometimes fail to reset its PTO count after an outage, leading to dropped ACKs due to OpenSSL decryption errors. This occurred in about 10% of runs (5% without packet loss).
+    *   **Fairness**: Quinn and Kish exhibited high fairness to each other (Jane's Fairness Index close to 1). Quinn generally appeared faster.
+*   **Discussion**:
+    *   Mario suggested using median throughput prior to outage for a more agnostic recovery metric.
+    *   Jahad asked if the findings were specific to high RTT deep space settings or if similar conclusions would hold for terrestrial, lower RTT environments. Natya confirmed evaluation was only on high RTTs.
+    *   Lucas Pardue (Cloudflare, Kish maintainer) thanked Natya for the work and bug report, promising follow-up.
+    *   Mark asked if buffering packets during outages (instead of dropping) would change the recovery results; Natya was unsure, suggesting more evaluations would be needed.
+
+### Hackathon Report (Mark)
+
+*   **Setup**: Simulated Earth-Moon (2s RTT, IPv4) and Earth-Mars (4 min RTT, IPv6) links using mini-PC orbiters as forwarders. Cloud VMs acted as Moon/Mars rovers. Delays injected with NetTerm, and packets were stored during scheduled interruptions (e.g., 15 min on/off).
+*   **Key Challenges & Observations**:
+    *   **IPv4 vs. IPv6**: Mars setup initially struggled with IPv4 due to multiple UDP timeouts on the internet path; switched to IPv6-only for Mars.
+    *   **Application Behavior**: Discord, Apple Messages, and HTTP services using Quick generally worked (YouTube with buffering). IMAP and SSH (over TCP) performed poorly due to long delays and timeouts.
+    *   **NetTerm**: Using socket memory for delay required significant increases; suggests moving delay injection to user space.
+    *   **Delay Injection Issues**: Basic services like DHCP, ARP, and ND were also delayed, requiring filtering to function.
+    *   **UDP Timeouts**: Observed in various places, especially for cloud VMs, suggesting a need to address such timeouts in drafts.
+    *   **Keep-Alives**: SSHD keep-alives needed to be disabled for Mars-like delays.
+    *   **Buffering**: The forwarders actively buffered IP packets during outages rather than dropping them, demonstrating a core aspect of the Tip-Top architecture.
+*   **Next Steps**: Repeat the hackathon at future IETFs, more application testing, and transition to a fully autonomous network setup (not relying on internet VMs).
+*   **Discussion**:
+    *   Martin Duke (Google) noted the IPv6 success might indicate a NAT issue for IPv4. He also inquired about the nature of intermittent links modeled (e.g., orbiter coming out of occultation).
+    *   David Lanphier questioned IMAP's failure at 2-second delay, as mobile networks often see similar delays. Mark clarified these were anecdotal observations, not planned investigations.
+    *   Sandra raised a point about the protocol's reaction when packets are buffered locally versus actually lost due to no link, suggesting the behavior might differ. Mark confirmed the forwarder was explicitly storing packets.
+
+### IP Architecture Document (Wes)
+
+*   **Goal**: The draft aims for working group adoption to document necessary differences for IP architecture in space networking compared to terrestrial IP use. It focuses on general IP layer issues, transport, and application, with specific protocol profiles (like Quick) in separate documents.
+*   **Clarifications**: The document emphasizes queuing/buffering outgoing IP packets, distinct from DTN's custody transfer. It aims for a best-effort service, not sophisticated storage/caching. COAP and network management mentions were added.
+*   **Proposed Node Types**:
+    *   **Unmodified Internet Stacks**: Normal hosts in well-connected network regimes (e.g., within planetary surface networks).
+    *   **Tip-Top End-Hosts**: Tuned transport/application parameters, but potentially stock IP layer (e.g., Quick stack over a kernel).
+    *   **Tip-Top Forwarders**: IP routing nodes capable of queuing outbound IP packets, located at transition points between well-connected and intermittently connected links.
+    *   **Tip-Top Full**: Combines end-host and forwarder roles.
+    *   **Scheduling/Orchestration Systems**: Create and distribute network plans.
+*   **Layer 2**: Existing data link layer standards that support IP are sufficient; relevant encapsulations are often specified outside IETF.
+*   **IP Addressing**: Recommends space service providers use prefixes assigned for planetary bodies. A separate draft exists on this.
+*   **Routing**: Standard routing protocols for well-connected areas. For deep space links, a Path Computation Element (PCE)-like approach is recommended, integrating with mission planning and scheduling systems.
+*   **Transport/Applications**: Provides a framework for tuning; child documents (e.g., Quick profile) will detail specific protocols.
+*   **Open Questions**: Details on buffering mechanisms, MPLS usage, and specifics of security protocols.
+*   **Discussion**:
+    *   Britta (queue) questioned the extensive discussion of Quick protocol specifics within this architecture document, given a prior moratorium on such detailed protocol discussions. She suggested either removing Quick specifics or lifting the moratorium.
+    *   Jad Dushan (RIPE NCC) raised concerns about IP addressing:
+        *   Which RIR should manage space address blocks? This requires community discussion in RIR forums.
+        *   Management policies are community-driven; IETF should encourage engagement.
+        *   Advocated for an IPv6-only stance for greenfield deep space deployments, as IPv4 address exhaustion and NAT issues (as seen in the hackathon) are relevant.
+        *   Questioned if "should be managed" implies "must be managed" by an RIR to avoid fragmentation.
+    *   Tony Lee (co-author) clarified the document makes recommendations but doesn't mandate RIRs or IPv4/IPv6.
+    *   David Lanphier suggested pushing addressing discussions entirely out of this draft.
+    *   Sandra suggested the document should include requirements for how link layer technologies expose scheduling information to Tip-Top forwarders.
+    *   Martin Duke requested more flushing out of transport requirements, which he noted had improved.
+    *   Sean Turner noted the architecture draft is not competing and that some Quick specifics could be deferred.
+    *   Britta reiterated strong concerns about the Quick-specific content, particularly regarding 0-RTT and static keying, which conflict with established security principles and discussions in other WGs. She emphasized the need to either remove this content or have a full WG discussion on these security implications.
+*   **Poll**: A poll was taken to gauge readership of the IP Architecture draft.
+
+### Storage Alternatives in Deep Space IP (Joan)
+
+*   **Concept**: Brainstorming on where buffering/storage should occur within the deep space IP stack.
+*   **Trade-offs**: Higher layers offer more control and data awareness, while lower layers offer simplicity as data is already cued for the next hop.
+*   **Scale of Buffering**: Terrestrial internet buffering is in microseconds/milliseconds; deep space IP storage can be seconds, minutes, hours, or days.
+*   **Open Question**: Should a canonical layer for storage be defined, or should it be left to implementations? What are the interoperability risks of varied policies?
+*   **Outcome**: Due to time constraints, the discussion was deferred to the mailing list. Joan was encouraged to incorporate these different choices into the architecture document.
+
+### COAP in Space (Carlos)
+
+*   **Rationale**: COAP (Constrained Application Protocol), designed for IoT, shares many characteristics with deep space environments (long delays, intermittency, low bandwidth, limited resources).
+*   **Key Features**: Lightweight (4-byte header), asynchronous, flexible, security support, based on REST architecture.
+*   **Recommendation**: COAP over UDP for deep space, as TCP/TLS entail significant performance penalties (handshakes, non-optional reliability).
+*   **Tuning**: Parameters like Initial RTO need significant tuning for deep space.
+*   **Benefits**: Supports caching (reduces response time, resource consumption), proxying (e.g., orbiter proxy caching responses), and easy mapping to/from HTTP.
+*   **Security**: DTLS (performance issues) or Object Security (OSCORE), which protects application payloads end-to-end even with untrusted proxies, using pre-shared materials to avoid handshakes.
+*   **Outcome**: Due to time constraints, the discussion was deferred to the mailing list.
+
+## Decisions and Action Items
+
+*   **ACTION**: Chairs to send out a Working Group adoption call for the "TIPTOP IP Architecture" draft (draft-ietf-tiptop-ip-architecture) to the mailing list.
+*   **ACTION**: All participants are encouraged to read the "TIPTOP IP Architecture" draft and provide detailed feedback on the mailing list, particularly regarding the concerns raised about Quick specifics and IP addressing.
+*   **ACTION**: Ben's detailed security considerations (PR 43) will continue to be discussed on the mailing list for further input.
+*   **ACTION**: Natya to open a GitHub issue regarding the "crypto fail issue" observed with Kish's server recovery.
+*   **ACTION**: Joan's analysis of storage alternatives to be discussed further on the mailing list and potentially incorporated into the architecture document.
+*   **ACTION**: Carlos's "COAP in Space" draft to be discussed further on the mailing list.
+
+## Next Steps
+
+*   Continue extensive discussions on all presented drafts via the TIPTOP mailing list.
+*   Further refine the "TIPTOP IP Architecture" draft based on feedback, especially addressing the level of detail regarding specific protocols (like Quick) and the approach to IP address management.
+*   Advance the security requirements document based on Ben's presentation.
+*   Consider repeating the hackathon at the next IETF, focusing on more protocol and application testing, and a fully autonomous network setup.
+*   Monitor and address the "crypto fail issue" in Kish.
