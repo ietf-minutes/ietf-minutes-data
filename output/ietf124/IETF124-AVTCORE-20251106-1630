@@ -1,0 +1,127 @@
+# AVTCORE Session Minutes - IETF-124
+
+## Summary
+
+The AVTCORE session at IETF-124 included updates and discussions on several drafts: S-frame Packetization, RTP over QUIC (RoQ) SDP Offer/Answer, RTP Payload Format for JPEG XS, RTP Payload Format for ARF Animations, Opus Multi-stream SDP, and RTP Frame Acknowledgement. Key discussions revolved around SDP signaling mechanisms, WebRTC API integration, backward compatibility for updates, and extending existing RTP/SDP frameworks for new media types and transport protocols. The working group proceeded with plans for a Working Group Last Call for JPEG XS and an adoption call for ARF, while other drafts continue to iterate based on feedback. An interim meeting will be scheduled to discuss RoQ's "first-class transport" status.
+
+## Key Discussion Points
+
+### S-frame Packetization (draft-ietf-avtcore-s-frame-packetization)
+
+*   **Goal**: Support both per-packet and per-frame S-frame modes, bridging the gap between existing product implementations (e.g., WebEx) and browser-based models (e.g., FaceTime).
+*   **Per-packet S-frame**: Requires the ability to split an S-frame payload across multiple RTP packets using start/end bits in a 1-byte header.
+*   **SDP Negotiation**: Proposed at the M-section level, allowing mixing S-frame and non-S-frame content within a single SDP. Negotiation options for per-packet/per-frame or crypto suite are currently out-of-band.
+*   **Simplifications**: Removed the media payload type from the RTP payload after decryption.
+*   **WebRTC API Integration**: Discussions with the WFC Working Group indicated general consensus on the model. Web applications would be responsible for enabling S-frame and specifying per-packet/per-frame flavor.
+*   **Renegotiation**: Currently, enabling/disabling S-frame is fixed for the lifetime of an M-section; renegotiation would require a new M-section. This is seen as a simplification and forward-extensible.
+*   **Mixed S-frame/Non-S-frame**: Supported by using two M-sections (one S-frame, one non-S-frame) for a media stream.
+*   **Open Issues**:
+    *   Interaction with RTX and FEC: Expected to be transparent, retransmitting encrypted packets. Read content is stuffed with multiple S-frame payloads.
+    *   Additional SDP flexibility (e.g., `a=sframe` at session level, per-packet/per-frame or crypto suite in SDP): Currently not included, pending feedback.
+    *   SDP negotiation rules: Further restrictions to be defined in WebRTC/CodeItTransform specs.
+    *   Per-SSRC key derivation guidelines: Need to figure this out, could be non-mandatory guidelines.
+    *   Full validation with WPC specs and implementation experience.
+*   **Discussion**:
+    *   **Niels O'Meer**: Questioned how the offerer handles an answer that doesn't reply with `a=sframe` (implies rejection, requiring offerer to stop transceiver/M-section). Also, asked about signaling per-packet/per-frame mode; clarification that the application sets this, but implementation must support both.
+    *   **Gortez from Apple**: Raised concerns about out-of-band negotiation for cipher suites and tag lengths, especially for different M-lines. The current approach assumes SFUs don't need this info in SDP.
+    *   **Jonathan Lennox (as individual)**: Suggested clarifying that the encrypted payload contains effectively raw frames and the draft should explicitly state what's inside the encrypted payload for per-packet vs. per-frame. Noted difficulty in distinguishing per-packet vs. per-frame if a frame is smaller than an MTU and suggested mentioning AV-1 dependency descriptor or frame marking header extensions for the per-frame case.
+
+### RTP over QUIC (RoQ) SDP Offer/Answer (draft-ietf-avtcore-rtp-over-quic-sdo)
+
+*   **Status**: Draft was adopted.
+*   **Updates**:
+    *   PR 34 (formerly PR 30): Clarified relationship between ICE and RoQ.
+    *   PR 35 (formerly PR 29): Clarified relationship between bundle and RoQ flows. Decision to define RTP session as a RoQ flow, and bundle within one RoQ flow for SDP to avoid complications with middleboxes.
+    *   New Issue 31 (Russ Finlayson): Title "SDP offer/answer" was too restrictive, implying declarative SDP applications (like RTSP) were out of scope, which was not the intent.
+*   **Experimental RoQ Specification**: Need more feedback on RFC 9828. Interop testing was done with manual configuration, not signaling.
+*   **SDP Review**: MMusic working group is closed, so AVTCORE will handle the SDP aspects.
+*   **Open Issues**: Use of RoQ with Mask.
+*   **Discussion on "First-Class RTP Transport"**:
+    *   **Harold (as individual)**: Suggested ICE returning QUIC candidate pairs as a possible mechanism. WebRTC API has full control over candidates. Updating WebRTC for QUIC feedback is a much larger task. Commented on the need to change the protocol name in the ICE candidate to differentiate UDP for RTP from UDP for QUIC.
+    *   **Niels O'Meer**: Agreed with Harold; defining an ICE candidate type for RoQ that pairs only with other RoQ candidates is the most straightforward transport-level approach. RTP header extensions and other feature negotiation would be separate.
+    *   **Spencer Dawkins**: Concurred that making RoQ an ICE candidate is a "doable and sensible thing," though a "layer violation."
+*   **Next Steps**: Converge on a title change, merge PRs 34 and 35. Address open issues. Ask for review from Jonathan and Gortez. Plan an interim to discuss "first-class transport" and ice-rock candidate draft. Request implementers to test STPROC.
+
+### RTP Payload Format for JPEG XS (draft-ralalens-avtcore-jxs)
+
+*   **Background**: RFC 9134 (for JPXS first/second edition) is widely used in broadcast/pro-AV.
+*   **Need for Update**: JPXS Third Edition introduced new coding tools (frame buffer-based temporal compression, TDC).
+    *   RFC 9134 references the `SLH` marker; TDC requires the `SLI` marker (both 16-bit codes, similar function). The RFC needs to explicitly mention `SLI`.
+    *   New FDB level parameter for SDP negotiation is needed.
+    *   Clarify text regarding interlaced video signals to resolve ambiguities reported by implementers.
+    *   Incorporate an existing Eratum for RFC 9134.
+*   **Proposal**: Obsolete RFC 9134 with a new RFC (draft-ietf-avtcore-jxs) that is 100% backwards compatible. Existing senders/receivers will remain compliant.
+*   **Draft Content**: Integrates the Eratum, clarifies interlaced video, adds provisions for TDC (SLI marker, FDB level SDP parameter), and improves text definition of slices for compatibility with upcoming JPXS part 1 amendment.
+*   **Status**: Call for adoption was positive. Draft will be uploaded to Datatracker after the meeting.
+*   **Discussion**:
+    *   **Jonathan Lennox**: Clarified that the draft's definition of slices is compatible with a future ISO amendment, but does not rely on it being published.
+    *   **Tim Rallans**: Confirmed no open issues and that feedback from collaborating companies is already incorporated.
+*   **Decision**: Working Group Last Call for draft-ietf-avtcore-jxs will be scheduled soon.
+
+### RTP Payload Format for ARF Animations (draft-choi-avtcore-arf)
+
+*   **Background**: RTP payload format for Avatar Representation Format (ARF) animations.
+*   **Clarifications (from previous IETF)**:
+    *   **Data Structures**: Avatar Animation Units (AAUs) include configuration, joint, landmark, and texture types. Each AAU contains delta values.
+    *   **Data Characteristics**: Delta values mean some packet loss might affect smoothness but not lead to complete corruption.
+    *   **Texture Type**: Does not include texture images; these are downloaded separately.
+    *   **Scope**: Does not cover template download procedures defined in the MPEG specification.
+*   **Updates in Draft**:
+    *   Revised abstract for scope clarity based on the `MPEG-I` specification.
+    *   Added `texture AAU` type due to specification updates.
+    *   Updated optional parameters (names/values) based on latest `MPEG-I` specification.
+    *   Added more explanation for parameters.
+*   **Status**: The `MPEG-I` specification for avatars is nearing completion (RIA stage, target January).
+*   **Action**: Seeking an adoption call for the draft.
+
+### Opus Multi-stream SDP (draft-sun-avtcore-multistream-opus)
+
+*   **Use Case**: Cloud gaming services providing multi-channel audio (e.g., 7.1, 5.1 surround sound) through the web.
+*   **Problem**: While WebRTC has multi-Opus support as a base, existing APIs (e.g., `createOffer`, `createAnswer`) lack explicit multi-Opus support due to a lack of formal standard linking RFC 7587 (RTP payload) and RFC 7845 (multi-stream Opus).
+*   **Proposal**: Standardize SDP syntax for multi-Opus (e.g., `multiopus`, `channel-count`, `format parameters` like `num_streams`, `coupled_streams`, `channel_mapping`). Propose `createOffer`/`createAnswer` to use multi-Opus as a standard.
+*   **Discussion**:
+    *   **Niels O'Meer**: Emphasized that standardizing SDP syntax does not automatically provide a WebRTC API; W3C work would still be needed to avoid "SDP munching."
+    *   **Harold (as individual)**: Noted that some APIs for multi-Opus might be missing.
+    *   **Altonai**: Asked about fallback for legacy endpoints. Proposed fallback to stereo by ignoring unrecognized multi-Opus parameters, similar to other unknown codecs.
+    *   **John Mark (Google)**: Highlighted that the draft primarily covers "Family One" (surround) from the Opus RFC. Suggested extending it to cover other Opus families (Family Two for ambisonics, 255 for custom) and adding a "family" parameter. Also suggested carrying over/referencing other RTP parameters (P-time, bandwidth, security) from the original Opus RTP payload format draft.
+    *   **Jim**: Clarified the "down conversion should not occur silently" point to mean preferring multi-Opus if supported.
+    *   **Dominic (as individual)**: Suggested explicitly defining what goes into the RTP payload format (Opus frame with nothing fancy). Also, clarified that if `N` channels are negotiated, `N` channels must be sent; it's not like classic Opus where mono/stereo can be mixed freely.
+*   **Status**: Not seeking adoption at this time; will revise the draft based on feedback.
+
+### RTP Frame Acknowledgement (draft-ietf-avtcore-rtp-frame-ack)
+
+*   **Background**: Provides a mechanism for senders to know when a frame has been decoded by the receiver. Uses an RTP header extension for requests and an RTCP message for feedback.
+*   **Use Case**: Building long-term reference frames for video encoders.
+*   **Updates**:
+    *   **Increased Frame ID Length**: Increased from 8 bits to 16 bits (2 bytes). This addresses scenarios with high frame rates (e.g., 240 fps) where wrap-around could lead to ambiguity if acknowledgments arrive with long latency.
+    *   **Explicit Recovery Request**: Proposed adding a flag to the RTCP feedback message. This would allow a receiver (unable to decode due to loss) to request the sender generate a new frame based on a known, successfully decoded reference frame. This is seen as an improvement over packet-level NACKs or generic PLI/keyframe requests.
+*   **Status**: About eight open issues remain.
+*   **Next Steps**: Close out remaining GitHub issues.
+*   **Status**: Not seeking adoption at this time; will iterate further.
+*   **Discussion**: No specific questions from the queue. Gurtej confirmed Apple would implement this. Jonathan encouraged keeping the working group updated.
+
+## Decisions and Action Items
+
+*   **RoQ (draft-ietf-avtcore-rtp-over-quic-sdo)**:
+    *   **Decision**: The draft has been adopted as a working group document.
+    *   **Action**: Spencer Dawkins to address current PRs (34, 35) and Issue 31 (title change) and other open issues.
+    *   **Action**: Working group chairs to schedule an interim meeting to discuss RoQ's "first-class transport" status and the proposal for ICE-based candidate signaling for RoQ.
+*   **JPEG XS (draft-ralalens-avtcore-jxs)**:
+    *   **Decision**: Call for adoption was positive.
+    *   **Action**: Tim Rallans to upload the draft to the Datatracker.
+    *   **Action**: Working group chairs to schedule a Working Group Last Call for the updated JPEG XS payload format.
+*   **ARF Animations (draft-choi-avtcore-arf)**:
+    *   **Action**: Working group chairs to issue a Call for Adoption for the ARF payload format draft.
+*   **General**:
+    *   **Action**: Working group chairs to plan an interim meeting (around January) to discuss open items, particularly regarding RoQ.
+    *   **Action**: Working group chairs to schedule a call for adoption for the ABVD draft (not discussed in this session but carried over from previous IETF).
+
+## Next Steps
+
+*   Schedule an interim meeting (January timeframe) to continue discussions, especially for RoQ's "first-class transport" status and related ICE candidate signaling.
+*   Initiate Working Group Last Call for the JPEG XS payload format update.
+*   Initiate a Call for Adoption for the ARF animations payload format.
+*   Issue a Call for Adoption for the ABVD draft.
+*   S-frame Packetization: Continue to address open issues, validate with WPC specs, and seek implementation experience.
+*   Opus Multi-stream SDP: Revise the draft based on feedback, particularly concerning coverage of Opus families and alignment with existing RTP parameters.
+*   RTP Frame Acknowledgement: Continue to close open GitHub issues and iterate on the draft.

@@ -1,0 +1,105 @@
+# DNSSD
+
+## Summary
+
+The DNSSD working group session covered updates on several drafts, discussed rechartering the working group, and considered a new proposal for optimizing SRP updates on low-power networks. Key discussions revolved around resolving open issues in TSR, the potential adoption of a draft on Infrastructure-DNSSD to address Wi-Fi multicast challenges, a proposal for a new SRP EDNS option for efficient service removal and registration, and updates on the SIG(0) mechanism. The chairs announced a plan to refresh the working group's charter, and a call for adoption will be made for the Infrastructure-DNSSD draft.
+
+## Key Discussion Points
+
+*   **Working Group Charter Refresh**
+    *   The chairs presented a set of proposed goals for the refreshed charter, asking for input from the working group.
+    *   Eric W. (AD) encouraged feedback, noting the ADs and chairs would draft a proposal to be sent to the mailing list for comment until mid-December. He advised against overly vague charter goals, specifically the last bullet point on improving underlying technology, unless tied to specific deliverables.
+    *   Ted suggested clarifying the "resolve conflicts" goal, noting that TSR is not for conflict resolution but for prioritizing fresh over stale data. He also highlighted the need for the charter to cover fixes for unanticipated SRP protocol issues, proposing specific action items over open-ended language.
+    *   Francois echoed Ted's sentiment, emphasizing that improving SRP efficiency in constrained scenarios (e.g., to prevent congestion on low-bitrate networks) is a key area of interest.
+    *   Eska suggested updating outdated references in the existing charter text (e.g., replacing "ZIP IP" with "Matter").
+    *   **Decision:** The chairs will work with the AD to draft a new charter text, which will then be circulated to the mailing list for feedback until mid-December.
+
+*   **TSR (Timestamp Synchronization for Registrars) Update**
+    *   **Presenter:** Eska
+    *   **Recap:** TSR defines an EDNS option for advertising proxies to manage stale data, especially when an SRP client moves or reboots and registers with a different SRP registrar. It allows registrars to clear stale data based on timestamps.
+    *   **Open Issue: Same-Source, Same-Timestamp Data:**
+        *   Discussion on whether probing is necessary if the registered data is already in the MDNS registrar's cache with the same timestamp.
+        *   Ted clarified that even if the timestamps are the same and the source is known, an announcement is still needed to clear stale data that might exist in *other* caches on the network.
+        *   Stuart noted that existing RFCs are guidance and can be updated if new information warrants it.
+    *   **Open Issue: Multiple Proxies:**
+        *   Considered a scenario where multiple advertising proxies have the same data but different TSR values (due to missed announcements).
+        *   Ted emphasized that if a stale answer is received, a fresh answer should replace it, assuming the query is still active.
+        *   Stuart linked this to "happy eyeballs" principles: a robust client should keep its discovery running until a connection is established, as information changes over time.
+    *   **Open Issue: Suppressing Answers:**
+        *   Asked if an MDNS registrar should suppress its answer if another registrar has already answered with the exact same data.
+        *   Ted stated that the registrar should respond to help flush other caches that might hold stale data.
+    *   **Traffic Concerns:** Brief mention of needing to evaluate if TSR significantly increases multicast traffic on the AIL.
+    *   **Next Steps:** Resolve the remaining open issues, then proceed to Working Group Last Call (WGLC).
+
+*   **Advertising Proxy Update**
+    *   **Presenter:** Ted
+    *   **Status:** Work on Advertising Proxy has been dependent on TSR completion.
+    *   Ted plans to implement the new version of the Advertising Proxy to validate the document.
+
+*   **Infrastructure-DNSSD**
+    *   **Presenter:** Ted
+    *   **Problem Statement:** MDNS over Wi-Fi has significant performance issues (airtime consumption, beacon skipping for battery-operated devices) that are difficult to fix at the Wi-Fi layer. This is a critical issue for Matter.
+    *   **Proposed Solution:** Offer a full DNSSD service (resolver, SRP registrar, advertising/discovery proxy) directly on Wi-Fi. This mirrors the solution used in Thread.
+    *   **Service Provider:** Ideally, the CE router. As an expedient, existing Thread Border Routers could provide this service.
+    *   **Advertisement:**
+        *   Router Advertisement (RA) flag indicating full DNSSD service.
+        *   MDNS for non-router devices (still a win as it scopes multicast to discovery, not continuous operation).
+    *   **Requester Behavior:** Check RAs, then DNSSD query, fall back to MDNS if no service. Devices need to track registration state.
+    *   **Working Group Interest:**
+        *   Stuart strongly supported the work, citing the severe performance issues of multicast on Wi-Fi, especially with a large number of devices. He highlighted the importance of "stepping stones" for adoption.
+        *   Eska supported the work, noting that a service in the infrastructure router (e.g., home router) would be more stable than relying on ephemeral devices like TVs. He offered to contribute.
+        *   Eric W. (contributor hat) supported the work, acknowledging high MDNS traffic on Wi-Fi and APs disabling MDNS.
+    *   **Chair's Comment:** Chris Box stated that the working group has enough capacity to add this work.
+    *   **Decision:** The chairs will issue a call for adoption for the Infrastructure-DNSSD draft.
+
+*   **SRP Removal Services EDNS Option**
+    *   **Presenter:** Francois Michel (Apple)
+    *   **Problem:** On low-bitrate Thread networks, SRP updates for Matter accessories often involve two large packets (one to remove all services, one to add new ones), leading to significant congestion and retransmissions. This can cause convergence times of several minutes.
+    *   **Proposed Solution:** A new SRP EDNS option for "removal services." This allows a single, transactional update that both removes previous services and registers new ones. It is designed to be idempotent.
+    *   **Benefits:** Reduces packet count (e.g., from two updates totaling ~900 bytes to one update of ~600 bytes), leading to faster convergence (measurements showed a 20-second reduction in a simulated testbed).
+    *   **Server Support:** Eric W. asked about server support. Francois explained that Thread uses versioning to announce capabilities, and if a server doesn't understand the option, it won't echo it back, signaling the client to retry without the option.
+    *   **Working Group Interest:** Ted and Eska expressed support, highlighting the large optimization potential for mesh/low-bandwidth networks. Ted suggested the document could update the main SRP RFC for better discoverability.
+    *   **Next Steps:** Authors to conduct more measurements, and the working group to consider adoption and potential for other bandwidth optimizations.
+
+*   **SIG(0) Updates**
+    *   **Presenter:** Donald Eastlake
+    *   **Context:** SIG(0) is a meta resource record used by SRP for first-come, first-served naming, indicating the public key and signing subsequent requests.
+    *   **Problems with current SIG(0) (RFC 2931):**
+        *   No extended error information.
+        *   No field for original ID (problematic for DNS recursive forwarders).
+        *   Prohibits more than one SIG(0) in a message.
+        *   No way to indicate key state.
+    *   **Proposed Solutions (three general ways):**
+        *   New resource record (clean, but zero backwards compatibility).
+        *   Overload existing fields (easier, but potential backward compatibility issues, limited extensibility).
+        *   Extend EDNS with options (solves the problem, but linking options to specific SIG(0)s needs care).
+    *   **Current Draft (v3):** Targeted at DNSOP, includes an EDNS0 option for original ID and extended error, allows multi-hop considerations, and permits multiple SIG(0)s.
+    *   **Working Group Interest:**
+        *   Johan confirmed the related "key states" draft will be refreshed soon.
+        *   Stuart raised concerns about the need for an application-layer forwarding mechanism, viewing it as unnecessary complexity given IP packet forwarding.
+        *   Ted commented on the trade-offs of defining a new format for non-backwards compatible changes (easier to update servers than clients). He also expressed skepticism about the necessity of the proposed forwarding mechanism.
+        *   Eric W. confirmed that this work, originating in DNSOP, could be hosted in DNSSD with cross-working group adoption.
+        *   Alex Clouther raised a concern about backward incompatibility for existing SIG(0) implementations that expect only one SIG(0) per message.
+
+*   **Errata Processing**
+    *   Chris Box reminded the working group about an email to the list regarding an errata on DNS Push, specifically about the reconfirm TLV being unidirectional and not requiring a response. Attendees were encouraged to review and comment.
+
+*   **DNS Working Group Reorganization**
+    *   Donald Eastlake mentioned ongoing discussions about reorganizing DNS working groups at the IETF, pointing to a mailing list and a session (today after lunch, session 3) for those interested.
+
+## Decisions and Action Items
+
+*   **Charter Update:**
+    *   **Action:** The chairs (Chris Box and Floreenosa) will work with the AD (Eric W.) to draft a new charter text.
+    *   **Action:** The draft charter will be circulated to the DNSSD mailing list for feedback until mid-December.
+*   **Infrastructure-DNSSD Draft:**
+    *   **Decision:** The chairs will issue a call for adoption for the "Infrastructure-DNSSD" draft.
+
+## Next Steps
+
+*   **TSR:** Authors (Eska, Ted) to resolve remaining open issues in the draft and prepare for Working Group Last Call (WGLC).
+*   **Advertising Proxy:** Ted to proceed with an implementation of the new version of the advertising proxy document.
+*   **SRP Removal Services EDNS Option:** Authors (Francois, Ted) to gather more measurements demonstrating the benefits and to consider if the document should update the main SRP RFC.
+*   **SIG(0) Updates:** Donald Eastlake to continue work on the SIG(0) draft, likely in DNSOP (or DNSSD if there's a shift in working group focus), addressing feedback received. Johan to refresh the related "key states" draft.
+*   **DNS Push Errata:** Attendees are requested to review and provide feedback on the errata for DNS Push (reconfirm TLV) via the mailing list.
+*   **DNS Reorganization:** Interested parties are encouraged to attend the DNS Working Group reorganization session (session 3, after lunch) and join the relevant mailing lists.

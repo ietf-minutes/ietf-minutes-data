@@ -1,0 +1,110 @@
+# IVY
+
+## Summary
+The IVY session covered updates on several working group drafts: Inventory Topology Model, Inventory Software Extension Model, Entitlement Inventory Model, and Passive Inventory Model. Key discussions included resolving open issues, clarifying scope definitions, and planning for Working Group Last Calls. A new discussion was introduced on expressing device capabilities, outlining a framework in NMOP and specific applications within IVY. A sense of the room was taken regarding the inclusion of passive inventory within the current IVY charter.
+
+## Key Discussion Points
+
+### Administrative Updates and Working Group Status
+*   Chairs emphasized the importance of the mailing list for consensus and encouraged requests for interim meetings for specific topics.
+*   **IVY Core Model**: Reported as stable, ready for Working Group Last Call once IPR polling is concluded. Some participants were reminded to complete IPR polling.
+*   **Network Inventory Location**: The draft has been updated. The remaining open issue is to add an operational considerations section to describe how to use the model, particularly for querying device information from different locations.
+*   **Liaisons**:
+    *   **Incoming 14DIAR**: Acknowledged, no specific action items identified other than awareness for cross-SDO coordination. Mahesh queried IETF participation in these calls.
+    *   **Outgoing BBF**: Replied to BBF regarding their new optical resource model based on IVY core. IETF explained its process and publication timelines, noting that RFC publication dates are outside working group control.
+
+### Inventory Topology Model (Bo)
+*   **Recap**: Augments `ietf-topology` (RFC 8345) with inventory references and augments network inventory with topology node references, enabling bidirectional navigation.
+*   **Updates**: Most issues are resolved, with two remaining points for Italo and Iowa to confirm.
+    *   Removed `physical-interface-name` as it was considered packet network-specific and not applicable to optical networks.
+    *   Retained `cable-name` and `link-type` for simple, direct point-to-point connections, acknowledging more complex cases might rely on a passive inventory model.
+    *   Moved `port-breakout` capability from base inventory to `termination-point`.
+    *   Switched some read-only nodes to read-write due to certain leaves not being auto-discoverable (e.g., cable name, type). An operational consideration section is planned to explain this.
+*   **Discussion**:
+    *   **Read-Write vs. Read-Only**: Questions were raised on why operators would configure these parameters in the NBI rather than a consumer database. The author stated this allows exposure via the controller to various upper management systems.
+    *   **Bidirectional Navigation**: Concern was raised about potential inconsistencies when duplicating information with read-write access. Participants questioned the need for bidirectional navigation at the interface level versus application level, with a preference for simplifying to one-way if possible. The author noted implementation flexibility.
+    *   **Node-Network Element Mapping**: Discussion arose regarding one-to-one vs. many-to-many mapping between network elements and nodes. Italo suggested a one-to-one relationship for simplicity, using topology abstraction for complexity. This remains an open issue.
+    *   **Cable Modeling**: Italo suggested providing JSON examples for both the simple `cable-name` approach and a generic passive inventory solution to compare complexity and inform a decision on its inclusion.
+    *   Nigel reinforced the preference for one-way references, citing TAPI and TMF practices, to simplify lifecycle management and reduce update notifications.
+*   **Next Steps**: A pending update to reflect read-write changes, add JSON examples for cable scenarios, and come to a conclusion on node-network element mapping. A Working Group Last Call is anticipated.
+
+### Inventory Software Extension Model (Bo)
+*   **Recap**: Extends base inventory with software revision and patch information for network elements and components, linking to entitlements.
+*   **Updates**: No open issues. Augmentation focuses on adding software revision and patch lists to network elements and components, without altering specific software attributes.
+*   **Example**: Illustrated usage for router OS with patches and line card FPGA images.
+*   **Discussion**: Asked for the historical reasoning behind decoupling software from base inventory, citing service provider feedback that software might not be applicable to both packet and optical networks universally.
+*   **Next Steps**: Add more examples, particularly for software or virtual network elements. Anticipates a Working Group Last Call.
+
+### Entitlement Inventory Model (Camilo Cardona)
+*   **Status**: Working Group draft, received significant feedback.
+*   **Updates**: Scoping, clarification, and wording updates. The YANG model and examples are being prepared for inclusion.
+*   **Capabilities**: The model will include descriptive capabilities for licenses but will not attempt a generic theory of capabilities. This will interact with separate, more generic capability work in NMOP.
+*   **Implementation Section**: Planned to guide implementers on using the model for simple (e.g., pizza-box router) vs. complex (e.g., stacked switches, modular router with multiple PSUs) network element deployments.
+*   **Discussion**:
+    *   **IVY vs. NMOP for Capabilities**: Camilo asked Nigel about the split. Nigel explained NMOP focuses on the framework (mechanisms for expressing capability), while IVY focuses on specific usages (practical applications, e.g., entitlement). The approach is incremental: small framework, then practical application.
+    *   **Scope of Entitlement Inventory**: Swami asked if the scope includes planned inventory or only what's implemented. Camilo clarified it focuses on what is *there* (e.g., a purchased license in a system, even if not yet installed on a device). User-oriented licenses are currently out of scope.
+*   **Next Steps**: Add the YANG model and examples to the draft. Refine the implementation section.
+
+### Passive Inventory Model (Iowa)
+*   **Status**: No draft update, but offline work conducted.
+*   **Charter Alignment**: Authors believe the current IVY charter (extending inventory of network elements operating at layer 0-3, including hardware/software, and mapping to topology) is broad enough to include passive inventory, as it operates at Layer 0.
+*   **Other SDOs**: Noted ongoing work in ITU-T and BBF for passive inventory modeling and mapping to topology.
+*   **Discussion**:
+    *   **Definition of Passive Inventory**: Mahesh queried the boundary of passive inventory, giving examples like optical cables vs. power cables vs. items in a closet. He requested a clearer definition, perhaps by drawing a box around physical elements.
+    *   Italo suggested a practical list of items (e.g., optical cable: yes, power cable: no) for this version, keeping it open for future additions, rather than a broad, hard-to-define abstraction.
+    *   Nigel suggested focusing on passive inventory elements that give rise to "critical functionality" (e.g., a splitter) vs. non-critical items (e.g., manhole cover). He proposed narrowing the uncertainty space by defining clear "in" and "out" items, then deciding on marginal cases.
+    *   Kent Watson brought up quantum networking use cases, where even small items like splice connectors introduce measurable properties (delay, DB loss) and should be tracked by model number.
+    *   Italo offered "where the signal is passing over" as a potential simple rule.
+    *   Nigel also stressed providing the *opportunity* to represent optional items (like splices) without enforcing their representation in all networks, leaving it to instance data.
+    *   Mahesh suggested focusing initially on optical passive inventory as a clear missing piece.
+    *   **Poll on Charter Scope**: A poll was taken on whether passive inventory is in scope of the current IVY charter. A sense of those present indicated agreement (12-13 votes in favor).
+
+*   **Next Steps**: Refine the definition and scope of passive inventory, potentially through a list of included items. Consider a Working Group adoption call.
+
+### Expressing Capability of Devices (Nigel Davis)
+*   **Context**: Presented as a framework discussion (NMOP focus) with relevance to IVY.
+*   **Use Case**: Critical to understand device capabilities *before* procurement and deployment to design services effectively. Current descriptions are often ambiguous, inconsistent human language.
+*   **Goal**: Develop a structured definition for expressing capabilities across a broad set of cases, taking an incremental approach: framework development in NMOP, specific usage in IVY (and other WGs).
+*   **Existing Work**: Built upon extensive work from ONF, ITU-T, and IETF (e.g., RFC 3535).
+*   **Challenges**: The problem space is complex and boundless. Current languages (including Yang) may be starting points but are not fully adequate. There's a need for a sophisticated, potentially multi-language solution that allows for both trivial (simple string) and highly sophisticated definitions.
+*   **Proposed Approach**: Focus on applications and incremental value. Expect language evolution. Embrace simple labels and sophisticated structures. Provide guiding examples.
+*   **Relevance to IVY**: Relevant for IVY's equipment, entitlements, pluggables (from SECAMP), and green network initiatives (power usage, environmental impact).
+*   **Discussion**:
+    *   Camilo emphasized the intent to centralize capability definition to avoid duplication across applications (e.g., entitlements, green, pluggables).
+    *   Rashad clarified that NMOP's framework would define mechanisms for expressing capabilities, not specific device capabilities (which remain in other WGs like NETMOD for RFC 9196).
+    *   Swami noted that some capabilities may not translate easily into Yang, suggesting a need for other languages or tools (e.g., LLMs) to consume this information. Nigel acknowledged this language challenge and suggested IETF's ownership of Yang could allow for its enhancement.
+    *   Diego confirmed the intentional nature of this work, acknowledging its complexity and potential "echo" beyond IVY. He also mentioned another draft in NMOP exploring non-Yang languages (like Rego) for policy, which could be relevant.
+    *   **Charter Discussion**: Mahesh initially felt general capability expression might not fit IVY's charter but acknowledged Nigel's point about focusing on equipment-related capabilities, which could be within IVY's scope if the definition of "inventory" is extended. Further mailing list discussion was suggested.
+
+## Decisions and Action Items
+
+### Decisions
+*   The `physical-interface-name` was removed from the Inventory Topology Model.
+*   A sense of those present indicated that passive inventory is within the scope of the current IVY charter.
+
+### Action Items
+*   **Inventory Topology Model authors (Bo)**:
+    *   Add an operational consideration section to explain read/write fields and revert some fields to read-write.
+    *   Provide JSON examples comparing simple vs. generic cable modeling.
+    *   Come to a conclusion on the one-to-one vs. many-to-many mapping between network elements and nodes.
+    *   Solicit Working Group Last Call after these updates.
+*   **Inventory Software Extension Model authors (Bo)**:
+    *   Add further examples for software/virtual network elements.
+    *   Anticipate Working Group Last Call.
+*   **Entitlement Inventory Model authors (Camilo Cardona)**:
+    *   Integrate the YANG model and examples into the draft.
+    *   Develop the implementation/operational consideration section for varied network element types.
+*   **Passive Inventory Model authors (Iowa)**:
+    *   Further refine the definition and scope of passive inventory, potentially by providing a concrete list of items within scope.
+    *   After scope clarification, consider requesting a Working Group adoption call.
+*   **Chairs**: Follow up on pending IPR polling for the IVY Core Model.
+*   **Nigel Davis, Camilo Cardona, and interested parties**: Continue discussion on the mailing list regarding the charter fit for general capability expression within IVY, focusing on equipment-related capabilities.
+
+## Next Steps
+*   The IVY Core Model is expected to move towards Working Group Last Call soon, pending IPR completion.
+*   The Inventory Topology Model and Inventory Software Extension Model are targeting Working Group Last Calls after incorporating identified updates.
+*   Work on the Entitlement Inventory Model will focus on adding the YANG model and examples.
+*   The Passive Inventory Model will refine its scope definition, potentially leading to a Working Group adoption call.
+*   Discussions on expressing device capabilities will continue, exploring framework development in NMOP and specific applications within IVY.
+*   Participants are encouraged to use the mailing list for ongoing discussions and to request interim meetings as needed.
+*   The next IETF meeting will be in Shenzhen.

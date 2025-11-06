@@ -1,0 +1,85 @@
+# MOQ
+## Summary
+
+The MOQ session covered updates on the hackathon, significant developments in the Warp and CARP drafts, and proposals for secure objects and MOQT-specific Q-Log extensions. Key discussions revolved around a new URL scheme for Warp, naming conventions for drafts, and a major proposal to enhance MOQT extensibility and control stream usage by leveraging Quick's stream model for different message types. While progress was reported on multiple fronts, several items, particularly regarding naming and the proposed control stream refactor, elicited active discussion and will require further online engagement and dedicated interim sessions. Working group adoption polls were taken for Secure Objects and Q-Log, with positive indications but also concerns about readership and editor commitment.
+
+## Key Discussion Points
+
+*   **Hackathon Interoperability Report (Mike)**
+    *   Successful interop with better results attributed to longer development time with stable draft versions.
+    *   Trade-offs acknowledged between API stability, wire image churn, and finalizing the base draft.
+    *   New tooling introduced: `mock-test` (by Alan) for extensive permutation testing using namespaces, and an implementation of Q-Log MOQT events extension on Mike's relay server, allowing client-specific log fetching.
+    *   A demo of actual media interop was shown, featuring a WebRTC encoder (Meta) sending video to a native macOS Quick client via an MOQ relay with low latency (290ms E2E).
+
+*   **Warp Draft Updates (Will Lofron)**
+    *   **Event Timeline Track:** A new JSON document for flexible metadata, indexing by location (group ID + object ID), media presentation time, or Warp clock time. Designed to accommodate various metadata types (e.g., sports data, drone GPS coordinates). Feedback on its flexibility is welcome.
+    *   **Media Timeline:** Migrated from CSV to JSON for consistency. It now strictly describes the history of audio/video content for seeking and UI generation, with metadata moved to separate tracks.
+    *   **Warp URL Naming Proposal (PR 60):**
+        *   Proposed a `moqt://authority/path?query` URL scheme, conforming to RFC 3986. The `moqt://` scheme avoids confusion with HTTP(S) semantics.
+        *   The authority (host:port) is required, while path (for relay info) and query (for player info) are optional. Query parameters are not sent to the relay at connection time.
+        *   Reserved query keys include `namespace`, `track_name` (not needed for the special `catalog` track), range modifiers (`clock`, `media`, `location`), and placeholders for `c4m` and `privacy_pass` tokens.
+        *   A participant (Ted Hardy) noted the need for the scheme name to reflect its Warp-specific nature rather than being a generic MOQT scheme, and for clear mechanical conversion rules from webtransport URLs. Will agreed to discuss further.
+    *   **Warp Draft Name Change (PR 71):**
+        *   A poll for renaming Warp resulted in "MOQ streaming format" and "MOQT media streaming" as top choices. Will proposed "MOQT streaming format" as `MOQT` is the spec name.
+        *   An objection was noted regarding the charter's mention of "MOQ," suggesting the name should align with "MOQ streaming format."
+        *   Will argued that "MOQ" is an umbrella term and the charter, being three years old, should be revised to reflect the current, more flexible, and protocol-agnostic design.
+        *   Chris Lemons suggested using the acronym "MSF" (MOQ Streaming Format) for conciseness, drawing an analogy to HLS.
+
+*   **CARP Draft Updates (Will Lofron)**
+    *   CARP (CMAF extension to Warp) aims to specify how to stream ISO-based media.
+    *   **SAP Type Timeline Track:** The Stream Access Point (SAP) type, previously metadata in Warp, is now a specific `event-timeline` track. The proposed event type name `ietf.moq.carp.sap` raised questions about namespace registration (IANA vs. unique string).
+    *   **CARP Draft Name Change:** Given general dissatisfaction with the name "CARP," new names like "CMAF compliant MOQ stream format" (MCSF) or "MOQ CMAF streaming format" (CMSF) were suggested. Will personally favored "Fire" as a unique and descriptive option.
+    *   **SAP Type Discussion:** Discussion clarified that the Warp spec requires group starts (object 0) to be independent access points (SAP type 1 or 2). SAP type 3 can describe more sophisticated access points *within* a segment (mid-GOP). Guidance on API exposure for mid-group join points and construction of tracks was discussed.
+
+*   **Secure Objects Draft (Colin)**
+    *   Presented as an alternative for end-to-end encryption outside of CMAF, particularly for bandwidth-sensitive audio. It largely reuses the S-frame design and AEAD ciphers.
+    *   Key changes include leveraging base transport's immutable extensions and adding support for *private* extensions that relays cannot read or modify.
+    *   A design goal (requested by Richard Barnes) is to obfuscate the lengths of encrypted headers and payload by merging them into a single encrypted length.
+    *   Discussion arose about the distinction between application-defined payload headers and MOQT-level private extensions (e.g., padding).
+    *   Concerns were raised about latency implications if decryption requires the entire object, potentially contradicting MOQT's low-latency goals.
+    *   The intent is for this draft to remain an extension to MOQT.
+
+*   **Q-Log MOQT Draft (Lucas)**
+    *   Proposed as a structured logging protocol for MOQT, building on the Quick working group's Q-Log framework.
+    *   Uses CDDL for abstract data definition, which can be serialized to JSON (including streaming JSON per RFC).
+    *   Aims to provide a common structure for MOQT wire events to facilitate tooling and analysis, similar to QViz for Quick.
+    *   Multiple implementations (producers) already exist, indicating community uptake.
+    *   Lucas requested working group adoption to ensure active maintenance, collaboration, and governance.
+    *   Discussion covered the use of CDDL for potential CBOR support, the nature of Q-Log timestamps, and the benefits of streaming JSON for logs. A chair highlighted the need for an editor to commit to maintaining the draft in sync with MOQT's rapid evolution.
+
+*   **Extensibility and Stream Mappings (Ian)**
+    *   Proposed a refactor of MOQT extensibility and control stream usage.
+    *   **Extensibility:** Differentiated between "parameters" (critical, must be parsed and negotiated during setup, akin to Quick's handshake) and "properties" (header-like, flow downstream, can be skipped by intermediaries based on length, similar to object extension headers). A participant (Alan) affirmed the new proposal would close connections on unknown parameters, a stricter stance than current text.
+    *   **Control Streams:** Proposed moving certain control messages (e.g., `subscribe_namespace`, `publish`, `subscribe`) to their own bi-directional Quick streams to address issues like `request_id` exhaustion and head-of-line blocking on the single control stream.
+        *   Specifically, `subscribe_namespace` on its own stream, with `published_namespace` and `published_namespace_done` optimized for the response stream, specifying only the namespace suffix.
+        *   This would remove `request_id` from `published_namespace`, implicitly handle `unsubscribe_namespace` by closing the stream, and allow publishers to cancel subscriptions.
+    *   Resource management and DOS concerns were raised if many independent streams are used. While Quick's flow control and `RESET_STREAM` offer some protection, a participant (Alan) expressed concern about the potential for control message attacks (like HTTP/2 priority tree issues) and urged careful design.
+    *   The proposed changes represent a significant refactor to MOQT's core control plane.
+
+## Decisions and Action Items
+
+*   **Warp Naming (PR 71):** Debate on draft name "MOQT streaming format" versus "MOQ streaming format" (as per charter) is ongoing. PR 71 is open for comments.
+*   **Warp URL Naming (PR 60):** The proposal for `moqt://` scheme and associated query parameters is an open PR. Participants (Ted Hardy, Will Lofron) agreed to offline discussion regarding renaming for Warp-specificity and mechanical conversion from webtransport.
+*   **Secure Objects Draft Adoption:**
+    *   A poll was taken: 25 individuals supported adoption, 2 opposed, 7 abstained.
+    *   **Action Item:** Chairs will discuss with the AD whether the draft aligns with the working group's charter.
+    *   **Action Item:** Call for editors to step up to maintain the draft. Colin agreed to work on an interim.
+    *   **Action Item (Colin):** Open an issue in the draft to discuss latency implications of payload encryption and streaming decryption.
+*   **Q-Log MOQT Draft Adoption:**
+    *   A poll was taken: 25 individuals supported adoption, 2 opposed, 7 abstained.
+    *   **Action Item:** Chairs will discuss with the AD whether the draft aligns with the working group's charter.
+    *   **Action Item:** Call for editors to step up to maintain the draft. Lucas agreed to work on an interim.
+*   **Extensibility and Control Streams (Ian):**
+    *   General agreement on the *direction* of separating parameters (negotiated) from properties (skippable) and using separate Quick streams for control messages to avoid head-of-line blocking and `request_id` issues.
+    *   **Action Item (Ian):** Continue working on the `subscribe_namespace` PR, aiming for it to be landable soon.
+    *   **Action Item (Ian, Mike, others):** Work in parallel on resource management and DOS concerns related to the proposed control stream refactor.
+
+## Next Steps
+
+*   **General:** Chairs will send an email request for agenda items for upcoming virtual interims to cover topics that lacked sufficient time.
+*   **Warp/CARP:** Continue discussions on draft naming and the Warp URL scheme on the mailing list and in future interims. CARP adoption call remains open for another 1.5 weeks.
+*   **Secure Objects:** Draft an issue to discuss latency implications of payload encryption; work towards a virtual interim session.
+*   **Q-Log MOQT:** Seek editors to maintain the draft and discuss with the AD regarding charter alignment.
+*   **Extensibility/Control Streams:** Ian will continue working on specific PRs, starting with `subscribe_namespace`, and collaborate on resource management/DOS issues. A virtual interim will likely be scheduled for a more detailed discussion.
+*   **Interop:** A remote interop event is scheduled for Wednesday, November 10th. Discussion on the mailing list is needed to decide on the target draft version (14 or 15).
+*   **Future Meetings:** Next virtual interim in approximately 10 days. Future F2F meetings in Boulder, and either Shenzhen or Vienna (announcement expected within three weeks).
