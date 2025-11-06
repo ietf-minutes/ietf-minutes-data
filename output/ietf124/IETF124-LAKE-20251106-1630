@@ -1,0 +1,98 @@
+# LAKE
+
+## Summary
+
+The LAKE session included updates on several ad hoc-related drafts: Remote Attestation (RA), Preshared Key (PSK) authentication, Application Profiles (AP), and Light-OAUTH authorization. Discussions focused on addressing open issues, clarifying motivations, and evolving the protocols to support new features like post-quantum cryptography and more flexible credential handling. Individual submissions on hashing credentials, quantum-resistant cipher suites, KEM-based authentication, and AKA integration were also presented. The session concluded with a discussion on rechartering the working group to accommodate new work, particularly in post-quantum security, and to better track the progress of existing documents.
+
+## Key Discussion Points
+
+*   **Remote Attestation over Ad Hoc (RA Draft):**
+    *   The draft integrates remote attestation into the ad hoc protocol using EAD fields, supporting both background check and passport models, and unilateral/mutual attestation.
+    *   Motivation for ad hoc-specific attestation needs further clarification beyond existing TLS attestation work, with specific IoT use cases. A sense of those present indicated this motivation should be better documented.
+    *   The definition of "ad hoc protocol not modified" requires clearer explanation regarding what constitutes a modification.
+    *   An appendix was added for post-handshake attestation over OSCORE, comparing its performance (modularity) and security properties with intra-handshake attestation (round-trip efficiency, cryptographic binding to authentication).
+    *   The implications of evidence placement in EAD3 versus EAD4 for cryptographic binding and exporter data were discussed.
+
+*   **Ad Hoc with Preshared Key Authentication (PSK Draft):**
+    *   Updates include corrected test vectors, a new section on security properties, and the initiation of a formal analysis of the protocol. The draft is currently frozen pending formal analysis results.
+    *   Key derivation structure changes were detailed, involving the inclusion of the PSK value in `PRK_E3` derivation and credentials (`cred_I`, `cred_R`) in `Transcript Hash 4` and external AAD of `ciphertext_3b`.
+    *   Interoperability tests were successfully conducted with Rust and C implementations.
+    *   Claimed security properties include mutual authentication, explicit key confirmation, EAD protection consistent with RFC 9528, 64-bit security against online brute force (128-bit with sufficient PSK entropy), and quantum resistance for authentication/session keys.
+
+*   **Ad Hoc Application Profiles (AP Draft):**
+    *   The document helps ad hoc peers discover capabilities and agree on application profiles using "a la carte" or "set menu" approaches across five defined advertisement/coordination venues (CBOR object, CoRAL, EAD item, error message, DNS SVCB record).
+    *   Addressed CDDL/CBOR notation mix-ups and IANA registration comments.
+    *   Relaxed restrictions on canonical CBOR object content to allow broader information.
+    *   Introduced requirements for peers to comply with prescriptive parameters received in EAD items (Message 1 & 2), failing the session otherwise.
+    *   A new feature allows the initiator in Message 1 to signal whether the responder should provide profile information ("reply flag").
+    *   The `outlen` parameter for the ad hoc exporter interface, previously a separate EAD item, was integrated into this draft, providing a single namespace for profile parameters without negotiation.
+    *   Updated DNS SVCB record definitions to include both wire and presentation formats for `ad-hoc-path` and `ad-hoc-profiles` keys.
+
+*   **Light-OAUTH Authorization using Ad Hoc (OAUTH Draft):**
+    *   Made the voucher optional in the protocol to support more general use cases, while still transferring the EAD field to inform the device of state machine success.
+    *   Discussed initial proposals for post-quantum cipher suite support, involving adding a mandatory key ciphertext element to EAD 1 & 2 and allowing `GW`/`GY` to be KEM encapsulation keys. Discussion on the interaction between KEM changes and key derivation (`KV`, `KW`) was deferred.
+
+*   **Hashing Credentials (Individual Draft):**
+    *   Proposed a new COSE header parameter `hash-credential` to allow ad hoc peers to use a secure hash of a credential (instead of the full credential) in message processing.
+    *   This addresses issues with large post-quantum certificates over constrained networks and aligns with practices in other working groups like ACE (ESTOSCORE).
+    *   The parameter's value would be the algorithm identifier for the hash function.
+
+*   **Quantum Resistant Cipher Suites (Individual Draft):**
+    *   Introduced the concept of replacing ECC with PQC in ad hoc protocols for signatures, key exchange, and static Diffie-Hellman (via KEMs).
+    *   A minor update clarified the interpretation of the responder's ephemeral key (`G^Y`) to accommodate KEM ciphertexts.
+    *   Proposed new cipher suites and registry columns to support PQC.
+
+*   **KEM-based Authentication for Ad Hoc (Individual Draft):**
+    *   Presented a KEM-based authentication method designed to avoid signatures, where parties encapsulate and decapsulate keys to authenticate.
+    *   Addressed an identity-hiding attack by replacing "short encryption" with Authenticated Encryption with Associated Data (AEAD) for integrity protection of Message 3.
+    *   Clarified that KEM-based authentication provides implicit authentication but not non-repudiation.
+    *   Extended the protocol with two new methods to support combined post-quantum authentication (one party KEM-based, the other signature-based).
+    *   Two design approaches were discussed: one preserving the existing 5-message flow (preferred by the author for simplicity), and an alternative in an appendix prioritizing "early authentication" (though more complex).
+
+*   **Ad Hoc AKA (Individual Draft):**
+    *   A new draft proposing a method for efficient mobile communication network access authentication in resource-constrained non-terrestrial networks (NTN).
+    *   Leverages the well-proven 3GPP AKA (Authentication and Key Agreement) mechanism within the ad hoc framework, using pre-shared long-term keys and challenge-response.
+    *   Defines a new `Method 5` for ad hoc AKA authentication, replacing `ID_Cred_I/R` with `Credential_AKAR_I/R` containing AKA-specific parameters.
+    *   Key derivation incorporates `K_AK` derived from AKA-generated keys.
+    *   Initial questions were raised regarding potential overlap with ad hoc PSK, the purpose of "two" authentications, and the feasibility of AKA credentials in satellite contexts.
+
+*   **Working Group Rechartering:**
+    *   The chairs presented proposed charter changes to allow new methods/cipher suites (including quantum resistance) and updates to the base specification (e.g., reducing transport overhead).
+    *   Paul Wouters (Security AD) expressed concern that many working group documents had not proceeded to the IESG. He requested that chairs update the Datatracker to clearly indicate if documents are awaiting external actions (e.g., implementations, formal analysis) to show active progress and capacity for new work.
+
+## Decisions and Action Items
+
+*   **Action Item:** Ushound to work with Osama to add more detailed motivation and specific IoT use cases for the Remote Attestation draft (LAKE RA).
+*   **Action Item:** The chairs (Malisha and Alex) will update the Datatracker to reflect the current status of working group documents, especially those waiting on external parties (e.g., formal analysis for PSK, implementations).
+*   **Action Item:** Marco to add more examples (diagnostic notation) and proper security considerations to the Ad Hoc Application Profiles draft (LAKE AP).
+*   **Decision:** The working group intends to aim for a Working Group Last Call (WGLC) for the Light-OAUTH Authorization using Ad Hoc draft (LAKE OAUTH) by the next IETF (Q1/Q2 2025).
+*   **Action Item:** Göran Selander to create and post version 01 of the Hashing Credentials draft (LAKE HashCred), incorporating feedback and adding security considerations.
+*   **Action Item:** The chairs will update the milestone for the Ad Hoc Application Profiles draft (LAKE AP) to target June 2026 for submission to the IESG.
+*   **Decision:** The working group senses the proposed rechartering text is ready for review by the AD.
+
+## Next Steps
+
+*   **Remote Attestation over Ad Hoc (LAKE RA):**
+    *   Complete the appendix on post-handshake attestation, including message flow figures and missing details (e.g., content format).
+    *   Provide an example of attestation over reverse ad hoc message flow.
+    *   Continue addressing open issues, particularly clarifying motivation and protocol modification.
+*   **Ad Hoc with Preshared Key Authentication (LAKE PSK):**
+    *   Await results from the ongoing formal analysis.
+*   **Ad Hoc Application Profiles (LAKE AP):**
+    *   Add examples and security considerations to the draft.
+    *   Seek input from other implementers (Giovanni, Christian, Lydia) for the PLAQUES draft.
+*   **Light-OAUTH Authorization using Ad Hoc (LAKE OAUTH):**
+    *   Resolve Issue 53.
+    *   Decide on the approach for Issue 71 (Post-Quantum Cipher Suites) or close it.
+    *   Initiate a call for implementations and interoperability tests.
+    *   Aim for Working Group Last Call by the next IETF.
+*   **Hashing Credentials (LAKE HashCred):**
+    *   Further develop security considerations.
+*   **KEM-based Authentication for Ad Hoc (LAKE KEMAuth):**
+    *   Discuss within the working group the two proposed approaches for combined post-quantum authentication (preserving 5-message flow vs. early authentication).
+    *   Continue working on formal verification for identity protection aspects.
+*   **Ad Hoc AKA (LAKE AKA):**
+    *   Continue discussion on the mailing list regarding potential overlaps, authentication endpoints, and AKA credential placement in NTN.
+*   **Working Group Rechartering:**
+    *   Paul Wouters will review the proposed charter and initiate the rechartering process, which will include an IESG review and public review period.
+    *   The chairs will proceed with updating Datatracker entries for existing documents as discussed.
