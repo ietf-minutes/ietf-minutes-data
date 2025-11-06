@@ -1,0 +1,78 @@
+# DCONN
+
+## Summary
+
+The first session of the new Domain Connect (DCONN) Working Group formally commenced at IETF 119 Montreal. The session began with administrative announcements, including the Note Well and Meetecho instructions. The chairs reiterated the working group's narrow scope: to standardize the existing Domain Connect protocol, clarify its specification, address ambiguities, inconsistencies, and ensure security, leading to a full-fledged RFC. Extensions or new features are currently out of scope. Pavel provided a comprehensive introduction to the Domain Connect protocol, its problem statement, technical operation, and current widespread deployment. A significant portion of the session was dedicated to reviewing reported issues with the draft, covering security concerns, ambiguities, and inconsistencies, many of which have been addressed in `draft-ietf-dconn-01`. An informal poll showed strong support for adopting the current draft. Discussion also touched upon working group practices, particularly the use of GitHub for issue tracking, and general feedback on the draft's clarity and structure.
+
+## Key Discussion Points
+
+*   **Administrative:**
+    *   The session was opened by co-chair Hansiakapo, with co-chair Peter Thomerson remote. Andy Newton (AD) welcomed participants, acknowledging the unorthodox formation of the WG and wishing success.
+    *   Attendees were reminded of the IETF Note Well and asked to sign in via Meetecho. Martin volunteered as note-taker.
+    *   The DCONN mailing list and dedicated website were highlighted as crucial resources for formal decisions and group information.
+*   **Scope of Domain Connect WG:**
+    *   The WG's mandate is to take the existing, implemented Domain Connect protocol and refine its specification. This involves ensuring precision, clear guidance, addressing ambiguities/inconsistencies, and thoroughly checking for security issues.
+    *   New features, extensions, or additional use cases are explicitly out of scope and would require re-chartering.
+*   **Introduction to Domain Connect Protocol (Pavel):**
+    *   **Problem Statement:** Simplifies the complex and error-prone process of configuring DNS entries for Software-as-a-Service (SaaS) applications, which typically requires users to manually set multiple DNS records. Illustrated with an example of Microsoft 365 setup requiring 7-15 DNS entries.
+    *   **Solution:** Domain Connect uses pre-defined templates from the application provider, which are "voted for" (trusted) by the DNS provider. Users are guided through an authenticated flow on the DNS provider's site to consent to automatic DNS configuration.
+    *   **Technical Flow:**
+        1.  User types domain on service provider (SP) side.
+        2.  SP looks up `_domainconnect` TXT record for DNS provider (DNSP) discovery.
+        3.  TXT record points to a discovery document on DNSP, detailing endpoints and available templates.
+        4.  SP creates a link/redirects user to DNSP.
+        5.  DNSP authenticates user, requests authorization for changes, and applies configuration automatically.
+    *   **Template Structure:** Defines resource records, metadata (e.g., conflict resolution rules, variables), and identification.
+    *   **Security:** SPs can sign requests to prevent impersonation. DNSP UI can display changes for informed user consent.
+    *   **Secondary Flow:** Supports an OAuth-based flow for establishing a longer-term relationship, allowing staged DNS changes without repeated user consent (e.g., for complex, multi-step setups).
+    *   **Other Features:** Support for "fire-and-forget" records (set once, deleted after) and request signing.
+    *   **Implementation Status:** Widely deployed with ~20 DNS providers and hundreds of templates, often used for email security (DKIM, DMARC, SPF) and dynamic DNS. Examples include Google domain verification.
+*   **Discussion on Draft Issues (`draft-ietf-dconn-00` and `01`):**
+    *   **Security Concerns:**
+        *   **User Trust:** Clarified that templates constrain changes; DNSP verifies template claims.
+        *   **User Understanding:** DNSP builds the UI, so users see familiar interfaces, not raw template language.
+        *   **Trust Model Section:** Paul Hoffman appreciated its inclusion, though noted it might be extensive.
+        *   **Attacker Control of Warnings:** Limited to service name and logo; DNSPs can perform name matching. Dynamic values for resellers require higher DNSP trust.
+        *   **OAuth Integration:** Strong request for OAuth experts to review the OAuth sections, as some elements might "redefine" OAuth or compensate for features not present in older OAuth specs.
+        *   **Possible Attacks Despite Request Signing:** Raised as an open question, further input requested.
+        *   **False Sense of Security:** Acknowledged; noted that making things easier can reduce user attention. Suggested UIs provide advisories, but acknowledged IETF typically doesn't dictate UI.
+        *   **Domain Verification and Split Roles (Lisa Duso):** Discussed scenarios where the service setter and DNS administrator are different. While not a core "happy path" use case, it warrants investigation for potential issues like link forwarding.
+    *   **Clarity, Ambiguities, Inconsistencies (many addressed in `draft-ietf-dconn-01`):**
+        *   **Draft Readability:** Previous versions were "badly written" (Pavel's assessment); `01` significantly improved.
+        *   **Hard-coded Path Segments:** Protocol allows discovery of endpoints, not fixed to root. Implementers haven't reported issues; changing now could be breaking.
+        *   **Variable Substitution:** Clarified in `01`; feedback on clarity requested.
+        *   **Syntax of Variables:** Clear distinction between standard RFC URL template notation (curly brackets) and template-specific percent notation (`%variable%`) for security reasons (prevents injection into paths).
+        *   **Redirect URI:** Revised in `01`.
+        *   **Parameter Collision:** `01` forbids templates from using protocol-defined parameter names (e.g., `name`, `host`). No implementation issues seen, but feedback requested for strong opinions.
+        *   **Ambiguity in Asynchronous Flow:** Open issue regarding precedence or choice between query parameters and JSON body for POST requests; implementer feedback sought.
+        *   **HTTP Problem Details / Media Types:** Doable, but concerns about breaking clients if a specific media type for templates is introduced; opportunistic use based on `Accept` header discussed.
+        *   **Conflict Resolution for Identical Records:** Clarified in `01`; identical records are not considered a conflict.
+        *   **DS Updates:** Clarified in `01`.
+        *   **UI Ambiguity:** `01` removed UI mocks and includes clearer flow diagrams without prescribing UI specifics.
+        *   **IANA Registration:** `_DomainConnect` record registration addressed in `01`.
+        *   **Protocol Versioning:** Open question: define a deep versioning mechanism now or defer to future versions (e.g., `01` implicitly refers to itself as version `1`).
+        *   **Host Parameter for Subdomains:** Need for guidance on protocol behavior when `host` is a subdomain, considering potential misuse.
+        *   **MIT License / Copyright:** Original GitHub spec had MIT license assigned to GoDaddy. This was updated to Creative Commons to enable IETF change control.
+    *   **General Feedback on Draft Content:**
+        *   **UX Description:** Lisa Duso and Paul Hoffman both strongly recommended removing non-protocol-specific UX descriptions (e.g., "window size" hints, pop-up advice) to improve accessibility and avoid prescribing UI.
+        *   **Document Clarity (John Levine):** Expressed difficulty in following the complex draft, suggesting help from IETF-experienced authors to reorganize for clarity, especially the threat model, and to ensure no breakage of existing implementations. Discussed possibility of splitting the document, but chairs saw coordination challenges.
+*   **Working Group Practices:**
+    *   Noted that a GitHub repository with issues exists (linked from Datatracker).
+    *   Question about preferred methods for discussing issues (GitHub vs. mailing list) and holding interim meetings; no strong opinions voiced from the floor.
+*   **Document Adoption:** An informal show of hands (poll of 43 participants) indicated a strong sense of support for adopting the current draft (`draft-ietf-dconn-01`) as a working group document. No objections were noted.
+
+## Decisions and Action Items
+
+*   **Decision:** An informal poll of those present indicates strong support for adopting `draft-ietf-dconn-01` as a working group document.
+*   **Action Item:** The chairs will issue a formal call for adoption of `draft-ietf-dconn-01` on the DCONN mailing list.
+*   **Action Item:** Document editors are requested to review the draft for and remove non-protocol-specific User Experience (UX) descriptions (e.g., pop-up window sizing, overly prescriptive UI guidance).
+*   **Action Item:** The DCONN working group calls for experts in OAuth to review the OAuth-related sections of the draft and provide feedback on their alignment with current OAuth best practices and specifications.
+*   **Action Item:** Further security reviews of the draft are requested, particularly concerning "possible attacks despite request signing."
+*   **Action Item:** Document editors are requested to consider suggestions for improving the overall clarity and structure of the draft, especially the threat model section, ensuring it doesn't break existing implementations.
+*   **Action Item:** Pavel will clarify the status of the GitHub repository and consider moving it to a working group-controlled repository if beneficial for collaboration.
+
+## Next Steps
+
+*   Formal call for adoption of `draft-ietf-dconn-01` will be issued on the DCONN mailing list.
+*   Working group discussion and document refinement will continue on the mailing list.
+*   The next formal working group meeting is anticipated at IETF 120 in Shenzhen.

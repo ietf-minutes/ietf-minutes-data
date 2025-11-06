@@ -1,0 +1,64 @@
+# TLS
+
+## Summary
+
+The TLS working group meeting covered updates and errata for DTLS 1.3, two drafts related to ECH (Encrypted Client Hello) key formats and authenticated updates, and a new proposal for service affinity based on TLS. Key discussions focused on replay detection and ACK handling in DTLS 1.3, the potential adoption of an ECH private key format, and the architectural implications of two proposed ECH update authentication methods. A new draft on TLS-based service affinity faced strong objections regarding the choice of layer.
+
+## Key Discussion Points
+
+*   **DTLS 1.3 Errata and Updates (draft-ietf-tls-dtls13-errata-01)**
+    *   Rich Salz presented errata for RFC 9147, primarily addressing issues raised by test teams.
+    *   **Replay Detection:** RFC 9147 makes replay detection optional. John Mattson suggested making it mandatory, especially for post-handshake authentication. Michael (SCTP) noted that SCTP's own replay detection mechanism could conflict, leading to duplicate drops if DTLS also performs it. Paul Wouters (speaking as an IPsec enthusiast) noted that IPsec ESP allows disabling replay detection due to performance concerns, cautioning against making it mandatory. The group leaned towards keeping it optional, pending further review of John Mattson's specific points.
+    *   **Epoch Zero ACKs:** RFC 9147 allowed ACKs in Epoch 0. DTLS 1.2 clients/servers treat ACKs as an illegal content type and would choke. David Benjamin suggested banning ACKs in Epoch 0 entirely to prevent errors with older implementations. Martin Thompson questioned if 1.2 stacks would simply discard unknown record types, in which case ACKs could be beneficial for loss recovery. David Benjamin volunteered to verify OpenSSL's behavior. The provisional way forward is to forbid sending ACKs in Epoch 0 but ignore receiving them to avoid creating new interoperability problems with 9147-compliant clients/servers.
+    *   **Unencrypted Sequence Numbers (draft-ietf-tls-dtls-unencrypted-seq):** A proposed extension for unencrypted sequence numbers was discussed. Dave (referencing an SSH bug) expressed concern. The strong sense of those present was *not* to adopt this into the DTLS core specification. It was suggested it could potentially be published as a separate extension if desired by its proponents.
+    *   **Remaining Issues:** Rich Salz noted that further issues, including David Benjamin's comments on ACK boundaries and various small outstanding questions, need to be resolved. It was also noted that DTLS 1.2 errata should be reviewed for applicability to DTLS 1.3.
+
+*   **ECH Private Key Format (draft-nicklas-tls-ech-private-key)**
+    *   Nicklas presented a draft specifying a file format for ECH private keys and configuration.
+    *   The format is simple, has been implemented in OpenSSL's ECH feature branch, and is being incorporated by various servers.
+    *   Paul Wouters agreed to AD sponsorship, citing RFC 7468 (PEM encoding) as a precedent.
+    *   Yaroslav expressed a minor concern about the format using `ECHConfigList` even when typically containing only one `ECHConfig`, but acknowledged it was likely too late for significant changes given existing implementations. Nicklas clarified the `List` aspect allows for future flexibility with multiple cryptographic options or updates.
+    *   Samad Udresden asked about formal analysis. It was clarified that this is a file format specification, not a change to the core cryptographic protocol, so no new formal analysis is needed.
+    *   The group considered the draft mostly harmless and beneficial for interoperability.
+
+*   **Authenticated ECH Updates (draft-rescorla-tls-ech-update)**
+    *   Rich Salz introduced a new draft proposing an authenticated update mechanism for ECH configurations.
+    *   **Problem:** Current ECH configurations are unsigned and served via DNS or HTTP, lacking independent authentication. This means updating stale configurations is restrictive.
+    *   **Proposal:** A new ECH configuration extension to advertise public key hashes or certificate information for authenticating updates. These would be delivered via DNS or the TLS Encrypted Extension in a retry config.
+    *   **Two Authentication Modes:**
+        *   **Raw Public Key (RPK) Mode:** The initial ECH config contains a list of hashes of public keys that can sign future updates. A retry message can then be signed by one of these keys.
+        *   **Certificate-Based (RPK-X.509) Mode:** The ECH config is signed with an X.509 certificate that includes a new critical extension for ECH config signing.
+    *   **Advantages:** Improved deployment agility (key rotation via various methods), direct binding of authentication to the ECH object, enables client choice of outer SNI (decoupling it from authentication), unified framework, and no required changes to TLS itself.
+    *   **Discussion:**
+        *   Martin Thompson was enthusiastic about the general area for robustness and privacy, but noted implications if clients choose the public name. Rich Salz clarified the distinction between the server-chosen "public name" (in the config) and the client-chosen "outer SNI" (which the draft aims to make more flexible). Martin expressed a preference for one authentication mode, leaning towards RPK.
+        *   David Adrian questioned whether the draft would expand ECH adoption, noting that current deployment challenges (e.g., key coordination between frontend, backend, and DNS/TLS stacks) are not directly addressed by removing outer SNI dependence.
+        *   Chris Patton supported the use of a critical extension in RPK-X.509 to prevent unintended cross-protocol use of signing certificates.
+        *   Discovery still relies on an initial (potentially unauthenticated) DNS lookup for the first ECH config, similar to current ECH deployments.
+        *   Eric Griswold asked if Certificate Authorities (CAs) had been consulted about issuing certificates for RPK-X.509; the authors confirmed this has not happened yet and acknowledged it as a critical early question.
+        *   Alessandro Gadini (Cloudflare) commented that for Cloudflare's deployment, the RPK mode would be preferred as it better disentangles the public name from the retry config, improving deployment agility.
+
+*   **Service Affinity Based on TLS (draft-zhang-tls-service-affinity)**
+    *   Isam Zhang presented a draft aiming to ensure service affinity for clients connecting to anycast services, especially when network path changes.
+    *   **Problem:** Anycast deployments can direct packets from the same client (or even same system) to different service nodes if network conditions change, breaking TLS session affinity.
+    *   **Proposal:** A switchover procedure: client initially connects via anycast. The chosen server node (e.g., A) notifies the client of its unique unicast address. The client then establishes a *new* TLS connection to this unicast address.
+    *   **TLS Extensions:** Three new extensions are proposed: `migration_support` (client), `notification_token` (server, conveying unicast address and previous session token), and `migrate_notify` (server, to initiate migration).
+    *   **Discussion (Strong Objections):**
+        *   Rich Salz strongly argued that TLS is the *wrong layer* for this problem, asserting it belongs in the application layer (e.g., HTTP redirects). He noted that the proposed mechanism creates an "asynchronous failure" from the application's perspective, without providing mechanisms for application-layer state synchronization or packet delivery guarantees during the switch. He highlighted that Quick's connection migration maintains connection state, whereas this proposal effectively creates two separate connections. Session tickets can carry state without new TLS extensions.
+        *   The author argued for an "application-agnostic" solution at the TLS layer.
+        *   Martin Thompson reinforced Rich's points, emphasizing that new TCP connections are created and application protocols (like HTTP) have established mechanisms (redirects to unicast hostnames) for this. The proposal lacks a session continuity layer, leading to a connection break from the application's viewpoint.
+
+## Decisions and Action Items
+
+*   **DTLS 1.3:** The issue regarding unencrypted sequence numbers will be closed, with no adoption into the core DTLS 1.3 specification.
+*   **DTLS 1.3:** Rich Salz will review John Mattson's comments on mandatory replay detection and investigate OpenSSL's behavior regarding unexpected record types (Epoch 0 ACKs).
+*   **DTLS 1.3:** An attendee will file an issue to ensure DTLS 1.2 errata are reviewed for applicability to DTLS 1.3. Rich Salz will also follow up on David Benjamin's comments on ACK boundaries.
+*   **ECH Key Format:** The working group signaled general acceptance for the draft, with Paul Wouters indicating AD sponsorship. Minor editorial comments are welcome.
+*   **Authenticated ECH Updates:** Implementers are encouraged to try both Raw Public Key (RPK) and Certificate-Based (RPK-X.509) authentication modes and provide feedback to the working group. The authors will consult Certificate Authorities (CAs) regarding the feasibility of the RPK-X.509 mode.
+*   **Service Affinity Based on TLS:** The working group expressed strong architectural objections, indicating no current path for adoption within TLS. The author is encouraged to reconsider the layer and approach.
+
+## Next Steps
+
+*   **DTLS 1.3:** Rich Salz will continue to address the remaining open issues and errata, aiming for resolution by the next IETF meeting to enable a working group last call.
+*   **ECH Key Format:** The draft is expected to move forward with AD sponsorship and potentially a working group last call, given existing implementations and minimal controversy.
+*   **Authenticated ECH Updates:** Continued development to gather implementation feedback, refine the mechanism, address open questions (e.g., operational guidance, expiration policies), and engage with CAs.
+*   **Service Affinity Based on TLS:** The author should consider alternative approaches for achieving service affinity, likely at the application layer, based on the feedback received.

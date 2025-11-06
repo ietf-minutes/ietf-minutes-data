@@ -1,0 +1,71 @@
+# JOSE
+
+## Summary
+
+The JOSE Working Group meeting at IETF 124 covered a full agenda including updates on Post-Quantum Cryptography (PQC) KEMs, JSON Web Proof (JWP), JOSE HPKE, deprecation of `alg=none` and RSA 1.5, Composite Signatures, Public Key Derived HMAC (PKDH), and two new drafts: JOSE Envelope and Encoded Record Locators (Earl). Key discussions revolved around the choice of key types for PQC KEMs, the representation of BLS keys in JWP, the `enc` parameter in JOSE HPKE, and the use cases and complexities of composite signatures. A design team meeting was scheduled to address the `enc` parameter in JOSE HPKE. Several items require further discussion on the the mailing list or are pending working group last call or adoption.
+
+## Key Discussion Points
+
+*   **PQC KEMs for JOSE (draft-ietf-jose-pqc-kem)**
+    *   The primary pending issue is the choice of key type: `AKP`, `OKP`, or a new, purpose-built key type.
+    *   **`AKP` (Algorithm Key Pair):** Defined in PQC signatures (Dilithium), requires the `alg` parameter. Restricts key usage to specific modes (e.g., direct key agreement vs. key wrapping), which some see as a security benefit aligning with NIST guidance (single purpose per key), while others view it as too restrictive, especially for hybrid schemes where different AEAD algorithms would require separate keys for the same asymmetric key pair.
+    *   **`OKP` (Octet Key Pair):** Previously used, but poses semantic confusion with `crv` parameter for PQC KEMs and lacks provision for range parameters.
+    *   **New Key Type Proposal:** Introduces a `kem` parameter to carry the PQC KEM algorithm, making `alg` optional. This aims to offer flexibility, allowing for restrictive policies when `alg` is present or greater flexibility when `alg` is omitted.
+    *   **Discussion:** Philip expressed clarity on `alg` being required for `AKP` modes. Brian Campbell noted that the `AKP` problem manifests in HPKE where AEAD and KDF are part of the algorithm identifier, leading to multiple key representations. Hannes Tschofenig emphasized the need to articulate desirable properties and requirements for algorithm identifiers, suggesting keys should reference policy rather than carry the algorithm directly in the message to prevent data modification.
+    *   **Action:** Tiro was asked to summarize the discussion and options via email due to audio issues and further discussion will continue on the mailing list.
+*   **JSON Web Proof (JWP) (draft-ietf-jose-json-web-proof)**
+    *   **Updates:** Editorial improvements, consistent header terminology, and IANA feedback incorporated.
+    *   **BLS Key Representation:** Changed from uncompressed X coordinates to the Zcash compressed key format (using two top bits for special meanings) to align with existing implementations and the BBS signature draft.
+    *   **BBS Dependency Stack:** JWP is at the top of a dependency stack, including BBS signatures (progressing under John Bradley), pairing-friendly curves (being resurrected by Umi Sukumi), and ongoing CFRG work. An interim meeting for BBS in CFRG was suggested to unblock progress.
+    *   **Zero-Knowledge Proofs (ZKP) and Longfellow:** Discussion on the complexity of ZKP mechanisms like Longfellow (Google's scheme) for MDOC data, especially regarding security proofs and deployment challenges. Leif Johansen highlighted that MDOC's format can generate complexity for ZKP processing, raising the question of shifting this complexity. Stefan Santesson noted that Longfellow can be simplified by not using all FDJOT features, if information is included in cleartext and ZKP handles disclosure.
+    *   **PQC Migration for Credentials:** John Bradley and Leif Johansen discussed the need for PQC alternatives for ZKP mechanisms due to future quantum threats, acknowledging that research is ongoing and there are no clear frontrunners. Leif suggested ZKP deployment might be driven by performance needs for unlinkability in cloud issuance rather than solely privacy, leading to a potential 5-year shelf-life for current solutions. Deb Cooley (AD) emphasized that IETF work is a progression, not perfection, and working on current technologies (even older ones like elliptic curves/SHA-2) builds knowledge for future PQC migration, urging against waiting for "the next best thing."
+    *   **CBOR Examples:** Updated to match current representations.
+    *   **JVK/CWK Registry:** An issue was noted that JWP defines its own registry, but JVK/CWK algorithms are restricted to existing JWS/JWE/COSE registries, requiring ongoing work to align or address confusion.
+    *   **Subclaims and SD-JOT Comparison:** Implementer feedback indicated mapping entire payloads to individual claims was limiting. A proposal was made to introduce a subclaim expression syntax (similar to Seabor Pointer, OpenID Deccal queries, SD-JOT VC metadata) to allow partial disclosure of claims (e.g., postal code from an address).
+    *   **Action:** Feedback on the subclaim proposal is requested, and David Waite will share the associated pull request on the mailing list. All open questions will be taken to the mailing list.
+*   **JOSE HPKE (draft-ietf-jose-hpke)**
+    *   **Updates:** Incorporating IETF 123 feedback, including adding a recipient structure, referencing the `PQC-KE` draft, removing canonicalization requirements, and adding an algorithm for Apple's use.
+    *   **Recipient Structure:** Clarified use of `info` and `AAD` parameters. The `info` parameter is now a recipient structure that binds the content encryption algorithm and other information into the HPKE computation.
+    *   **JWE Integration:** A pull request was submitted to fully integrate HPKE modes into RFC 7516 (JWE) by incorporating the core encryption/decryption steps verbatim and explicitly updating relevant sections of 7516. Mike Jones noted this was less invasive than anticipated.
+    *   **Multiple Recipients:** Mike Unsworth confirmed that the draft supports both integrated encryption (single recipient) and HPKE used for Content Encryption Key (CEK) encryption (multiple recipients), and these modes can be mixed.
+    *   **Brian Campbell's Concerns:** Reiterated concerns from IETF 123 regarding the treatment of `alg` and `enc` in the document, arguing it violates JWE baseline constraints and could lead to fracturing SDOs. He proposed updating RFC 7516 to eliminate `enc` for integrated encryption and define distinct algorithms for HPKE JWE key encryption.
+    *   **Discussion:** Hannes Tschofenig argued that updating RFC 7516 semantics in a new RFC is legitimate and the issue is "blown out of proportion." Philip agreed with Brian's suggestion to drop `enc` for integrated encryption. Mike Jones explained the rationale for retaining `enc` was to preserve an invariant for distinguishing JWS/JWE objects and that a prior consensus call on changing it was inconclusive.
+    *   **Decision:** Deb Cooley (AD) proposed a "design team meeting" (not a side meeting) to address the `enc` parameter, find a creative solution, and reach a decision. The meeting will be scheduled and announced on the mailing list. Tiro provided historical context on the various approaches to `enc` that had been considered and rejected previously.
+*   **Deprecating `alg=none` and RSA 1.5 (draft-ietf-jose-deprecated-algs)**
+    *   **Updates:** Incorporated Mike Jones' review comments, though OIDC examples for `alg=none` were not added due to mailing list objections. Minor update to reference CFRG's deprecation of RSA 1.5.
+    *   **IANA Registry Restrictions:** Discussed whether requirements for designated experts on new algorithm registrations (security baselines) would impede Web Crypto Group's JWK-only registrations. Neil Madden believes the current text, which specifies JWE/JWS algorithms, is likely sufficient.
+    *   **`alg=none` Balance:** Mike Jones argued the draft's treatment of `alg=none` is unbalanced, listing nine illegitimate uses (CVEs) but not two legitimate ones he provided. He requested either listing both or neither. Brian Campbell and Neil Madden believe the current treatment is appropriate for a deprecation document.
+    *   **Next Steps:** The chairs will follow up on the mailing list to resolve the `alg=none` balance issue. Once resolved, the document is considered ready for Working Group Last Call.
+*   **Composite Signatures (draft-ietf-jose-composite-signatures)**
+    *   **Motivation:** Registers composite signature algorithms (e.g., ML-DSA with ECDSA/EdDSA) for JOSE/COSE, aligning with LAMS composite draft. Aims to preserve security if one underlying algorithm is broken, comply with regulatory requirements (e.g., EU Commission, national security agencies), and offer an easier-to-deploy hybrid solution for PQC transition. Relevant for long-lived credentials and trust infrastructures.
+    *   **Updates:** Added EdDSA support, explanation of SUF-CMA security recommendations (not to use composites if SUF-CMA guarantees are required), and editorial improvements.
+    *   **Discussion:** Deb Cooley (AD) questioned the specific use case for composite signatures in JOSE, distinct from COSE. She expressed concerns about implementation complexity, long-term maintenance burden of "dead useless code," and the historical difficulty of implementing cryptography correctly. She suggested considering alternative PQC transition strategies, such as managing multiple roots. John Bradley noted pressure from BSI and VCs for such solutions, but also OIDC's fast key rotation. Chris asked if the list of six composite combinations could be minimized. John Gray argued that key rotation already handles algorithm changes, so composite algorithms are just another form of regular maintenance.
+    *   **Next Steps:** Lucas will align further with the LAMS draft and add more details on SUF-CMA security. The chairs will consult with the working group regarding a call for adoption.
+*   **Public Key Derived HMAC (PKDH) (draft-santesson-jose-pkdh)**
+    *   **Motivation:** To bridge the gap between SD-JOT and MDOC by defining a way to use HMAC as a key proof mechanism with blinded keys.
+    *   **Mechanism:** Defines a header to derive an HMAC key from provider and recipient public keys and other parameters, based on a fully specified algorithm identifier.
+    *   **Updates:** Renamed to "Public Key Derived HMAC for JOSE" and adopted fully specified algorithm names based on group feedback.
+    *   **Outstanding Issues:** Need for more algorithm profiles, discussion on the use of a salt value (MDOC specifies a session transcript parameter for unique derivation), and IANA considerations. The use of salt would make the document dependent on SD-JOT.
+    *   **Discussion:** Paul Wouters and Neil Madden raised questions about whether the DH exchange is static or ephemeral, and the security properties when combining with HMAC.
+    *   **Next Steps:** Discussion on the salt value and call for adoption will be taken to the mailing list.
+*   **JOSE Envelope and Earl (draft-baker-jose-envelope, draft-baker-jose-earl)**
+    *   **JOSE Envelope:** Proposed as a JOSE-native equivalent to PKCS#7 CMS, avoiding ASN.1/Base64 penalties. Uses a simple structure (type, version, headers, content blobs, trailer) for low overhead, one-pass serialization, and modern cipher features (AEAD). Immediate application for JS Contact updates.
+    *   **Earl (Encoded Record Locator):** A mechanism to locate and decrypt data by a cryptographic thumbprint, creating compact URLs for JS Contact, ML KEM/ML-DSA keys, or other static content. Uses digest functions to derive data location and decryption keys, authenticating received content.
+    *   **Next Steps:** Phillip Baker requested a call for adoption for both drafts. Further discussion will be on the mailing list due to time constraints.
+
+## Decisions and Action Items
+
+*   **PQC KEMs for JOSE:** Tiro to summarize the discussion and options via email to the mailing list.
+*   **JOSE HPKE:** A design team meeting (not a side meeting) will be scheduled to address the `enc` parameter issue, particularly Brian Campbell's proposal to update RFC 7516. Deb Cooley (AD) will assist with logistics.
+*   **Deprecating `alg=none` and RSA 1.5:** The chairs will follow up on the mailing list to gather consensus on whether to include legitimate uses of `alg=none` in the deprecation draft or remove all such examples.
+*   **JOSE Envelope and Earl:** Phillip Baker requested a call for adoption for both drafts.
+
+## Next Steps
+
+*   **PQC KEMs for JOSE:** Continue discussion on the mailing list, informed by Tiro's summary email.
+*   **JSON Web Proof (JWP):** Seek feedback on the subclaim proposal, and David Waite to share the associated pull request on the mailing list. Further discussion on open questions to happen on the mailing list.
+*   **JOSE HPKE:** Participate in the scheduled design team meeting. All are requested to review Mike Jones' pull request integrating HPKE into JWE. Following the design team meeting, a second working group last call is anticipated.
+*   **Deprecating `alg=none` and RSA 1.5:** Chairs to initiate mailing list discussion for `alg=none` text. Following resolution, move to Working Group Last Call.
+*   **Composite Signatures:** The chairs will consult with the working group to determine whether to issue a call for adoption or continue discussion on the mailing list prior to a call for adoption.
+*   **Public Key Derived HMAC (PKDH):** Discussion on the use of salt and a call for adoption will be taken to the mailing list.
+*   **JOSE Envelope and Earl:** Discussion and call for adoption for both drafts will be handled on the mailing list. Phillip Baker is available for offline discussions.

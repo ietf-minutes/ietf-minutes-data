@@ -1,0 +1,76 @@
+# TCPM Session
+
+## Summary
+
+The TCPM session began with an update on the status of current working group documents, noting several in the RFC Editor queue or approaching Working Group Last Call. Key discussions revolved around proposed modifications to Accurate ECN (RFC 8511) regarding heuristics and security considerations, with the responsible AD committing to consult the RFC Editor for resolution. Presentations were given on diagnostic payloads for TCP reset segments, extensible TCP timestamps (ETS), and extended TCP options. The working group also discussed a proposal for a TCP SCone option to provide rate guidance.
+
+## Key Discussion Points
+
+*   **Working Group Document Status Update**:
+    *   **Accurate ECN (RFC 8511)**: In AUTH48.
+    *   **PRR (RFC 6298bis)**: In RFC Editor queue (edit state).
+    *   **TCP Ghost X**, **TCP EDO**, **Aggregated Request**: Work stable, API aspects still being worked on. Ghost X is planned for WG Last Call next, followed by Generalized ECN.
+    *   **Generalized ECN**: Planned for WG Last Call after Ghost X.
+
+*   **Accurate ECN Modifications (RFC 8511)**:
+    *   **Heuristic for Broken Peers**: Stuart Cheshire presented concerns from testing and author reviews. Language in RFC 8511 regarding heuristics to detect broken peers (setting ACE field to zero incorrectly) was described as "woolly" and "bad advice," potentially causing unnecessary ECN disabling and disappointing performance in low-RTT scenarios. Implementations in macOS, iOS, and Linux do not plan to implement this heuristic. Richard Scheffenegger (co-author) supports its removal and has not implemented it in FreeBSD. No objections were raised against removing this section.
+    *   **Security Considerations for Tunnels/VPNs**: Marya presented issues with new text added late in the process by an AD review regarding a potential attack when using tunnels/VPNs with Accurate ECN. This attack is not new and can apply to ECN with drops as well. The current text was deemed unclear and problematic in its recommendations. The proposal is to re-describe the attack with clearer wording but without providing specific recommendations due to unclear additional risk. No objections were raised against this proposed text revision.
+    *   **AD Action**: Gori Fairhurst (responsible AD) noted the concerns for the document currently held in AUTH48. He stated he would take input from the chairs and editor, consult with the RFC Editor, and make a decision on how to handle the proposed changes, prioritizing a correct document that reflects real implementations.
+
+*   **Diagnostic Payload for Reset Segments (draft-ietf-tcpm-rst-payload)**:
+    *   **Proposal**: Insert a specific reset reason into RST packets for better diagnostics.
+    *   **Experiment Status**: Jason Xue presented results from extensive experiments in production environments at Tencent over six months (Linux kernel 6.16). Tests covered L4/L7 gateways, virtual devices, modern NICs, and long-haul paths (China to Singapore, China to Germany). No exceptional behavior was observed due to this feature. TCPdump support has been added, showing a "RST+" string. Kernel implementation exists for both active and passive reset logic.
+    *   **Application Interface**: No current approach to pass specific reset reasons to applications; reliance on tracing mechanisms.
+    *   **Discussion**:
+        *   Lars Eggert (Mozilla) raised concerns about using CBOR for encoding (unusual for TCP) and asked for more rigorous experimentation demonstrating no breakage on the broader internet beyond Tencent's internal network.
+        *   The presenter reiterated that extensive monitoring in production showed no issues.
+        *   Michael Tewkson (as an individual) expressed dislike for CBOR and the proposed 1KB payload size, suggesting a fixed 4-byte payload.
+        *   The chairs suggested taking the discussion on measurement data and payload encoding to the mailing list due to time constraints.
+
+*   **Extensible Timestamps (ETS) (draft-ietf-tcpm-ext-timestamps)**:
+    *   **Proposal**: A new TCP option to subsume RFC 7323 timestamp option, using microsecond units and exchanging packet ACK delay to calculate network RTT. Recommends using NIC hardware timestamps.
+    *   **Updates (Revision Zero)**: Removed maximum ACK delay exchange in SYN/SYN-ACK to save option space and due to other methods for limiting RTO. Renamed "ECR delay" to "ACK delay" for clarity. Added clear text recommending hardware NIC timestamps.
+    *   **Problem Solved**: Addresses delays in end hosts (intentional ACK delays, CPU C-state wakeup) that add noise to RTT measurements, and the coarse granularity (milliseconds) of existing timestamps.
+    *   **Wire Format**: Experimental option with TSval, TSCR (microsecond units), and ACK delay field.
+    *   **Negotiation**: Client includes both old TS and new ETS in SYN. Server can respond with either.
+    *   **RTT Calculation**: Network RTT calculated as (ACK packet arrival time - TSCR - ACK delay).
+    *   **Potential Usage**: More accurate RTT for congestion control algorithms (delay-based CC) and network pacing. Possible future inclusion of C-SIC signals.
+    *   **Discussion**:
+        *   Yoshi (as an individual) asked about timestamp wrap-around impact (PAWS check) and RTO calculation (RFC 6298). The presenter stated PAWS should still work, but the 30-minute wrap-around time may be a point of discussion. RTO calculation should not need changes as ETS provides a more accurate RTT measurement for existing algorithms.
+        *   Lars Eggert (Mozilla) questioned including both old and new timestamp options in SYN/SYN-ACK, as this consumes significant option space (14+14 bytes), impeding other options. The presenter noted this is experimental and the long-term goal is for ETS to subsume the old option.
+
+*   **Extended Options (draft-iyengar-tcpm-ext-options)**:
+    *   **Problem**: Current TCP header data offset limits options to 40 bytes, impeding new TCP features.
+    *   **Proposal**: Extend TCP options field to up to 1KB by allowing data offset field value of zero. The options field would start with an 8-bit length attribute.
+    *   **Backwards Compatibility**:
+        *   **Class 1 (used during handshake)**: Legacy TCP talking to new TCP results in connection timeout (no solution). This draft focuses on this class.
+        *   **Class 2 (not used during handshake)**: Connection enters established state, but stalls on first use of extended option (avoidable with signaling, but signaling is beyond the scope of this experiment).
+    *   **Experiment Goals**: Seek an experimental RFC to encourage participation. IPR has been posted.
+    *   **Discussion**:
+        *   Concerns were raised that the proposal "doesn't work at all" with legacy peers, as connections would not establish. The presenter acknowledged this, stating "connection never enters established."
+        *   Gori Fairhurst (as an individual) asked about interaction with ECN negotiation and Happy Eyeballs. The presenter said Happy Eyeballs might not interact, but ECN negotiation interaction needs study.
+        *   Alessandro Ghedini (Cloudflare) questioned the need for an RFC to conduct such an experiment, especially given that it would break connections with non-participating peers. The presenter clarified that applications would need to be specifically configured to use this, meaning both ends would need to be prepared.
+        *   The chairs then explicitly asked if the working group was interested in taking up this document for work *in addition* to TCP EDO.
+
+*   **TCP SCone (draft-iyengar-tcpm-scone-option)**:
+    *   **Proposal**: Explore a TCP option similar to the SCone solution in QUIC for adaptive bitrate (ABR) video and rate limiting applications.
+    *   **Motivation**: QUIC's SCone working group provides a way for network elements to signal a rate to applications for video manifest pruning and selection. A similar mechanism could benefit TCP applications.
+    *   **Mechanism**: Would look similar to the MSS option but encode throughput guidance.
+    *   **Discussion**:
+        *   Yoshi (as an individual) asked about middlebox generation of the SCone option in TCP. The presenter clarified that the ability for middleboxes to *generate* the signal is not a core requirement and could be removed; the QUIC SCone protocol doesn't have this.
+        *   Brian Trammell (SCone WG Chair) expressed interest but cautioned about ensuring a simple and easy-to-understand mapping between SCone code points for QUIC and TCP, given the different bit allowances.
+
+## Decisions and Action Items
+
+*   **Accurate ECN (RFC 8511)**:
+    *   **Decision**: The responsible AD (Gori Fairhurst) will consult with the chairs, editor, and RFC Editor to decide on the proposed modifications (removal of heuristic text, revision of security considerations text) for the document currently in AUTH48.
+*   **Extended Options (draft-iyengar-tcpm-ext-options)**:
+    *   **Action**: The chairs polled the working group for interest in taking up this document as working group work, in addition to TCP EDO. The response was not clearly indicating consensus to adopt at this meeting.
+
+## Next Steps
+
+*   **Accurate ECN**: Await the decision from the responsible AD regarding the proposed changes.
+*   **Diagnostic Payload for Reset Segments**: Continue discussion on the mailing list regarding the use of CBOR, payload size, and additional measurement data to demonstrate internet-wide compatibility.
+*   **Extensible Timestamps**: The author will further investigate PAWS check and timestamp wrap-around implications, and continue to address concerns regarding option space consumption during negotiation.
+*   **Extended Options**: Chairs will consider the expressed interest and discussion to determine if this draft should be considered for working group adoption and further charter work.
+*   **TCP SCone**: Continue discussion to gauge broader interest within the working group for defining a TCP SCone option, focusing on alignment with QUIC SCone signaling and implementation considerations.

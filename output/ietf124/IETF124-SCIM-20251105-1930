@@ -1,0 +1,78 @@
+# SCIM
+
+## Summary
+
+The SCIM session at IETF-124 covered updates on existing RFCs and documents in the RFC Editor queue. The main focus of the meeting was on several new drafts: an extension for SCIM roles and entitlements, two distinct proposals for managing "agents" and "agentic identities" within SCIM, and a draft for SCIM role assignment in contextual scenarios. Discussions highlighted the need for clarification, alignment, and consolidation of efforts, particularly for the agent-related drafts. A significant point raised by the Area Director was the need for a working group re-charter discussion to accommodate new work items and a push to update existing base SCIM specifications.
+
+## Key Discussion Points
+
+*   **Logistics and Document Status**
+    *   `cursor-pagination` is now RFC 98.
+    *   `SCIM Device Model` and `SCIM Profile for Security Event Tokens` are in the RFC Editor queue and are close to publication.
+
+*   **SCIM Roles and Entitlements Extension (draft-unmish-scim-roles-entitlements)**
+    *   **Presenter:** Unmish.
+    *   **Motivation:** Address the lack of a deterministic schema for roles and entitlements, which complicates governance and provisioning use cases.
+    *   **Proposal:** Introduce a role and entitlement resource schema, including an optional `id` attribute. Recommend a new `rolesAndEntitlements` attribute in `ServiceProviderConfig` to indicate support for roles/entitlements and their types.
+    *   **Proposed Workflow:** Clients query `ServiceProviderConfig` to identify support, fetch role/entitlement resources, and then correlate these values when managing users.
+    *   **Discussion:**
+        *   Elliot inquired about applicability to devices, suggesting that the extension should consider devices as well as users.
+        *   Pam Dingle and Danny had concerns about the complexity of the `rolesAndEntitlements` object within `ServiceProviderConfig`, suggesting that the existing core schema attributes (`value`, `display`, `type`, `primary`) are not well-suited for access management and lead to inconsistent implementation across IDPs.
+
+*   **SCIM for Agents and Agentic Applications (draft-m-abbey-scim-agents)**
+    *   **Presenter:** A.C. Abbey.
+    *   **Motivation:** Simplify cross-domain agent identity management, avoid redundant protocols for agent discovery, and leverage existing SCIM implementations for a new type of identity.
+    *   **Definition:** An agent is a workload with its own identifier and privileges, distinct from traditional software workloads.
+    *   **Proposal:** A new core schema for agents. It removes many user-specific attributes (e.g., human names, emails, phone numbers) and includes relevant attributes like `displayName`, `description`, `roles`, `entitlements`, `groups`, and `x509Certificates`. Proposed agent-only attributes include `agentName`, `agentType`, `subject`, `applications`, `protocols`, `parent`, and `owners`.
+    *   **Agentic Application:** Introduced as a schema representing applications that contain various agents on the service provider, providing useful context when granting human access.
+    *   **Discussion:**
+        *   Elliot suggested tightening up the document, clarifying semantic meanings of values (e.g., `agentType`), and specifying how X.509 certificates (or their subjects) should be used.
+        *   Peter Castleman questioned starting from user-derived properties for agents, suggesting a model starting from workload or application definitions. He also raised whether the draft should cover non-human/workload identities more broadly, not just AI-specific agents.
+        *   Max Grubber echoed the sentiment about covering non-human identities, questioning the specific use of "agent" if the scope is broader.
+
+*   **SCIM Agentic Identity (draft-p-dingle-scim-agentic-identity)**
+    *   **Presenter:** Pam Dingle (on behalf of Mark Wahl).
+    *   **Focus:** An enterprise-centric view, emphasizing existing relationships, portability, batch processing, update/delete capabilities, and governance workflows for agent management.
+    *   **Proposal:** Defines a single new resource type called `agenticIdentity`, contrasting with the previous proposal's two resource types. This aims to be complementary to other agent registration protocols.
+    *   **Key Attribute:** `oauthClientIdentifiers` is proposed as a multi-valued attribute to bind the agent identifier to a domain.
+    *   **Comparison:** Compared SCIM's capabilities to Client ID Metadata Documents and Dynamic Client Registration (DCR RFC 7591/7592), arguing SCIM handles modification/deletion/versioning better due to DCR's implementation challenges.
+    *   **Discussion:**
+        *   George discussed the broader "AI agent problem" space, identifying discovery, trust, and authorization as key challenges. He noted that SCIM is powerful for authorization but may struggle with dynamic discovery or instance identifiers for LLMs.
+        *   Pam Dingle responded by highlighting SCIM's strength in separating registration from execution time and handling authenticated/unauthenticated endpoint access.
+        *   Roberta from Brazil asked about the applicability to tooling registries and governance of nested federations in multi-node agent interactions.
+        *   Justin, as a Chair, questioned if the draft conflates agents and OAuth clients, and the intended scope of the specification.
+        *   Peter from Huawei asked about the frequency of updates and lifespan of these agent records.
+
+*   **SCIM Role Assignment (draft-puttip-scim-role-assignment)**
+    *   **Presenter:** Puttip.
+    *   **Motivation:** Address SCIM 2.0's inability to express contextual roles (e.g., a user having different roles in different projects/resources), leading to implementer workarounds.
+    *   **Proposal:** Introduces a new `RoleAssignment` SCIM resource with four main parts: `subject` (user/group/service account), `scope` (resource context), `role` (access level), and `metadata` (lifecycle, validity dates, computed status, priority for conflict resolution, source tracking).
+    *   **Benefits:** Enables scalable and auditable role management by making role bindings independent, queryable, and manageable without direct user record modifications.
+    *   **Relationship to other drafts:** Presented as complementary to the `scim-roles-entitlements` draft, which focuses on role discovery and definition, while `RoleAssignment` focuses on assignment and lifecycle.
+    *   **Design Choices:** Standalone resource; immutability of the core binding (changes require creating new and removing old assignments for auditability); server-computed status; priority for overlapping assignments.
+    *   **Discussion:**
+        *   Elliot reiterated the importance of considering devices in addition to users for role assignments.
+        *   Max inquired how a SCIM client would discover available scopes and their applicability to roles. The presenter clarified that existing SCIM `slash-roles` endpoints would provide available roles, and the `RoleAssignment` then binds them to specific resources (e.g., projects as SCIM resources).
+        *   Waukas questioned if SCIM is designed to handle the temporal elements, audit logs, and tracking at scale, to which the presenter clarified it's more about providing lifecycle information for IAM/IGA platforms to consume.
+
+*   **Working Group Charter Discussion**
+    *   There was a sense of definite interest in the new work items, particularly around agents and contextual roles, but also a recognized need for alignment among the similar proposals.
+    *   Deb Cooley, AD for the group, stated that it's time for a charter discussion. She indicated that the current charter might not fully encompass all the proposed new work, and there's a need to update existing base SCIM specifications (e.g., the roles aspect).
+    *   She suggested that those interested in working on the new drafts might also need to volunteer to help update the base drafts.
+
+## Decisions and Action Items
+
+*   **SCIM Roles and Entitlements (draft-unmish-scim-roles-entitlements):**
+    *   Contributors are encouraged to submit detailed feedback to the mailing list, create pull requests, or both, addressing concerns about the complexity of the `rolesAndEntitlements` object in `ServiceProviderConfig` and the general suitability of the schema for robust access management.
+*   **SCIM for Agents (draft-m-abbey-scim-agents & draft-p-dingle-scim-agentic-identity):**
+    *   The authors of the two agent-related drafts (A.C. Abbey, Pam Dingle, Mark Wahl) are encouraged to collaborate to combine and align their efforts to avoid duplicative work.
+    *   Further discussion is needed on the mailing list to achieve alignment on the scope and approach for agent identities within SCIM.
+*   **General WG Charter & Base Specs:**
+    *   A discussion on re-chartering the SCIM working group will be initiated on the mailing list.
+    *   Volunteers are needed to help update existing base SCIM specifications, particularly in areas related to roles and entitlements.
+
+## Next Steps
+
+*   Continue all technical discussions on the SCIM mailing list.
+*   The chairs will assess the alignment of interest for the proposed new work items.
+*   The working group will engage in a discussion about a potential re-charter and the process for updating base SCIM drafts.
