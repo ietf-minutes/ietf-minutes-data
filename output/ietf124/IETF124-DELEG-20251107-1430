@@ -1,0 +1,70 @@
+# DELEG Session Minutes
+
+## Summary
+
+The DELEG Working Group discussed the latest draft (version 05+) of the base protocol, focusing on open issues, implementation experience, and potential paths forward for publication. Key discussions revolved around the need for explicit examples and test vectors to clarify protocol behavior, particularly concerning interactions with legacy DNS and complex escaping rules. Decisions were made to align handling of unknown keys and the mandatory key with SVCB behavior. The group also debated the process for documenting implementation status and the publication timeline for the requirements document. Plans for early directorate review and potential rechartering for extensions were outlined.
+
+## Key Discussion Points
+
+*   **Draft-ietf-deleg-base-05 Status and Updates**:
+    *   Semantic changes were minimal; primary updates involved adopting a dedicated RR type instead of SVCB, introducing dedicated keys, a preliminary security considerations section, and a RAS info key for resolvers.
+    *   The document text was largely rewritten for clarity, moving away from an SVCB-centric definition to a standalone specification.
+    *   Various fixes for examples and DNSSEC-related aspects were implemented.
+    *   A protocol overview section was added for high-level understanding.
+*   **Implementation Experience**:
+    *   Akamai has a spec-complete authoritative and resolver implementation of version 05.
+    *   Bind has minimal RR type implementation, allowing `dig` to understand the type and load basic zones, with a testbed demonstrating include functionality.
+    *   CoreDNS and DNS Python libraries have implemented the RR format.
+    *   Feedback indicates "multi-level include really smells bad" but might be necessary for operational flexibility (e.g., quickly removing faulty providers or dynamic load balancing).
+    *   Discussions with four different registries revealed varied ideas for EPP/RPP implementation, but all were constructive, with no pushback on the concept.
+*   **Examples and Test Vectors**:
+    *   There is a strong request for more examples to clarify complex interactions (e.g., legacy resolver comparison, priority order, old client handling, parent/child zone queries).
+    *   A poll of the room indicated support for including "test vectors" rather than just more descriptive examples, to serve as concrete references for implementers, especially for interactions with legacy DNS behavior (RFC 1034). This would avoid re-specifying existing DNS behavior while ensuring consistent interpretation.
+*   **SVCB Applicability and Escaping**:
+    *   The draft aims for SVCB to largely apply, with DELGC having its own key set.
+    *   Concerns were raised about the complexity of escaping (SVCB rules, zone file rules, DNS name rules) and its interaction with registry protocols (EPP/RPP, XML/JSON encoding). More thought and perhaps an offline discussion with external examples were suggested.
+*   **Handling of Unknown Keys**:
+    *   The draft did not explicitly specify behavior for unknown keys.
+    *   SVCB specifies that unknown keys should be ignored.
+    *   A mechanism for mandatory keys (as in SVCB) was discussed, where a producer can mark a key as critical, requiring consumers that don't understand it to ignore the entire RR. This is crucial for future extensibility and avoiding misconfigurations (e.g., connecting via an unsupported transport).
+*   **Keys on Include Records**:
+    *   The behavior of key-value pairs on `include` records is undefined.
+    *   A sense of those present leaned towards leaving this for future protocol developers to define on a per-key basis, along with explicit rules for inheritance or combination. This provides maximum flexibility.
+*   **In-domain Delegation without Glue**:
+    *   The current draft uses "must not" for an in-domain server name without glue (IP address).
+    *   It was suggested to clarify that if this condition is violated, the single RR is ignored, similar to current NS delegation behavior. The phrasing "should not" was preferred over "must not" to acknowledge that such misconfigurations can occur on the wire.
+*   **Priming**:
+    *   Priming for the root is explicitly stated as not supported in the current draft. This was deemed acceptable and out of scope for the base protocol document.
+*   **RR Type Range**:
+    *   The concept of reserving a range of RR types for DELGC-like protocols was discussed but identified as an IETF politics issue, more appropriate for the NSOP session rather than DELEG.
+*   **Implementation List in Draft**:
+    *   There are existing implementations beyond those initially listed (e.g., a prototype server by Schumann).
+    *   Concerns were raised about listing implementations directly in the draft, as it can become stale and might give misleading impressions of conformance during development.
+    *   A strong suggestion was made to maintain an implementation status page on GitHub (or similar external resource) that the draft can point to, allowing for real-time updates. This supports the need for interoperability testing for proposed standard publication.
+*   **Interoperability for Proposed Standard**:
+    *   The chairs raised the question of applying similar interoperability requirements to DELGC as are used in the routing area (e.g., two interoperable implementations for Proposed Standard).
+    *   It was acknowledged that DNS is a client-server protocol, and resolvers have flexibility in how they use records. The focus for interoperability might be on authoritative server behavior and the ability for clients to *reach* the delegated zone, rather than strictly dictating client-side path selection. Test vectors could help define functional interoperability criteria.
+*   **Requirements Document Publication**:
+    *   The requirements document (an informational deliverable per charter) has been stable.
+    *   Suggestions were made to either let it expire, publish it *after* the base protocol, or include it as an appendix to the base protocol.
+    *   It was noted that area directors might block early publication of requirements if not accompanied by the base protocol, or if it slows down the primary specification.
+    *   The value of requirements for historical context was highlighted.
+
+## Decisions and Action Items
+
+*   **Decision**: Unknown keys must be ignored by default, mimicking SVCB behavior.
+*   **Decision**: The "mandatory" key mechanism from SVCB will be adopted, allowing producers to signal critical keys that, if not understood, require ignoring the entire RR.
+*   **Decision**: The semantics for keys combined with `include` records will be defined on a per-key basis by future protocol extensions. The base document will note this requirement for key registrations.
+*   **Decision**: For in-domain delegation without glue, the draft should clarify that if such a configuration is provided, the single malformed RR is ignored. The phrasing "should not" is preferred over "must not".
+*   **Decision**: Hold off on publishing the requirements document until the base protocol specification is ready. The working group will then decide on its handling (e.g., standalone informational RFC, appendix to protocol spec, or allowing expiration).
+*   **Action Item**: Authors to incorporate decisions regarding unknown keys, mandatory key, and the handling of in-domain delegation without glue into the next draft revision.
+*   **Action Item**: Chairs to facilitate early directorate reviews (DNS and Ops Directorates) after the next draft revision incorporating the recent decisions. The chairs will informally indicate if a broader review by multiple directorate individuals is desired.
+
+## Next Steps
+
+*   The DELGC authors will revise the draft based on the decisions made regarding unknown keys, mandatory keys, and handling of in-domain delegation without glue.
+*   The chairs will request early DNS Directorate and Ops Directorate reviews of the updated draft.
+*   The working group will discuss on the mailing list the possibility of an interim meeting (late January/early February) to maintain momentum, potentially after receiving initial feedback from the directorate reviews.
+*   Discussions with the Area Directors regarding rechartering to include additional extensions will be initiated, potentially sooner than initially thought (rather than within six months).
+*   The implementation status will be managed via an external page (e.g., GitHub), linked from the draft, to provide up-to-date information.
+*   Coordination with the RPP working group on registry-specific details (EPP/RPP) will continue.

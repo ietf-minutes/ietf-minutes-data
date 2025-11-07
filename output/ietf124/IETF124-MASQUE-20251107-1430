@@ -1,0 +1,62 @@
+# MASQUE
+
+## Summary
+
+The MASQUE session at IETF 124 included discussions on the status of existing drafts, particularly the Quick Proxy draft's proposed status, and extensive feedback on the working group's re-charter plans. Presentations were given on the DNS configuration draft, an initial proposal for Connect IP compression and checksum offload, and ECN/DSCP support for Connect IP. Key discussions revolved around the security implications of advancing the Quick Proxy draft to Proposed Standard, the process and scope of the re-charter, and the architectural implications of combining multiple Connect IP extensions.
+
+## Key Discussion Points
+
+*   **Quick Proxy Draft Status:**
+    *   The authors of the Quick Proxy draft requested feedback on advancing its status from Experimental to Proposed Standard (PS), citing significant implementation, interop, and deployment experience.
+    *   Several participants supported advancing to PS, stating that the "experiment" regarding efficiency and deployability had effectively concluded.
+    *   Concerns were raised regarding the security properties, specifically the traffic analysis obfuscation goals, with suggestions for an early Security Area review.
+    *   The discussion clarified that the goal was not full encryption but obfuscation, a "lower bar" that the draft is believed to meet.
+    *   A suggestion was made that if the draft were to remain Experimental, the "experiment" it aims to conduct should be clearly documented.
+
+*   **Working Group Re-chartering:**
+    *   The motivation for re-chartering is twofold: to bring the MASQUE proxy architecture document into scope and to sunset the working group, which has been active for five years.
+    *   The proposed re-charter updates list current adopted documents (to maintain scope in case of IESG bounce-back) and includes conditional items for new work: the architecture document, Connect IP compression, ECN/DSCP support, and potentially a Q-Log-related draft.
+    *   Discussion arose about the re-chartering process (adoption calls for new work versus re-chartering first) and the clarity of the re-charter PR.
+    *   Feedback suggested simplifying the charter text to focus on new work and to avoid excessive editorial changes to existing parts.
+    *   Concerns were raised about whether there is sufficient energy for multiple new work items; if only one or two niche documents are adopted, it might be better to shut down the group and move work to another relevant WG (e.g., HBIS or TSVWG).
+    *   The Chairs indicated that the new work on compression and ECN/DSCP is valuable for defining extension patterns and improving efficiency, and the desire for such functionality will persist.
+
+*   **DNS and Pref64 Configuration for Proxied IP:**
+    *   The draft's title was updated to "DNS and Pref 64 configuration for proxing IP in HTTP".
+    *   It defines a signaling mechanism for sharing DNS resolver and Pref64 information between peers, not a new DNS transport or NAT64.
+    *   A new Pref64 capsule was introduced, similar to RFC 8781 but leveraging reliable transport for flexibility (no artificial expiration, multiple prefixes, empty list for invalidation).
+    *   Authors are working on prototype implementations and plan interop testing before requesting a Working Group Last Call.
+
+*   **Connect IP Compression and Checksum Offload:**
+    *   A new draft proposes two mechanisms to address MTU pressures and CPU overhead in Connect IP.
+    *   **Reusable Templates (Compression):** Allows senders to define and signal static packet segments (e.g., IP header fields) that remain constant across a flow. These segments are not transmitted in datagrams but are reassembled by the receiver using a new context ID. This leverages the reliable control channel in Connect IP.
+    *   **TCP/UDP Checksum Offloading:** Proposes an optional capability to avoid software checksum computation on both sender and receiver, particularly beneficial in tunnel interfaces (e.g., Linux TAN/TAP) where NIC offload isn't possible for the inner packet. This relies on the pseudo-header checksum and offload metadata.
+    *   A single "IP optimization" capsule is proposed to define context IDs for both templating and checksum offload.
+    *   Feedback included: considering limits on individual segments within a template to mitigate amplification attacks, addressing potential vulnerabilities in template concurrency, and combining related optimizations (like IPv4 checksum) into a single document.
+    *   A show of hands indicated low readership of this new draft.
+
+*   **ECN and DSCP Support for Connect IP:**
+    *   This draft defines two extensions: a "0-byte" extension using context IDs to signal ECN code points, and another adding a byte for both ECN and DiffServ information.
+    *   Information can be provided via HTTP headers (for initial setup) or capsules (for dynamic updates).
+    *   **Extension Combination Strategy:** A significant discussion focused on how to combine multiple Connect IP extensions that define context IDs (e.g., ECN, compression). Three options were presented:
+        1.  Defining combined context IDs where one capsule announces a "following context ID" that implies a combination of features.
+        2.  Including multiple context IDs directly within the packet payload, adding byte overhead per packet.
+        3.  Defining distinct context IDs for every possible combination of extensions.
+    *   Opinions varied, with some favoring Option 1 for scalability and MTU preservation (using control channel capsules) and others leaning towards Option 2 for flexibility and easier state management, despite per-packet byte overhead.
+    *   Other feedback included: reducing the "combinatorial explosion" of options, considering whether acknowledgment capsules are generally useful for extensions, and clarifying how proxies might selectively apply ECN/DSCP.
+    *   A participant noted conflicts with 3GPP's out-of-band context ID negotiation, which limits their ability to combine with standardized extensions.
+    *   A show of hands indicated low readership of this draft.
+
+## Decisions and Action Items
+
+*   **Quick Proxy Draft Status:**
+    *   **Decision:** A sense of those present indicated strong support to advance the Quick Proxy draft as a **Proposed Standard** rather than Experimental.
+    *   **Action Item:** Chairs to confirm this decision on the mailing list. Authors to update the draft and prepare for IESG review, potentially clarifying wording around its security properties, particularly concerning traffic analysis obfuscation.
+
+## Next Steps
+
+*   **Working Group Re-chartering:** Chairs to continue the re-chartering discussion on the mailing list, refining the PR based on feedback received.
+*   **DNS Configuration Draft:** Authors to complete prototype implementations and conduct interop testing, moving towards a Working Group Last Call.
+*   **Connect IP Compression and Checksum Offload Draft:** Authors to incorporate feedback (e.g., on segment limits, potential vulnerabilities, and the general approach to combining extensions) and encourage broader review on the mailing list. An adoption call will be deferred until readership increases.
+*   **ECN and DSCP Support for Connect IP Draft:** Authors to revise the draft based on feedback (e.g., clarify options, add diagrams, address the extension combination strategy, and the 3GPP conflict) and encourage broader review on the mailing list. An adoption call will be deferred until readership increases.
+*   **General Extension Mechanism:** The working group needs to have further discussion, likely on the mailing list, to establish a consistent architectural approach for combining multiple Connect IP extensions.
