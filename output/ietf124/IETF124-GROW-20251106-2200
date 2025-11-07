@@ -1,0 +1,199 @@
+# GROW
+
+## Summary
+
+The GROW session focused primarily on updates and discussions for several drafts related to BGP Monitoring Protocol (BMP) extensions, including generic event notifications, common route monitoring, multi-peer headers, aggregated route monitoring, snapshots, and storage in MRT files. Non-BMP topics covered included routing security updates and a proposal for BGP next-hop translation at IXPs. Key themes included improving BMP's efficiency, extensibility, and usefulness for operational and archival purposes. Multiple authors requested working group adoption for their drafts, and significant technical feedback was provided on various proposals, particularly concerning clarity, consistency, and practical implementation.
+
+## Key Discussion Points
+
+*   **BMP Generic Event Notification (GEN) (Prasad)**
+    *   **Problem**: Existing BMP message types are overloaded; need a new type for diverse, non-route-specific events (e.g., policy triggers, administrative interventions). Route-specific events are for a separate "route event logging" draft.
+    *   **Updates**: Proposed a new `GEN` message type. Defined three initial event types: `Rib View Unmonitor` (original RIB purge use case, now global/AFI/SAFI flexible), `Route Import Complete`, and `Peer Configured Never Up`.
+    *   **TLVs**: Introduced optional sub-TLVs for reason string/code, RIB view filter (in-pre/in-post), Route Distinguisher (RD), and Peer Address.
+    *   **Discussion**:
+        *   Thomas noted the distinction from `Peer Down` reason 5, which is per-peer and lacks RIB flag capability; the GEN `Rib View Unmonitor` addresses global/AFI/SAFI unmonitoring.
+        *   Maxence suggested syncing on the Peer Address TLV format, particularly for IPv6 link-local addresses requiring interface IDs.
+        *   Maria requested additional TLVs for more detailed peer identification (e.g., local port, descriptive strings) due to complex multi-connection scenarios.
+        *   The Chair requested further detailed questions be taken offline due to time constraints.
+    *   **Next Steps**: Authors sought more use cases and feedback on Peer Address TLV bulkiness and leveraging other drafts. Request for working group adoption.
+
+*   **Common BGP Route Monitoring Message (Prasad)**
+    *   **Problem**: Improve `Route Mon` messages to combine information across multiple RIB views efficiently.
+    *   **Updates**: Proposed a `Common Update TLV` with an IJOP bit for each mode to indicate shared RIB views. Described how it integrates with the Aggregated Routmon draft and would leverage the Timestamp TLV draft.
+    *   **Next Steps**: Discuss potential namespace conflicts when combining the `Rib View TLV` (from the GEN draft) with this one. Request for working group adoption.
+
+*   **BMP Multi-Peer Header (Prasad)**
+    *   **Problem**: Need a mechanism to combine messages from multiple peers into a single BMP message for efficiency across various message types.
+    *   **Updates**: Introduced a new `Multiplayer Header` message type. Supports wildcarding of peers and custom extensions.
+    *   **Structure**: Common header, followed by a multi-peer header TLV, then individual peer headers and per-peer information.
+    *   **Discussion**:
+        *   Thomas highlighted a potential overlap with a separate document by Maxence concerning local RIB peer types and requested the working group to consider consolidating.
+        *   Maria expressed a preference for fewer, more comprehensive RFCs to simplify implementation and long-term maintenance.
+    *   **Next Steps**: Authors sought feedback on additional use cases and the possibility of replacing the existing v3 peer header with a wildcard peer header, potentially requiring a version bump and discussion with TLV draft authors.
+
+*   **Aggregated Route Monitoring (Prasad)**
+    *   **Problem**: Aggregate `Route Mon` messages across peers to achieve convergence benefits.
+    *   **Updates**: This draft leverages the newly proposed `Multi-Peer Header` draft. Examples demonstrated different scenarios from fully shared path attributes and prefixes to partially shared or entirely per-peer attributes.
+    *   **Discussion**:
+        *   Luke requested PCAPs (packet captures) of both unaggregated and aggregated route monitoring traffic to assist collector implementers in verifying functionality. He also confirmed that TLVs for BGP update path attributes would still be supported.
+        *   The Chair echoed Luke's request for more explicit use cases within the draft to enhance clarity and tangibility.
+    *   **Next Steps**: Request for working group adoption.
+
+*   **Informal Routing Security Update (ObSec Informal) (Tobias Sivich)**
+    *   **Problem**: Technical implementation details for routing security policy.
+    *   **Updates**: Received valuable input, particularly from Jeff.
+    *   **Next Steps**: Incorporate feedback. Authors plan a hackathon (e.g., in Vienna) to polish the document.
+
+*   **Terms Draft (Routing Security Terminology) (Tobias Sivich)**
+    *   **Goal**: Create a living dictionary for routing security and operations.
+    *   **Updates**: Minor changes due to time constraints. The document aims to be an evolving record of current practices.
+    *   **Next Steps**: Promise of tangible progress for the meeting after Chennai. Open questions remain on clustering terms (alphabetical vs. topical) and handling TLAs.
+
+*   **BGP OpsSec Update (Replacement for RFC 7575 / BCP 194) (Tobias Sivich)**
+    *   **Goal**: Simplify BCP 194 (RFC 7575) following feedback on difficulties with announcing prefixes.
+    *   **Updates**: Minor formulation changes and addressed two external reviews. A major comment from the Routing Directorate on the definition of "AS authorized" was adopted. The Inter-Area Directorate indicated the document was ready, and a title change was implemented.
+    *   **Discussion**:
+        *   Daniel (DK-Cakes) strongly supported moving forward to Working Group Last Call (WGLC), citing the importance of addressing BGP IXP prefix fragility.
+    *   **Next Steps**: Address new, minor feedback from Jeff. Request for Working Group Last Call (WGLC) after the next revision is pushed.
+
+*   **BGP Next Hop Translation at IXPs (Daniel Schloesser)**
+    *   **Problem**: A roadblock for IPv6-only deployments at IXPs is that not all BGP speakers support RFC 8950 (BGP unnumbered). Additionally, RFC 7947 states that route servers must not rewrite next hops.
+    *   **Solution**: Proposes using a BGP ND snooper in the peering LAN to translate next-hop addresses based on a "Snooping Look-up Address Table" (SLAT).
+    *   **Key Concept**: "Client Specific Local Prefix" (CSLP) – IPv4 prefixes assigned to legacy speakers for translation. These should be non-conflicting, ideally not globally routable, and could be from a reserved range (e.g., a `/8` from "IXP interconnection space").
+    *   **Operational Considerations**: Snooping enhances security/control. Emphasized step-by-step rollout for existing IXPs (new IXPs should avoid IPv4). The SLATs would be published for transparency.
+    *   **Discussion**:
+        *   Tobias supported adoption but suggested rephrasing "unnumbered" for IPv6 and preferred injecting routes over ARP/ND proxying.
+        *   Jeff cautioned against using a `/8` from the 240/8 range due to IANA reluctance and existing provider usage; he suggested 169.254/16 as an alternative.
+    *   **Next Steps**: Request for working group adoption.
+
+*   **BMP Snapshots (Luke Nord)**
+    *   **Problem**: Need to represent the full state of a router's RIB for collectors joining mid-session, persistent storage, or message buses. Current initial synchronization only occurs at session start.
+    *   **Updates**: The focus pivoted towards using snapshots from a collecting station onwards (e.g., to another station or storage) rather than router-to-collector directly, for performance.
+    *   **Solution**: A collection of messages, signaled by `Snapshot Start` and `Snapshot End` messages, where all messages within the snapshot carry a `Snapshot ID TLV`.
+    *   **Backwards Compatibility**: Non-snapshot-aware collectors would see repeated Peer-Up and Route Monitoring messages, which could cause state inconsistencies. Workarounds (e.g., encapsulating messages within the `Snapshot` message type) were discussed.
+    *   **Error TLV**: Proposed for `Snapshot End` to indicate incorrect or incomplete snapshots.
+    *   **EOR**: `End Of RIB` messages are not included in snapshots, as `Snapshot End` signals completion.
+    *   **Discussion**:
+        *   Jeff suggested including EORs, as implementations might leverage existing route-refresh infrastructure.
+        *   Paolo (Chair) highlighted the high relevance for debugging, troubleshooting, and historical data collection, requesting more explicit use cases in the document.
+        *   Jope emphasized the importance of archiving robustness for data that might persist for decades, suggesting checksums or robust length fields for corruption detection and repair at the individual message level.
+
+*   **MRT BMP (Luke Nord)**
+    *   **Problem**: Store BMP messages in MRT files, similar to BGP messages, as MRT is a de-facto standard for large route collection projects.
+    *   **Solution**: Proposes one or two new MRT message types to encapsulate entire BMP messages. This leverages BMP common and per-peer headers for necessary parsing information. The BMPv4 TLV draft's `Stateless Parsing TLV` is crucial to resolve issues previously encountered with stateless parsing in BGP MRT files.
+    *   **Proposal for `Stateless Parsing TLV`**: If additional context (beyond common/peer headers) is required for parsing, the `Stateless Parsing TLV` *must* be present, preventing MRT parsers from needing to seek backward in the file.
+    *   **Relation to Snapshots**: BMP Snapshots can be used within MRT to provide a full state dump, analogous to BGP table dump/B-view files.
+    *   **Discussion**:
+        *   Jeff affirmed the absolute value of this work, stressing the need for serialization for tooling and the usefulness of snapshots. He suggested separating the snapshot mechanism for file use from on-the-wire re-sync if it simplifies implementation.
+        *   Paolo (Chair) reiterated the high relevance for debugging and historical analysis, requesting these use cases be detailed in the document.
+        *   Jope again raised concerns about archiving robustness, urging the inclusion of mechanisms for corruption detection and repair at the message level.
+
+*   **BMPv4 TLV (Paolo Lucente)**
+    *   **Goal**: Provide TLV support across all BMP message types.
+    *   **Updates**: The `EBIT` draft was merged into this TLV draft, resulting in a larger document.
+    *   **Next Steps**: Process recent feedback. Consider adding a "stats container" to the statistics message to cleanly separate statistics TLVs from other TLVs.
+    *   **Open Questions**: Should elements from the `SNTS` (Sequence Number, Timestamp, Flags) draft (e.g., extended flags, standardized timestamps) be integrated into this main TLV draft or remain separate?
+    *   **Discussion**:
+        *   Thomas suggested consolidating the timestamp mechanisms proposed in section 6 of this draft and the `SNTS` draft for consistency, advocating for alignment with YANG Push.
+        *   Luke questioned why not simply increase the flag field size in the common header if a version bump is occurring, preferring flags at a static location. Paolo argued for TLVs due to their extensibility, avoiding repeated version bumps.
+
+*   **BMP over QUIC Connection (Tisong Liu)**
+    *   **Goal**: Define the use of BMP over QUIC for improved transport capabilities.
+    *   **Updates**: Reorganized multi-stream structure, added descriptions of multi-stream modes, and refined the solution to include a dedicated control stream. Operational considerations were also updated.
+    *   **Key Feature**: Introduced a **control stream** (bidirectional QUIC stream 0) for initiation, termination, Peer Up/Down messages, including a sequence number for correlation. Function channels (unidirectional) handle route monitoring, mirror, and statistic reports (per-peer or per-AFI/SAFI).
+    *   **Operational Considerations**: Emphasized configurable transport, automatic failover to TCP BMP if QUIC fails, and options for multi-stream selection.
+    *   **Next Steps**: Request for working group adoption.
+
+*   **Peer Capability Update Notification in BMP (Taisong Wang)**
+    *   **Problem**: BGP Dynamic Capability allows capability updates without session resets, but BMP currently lacks a mechanism to monitor these dynamic changes without confusing collectors with repeated Peer-Up messages.
+    *   **Proposed Solutions**:
+        1.  **New BMP Message**: `Peer Capability Update Notification`, including `Peer Capability Flags` (with a T flag for sent/received direction) and the `BGP Dynamic Capability PDU`.
+        2.  **New Sub-TLV**: `Peer Capability Update Notification Sub-TLV`, to be attached to existing messages like `Peer-Up` or `Generic Event Notification`.
+    *   **Discussion**:
+        *   Paolo (Chair) identified a potential overlap with Prasad's `GEN` message, suggesting authors discuss integration or clear demarcation between stopping advertising and changing capabilities.
+        *   John Scudder cautioned that the underlying BGP Dynamic Capability draft is still evolving, making extensive investment in this BMP extension potentially premature. He also reiterated the suggestion to coordinate with the `GEN` draft authors.
+        *   Prasad clarified that the core question for the working group was the preferred attachment point: either as a TLV within `GEN` or as a TLV attached to `Peer-Up`.
+
+*   **BMP SNTS (Sequence Number, Timestamp, Flags) TLV (Maxence Turchi)**
+    *   **Goal**: Define new TLVs for robust timestamping (with type), sequence numbers, and extended flags in BMP messages.
+    *   **Updates**:
+        *   **Flags TLV**: No longer proposes ignoring flags in the Per-Peer header (to support hashing use cases). Instead, `Extended Flags TLV` provides additional space, with flags flattened into a single registry.
+        *   **Timestamp TLV**: Acknowledged feedback that timestamps should not be restricted to route monitoring TLVs.
+    *   **Questions for Vendors**: Sought feedback on time value format (U32 seconds/microseconds vs. nanosecond precision with `timespec`) and whether to add more specific timestamp types (e.g., Aged Out Pre/Post-Policy).
+    *   **Discussion**:
+        *   Jeff suggested surveying router vendors on timestamp granularity and emphasized the need for clarity on the meaning of each timestamp type for operational continuity.
+        *   Prasad agreed on the need for a generic timestamp TLV and noted that higher granularity timestamps come with memory/scalability costs.
+        *   Thomas suggested considering RFC 9557 for commonality in timestamping across network telemetry, though it may not address granularity. Jope clarified that RFC 9557 uses ASCII encoding which is too large for this use case, recommending `timeval` or `timespec`.
+
+*   **EVPN-related BMP RIB Stats (Mukul)**
+    *   **Goal**: Define EVPN-specific BMP statistics for all five RIB views, distinct from traditional AFI/SAFI-based stats.
+    *   **Format**: Peer header, followed by BMP stats data (stats type/subtype, 64-bit gauge).
+    *   **Updates (ongoing)**: Planning to define both route-specific and route-agnostic/feature-specific stats (e.g., number of multi-homing segments, EVIs).
+    *   **Discussion**:
+        *   Thomas found the work very useful, particularly its alignment with the IETF YANG module for exported data.
+    *   **Next Steps**: Request for working group adoption.
+
+*   **Open Mic: Filtered Adjacent RIB-in/out Draft (Jasper Maas)**
+    *   **Problem**: The existing draft uses a boolean for "filtered" and a free-form string, which Jasper argued is not sufficiently structured.
+    *   **Suggestion**: Add flags to distinguish "filter" from "filter map" (transformation). Also, flags to indicate "exclusion filter" vs. "inclusion filter".
+    *   **Discussion**:
+        *   Jeff explained the difficulty of boiling down complex policy into simple protocol elements, as policies vary widely. He suggested a policy name might be the most practical approach.
+        *   Maxence acknowledged that YANG modules try to capture filters, but there are limits to what can be exposed in protocol.
+
+## Decisions and Action Items
+
+*   **BMP Generic Event Notification (GEN) Draft**:
+    *   **Action**: Authors to continue seeking feedback on additional use cases, the bulkiness of the peer address TLV, and how to leverage multi-peer header/timestamp TLV drafts.
+    *   **Decision**: Request for working group adoption.
+*   **Common BGP Route Monitoring Message Draft**:
+    *   **Action**: Authors to discuss potential namespace conflicts for TLVs.
+    *   **Decision**: Request for working group adoption.
+*   **BMP Multi-Peer Header Draft**:
+    *   **Action**: Authors to seek further use cases.
+    *   **Action**: Authors to discuss with TLV draft authors whether to replace existing v3 peer header with a wildcard header (may require version bump).
+    *   **Action**: Working group to provide feedback on the multi-peer header concept.
+*   **Aggregated Route Monitoring Draft**:
+    *   **Action**: Authors to provide PCAPs of unaggregated vs. aggregated route monitoring to aid collector implementers.
+    *   **Action**: Authors to add more explicit use cases to the draft text.
+    *   **Decision**: Request for working group adoption.
+*   **Informal Routing Security Update Draft**:
+    *   **Action**: Authors to implement feedback received, especially from Jeff.
+    *   **Action**: Authors to plan a hackathon to polish the document.
+*   **BGP OpsSec Update Draft (Replacement for RFC 7575 / BCP 194)**:
+    *   **Action**: Authors to address Jeff's new, minor feedback.
+    *   **Decision**: Working Group Last Call requested by authors and supported by participants after the next revision is pushed.
+*   **BGP Next Hop Translation at IXPs Draft**:
+    *   **Action**: Authors to consider alternative IPv4 address ranges (e.g., 169.254/16) and address terminology concerns.
+    *   **Decision**: Request for working group adoption.
+*   **BMP Snapshots Draft**:
+    *   **Action**: Authors to add specific use cases to the document text (for debugging, troubleshooting, historical data).
+    *   **Action**: Authors to consider including EORs in snapshots.
+    *   **Action**: Working group to discuss adoption on the mailing list.
+*   **MRT BMP Draft**:
+    *   **Action**: Authors to add specific use cases to the document text (for debugging, troubleshooting, historical data).
+    *   **Action**: Authors to consider mechanisms for archiving robustness, including checksums or robust length fields for corruption detection/repair.
+*   **BMPv4 TLV Draft**:
+    *   **Action**: Authors to process recent feedback.
+    *   **Action**: Authors to refine the "stats container" proposal for statistics messages.
+    *   **Action**: Working group to provide opinions on integrating `SNTS` (flags, timestamps) draft components into this draft.
+    *   **Action**: Working group to decide on a single consistent timestamp mechanism across BMP and other telemetry (considering RFC 9557, timeval, timespec).
+*   **BMP over QUIC Connection Draft**:
+    *   **Decision**: Request for working group adoption.
+*   **Peer Capability Update Notification in BMP Draft**:
+    *   **Action**: Authors to coordinate with `GEN` draft authors to discuss overlap and potential consolidation/clear demarcation.
+    *   **Action**: Working group to discuss which proposed solution (new message vs. new sub-TLV) is preferred.
+    *   **Caution**: Underlying BGP Dynamic Capability draft stability is a concern before significant WG investment.
+*   **BMP SNTS TLV Draft**:
+    *   **Action**: Authors to adjust the scope of timestamps based on D-NJ's feedback (not limited to route monitoring).
+    *   **Action**: Authors to survey router vendors regarding timestamp granularity support.
+    *   **Action**: Authors to look into RFC 9557 regarding timestamp commonality and encoding.
+*   **Filtered Adjacent RIB-in/out Draft (Open Mic)**:
+    *   **Action**: Authors to consider suggestions for more structured filtering indications (e.g., filter vs. filter map, inclusion/exclusion flags), although acknowledging the difficulty of representing complex policies.
+
+## Next Steps
+
+*   Working group participants are encouraged to provide feedback on the mailing list for drafts requesting adoption or specific input.
+*   Authors of overlapping drafts (e.g., GEN and Peer Capability Update, Multi-Peer Header and local RIB peer types) are encouraged to collaborate on potential consolidation or clear definition of scope.
+*   Chairs will consider the request for Working Group Last Call for the BGP OpsSec Update draft once the next revision is published.
+*   Discussion will continue regarding the integration and standardization of timestamp and flag mechanisms across BMP drafts to ensure consistency.
+*   Efforts will be made to include more tangible use cases and, where appropriate, PCAPs to aid implementers for drafts like Aggregated Route Monitoring and MRT BMP.

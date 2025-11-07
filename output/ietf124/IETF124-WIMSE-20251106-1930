@@ -1,0 +1,99 @@
+# WIMSE
+
+## Summary
+
+The WIMSE session focused heavily on the major restructuring of the "Workload to Workload" document, which has been split into four distinct drafts. Presentations provided updates on each of these "gazelles," emphasizing their progress towards Working Group Last Call (WGLC). Key technical discussions revolved around the specifics of workload credentials, proof tokens, HTTP message signatures, and mutual TLS profiles, including dependencies and extensibility. The session also covered updates on the WIMSE Architecture and Workload Identifier drafts, addressing terminology, attestation, and identifier constraints. New work items were introduced for discussion, including the applicability of WIMSE for AI agents and a proposal for OAUTH 2.0 delegated authorization, though the working group's appetite and charter fit for these were questioned. A significant gap in key distribution and discovery was also highlighted. The chairs emphasized the need for active reviews to move existing drafts to RFC status before considering new official work.
+
+## Key Discussion Points
+
+*   **Workload to Workload Document Split**:
+    *   The single large "Workload to Workload" document was formally split into four distinct drafts to facilitate faster progress:
+        1.  "Workload Identity Credentials" (defining the credential format, including WIMSE Identity Tokens and X.509 certificates).
+        2.  "Workload Identity Proof Token (WIPIT) Profile" (presentation method).
+        3.  "HTTP Message Signatures Profile" (presentation method).
+        4.  "Mutual TLS Profile" (presentation method).
+    *   A clear dependency was noted: all three presentation methods depend on the credential format document, which is expected to progress first. The chair clarified that documents can go to the RFC editor as a cluster but do not have to, allowing independent progression.
+    *   A sense of those present indicated that having down references from the presentation documents to the credential document is acceptable for informative guidance.
+
+*   **Workload Credentials Draft (Art)**:
+    *   Updates include a new section on key management, clarified error handling (discouraging HTTP 401 for `WWW-Authenticate`), definition of the WIMCRI scheme (though this may shift), and an implementation status section listing early adopters (e.g., SPIFFE community, two vendors).
+    *   Media types were updated (`wimse+jwt` now `wit+jwt`).
+    *   Next steps involve resolving security considerations placement, untangling existing GitHub issues for the new document structure, and prioritizing this draft.
+    *   The readiness for WGLC was discussed, with authors believing it's possible soon.
+    *   The Workload Identity Certificate is considered mature due to its compatibility with SPIFFE X.509 SVID, while the Workload Identity Token is new and awaiting finalization.
+    *   An implementation listing is intended as guidance for maturity, not necessarily production deployment.
+
+*   **Workload Proof Token (WIPIT) Profile Draft (Art)**:
+    *   This profile uses a COSE token, signed with the workload's private key, containing claims like `A-T` (Access Token Hash), `W-T-Hash` (WIT hash), and `OTH` (Other Hash). It serves to prove key possession.
+    *   Since the last IETF, the `WIPH` claim was reworked into a structure for protecting headers. Media types were updated.
+    *   A key discussion point was on profile guidance and extensibility: should additional claims for protocol independence (e.g., Kafka topic, gRPC RPC) be allowed in the root payload or in a dedicated attribute? A sense of those present leaned towards a dedicated attribute to avoid conflicts and differentiate context-specific claims. The question of IANA registration for profiles was raised if not in a closed environment.
+
+*   **HTTP Message Signatures Profile Draft (Yaron)**:
+    *   This new document applies HTTP signatures with the Workload Identity Token.
+    *   Open issues include clarifying whether identity applies to endpoint or service level, and defining security goals specific to this method.
+    *   A Proof-of-Concept (POC) implementation was announced.
+    *   **Action Item**: Authors are encouraged to reach out to the implementers of the HTTP Sig POC for feedback and to share insights with the working group.
+
+*   **Mutual TLS Profile Draft (Yaroslav)**:
+    *   This new document focuses on workload authentication using mutual TLS. It describes the use of Workload Identity Certificates on both client and server sides, SNI behavior, and validation of both hostname and WIMSE identifier in certificates.
+    *   Two main questions for the WG:
+        1.  Should the Workload Identity Certificate definition be merged into this draft from the credentials draft? Initial feedback, including from the co-author, suggested keeping the credential format in the credentials draft and TLS-specific aspects in the MTLS draft.
+        2.  Should there be an option to include the WIMSE identifier (URI) in SNI, rather than just hostname? This would address the "schizophrenia" of authenticating based on both hostname and WIMSE identifier. This idea was presented as potentially controversial but addressing a real problem.
+    *   A question was raised about the impact of recent changes to extended key usage from DigiCert/Chrome. **Action Item**: This specific question on EKU impact should be brought to the mailing list or issue tracker.
+
+*   **WIMSE Architecture Draft (Joe)**:
+    *   The document is recovering from the S2S refactoring and will be impacted by the Workload Identifier refactor.
+    *   Areas needing more fleshing out: authorization (acknowledging it's out of current charter for solution but fits for architectural context), binding of credentials, key management, and attestation.
+    *   Discussion on attestation: clarification was sought regarding the term "attestation" used in the draft, especially its relationship to RATS definitions vs. broader industry usage. It was clarified that the draft's usage likely doesn't align exactly with RATS but aims to set the stage for how credentials get to systems. The need for precise language was emphasized.
+    *   Discussion on "workload" terminology: The need to distinguish between a general "workload" and specific "workload instances" was highlighted, as this affects identification, authorization decisions, and logging. This is a terminology issue that needs resolution.
+
+*   **Workload Identifier Draft (Yaroslav)**:
+    *   Recently adopted, the draft defines a Workload Identifier as a URI, split into scheme, authority trust domain, and scheme-specific path. WIMSE Identifier is intended to be a superset of SPIFFE IDs.
+    *   The authors sought feedback on adopting specific URI constraints (e.g., no empty trust domain, no user info/port) that are generic and make sense for all schemes, while allowing scheme-specific flexibility for others (e.g., IPv6 addresses, uppercase characters, percent-encoding in paths).
+    *   A key point was that SPIFFE can impose stricter constraints on its `spiffe://` scheme, but the WIMSE Identifier aims to be a broader, more flexible construct.
+    *   Concerns were raised about the complexity introduced by too much flexibility for developers and the lack of a clear use case for some proposed allowances (e.g., IPv6 in trust domains).
+    *   A question arose regarding whether a WIMSE ID is recognizable as such from the ID itself, or merely a URI used in a WIMSE context. It was clarified that it's a URI with specific constraints and rules applied for WIMSE contexts.
+    *   Feedback was requested on defining a specific `wimse://` scheme and its usage guidelines. This could serve as a generic scheme for non-SPIFFE users who want a WIT without HTTP semantics.
+
+*   **Workload Identity Practices Draft (Art)**:
+    *   Currently in Working Group Last Call (WGLC) since October.
+    *   Updates include a new "service mesh pattern" and considerations for "multi-tenancy" (distinguishing between issuer claim and tenant-specific claims for authorization decisions).
+    *   Clarifications were added on invalidation (querying status), local API, security, and referencing JWKS.
+    *   **Action Item**: The chairs noted only one review received during WGLC. At least three more volunteers were requested to review the draft and provide feedback to the list to achieve consensus for IESG submission. Five individuals volunteered: Joe, Brian, Kathleen, Monty, and Jeff.
+
+*   **Applicability of WIMSE Architecture for AI Agents Draft (Yanni)**:
+    *   A new draft proposing the reuse of WIMSE architecture for AI agents, treating AI agents as entities requiring identities.
+    *   It highlights risks (dynamic behavior, unpredictable access, accountability) and proposes a "dual identity credential" (agent + user) to bind an agent's identity to its owner for access control and accountability.
+    *   A user confirmation workflow (human-in-the-loop) is proposed for issuing such credentials.
+    *   Open questions include cryptographic assurances for counter-signing, credential format extensions, leveraging hardware roots of trust, and establishing initial trust.
+    *   Discussion questioned whether this is within WIMSE's charter and whether it prematurely seeks a solution before broader IETF alignment on AI agent identity. The distinction between authorization and authentication was also raised, with the authors clarifying the focus on "what the entity is" rather than "what it is allowed to do."
+
+*   **OAUTH 2.0 Delegated Authorization Draft (Xiaodong)**:
+    *   A new draft, also presented in the OAUTH WG, proposing a two-layer token structure: a Delegation Token (DT) from the Authorization Server (AS) and a Delegated Access Token (DAT) issued locally by the client.
+    *   The goal is to enable local down-scoping of tokens without additional AS calls, especially for clients needing different permissions for multiple workloads accessing the same resource server.
+    *   Distinctions from RFC 8693 (Token Exchange) were highlighted (e.g., no external STS calls for DAT generation, direct linking of tokens, delegation at any node).
+    *   Concerns were raised regarding security implications of local token generation, key management, and whether existing OAUTH mechanisms (e.g., refresh tokens for down-scoping) already address some of these needs without introducing new security complexities. The design regarding public/private key usage for signing DATs was also questioned.
+
+*   **Key Distribution and Discovery (Arndt)**:
+    *   Presented as a significant gap in WIMSE documents.
+    *   Existing mechanisms (OIDC Discovery with JWKS, SPIFFE Bundle) have limitations. OIDC discovery is a pull model, SPIFFE is push but not discoverable (trust domain not resolvable via DNS).
+    *   The common practice of embedding issuer claims often leads to two parallel ways to retrieve keys, impacting interoperability.
+    *   A strong sense of those present indicated this is an important problem for WIMSE to tackle, suggesting coordination with other WGs like WEBATT.
+
+## Decisions and Action Items
+
+*   **Decision**: The "Workload to Workload" document has been officially split into four separate drafts ("Workload Identity Credentials," "Workload Identity Proof Token Profile," "HTTP Message Signatures Profile," and "Mutual TLS Profile") to facilitate progression.
+*   **Action Item**: Authors of the HTTP Message Signatures Profile are encouraged to reach out to implementers of the announced POC to gather feedback and share insights with the working group.
+*   **Action Item**: The question regarding the impact of recent Extended Key Usage (EKU) changes on the Mutual TLS Profile should be brought to the WIMSE mailing list or issue tracker for detailed discussion.
+*   **Action Item**: Volunteers (Joe, Brian, Kathleen, Monty, Jeff) committed to reviewing the "Workload Identity Practices" draft and submitting feedback to the list to help achieve WGLC consensus.
+*   **Action Item**: The chairs will issue a call on the list for reviewers for the newly split "Workload to Workload" documents to ensure the restructuring effectively addresses the problem space. Hank and Fleming volunteered.
+
+## Next Steps
+
+*   **Prioritize Existing Work**: The chairs reiterated that the working group has seven documents in flight and emphasized the need to finalize these before adopting new official work items. Focus should be on moving existing drafts towards WGLC and RFC status.
+*   **Active Reviewing**: Continued and increased reviewing of all drafts is crucial, especially for those nearing or in WGLC, to establish rough consensus and ensure high-quality output.
+*   **Terminology Refinement**: Continue discussions on clarifying key terminology, such as "attestation" and the distinction between "workload" and "workload instances," in the Architecture and Identifier drafts.
+*   **Identifier Constraints**: Further discussion is needed on the balance between imposing generic URI constraints for WIMSE Identifiers and allowing flexibility for scheme-specific rules, as well as the necessity and definition of a `wimse://` scheme.
+*   **Key Distribution and Discovery**: The identified gap in key distribution and discovery is a critical area for potential future work. Authors and interested parties are encouraged to discuss this further on the list and consider coordination with other relevant IETF working groups.
+*   **New Proposals (AI Agents, Delegated Authorization)**: While these new drafts have been presented, their fit within the current WIMSE charter and the broader IETF landscape for AI-related work needs further discussion. Individual drafts and discussions on the list are encouraged in the interim.
+*   **Interim Meetings**: A suggestion was made to schedule interim meetings to accelerate progress, particularly given the recent document splits.

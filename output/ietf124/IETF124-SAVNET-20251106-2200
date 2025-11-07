@@ -1,0 +1,90 @@
+# SAVNET Meeting Minutes
+
+## Summary
+
+The SAVNET working group session featured updates on several key drafts including the Intra-domain Problem Statement, Architecture, and Capabilities, all aiming towards re-issuing Working Group Last Calls. Discussions covered the evaluation of various Reverse Path Forwarding (RPF) methods, revealing the significant impact of traffic engineering on Source Address Validation (SAV) results. New solutions were presented for Intra-domain SAV (Hidden Prefix Registration) and Provider Interface SAV (Customer-to-Customer collaboration). Additionally, proposals for using PCEP for SAV, defining a Token of Authorization (ToA) RPKI object, advertising SAV rules via BGP-LS, exporting SAV information with IPFix, and a YANG model for SAVNET were discussed. A benchmarking methodology for SAV was also presented, prompting discussion on the maturity of SAV mechanisms.
+
+## Key Discussion Points
+
+*   **Intra-domain SAVNET Problem Statement (PS)**
+    *   The working group confirmed consensus against splitting the document into separate problem statement and requirements documents.
+    *   It was clarified that informational requirements in this document cannot initiate standards-track protocol changes.
+    *   The working group will focus on SAV deployment at external interfaces; internal interface deployment is currently out of scope.
+    *   The term "sub-network" was replaced with "non-BGP customer network" and its definition clarified.
+    *   The definition of intra-domain hidden prefixes was refined to include hosts/non-BGP customers sourcing traffic with non-allocated or non-advertised addresses.
+    *   The document was deemed ready for re-issuing a Working Group Last Call (WGLC).
+*   **Intra-domain SAVNET Architecture**
+    *   A threat model was added, defining attackers as directly connected hosts, non-BGP customer networks, or external ASes. The model focuses on preventing spoofing at external interfaces.
+    *   The document explicitly assumes intra-domain routers are trusted and that spoofing from compromised intra-domain routers is out of scope.
+    *   Deployment scope is defined as SAV at external interfaces for hosts/non-BGP customer networks and external ASes (to prevent internal-use-only addresses).
+*   **Intra-domain SAVNET Capabilities**
+    *   The SAV model naming convention was updated from numbers to abbreviations (e.g., IABF for interface-based allow list).
+    *   The document was requested for a Working Group Last Call, with general support for its stability.
+*   **Evaluation of Routing Reverse Path Forwarding (RPF) SAV Methods**
+    *   Comprehensive simulations were conducted for strict uRPF, feasible path uRPF, enhanced feasible path uRPF (two variants), and BARSAV (with/without provider interface option).
+    *   Methodology involved using internet topology data, evaluating false/true positive rates under partial adoption, and measuring the impact of traffic engineering (TE) methods (e.g., export policies, path prepending). Two attacker models (spoofing host, spoofing AS) were considered.
+    *   **Key Findings**:
+        *   In a simplified "export to all" model, most policies (except strict uRPF and feasible path uRPF) avoided false positives. BARSAV, EFPA, EFPB, and feasible path uRPF showed good detection rates.
+        *   Under more realistic traffic engineering policies, strict uRPF showed terrible false positives, and feasible path uRPF showed significant (unacceptable) false positives.
+        *   BARSAV with provider interfaces (assuming the origin AS has ASPA) was the only policy to achieve strictly zero false positives. Without ASPA, BARSAV's performance was comparable to EFPB.
+        *   Traffic engineering was found to significantly impact SAV results, leading to more false positives.
+        *   BARSAV performed well in Direct Server Return scenarios (no false positives).
+*   **Intra-domain SAV Solution**
+    *   A solution was proposed introducing a Hidden Prefix Registration (HPR) mechanism to address intra-domain hidden prefix scenarios.
+    *   This mechanism relies on a Source Entity Identifier (SEI) for non-BGP customer networks or hosts and an operator-maintained HPR database where entities register legitimately used hidden prefixes with authorization proof (e.g., ToA/RoA).
+    *   **Discussion**: Concern was raised about the complexity of a live HPR database, suggesting static configuration might be simpler given infrequent changes. The author emphasized the desire for an automated solution.
+*   **Provider Interface Source Address Validation**
+    *   A new solution was proposed for provider interface SAV, focusing on narrowing down the allow list for customer-to-customer (C2C) sources.
+    *   **Challenges**: Identifying alternative transit links (detour paths), discovering hidden ASes within a CASCORUM, and handling Multi-Origin AS (MOAS) scenarios.
+    *   **Solution Options**: "Standalone Customer Core" (subtracting sub-transit CASCORUM) and "Standalone Plus Customer Core" (involving collaboration between customer ASes for discovery).
+    *   **Feedback**: Participants recommended considering BARSAV-PI (Provider Interface) algorithm, which is similar to the standalone approach, and emphasized the need for simulations to assess the impact of traffic engineering and ensure avoidance of improper blocks due to non-shortest paths.
+*   **PCEP for Source Address Validation**
+    *   A proposal to leverage the Path Computation Element Protocol (PCEP) for centralized SAV policy control was presented.
+    *   PCE would collect network information, compute validation paths, generate SAV policies, and distribute them to underlying network elements (PCCs/ASBRs).
+    *   This approach is primarily for inter-domain SAV to coordinate policies across domains but can also apply to intra-domain.
+    *   The solution aims to address dynamic updates and incremental deployment requirements.
+*   **Token of Authorization (ToA) RPKI Object**
+    *   A new RPKI object, ToA, was proposed to verify an AS's authorization to originate traffic for a prefix, even if it doesn't originate BGP routes for that prefix (e.g., Direct Server Return, unidirectional traffic). This addresses limitations of current RPKI Route Origin Authorizations (RoAs) which validate route origination, not traffic origination.
+    *   **Operational Recommendations**: Avoid registering a ToA if an existing RoA covers the same authorization, unless specific operational reasons exist.
+    *   **Discussion**: RPKI/SIDROPS experts advised against extending RoA semantics for this purpose, supporting the creation of a new ToA object.
+    *   **Feedback**: Stronger motivation was requested regarding specific attack scenarios where RoA for traffic origination poses a threat, and the implications for existing SAV mechanisms like BARSAV were noted.
+*   **Advertisement of Multi-Source SAV Rules Using BGP Link State (BGP-LS)**
+    *   A draft proposing the use of BGP-LS to advertise multi-source SAV rules to a controller was presented.
+    *   It defines BGP-LS attributes for SAV modes and actions (aligned with RFCs 8955/8956) and outlines procedures for boundary/access routers to report rules.
+    *   **Feedback**: A comment suggested BGP-LS might not be the appropriate mechanism, and this functionality belongs to the management plane, implying it should be handled by IDR.
+*   **SAV Information Export in IPFix**
+    *   A solution was presented to export real-time SAV data plane events using IPFix. This addresses the current "black box" nature of SAV, enabling operators to monitor effectiveness, troubleshoot misconfigurations, and perform root cause analysis.
+    *   New IPFix Information Elements (IEs) were proposed: `savRuleType`, `targetType`, `savMatchedContentList` (to carry the actual rule content), and `savPolicyAction`.
+    *   **Discussion**: A question was raised about exporting the full rule content instead of just a rule ID. The author justified this due to the lack of a standardized rule ID assignment mechanism and the need for immediate context for operators.
+*   **YANG Model for SAVNET**
+    *   A YANG model for SAVNET configuration, state, and events was presented, focusing on general SAV capabilities and static rule application.
+    *   **Feedback**: The co-chair suggested that adoption of a YANG model might be premature until core problem statements and architecture documents are more stable and defined.
+*   **Benchmarking Methodology for Intra/Inter-domain SAV**
+    *   A methodology for benchmarking SAV mechanisms was presented, defining performance indicators (false/negative rates, protocol convergence/throughput, data plane rates, resource utilization).
+    *   **Updates**: Test setups were refined to include diverse spoofed traffic types and varying spoofed-to-legitimate traffic ratios. Control plane performance tests were made optional. New scenarios (FRR, policy-based routing) were added.
+    *   **Feedback**: A chair noted that benchmarking might be premature given that SAV mechanisms are not fully standardized. The question was raised whether Access Control Lists (ACLs), which SAV heavily relies on, have a benchmarking methodology, to which the presenter clarified the general methodology includes existing uRPF-based mechanisms.
+
+## Decisions and Action Items
+
+*   **Intra-domain SAVNET Problem Statement**:
+    *   **Decision**: Working group consensus not to split the document into problem statement and requirements.
+    *   **Decision**: Working group consensus to focus on SAV deployment at external interfaces.
+    *   **Decision**: Replace "sub-network" with "non-BGP customer network" in the document.
+    *   **Action Item**: Authors to continue refining the document based on consensus to prepare for re-issuing WGLC.
+*   **Intra-domain SAVNET Capabilities**:
+    *   **Action Item**: The document is considered stable enough to be brought forward for a Working Group Last Call.
+*   **Intra-domain SAV Solution**:
+    *   **Action Item**: Authors to consider feedback regarding the complexity of the HPR database and explore alternatives or justifications for automation versus static configuration.
+*   **Provider Interface Source Address Validation**:
+    *   **Action Item**: Authors to investigate BARSAV-PI, consider the impact of traffic engineering through simulations, and address the challenge of non-shortest paths for accurate blocking.
+*   **Token of Authorization (ToA) RPKI Object**:
+    *   **Action Item**: Authors to further clarify and strengthen the motivation for ToA with concrete attack scenarios where RoA is insufficient, and communicate these to BARSAV authors.
+*   **YANG Model for SAVNET**:
+    *   **Action Item**: Authors to consider the feedback regarding the prematurity of adopting a YANG model until core SAV problem statements and architecture are more settled.
+
+## Next Steps
+
+*   The chairs indicated they would discuss next steps for the working group after the presentations concluded. The meeting ended shortly after this query.
+*   Several documents are targeted for Working Group Last Call in the near future, including the Intra-domain SAVNET Problem Statement and Intra-domain SAVNET Capabilities.
+*   Authors of new solutions are encouraged to continue collaboration and seek further feedback on the mailing list.
+*   Further simulation and analysis are encouraged for evaluating SAV mechanisms under realistic traffic engineering conditions.

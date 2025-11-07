@@ -1,0 +1,102 @@
+# CFRG
+
+## Summary
+
+The CFRG session covered a wide range of cryptographic topics, including updates on Sigma Protocols and Fiat Shamir transform, post-quantum asymmetric password-authenticated key exchange (APAKE), zero-knowledge schemes (Longfellow), ML-KEM security considerations, hybrid Key Encapsulation Mechanisms (KEMs), hybrid signatures, HMAC-based key combiners, and novel polynomial evaluation techniques. Key discussions revolved around standardizing fundamental building blocks, balancing security properties with performance (especially round trips), the role of CFRG in adopting work prior to explicit IETF protocol demand, and the interoperability of new proposals with existing or near-publication IETF specifications.
+
+## Key Discussion Points
+
+*   **Sigma Protocols and Fiat Shamir Transform (Michele, Vishruti)**
+    *   Presented an update on the interactive Sigma Protocol and Fiat Shamir transform drafts. These are seen as fundamental building blocks for more complex ZKPs, anonymous credentials, and signatures.
+    *   A security review by OpenZappellant Security found no fundamental issues, mostly editorial.
+    *   Other specifications like ARC and ACT are adopting or moving to adopt these specs, providing valuable feedback for usability.
+    *   The "NI-Sigma Protocol class" allows instantiation with cipher suites, with three defined in the spec. Adopters can define their own cipher suites.
+    *   **Challenge**: There are inconsistencies in elliptic curve group definitions and point serialization across different IETF contexts (BBS, Ristretto255, hash-to-curve), leading to potential soundness breaks.
+    *   **Proposed Solution**: A Python package for a "clean group primitive" for adopters to reuse as a reference implementation, but feedback from the community is sought to avoid yet another group definition.
+    *   **Discussion**: Girdre asked about precise definitions for prime order groups and hash-to-curve solutions, especially concerning compatibility with Ristretto. Michele clarified that the spec stitches elements from existing works with workarounds. Lucas suggested relying on the established hash-to-curve work for group alignment and serialization. Chris Pat advised to proceed with what works for the draft, ensuring wire compatibility with existing hash-to-curve deployments, and being explicit where stricter requirements are needed.
+    *   **Next Steps**: Formal verification process has begun; community contributions are welcome. Continued outreach for use cases; reference Rust implementation provides optimization examples.
+
+*   **Post-Quantum Asymmetric Password Authenticated Key Exchange (APAKE) (Chris Wood, presented by Lucas)**
+    *   Presented motivation for hybrid APAKE (C-PACE OPAQUE+) to protect against quantum computer attacks on encrypted data and password extraction, combining classical and post-quantum solutions.
+    *   **Question for community**: Should the focus be on hybrid APAKE or a pure post-quantum APAKE (OPAQUE+), or both? Hybrid is "at least as strong" but pure PQ is more efficient in rounds.
+    *   **Security Concern**: Timing side channels were identified in the OPAQUE (ML-KEM public key generation) component, allowing offline password guessing due to rejection sampling leaking seed information. ML-KEM FIPS specification does not require constant-time key generation.
+    *   **Proposed Fixes**:
+        1.  Require ML-KEM key generation to be constant time (easy to specify, but slower and requires custom ML-KEM implementations).
+        2.  Introduce protocol changes ("Tempo") to not encrypt the ML-KEM seed, sending it in plaintext as it's random (small changes, better performance, compatible with FIPS ML-KEM implementations via a wrapper). Tempo works by extracting the seed from the compact public key and not encrypting it.
+    *   **Discussion**: Chris Pat and Dennis Jackson expressed preference for a pure post-quantum APAKE due to the complexity and potential attack surface of hybrid approaches, especially with low-entropy secrets. Dennis Jackson also highlighted that the security property is not about the password leaking directly in the hybrid context, but the session key from the first PAKE. Multiple participants (Dennis Jackson, Giorgio, Girdre, Stephan) emphasized that while byte/millisecond performance might be acceptable for PAKE, the *number of rounds* is a critical issue for protocol bindings (e.g., TLS) and overall protocol robustness, favoring shorter exchanges. Giorgio specifically asked why a sequential combiner was chosen over a parallel one, to which Lucas replied that no standardized PQ primitives satisfy the strong properties required for a parallel combiner. Chris Pat, Dennis Jackson, and others supported the "Tempo" fix.
+    *   **Next Steps**: Submit a revised version before IETF 125, incorporating Tempo changes and addressing open issues.
+
+*   **Longfellow: Zero-Knowledge Schemes for Small Identity Theorems (Avi Wigderson, presented by Tim G)**
+    *   Motivation: Zero-knowledge schemes for small identity theorems, particularly for age verification and selective disclosure in JOTs, with a need for post-quantum ZK. A key goal is compatibility with existing ECDSA-signed credentials.
+    *   **Updates**: Growing external interest; ISRG is working on a Rust implementation (Google has a C++ one), which has flushed out 40 issues. Plans for a SAGE reference implementation to generate test vectors automatically. Several EU Digital Identity Wallet implementations are integrating Longfellow.
+    *   **Security Reviews**: Trailer bits and Le Herro conducted reviews; no issues found with the ZK scheme itself.
+    *   **Performance**: Significant improvements in Reed-Solomon encoding and sum-check prover. Benchmarks show prover times of ~38ms and verifier ~10-25ms for ECDSA signature possession proofs.
+    *   **Discussion**: Tim G. clarified that the *proof system* is post-quantum, but proving statements about an ECDSA credential means an adversary could still forge the credential with a CRQC. The goal is to eventually support PQ signatures like MLDSA. He also noted that the system can achieve "statistical witness indistinguishability." Chris C. praised the performance numbers, stating they are "so good now that I really don't care," especially for use cases like age verification where alternatives are much slower.
+    *   **CFRG Adoption Debate**: Chris C. expressed that CFRG should focus on vetting primitives useful for *existing* IETF protocols, suggesting Longfellow be tabled until an IETF protocol explicitly demands it. He acknowledged that the SD-JOT community's interest could be a compelling reason for adoption. Stephan suggested potential work on how to formulate input to create less complex circuits. Tim G. noted that ZK systems like Ligero could be swappable and that an abstract protocol framework for ZK proofs could be valuable.
+
+*   **ML-KEM Security Considerations (Scott Fluhrer)**
+    *   Presented a draft aiming to explain ML-KEM security goals and usage for protocol designers and implementers, avoiding repetition in every RFC that mentions ML-KEM.
+    *   The document covers general KEM security and ML-KEM specific considerations.
+    *   **Call for adoption**: Scott requested research group adoption for this draft.
+    *   **Discussion**: Daniel Jackson suggested adding the constant-time key generation consideration discussed earlier for APAKE. Scott agreed to consider it, noting the non-constant-time nature of ML-KEM key generation can be expensive. Lucas identified a typo in the decapsulation section (encryption vs. encapsulation) and suggested making text less strict where alternatives are possible.
+
+*   **Hybrid KEMs (Georgios Katsikas, Richard Barnes)**
+    *   Provided an update on the hybrid KEM drafts, which aim to identify relevant KEM security properties, overview techniques, and provide three concrete hybrid KEM instances (P-256/ML-KEM768, X25519/ML-KEM768, P-384/ML-KEM1024).
+    *   **Generic Frameworks**: Four generic frameworks (UK, CG, UG, CK) are defined for constructing hybrid KEMs, with security proofs (CCA, C2PRI).
+    *   **IANA Registry**: A new IANA registry for hybrid KEM labels has been added to prevent collisions and aid interoperability, with a "first come, first serve" policy.
+    *   **Concrete Instances**: Details for the three concrete instances were updated, including fixes for scalar generation for NIST curves and fixed input lengths for HKDF usage.
+    *   **Labeling Evolution**: Labels for concrete instances were simplified and made independent of semantic names to avoid constant test vector changes. A poll by the authors indicated support for semantic labels, leading to a new set of hex-encoded semantic labels in the document (e.g., ML-KEM768-P256).
+    *   **Interop**: Confirmed interoperability with the Composite KEMs draft in LAMPS.
+    *   **Discussion**: John Graham (co-author of LAMPS Composite KEMs) thanked for the agreement and confirmed LAMPS would also use the IANA registry. Richard Barnes clarified that an IANA registry in an IRTF document is rare but acceptable for "protocol shaped" documents like HPKE. Lucas suggested ensuring the registry allows for non-PRG entries, which Richard was open to. Daniel reminded the group that implementer feedback is crucial, encouraging fresh eyes to review the drafts.
+    *   **Next Steps**: Publish proofs for RSA-inspired constructions; reach out to the crypto panel for review. The generic document is considered largely done, while the concrete document is not an exhaustive list, allowing others to define and register new hybrid KEM constructions using the generic frameworks.
+
+*   **Hybrid Signatures (Simon Josephson)**
+    *   Motivated by the long lifetime of signed artifacts and risks in migrating to new PQ signature schemes, suggesting hybrid signatures as a risk-hedging strategy.
+    *   Proposed a generic scheme with named instances, inspired by hybrid KEMs.
+    *   Design: Sequential combining of an inner (traditional) and outer (post-quantum) signature. Preference for SHA3.
+    *   Verification: Suggested verifying the outer PQ signature first to protect against malicious data.
+    *   **Comparison**: Claimed better SUF security than concatenated variants if the outer PQ scheme is SUF secure. Argued it differs from LAMPS composite signatures by being generic and offering SUF property with a message API.
+    *   **Discussion**: John Graham (LAMPS Composite Signatures author) noted LAMPS is already near IESG publication after many iterations, provides 18 combinations, and fits existing signature APIs, questioning the need for new work at this stage. Dennis Jackson questioned the value of strong unforgeability if the PQ component breaks, as that would essentially be the same as simple concatenation. He also asked for clarity on IETF use cases for strong unforgeability beyond existential unforgeability (sufficient for TLS). Scott Fluhrer reiterated the LAMPS draft's advanced status. Haihua Chen mentioned recent mailing list discussions about applications needing strong unforgeability.
+    *   **Next Steps**: Fleshing out details and discussion on SUF properties, comparing with other works.
+
+*   **Hybrid Signature Schemes for SUFCMA Security (Lucas)**
+    *   Presented a new individual draft proposing two hybrid constructions aiming for SUF-CMA security, needed for applications like protection against replay attacks.
+    *   **Black-box construction**: Second signature covers message + first signature (similar to Simon's proposal). Provides SUF-CMA if the second component is SUF-CMA secure.
+    *   **Non-black-box construction**: For when the first component is Fiat-Shamir heuristic-based (e.g., EDDSA) and the second is any signature scheme (e.g., BLDSA). Relies on an identification scheme. Provides SUF-CMA if *at least one* component is SUF-CMA secure. It's more compact but requires non-black-box access.
+    *   **Discussion**: Chris C. expressed a strong preference for black-box implementations, as opening up FIPS components for non-FIPS things is undesirable.
+    *   **Next Steps**: Add details on security proofs and refinements; solicit interest for real-world application preference (black-box vs. non-black-box).
+
+*   **HMAC-based Key Combiners for Multiple Keys (Guiling Wu)**
+    *   Proposed a new design (HCCV1 and HKCV2) to derive a secure master key from multiple input raw keys, applicable to parallel or sequential key arrival.
+    *   **Key Feature**: "Decombining" feature, meaning it doesn't care how input keys are derived (traditional/PQ KEMs, KHC, PSK). Does not require public key/ciphertext inputs, making it potentially more efficient.
+    *   **Construction**: Uses HMAC twice (first as a randomness extractor, second for pseudorandom key uniform distribution).
+    *   **Comparison**: Compared with ETSI, NIST (SP 800-133), and Michael O. schemes. Claims to be more efficient due to decombining and has provable security under specific hash function properties.
+    *   **Discussion**: Bahram suggested exploring KMAC/sponge functions for incremental combiners as an alternative, given the commonality of HMAC. Guiling acknowledged the suggestion and referenced a research paper for more details.
+
+*   **Polynomial Interpolation and Evaluation in Lagrange Basis (Armando Faz-Hernandez)**
+    *   Presented new results on evaluating polynomials directly on their value representation (Lagrange basis), which can replace the pattern of "interpolate then evaluate" in crypto schemes.
+    *   **Method**: Relies on a different polynomial basis called Polya, common in numerical analysis but new to cryptography.
+    *   **Advantages**: Linear complexity (similar to Horner's algorithm), doesn't require field inverses (unlike barycentric formula), supports batch evaluation, and new techniques for polynomial multiplication in this basis (Stollum, Rizam).
+    *   **Application**: Applies to PriO (Private Aggregation of Measurements) and VDAF, specifically the BDDAF draft. Removes the interpolation step, leading to significant performance gains.
+    *   **Impact**: Preliminary results show verifier runs twice as fast, and prover is sped up by 35%.
+    *   **Discussion**: Tim G. thanked Armando for the work, noting it would significantly speed up PriO deployment, save money, and improve client (phone) battery life. Chris C. praised the work as a "cool" insight, highlighting that different polynomial representations (NTT domain vs. Lagrange basis) are just different bases for the same thing, and rethinking computation steps can yield faster results.
+
+## Decisions and Action Items
+
+*   **Sigma Protocols and Fiat Shamir**: Community feedback is sought on unifying elliptic curve group definitions and contributions to formal verification.
+*   **Post-Quantum APAKE**: The authors plan to submit a revised draft incorporating the "Tempo" fix and addressing open issues before IETF 125, unless concerns are raised. The sense of those present leaned towards focusing on pure PQ APAKE and minimizing round trips.
+*   **ML-KEM Security Considerations**: Scott Fluhrer will consider adding constant-time key generation considerations to the draft. Call for research group adoption.
+*   **Hybrid KEMs**: The authors will publish proofs for RSA-inspired constructions and reach out to the crypto panel for review. Implementer review and feedback are explicitly encouraged. The IANA registry for hybrid KEM labels will be used.
+*   **Hybrid Signatures (Simon)**: Further discussion needed on IETF use cases for strong unforgeability and comparison with existing work.
+*   **Hybrid Signature Schemes for SUFCMA Security (Lucas)**: Community feedback sought on preference for black-box vs. non-black-box constructions in real-world applications.
+*   **HMAC-based Key Combiners**: Authors encourage review and will look into KMAC/sponge functions.
+
+## Next Steps
+
+*   **Sigma Protocols and Fiat Shamir**: Continue formal verification and community engagement for use cases.
+*   **Post-Quantum APAKE**: Submit revised draft before IETF 125.
+*   **ML-KEM Security Considerations**: Revise draft and proceed with research group adoption request.
+*   **Hybrid KEMs**: Finalize proofs, solicit crypto panel review, and continue to integrate implementer feedback.
+*   **Hybrid Signatures (Simon & Lucas)**: Continue research, refine drafts, and engage with the community on specific use cases and comparison with existing IETF work.
+*   **HMAC-based Key Combiners**: Continue research and refine the draft based on community feedback.
+*   **Polynomial Interpolation and Evaluation**: The new techniques are expected to be incorporated into relevant drafts like BDDAF for PriO/VDAF, leading to significant performance improvements.

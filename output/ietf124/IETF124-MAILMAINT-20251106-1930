@@ -1,0 +1,118 @@
+# MAILMAINT
+
+## Summary
+
+The MAILMAINT session covered updates on several drafts nearing completion, including discussions on implementation status reporting and server behavior in `UID Batches`. New proposed work on "MAILMAINT Grossingness" (a list of effective IMAP extensions) and a "Personal Data Portability Archive" (an open format for user data export) generated significant technical discussion, particularly regarding format choices, encryption, and the challenges of integrating calendar data. The working group also reviewed active drafts on Unicode Mailbox Names, OAuth profile, and Legacy Autoconfig, with a substantial portion of the session dedicated to the proposed new Autoconfig (PAC/Gwack) and its security implications, MX fallback mechanism, and IANA registry considerations. Finally, an extensive discussion took place on the "Unobtrusive Signatures" draft, focusing on its mechanism, non-alignment with DKIM, and the critical question of whether its scope fits within the MAILMAINT charter, with a general sense of support for adoption.
+
+## Key Discussion Points
+
+### Drafts Nearing Completion
+
+*   **Wrong or Shipping URL:** The document is awaiting implementations and is otherwise considered fairly complete. John Levin affirmed this.
+*   **Expires Header Field:** A discussion arose regarding the inclusion of an implementation status section. Barry clarified that while RFC 7942 suggests removing it post-publication, it is beneficial and a common practice to include such a section *during* the drafting phase to track progress and known implementations. There was a sense of those present to keep it in drafts until approval.
+*   **IMAP OBJECTID/ACCOUNTID (partial):** The draft looks good, with some feedback from Matt to be addressed later, potentially alongside the `object-id account-id` discussion.
+*   **Registration of IMAP and JMAP Keywords and Mailbox Attributes:** Daniel reported that the text has been reorganized with more inclusive language. The draft is on the next telechat for publication.
+*   **UID Batches:** Daniel provided an update that the draft has been submitted for publication. Barry had provided a thorough review. Alexey raised concerns about a minor change allowing servers to return *more* data than requested, preferring a hard limit to prevent clients from receiving unexpected excess data and wasting bandwidth. Arndt noted that while he had no strong objection, such architectural "warts" might accumulate, advocating a general shift towards J-MAP. Barry reiterated agreement with Alexey, stating that the extension should reasonably limit responses to no more than requested. Daniel indicated he would update the draft to address this feedback.
+
+### Proposed Work: MAILMAINT Grossingness
+
+*   Rick presented this document, which identifies IMAP extensions that most effectively improve user or operator experience, are available in reasonable implementations, and offer definable benefits (e.g., less bandwidth, faster sync, less user confusion). It is not intended as an IMAP4rev3 update but as guidance for improving common IMAP use cases.
+*   **Inclusion of widely implemented extensions:** A key discussion point was whether extensions like IDLE, LITERAL+, LITERAL-, and UIDPLUS, which are widely supported, should be explicitly listed. The general sense of those present was that they should be included to document "ephemeral knowledge" for new implementers.
+*   **Holding for other drafts:** It was considered whether to hold the document until `OBJECTID/ACCOUNTID` drafts are further along to incorporate their language, though existing implementations were a factor.
+*   **Applicability Statement vs. Profile:** The nature of the document was debated. Barry suggested it should be an "Applicability Statement" (AS), providing guidance on combining existing standards for a coherent implementation, and should be processed as the last in a batch of documents. Elliot, however, cautioned that AS documents usually apply to specific standards, and this might function more like a "profile," potentially making it harder to introduce new extensions if widely adopted. Alexey noted that the "Lemonade profile" didn't lead to such issues in the past. Elliot also suggested the document's credibility would benefit from endorsements or co-authorship from actual existing implementations.
+
+### Proposed Work: Personal Data Portability Archive
+
+*   Hans York presented an update on this draft, aiming for an open format for users to export, backup, or migrate their mail, calendar, and contacts data, similar to proprietary solutions like Google Takeout.
+*   The proposed structure involves an archive file containing subfolders for data types, individual items (e.g., EML, JS Contact JSON), per-folder metadata (UIDs), and a global index (`index.json`).
+*   **Open Questions:** The authors sought feedback on:
+    *   **Container format:** Pros and cons of various formats like tar, gzip, zip for data persistence. Ben suggested zip for better incremental additions/removals. Braun noted zip is well-understood and allows composability.
+    *   **Encryption:** Whether encryption should be part of the format specification or solely a security consideration. Barry strongly encouraged not leaving encryption too late, suggesting it be a security consideration but integrated into design thinking. Braun suggested the format could allow for both encrypted and non-encrypted parts within the same file.
+*   **Specific Feedback:**
+    *   Mauricio suggested including options for servers to export JS Calendar/Contact data as J-Cal/V-Card components to prevent data loss during conversion for CalDAV-only servers. He also proposed a JMAP API method for account import/export.
+    *   Lisa Dissot emphasized focusing on solidifying the format first, with protocol bindings (IMAP, JMAP, CalDAV) and server-to-server transfers as subsequent work.
+    *   Pete expressed significant concern about including calendar data due to the complexity of invites and cross-server issues, citing past migration difficulties. Neil acknowledged this but suggested it could work if user addresses are consistently handled.
+    *   Neil also stressed the importance of a dedicated file extension/media type for the format and noted the challenges of handling large email datasets (gigabytes) for upload via typical domestic connections.
+*   **Working Group Adoption:** Alexey asked the chairs about the adoption call. An email had been sent previously with no replies. The chairs indicated they would reissue the call.
+
+### Active Drafts: Unicode Mailbox Names
+
+*   Arndt presented an update on the Unicode Mailbox Names drafts, noting the difficulty revealed by writing tests.
+*   **Open Issues and Arndt's Opinions:**
+    *   **Mixing directions (RTL/LTR) within a name/label:** Arndt prefers to explicitly state "not doable" due to complexity, even if two CCTLDs technically allow it, as it creates too much trouble for implementers. John Clemson asked for more explicit reasoning in the document, acknowledging it is a hard choice.
+    *   **Accents/Diacritics (e.g., umlauts on Cyrillic):** Arndt suggested ignoring these from a security perspective, moving the problem to a "different part of the architecture" (RFC 1925.4).
+    *   **Length limits for local parts:** Arndt proposed mentioning the RFC 5322 limit of 64 bytes but applying an "ostrich album" approach (i.e., not over-emphasizing enforcement issues). John Levine strongly stated the 64-byte limit *must* be in the spec, as many production mail servers enforce it, and noted that 64 *bytes* is considerably less than 64 code points for Unicode.
+*   **Additional points from John Levine:**
+    *   **Normalization (NFC):** Precy recommends but doesn't require NFC. John Levine suggested the spec should *require* NFC for comparison unless there's a strong reason not to.
+    *   **Plus Addressing:** The current draft omits support for plus addressing (e.g., `user+tag@domain`). John Levine suggested addressing this omission, clarifying whether it's deliberate or accidental, given its common use in mail systems.
+*   **Relationship with `email core AS`:** Alexey noted that this draft updates the `email core AS` recommendations and suggested finishing the `core AS` first to avoid discrepancies. He also questioned the reference to "whatwg syntax."
+*   **Next Steps:** Arndt plans to implement the draft himself. The goal is a working group last call after two independent implementations.
+
+### Active Drafts: OAuth Profile for IMAP/SMTP
+
+*   Neil reported that the draft is essentially ready and requires implementation experience. Fastmail has implemented it. He is seeking another implementation for client-server testing before moving to last call. The draft is independent of auto-discovery. An email was sent to OAuth chairs for review, but no response has been received yet.
+
+### Active Drafts: Legacy Autoconfig
+
+*   Ben provided an update, stating that Mauricio's comments have been addressed. The main roadblock is finding a way to create an XML schema that allows undefined elements and attributes for forward compatibility. Ben sought assistance from anyone with XML schema expertise. Alexey indicated he would re-review the document.
+
+### Proposed Work: New Autoconfig (PAC/Gwack)
+
+*   Daniel presented the new autoconfig proposal, aiming to automate client setup for email, calendar, and contacts, which is currently difficult and error-prone.
+*   **High-level flow:** User enters email address, client looks up a well-known URI (HTTP only for TLS traceability, validated with a DNS TXT digest). A fallback path uses MX records if MTA-STS is supported; in this case, all highest-priority MX records *must* return bitwise identical JSON resources and digests to prevent squatting. The client then selects protocols and authentication methods (OAuth/password) and validates credentials.
+*   **Security Considerations:** The design requires TLS 1.2+ (TLS 1.3 or better for configuration retrieval), forbids certificate overrides, and mandates displaying server hostnames to the user.
+*   **MX Fallback Discussion:** DKG questioned what happens if MX fallback hosts are not bitwise identical or some fail. Daniel clarified that if using MX fallback, *all* highest priority MXs must return the identical, valid JSON, otherwise the entire MX fallback mechanism fails to prevent security holes. Arndt questioned the justification for the MX fallback due to added complexity, but Daniel explained it's crucial for achieving near 100% deployment, as 90% of domains currently rely on it. Braun added that even a complex MX lookup is more secure than humans manually transcribing configurations.
+*   **Hashing Algorithms:** Neil suggested picking a single mandatory hashing algorithm (e.g., SHA-256) for digests instead of offering multiple options to reduce complexity and implementation errors.
+*   **Document Status:** The chair noted the document is currently informational but should be a standard track document. Daniel confirmed this was a copy-paste error and it is intended for the standard track.
+*   **Implementations:** Mauricio plans to implement this within the next 2-3 months.
+*   **Dangerous Labels:** DKG noted that using `.well-known` as a left-hand label is a "dangerous label" that requires careful management and reservation. Ben suggested reusing the `_autodiscover` label from the legacy autoconfig to avoid introducing new dangerous labels.
+*   **IANA Registry:** An IANA review asked whether to create a new registry for protocol names (e.g., SMTP, IMAP, CalDAV) or reuse an existing "service name registry." Alexey initially preferred reusing existing names from the service name registry. Rick expressed concern about the extensibility of the existing registry. Pete Resnick suggested that no formal registry might be needed within the document itself, rather defining a few protocols and requiring new documents for new ones. Arndt and John Levine agreed with Pete. Braun argued for specifying a list, potentially as a subset of the existing registry, to provide clarity for names like `caldav` vs `caldavs`. This discussion will continue on the mailing list.
+
+### Active Drafts: Object ID/Account ID
+
+*   Mauricio presented an extension to `Object ID` to enable its use in IMAP mailboxes that include other shared mailboxes. The problem arises because `JMAP Access` assumes all mailboxes belong to a single JMAP account, leading to ambiguity when shared folders use duplicate mailbox IDs across different accounts. The proposal is to add an `account-id` identifier to IMAP status responses.
+*   **ABNF Compatibility and Response Codes:** The chair noted that the ABNF for IMAP response codes doesn't easily accommodate multiple identifiers like `mailbox-id` and `account-id` in existing responses. Possible solutions discussed included:
+    *   A compound response code (e.g., `account-id/mailbox-id`).
+    *   Using untagged responses, but Arndt cautioned this could be a "bug magnet" for client parsers not properly associating them with commands.
+    *   Making the `account-id` an opt-in client capability, allowing the ABNF to be extended for clients that enable it.
+    *   Braun supported extending the ABNF for response codes once enabled, allowing a compound `account-id/mailbox-id` in a tagged response.
+*   **Server ID for Syndicated Accounts:** Ben proposed adding a `server-id` for syndicated accounts (multiple organizations cooperating). Mauricio argued against this, noting that JMAP does not have a `server-id` concept, and `JMAP Access` is designed for a single server context.
+*   **Working Group Adoption:** Braun expressed strong support for the document and proposed its adoption as a working group document. The ABNF/response code discussion will be taken to the mailing list.
+
+### Proposed Work: Unobtrusive Signatures
+
+*   DKG presented this draft, co-authored with Kai and Andrew, which aims to reduce friction for end-to-end cryptographic signatures over cleartext email.
+*   **Mechanism:** It defines a `SIG` header containing a base64-encoded cryptographic signature object, initially for OpenPGP, with a slot for CMS. The design ensures legacy mail user agents (MUAs) don't notice the signature, and a failed signature is treated as an unsigned message without additional warnings. Message headers are also signed.
+*   **Non-alignment with DKIM:** Following recommendations from Dispatch and internal discussions, the authors concluded that aligning with DKIM doesn't make sense due to substantially different goals and mechanisms.
+*   **Outstanding Nuances:** Discussion continues on handling mismatches between outer and signed message headers (Merge Request 19 has been settled upon) and message normalization. Braun suggested that message normalization should align with DKIM's "relaxed" normalization (standardized end lines, no 7-bit clean requirement).
+*   **Working Group Adoption and Charter Scope:** DKG encouraged review and feedback, and proposed adoption. Barry and Alexey supported adoption. A significant discussion ensued regarding whether this draft fits the MAILMAINT charter, given that MAILMAINT is primarily a maintenance group and this draft introduces a novel mechanism. Barry, speaking as a former AD, argued it is "arguably maintenance" as it uses existing crypto art in a contained and simple way, and clarified it is about *signed* messages, not encrypted messages. Alexey agreed it's a "new packaging format variant" and contained enough. The Chair (Alexey) acknowledged the point and stated that the working group would proceed with the document, with the AD addressing any potential charter issues (e.g., rechartering or a quick spin-up/down WG if necessary). It was noted that Dispatch had recommended MAILMAINT for this work.
+*   **Implementations:** DKG confirmed two implementers: himself (patch for Emacs message mode) and Kai Engert (working on Thunderbird).
+*   **S/MIME Specification:** Ben requested explicit specification for S/MIME, which DKG will address by opening an issue, acknowledging the challenge of making it a bilingual (OpenPGP/CMS) document.
+
+## Decisions and Action Items
+
+*   **Expires Header Field:** **Decision:** The working group generally agreed that the implementation status section should be kept in drafts until publication.
+*   **Personal Data Portability Archive:** **Action Item:** Chairs to reissue the call for adoption on the mailing list.
+*   **UID Batches:** **Action Item:** Daniel to update the draft to address feedback regarding server limits on returning more data than requested (Alexey, Barry).
+*   **Unicode Mailbox Names:**
+    *   **Action Item:** Arndt to add more explicit wording in the draft regarding the decision to disregard mixed-direction TLDs.
+    *   **Action Item:** Arndt to consider requiring NFC for normalization for comparison and to discuss the omission of plus addressing.
+*   **New Autoconfig (PAC/Gwack):**
+    *   **Decision:** Document status will be changed from "informational" to "standard track."
+    *   **Action Item:** The discussion on the IANA registry for protocol names (new vs. existing) will be continued on the mailing list.
+    *   **Action Item:** Ben seeks help from XML schema experts to create a schema allowing undefined elements/attributes.
+*   **Object ID/Account ID:** **Proposal:** Braun proposed adopting this as a working group document. **Action Item:** The discussion on ABNF compatibility and appropriate response codes for `account-id` will be taken to the mailing list.
+*   **Unobtrusive Signatures:**
+    *   **Decision:** The working group expressed general support for adopting the draft and will proceed with its development within MAILMAINT. The AD will handle any potential charter scope issues.
+    *   **Action Item:** DKG to open an issue to specify how S/MIME could be used with this mechanism.
+    *   **Action Item:** Braun to send a message to the mailing list regarding aligning message normalization with DKIM's relaxed normalization.
+
+## Next Steps
+
+*   **All Drafts:** Authors and editors to continue development and address feedback received during the session and on the mailing list.
+*   **Personal Data Portability Archive:** A reissued adoption call will be posted to the mailing list.
+*   **Unicode Mailbox Names:** Arndt plans to implement the draft himself and aims for a working group last call after two implementations are available.
+*   **OAuth Profile for IMAP/SMTP:** Neil will continue to seek a second implementation for client/server testing, then pursue a working group last call.
+*   **New Autoconfig (PAC/Gwack):** Mauricio plans to implement the draft in the coming months. The IANA registry discussion will move to the mailing list.
+*   **Unobtrusive Signatures:** Editors will produce a new version incorporating the conclusion on Merge Request 19 and continue to address Tavi's feedback on message normalization (or defer it if too complex). Additional review and implementations are encouraged.
+*   **Any Other Business:** Alexey will post an announcement regarding the FOSEM "Modern Email Devroom" (February 1st, Brussels) to the mailing list, inviting talk proposals and attendance.

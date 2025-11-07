@@ -1,0 +1,71 @@
+# MLCODEC
+
+## Summary
+
+The MLCODEC session included updates on several drafts: the extension mechanism for Opus, speech coding enhancements, and the recently adopted scalable quality extension (Opus HD). A significant portion of the session was dedicated to updates on the DRED draft, including improvements to its training and a reduction in model size. The session also featured a detailed presentation on the intelligibility and quality testing of the new DRED models, leading to a decision to adopt the testing methodology as a working group deliverable. Discussions also covered SDP signaling for extensions and the challenging problem of hosting large normative artifacts for RFCs.
+
+## Key Discussion Points
+
+*   **Welcome and Notewell**: The chairs welcomed participants and reminded everyone of IETF's professional conduct and intellectual property policies.
+*   **Agenda Review**: The agenda included draft status, updates to the extension mechanism, DRED, speech coding enhancements, scalable quality extension, and intelligibility testing for DRED.
+*   **Chair's Draft Status Updates**:
+    *   **Extension Mechanism Draft**: Ended its first work group last call; a new version was just published. Another work group last call is expected soon.
+    *   **DRED Draft**: Had a major update; its status for last call will be revisited after the presentation.
+    *   **Speech Coding Enhancements**: Not yet close to last call.
+    *   **Scalable Quality Extension (Opus HD)**: Recently adopted as a working group draft.
+*   **Extension Mechanism Draft Update (Tim Terriberry)**:
+    *   A new version (v08) was published, addressing comments from the working group last call, notably adding an example section.
+    *   Discussion arose regarding the draft's impact on multi-channel Opus in AVTCORE. Jonathan Lennox and Jean-Marc Valin suggested that anything copying RTP from Opus should also copy these extensions, and that the draft updates not only the Opus media type registration but also the Opus RTP draft, particularly concerning Opus's interpretation of padding. This ensures consistency for multi-channel implementations.
+*   **Speech Coding Enhancements Quality Extension (Jan Spille)**:
+    *   **Algorithmic Improvements**: Tuning of the Enfus extension algorithm, leading to a new model with similar performance but a 60% reduction in quantized size and 50% speedup. Standard C transcendental functions were replaced with approximations for minor LSB impact.
+    *   **Evaluation Requirements**: Proposed that enhancement methods "should not be worse than doing nothing" compared to the original Opus. Noted some failure cases and degradations in the high band that still need iteration.
+    *   **SDP Signaling Considerations**: Proposed two new optional parameters for the `audio/opus` media subtype: `osce-wideband-enhancement-strength` (a 0-100 scale indicating bitrate reduction for equivalent quality) and `osce-wideband-bandwidth-extension-hertz` (specifying the target frequency for blind bandwidth extension).
+    *   **Discussion on SDP Parameters**: Mo Zanaty questioned if `hertz` should be open-ended or enum-based (e.g., super-wideband, full-band) for brevity and clarity, given that codecs might only operate on a few fixed bandwidths. Greg Maxwell emphasized linking parameters to encoder behavior.
+*   **Scalable Quality Extension for Opus (Opus HD) (Jean-Marc Valin)**:
+    *   **Summary**: Aims to lift Opus bitstream limits (e.g., >8-bit depth, >20 kHz bandwidth, >500 kbps/channel) while maintaining full forward and backward compatibility with RFC 6716.
+    *   **Updates**: Code has been stable with no significant decoder changes. Encoder tuning and minor bug fixes were implemented. The draft was recently adopted as a working group item. The code has landed in the main Opus branch. An IPR declaration from Google (stated as "free") was recently filed.
+    *   **SDP Negotiation**: Jonathan Lennox noted the draft currently lacks SDP negotiation. Jean-Marc agreed this needs to be added, discussing whether to reuse existing Opus parameters (e.g., `bitrate`, `maxplaybackrate`) or create new ones to avoid confusion for older implementations, especially for higher bandwidths (e.g., 96 kHz).
+    *   **Conformance**: Test vectors (96 kHz, floating-point audio, synthetic and real clips) and a strict decoder conformance test tool exist.
+    *   **Artifact Hosting**: Raised the question of where to publish large artifacts (code, test vectors) which are too big for base64 encoding in an RFC.
+*   **DRED Updates (Jean-Marc Valin)**:
+    *   **Technical Changes**: Training improvements focused on intelligibility, including adding a fourth-power term to the loss function (to better encode very short phonemes) and operating in the loudness domain (less sensitive to small values).
+    *   **Model Selection**: Dozens of training runs by Jean-Marc and Greg Maxwell led to a potentially final model, which is now in the main Opus branch. This new model is smaller (190k weights for encoder, 240k for decoder, ~500 KB total quantized) than previous versions.
+    *   **Test Vectors**: Updated and available with an automated `dredvectors.sh` script. Includes normative tests for DRED decoding and the vocoder (with loose bounds) and non-normative integration tests within Opus.
+    *   **Artifacts for Standardization**:
+        *   **Essential**: Floating-point model weights (~2 MB), compressed test vectors (~6 MB), and the DRED compare tool (~1200 lines of code).
+        *   **Potentially Useful**: Python model, reference vocoder code and weights, quantized weights file, complete reference implementation, Python training scripts, and training data (tens of GBs).
+    *   **Call for Action**: Participants were encouraged to test the new DRED model for potential issues, try it in real systems, verify the training procedure, and review the draft.
+    *   **Artifact Hosting Discussion**: Ori Steele (AD) suggested consulting IANA for guidance on hosting large artifacts, noting that IANA hosts YANG modules and that permanent archival is important for normative references. He also suggested publishing hashes for verification. Jean-Marc noted that most users would download implementations directly, but normative references are needed for verification.
+*   **Intelligibility and Testing of DRED (Laura Rusu)**:
+    *   **Test Battery Updates**: Presented results for new DRED candidates trained with Jean-Marc's improvements. Updated baseline results using the official C implementation.
+    *   **Quality Evaluation**: For clean speech, quality was generally comparable to the baseline, with slight degradation at low/medium bitrates (potentially due to smaller model size and bitrate discrepancies for quantizer levels). For speech in noise and reverberation, new models showed an advantage, especially at high bitrates.
+    *   **Intelligibility Evaluation**: Significant improvements were observed in clean conditions at lower bitrates, with scores for Jean-Marc's model rising from ~80% to ~85%. Detailed analysis of phoneme confusions showed specific gains (e.g., N to M, T to K, G to D, V to Z) and some minor degradations for phonemes that were already well-reproduced. The diagnostic rhyme test (DRT) was used, with two English speakers.
+    *   **Data Hosting**: Laura Rusu asked if the test data and methodology should also be hosted by IETF.
+    *   **Discussion on Methodology vs. Results**: Jean-Marc emphasized the utility of publishing results (expected intelligibility, potential errors) for users, while Laura Rusu highlighted the methodology's value for future codec evaluations (e.g., bandwidth extension). Ori Steele suggested that if the methodology is adopted as an informational document, it might need a charter note or update, or could be included as an appendix to the DRED RFC.
+
+## Decisions and Action Items
+
+*   **Extension Mechanism Draft**:
+    *   **Decision**: Will undergo another working group last call soon.
+    *   **Action Item**: Chairs to ensure the shepherd write-up explicitly notes that this draft updates both the Opus RTP draft and the Opus media type registration.
+    *   **Action Item**: Working group members are encouraged to provide more reviews.
+*   **Speech Coding Enhancements Quality Extension Draft**:
+    *   **Action Item**: Jan Spille to continue iterating on evaluation requirements, update the draft with the proposed SDP updates, and explore options for hosting test data.
+*   **Scalable Quality Extension for Opus (Opus HD) Draft**:
+    *   **Action Item**: Jean-Marc Valin to consider and propose SDP negotiation parameters for the draft, potentially new ones, while mindful of compatibility and avoiding confusion.
+*   **DRED Draft**:
+    *   **Action Item**: Working group members are strongly encouraged to test the newly updated DRED model in the main branch and provide feedback on its behavior and performance in real systems. They are also asked to review the draft.
+    *   **Action Item**: Ori Steele (AD) to initiate a conversation with IANA regarding the permanent archival and normative referencing of large artifacts (model weights, test vectors, compare tool) required for the DRED specification. Hashes for verification of these artifacts were suggested.
+*   **DRED Intelligibility Testing Methodology Draft**:
+    *   **Decision**: A show of hands indicated clear consensus to adopt the DRED intelligibility testing methodology as a working group item, aiming for publication as an informational RFC.
+    *   **Action Item**: Laura Rusu to submit a working group version of the methodology draft for the next meeting.
+    *   **Action Item**: Chairs to address the necessary charter update for this new informational RFC milestone.
+    *   **Discussion on DRED Test Results Publication**: The group discussed whether the specific intelligibility test results for DRED should be in the DRED RFC, a separate informational document, or as an artifact alongside other non-essential artifacts. The prevailing sentiment was to avoid holding up DRED publication and not down-reference to an informational draft. No firm decision was made, but placement alongside other non-essential artifacts referenced from the DRED spec was considered a logical option.
+
+## Next Steps
+
+*   **Chairs**: Continue discussions with IANA regarding artifact hosting for DRED. Initiate charter update process for the DRED intelligibility methodology. Assess attendance for IETF 124 in Shenzhen, China, to decide on the format of the next meeting (in-person or virtual interim if physical attendance is insufficient).
+*   **Working Group Members**: Review Tim Terriberry's extension mechanism draft (v08). Test the new DRED model and review its draft.
+*   **Jan Spille**: Incorporate SDP parameters and continue work on evaluation requirements for speech coding enhancements.
+*   **Jean-Marc Valin**: Propose SDP negotiation details for the Opus HD draft.
+*   **Laura Rusu**: Prepare the DRED intelligibility methodology draft for working group adoption.

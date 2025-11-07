@@ -1,0 +1,86 @@
+# HAPPY
+
+## Summary
+
+The HAPPY Working Group meeting at IETF 124 focused on updates to the Happy Eyeballs v3 draft, addressing open technical issues, discussing approaches to define configurable values and metrics, and reviewing an experimental WebTester tool. Significant discussion centered on the handling of IPv6-only networks, the persistence of historical data across network changes, the continuation of connection attempts, and the potential inclusion of optimistic DNS. The group also considered the future of the chartered reporting draft.
+
+## Key Discussion Points
+
+### H.E. v3 Draft Updates (Niddy from Google)
+
+*   **Generalized Connection Establishment:** The draft now defines successful connection establishment to include transport-level handshakes (TCP/QUIC) and optionally higher-level handshakes like TLS. A new `next_connection_attempt_timer` extends the `connection_attempt_delay` to account for TLS or other requirements.
+*   **Historical Data:** New requirements include partitioning historical data by privacy-sensitive endpoint information (like cookies) and ensuring client convergence by periodically ignoring historical data. Existing text about flushing data on network interface changes remains.
+*   **SVCB/HPS Downgrade Attack Mitigation:** Text was added to security considerations, referencing RFC 9460, stating that clients using secure DNS must not send unencrypted data after the TCP handshake if they are SVCB-reliant or SVCB-optional, unless a valid HPS response is received.
+    *   **Discussion (Tommy Poly Apple):** This interpretation of SVCB RFC text is opinionated and aims to balance security with practical performance. The intention is to avoid waiting if a SVCB parameter (e.g., ECH config, TLS supported groups) won't make a difference or is solely for performance optimization rather than security.
+    *   **Discussion (Eric Niagare):** Differentiated between SVCB optional vs. required clients. Raised a point about HTTP scheme not explicitly covered in SVCB draft as a reason to wait.
+*   **Service Priorities in Address Grouping and Sorting:** The draft clarifies that client preferences dictate how SVCB priorities (e.g., ECH, ALPN for HTTP/3) influence grouping and sorting of addresses. If a client doesn't care about a specific feature, it doesn't need to separate addresses based on that feature.
+
+### Open Issues and Pull Requests (Tommy Poly Apple)
+
+*   **Reworking the IPv6-only Section (Andre's PR):**
+    *   **Terminology:** Discussion arose on referring to "IPv6-mostly" networks versus an "IPv6-only" host configuration. The sense was that the host state is what matters, not necessarily the network.
+    *   **464XLAT and CLAT Relationship:** How Happy Eyeballs clients should interact with Pref64 and DNS64 to synthesize IPv6 addresses for IPv4-only services. The existing text suggests using Pref64 if 464XLAT is unsupported, but a broader approach to synthesize if Pref64 is known was discussed.
+    *   **IPv4 Literals:** Simplified handling of IPv4 literals: route directly if possible, otherwise synthesize IPv6. Complications arise with detecting CLAT routes.
+    *   **Broken Quad-A Records:** Whether comments about hostnames with broken AAAA records should be removed.
+    *   **Discussion (Jen Linkova, Philip Diesel, Lorenzo Colitti):** Need to enumerate concrete scenarios and desired outcomes. Importance of considering per-interface algorithms, especially with VPNs. Suggested detecting DNS64-generated IPv4 addresses and IPv6-mapped IPv4 addresses and treating them as IPv4. The sorting algorithm is critical. There was a strong suggestion for a design group to tackle this complex issue, potentially informing updates to RFC 6724bis (default address selection).
+*   **Flushing Historical Data on Network Changes:**
+    *   **Issue:** Questioned if flushing historical data on every network change makes it ineffective for mobile devices and if the privacy reasons are sufficiently clear.
+    *   **Discussion (Tommy, Jen Linkova, Lars Eggert, Corey, Philip Diesel):** Consensus that historical data should not be carried across *different* network interfaces for accuracy and privacy. Clarification is needed on what constitutes a "network change" (e.g., disconnecting/reconnecting to the same Wi-Fi vs. switching to cellular). It was suggested to separate "must-do" privacy requirements from "should-do" performance optimizations, with the latter allowing more flexibility if an implementation "knows better."
+*   **Connection Race Continuation (TLS Layer):**
+    *   **Issue:** The draft currently says clients "may" race through TLS. Given issues with broken IPv6 networks, it was questioned if this should be a "should."
+    *   **Discussion (Lars Eggert, Jonathan Lennox, Philip Diesel):** General agreement that it should be "should" or "must unless" (e.g., "must unless your stack actively cannot let you follow it") due to widespread problems with networks breaking TLS in the presence of IPv6. Acknowledged concerns about computational cost for constrained devices.
+*   **Cancel or Not to Cancel Losing Connection Attempts:**
+    *   **Issue:** Currently, happy eyeballs cancels losing connection attempts. Some implementations keep "losing" attempts (e.g., a slower Quick connection) alive for future use, especially if Quick is strongly preferred.
+    *   **Discussion (Eric Niagare, Tommy Jensen, Jen Linkova, Stuart Cheshire, Lucas Pardue, Ben Schwarz, Marco Munizaga, Niddy from Google):**
+        *   Deep dive into the "best connection" rabbit hole (throughput, jitter, etc.). Stuart Cheshire noted the original Happy Eyeballs goal was binary: "a connection that works is better than one that doesn't." Multipath protocols are the eventual solution for truly adaptive "best" connections.
+        *   Keeping slow connections alive can drain server resources.
+        *   Ben Schwarz provided data from a mobile HTTP stack aggressively preferring Quick, showing that initial connection speed isn't always correlated with long-term performance, and canceling "losing" Quick attempts significantly reduces Quick usage.
+        *   The chair noted the charter focuses on yielding a single connection from a race.
+        *   A sense of those present indicated that the default should be to cancel losing attempts, with an allowance for implementations to "know better" and keep them alive for specific, well-justified scenarios (e.g., subsequent requests, alt-service).
+        *   Lucas Pardue suggested an error code for canceled Quick connections to improve server-side metrics.
+*   **Optimistic DNS:**
+    *   **Issue:** A PR proposes including text about Optimistic DNS (using expired DNS answers from cache in parallel with fresh queries) in the main Happy Eyeballs v3 draft.
+    *   **Discussion (Stewart Cheshire, Max, Alessandro Ghedini, Jonathan Lennox, Philip Diesel, Eric Niagare, Niddy from Google, Lorenzo Colitti, Tommy Jensen):**
+        *   **Benefits:** Reduces setup time, makes use of short TTLs, makes mistakes cheaper with Happy Eyeballs (it will still succeed if the stale address is wrong). Mozilla and Chrome implementations already do this.
+        *   **Concerns:** Stale ECH configs could lead to double TLS handshakes. Sending application data over unverified connections, especially HTTP/80, is risky. Operational challenges for server operators (CDN shifts, cluster draining, IP recycling leading to privacy concerns if traffic is sent to a new, different entity). How long is "stale" acceptable (7 days mentioned as an internal limit, but 36-72 hours suggested for most benefits).
+        *   **Placement:** Strong sentiment to split this into a separate document or a detailed extension within the HAPPY working group rather than the main H.E. v3 spec, to allow for specific tunable parameters and detailed discussion on operational/privacy implications, referencing RFC 8767 (serve stale).
+*   **Metrics Discussion (Gautama Kiwate from Apple):**
+    *   **Goal:** Explicitly define value judgments and preference order for configurable values (resolution delay, connection attempt delay, local synthesis delay, preferred family address count).
+    *   **Example:** Is a 1% reduction in IPv6 connections acceptable if resolution delay is reduced? What about SVCB use?
+    *   **Discussion (Philip Diesel, Eric Niagare, Brian Trammell, Tommy Poly Apple, Johannes):**
+        *   Need transparency on *why* specific values are chosen.
+        *   Distinguish between performance factors and architectural goals (e.g., IPv6 transition).
+        *   Acknowledged that existing default values have been "baked into the internet" for a decade, and changes could have unknown cliffs.
+        *   New measurements may be needed, as existing data doesn't always show "what would have happened" if a different value was used.
+        *   Suggested discussing these metrics and values outside the main document to allow for experiments and flexible recommendations.
+*   **Happy Eyeballs WebTester (Johannes from Max Planck Institute):**
+    *   A web-based tool for testing Happy Eyeballs implementations in browsers (Chrome, Firefox, Safari).
+    *   **Current functionality:** Tests connection attempt delay (IPv6 vs. IPv4), resolution attempt delay. Uses TCNet for artificial delays.
+    *   **Planned updates:** Support for HPS/SVCB, HTTP/3, configurable tests, a second endpoint in North America (current is Munich), local environment for testing.
+    *   **Request for feedback:** Solicited input on what specific test cases would be useful for H.E. v3 implementations.
+*   **Reporting Draft (Tim from Apple):**
+    *   **Status:** A chartered document, but no draft has been created.
+    *   **Purpose:** Gather data for debugging network problems, particularly for Quick.
+    *   **Discussion (Jordi, Tommy Poly Apple, Mirja Kulev, Philip Diesel):**
+        *   Strong support for advancing a reporting draft to aid debugging.
+        *   Jordi volunteered to create a skeleton zero-draft to summarize mailing list discussions and provoke further input.
+        *   Suggested exploring different mechanisms (syslog, ICMP, Q-log format) but prioritizing use cases first. Developer tools extensions were highlighted as a potentially easier starting point.
+
+## Decisions and Action Items
+
+*   **IPv6-only Section:** A design group will be formed to discuss and rework the IPv6-only section of the draft, focusing on scenarios and the relationship with RFC 6724bis. The design group should also consider the requirements for a potential 6724bisbis update from HAPPY's perspective.
+*   **Connection Race Continuation (TLS):** The draft text regarding racing through TLS will be strengthened from "may" to "should" or "must unless," allowing exceptions for implementations that cannot practically follow it.
+*   **Cancel Losing Connection Attempts:** The default guidance will be "should cancel unless you know better," providing flexibility for justified scenarios while emphasizing resource efficiency.
+*   **Optimistic DNS:** The discussion indicated a strong preference for documenting Optimistic DNS in a *separate document* within the HAPPY working group, or as a dedicated extension. This allows for detailed discussion of tunable parameters, operational considerations, and privacy implications, with explicit reference to RFC 8767 ("serve stale").
+*   **Metrics and Configurable Values:** The group will work towards making value judgments and trade-offs explicit for configurable values (e.g., timers, preferred family counts). The discussion on specific values and measurement strategies will continue, likely outside the main document.
+*   **Reporting Draft:** Jordi will produce a skeleton zero-draft for a reporting document to kickstart discussion on use cases, formats, and mechanisms for network problem debugging, particularly for Quick.
+
+## Next Steps
+
+*   **IPv6-only:** Tommy Poly Apple will coordinate the formation of a design group to refine the IPv6-only section and consider 6724bis interactions.
+*   **Draft Edits:** Authors will incorporate feedback on connection establishment generalization, historical data clarifications, and SVCB/HPS downgrade text.
+*   **Optimistic DNS:** A new draft or extension will be proposed to detail Optimistic DNS.
+*   **Metrics:** Continue discussions on mailing list regarding explicit value judgments for configurable parameters.
+*   **WebTester:** Johannes and the WebTester team will continue to extend the Happy Eyeballs WebTester, incorporating H.E. v3 features and soliciting specific test case requests via GitHub issues or email.
+*   **Reporting Draft:** Jordi will create and share a skeleton zero-draft for the reporting document to the mailing list to initiate further discussion.
+*   **Offline Discussions:** Participants are encouraged to continue technical discussions on mailing lists, GitHub issues, and in informal settings (e.g., Six-Man working group, hallway).

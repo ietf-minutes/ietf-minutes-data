@@ -1,0 +1,157 @@
+# IPSECME
+
+## Summary
+
+The IPSECME session included an update on RFC publications, document status in the working group queue, and presentations on several key drafts. Significant discussions focused on the `PFSInfo` draft, which aims to improve negotiation of Child SA key exchange methods, and the `Enhanced ESP` draft, which addressed transport mode support and header changes. The `Downgrade Prevention` draft garnered broad support as a necessary mitigation for IKEv2 vulnerabilities, especially in the context of Post-Quantum Cryptography (PQC). New KEM-based authentication and KEM algorithm drafts (Frodo KEM, McLeese KEM) were presented, highlighting challenges and opportunities for integrating PQC into IKEv2. The session concluded with updates on the `Beat Mode` draft, and open discussions on experimental RFCs and IPsec's interaction with network reordering.
+
+## Key Discussion Points
+
+### Agenda and Document Status
+
+*   **RFC Publications**: Three new RFCs published recently. Noted that one document went from initial draft to RFC in less than a year, while another took over 10 years.
+*   **Publication Queue**: Approximately four documents are expected to enter the publication queue soon.
+*   **DSCP-LP Draft**: The `DSCP-LP` draft (required by ESP Extension and Diet ESP) will be proposed as an Experimental RFC. The chair plans to initiate a working group last call for this draft once authors publish it as experimental.
+*   **Working Group Documents**: Several documents are in the working group process, including `SCDS payloads opt`, `Reliable transport`, `Post-Quantum IKE`, `Beat mode`, `EESP`, `EESPxV2`, `EESP ping` (noted as possibly stalled), `PRF+`, and `SHARD3`. No current working group adoption calls were active, but some are expected after this meeting.
+
+### PFSInfo Draft (draft-kivinen-ipsecme-pfsinfo)
+
+*   **Problem**: IKEv2 (RFC 7296) prohibits negotiation of Child SA key exchange methods in IKE_AUTH, leading to potential PFS policy mismatches that become evident late in the SA lifecycle.
+*   **Proposal**: Allow Diffie-Hellman groups (key exchange methods) to be negotiated in IKE_AUTH for the initial Child SA. This makes PFS policy mismatch evident at initial SA creation.
+*   **Mechanism**: A new notification, `CHILD_SA_PFS_SUPPORTED`, is introduced to indicate support for this negotiation. The negotiated key exchange method is not used directly but confirms mutual policy agreement.
+*   **Discussion**:
+    *   The draft is strongly supported by Scott Fluhrer (Cisco Systems) for solving a real problem cleanly and for being referenced by other drafts (e.g., Optimizer Key).
+    *   Andrew Cagney (Leadly Respond) questioned the name "PFSInfo," suggesting "CAM" (Key Exchange Method) might be more appropriate given its focus. The author clarified that "Key Exchange method" is the registry term.
+    *   Discussion around ensuring consistent policy application during re-keying if the negotiated method isn't directly used.
+*   **Decision**: The chair will initiate an adoption call for this draft.
+
+### Enhanced ESP Draft (draft-ietf-ipsecme-eesp)
+
+*   **Updates**: Version 02 includes two minor changes: removal of the packet format flag from the base header (redundant), and changing cipherblock padding to an increasing sequence of setting bits (similar to standard ESP).
+*   **Implementation Status**: A Linux kernel implementation was developed during a hackathon and is functional for basic ping tests.
+*   **Open Questions to Working Group**:
+    *   **Keep Transport Mode?**: Some suggested focusing only on tunnel mode for simplicity.
+    *   **Keep Payload Info Header in Tunnel Mode?**: The payload info header is primarily used for transport mode, leaving four unused bytes in tunnel mode.
+*   **Discussion**:
+    *   Strong consensus to keep transport mode. Participants highlighted various use cases including GRE over transport mode, OSPF authentication, host-to-host communication, multicast traffic, and specific hardware (e.g., NVidia cards) that historically support transport mode. Removing it would "kill their use case."
+    *   The chair questioned if existing ESP would suffice for these transport mode users or if EESP enhancements were truly needed. It was argued that if a use case benefits from EESP, it should be covered.
+    *   For the payload info header, the sense of those present indicated that authors are free to remove it for tunnel mode.
+*   **Decision**: Transport mode will be kept in the Enhanced ESP draft. Authors are free to remove the payload info header as a default in tunnel mode.
+
+### EESP X Version 2 Draft (draft-ietf-ipsecme-eespxv2)
+
+*   **Purpose**: A companion document for Enhanced ESP, primarily to negotiate the `max_crypt_offset` option.
+*   **Mechanism**: A new notification, `EESP_MAX_CRYPT_OFFSET_STATUS`, is introduced. It's a 1-byte value indicating the maximum number of bytes a peer can accept in the crypto offset option. A value of zero means the peer does not support the crypto offset option.
+*   **Discussion**: Andrew Cagney (Leadly Respond) raised a concern about using '0' as a meaningful value for `max_crypt_offset`. He suggested it introduces risk for implementers, as a zero value could either be a deliberate "none" or an accidental initialization error. He requested using a non-zero value for "none" or leaving it out entirely. This concern was acknowledged.
+*   **Action Item**: The discussion regarding the use of '0' for `max_crypt_offset` will continue on the mailing list.
+
+### Downgrade Prevention Draft (draft-ietf-ipsecme-downgrade-prevention)
+
+*   **Problem**: IKEv2 is vulnerable to downgrade attacks (e.g., identity misbinding), where an active attacker can force the use of weaker cryptographic algorithms. This is particularly relevant with the introduction of PQC KEMs. The core issue is that parties authenticate only their outbound messages, not confirming what they received from their peer.
+*   **Proposal**: Override the authentication logic to sign the entire initial exchange transcript (both inbound and outbound messages), ensuring peers confirm they had the same conversation.
+*   **Mechanism**: A new notification is included in the IKE_SA_INIT message. If supported by both peers, the new authentication logic is used. A `zero-prefix` is used for domain separation in the signed data.
+*   **Discussion**:
+    *   There was a sense of consensus that the attack is theoretically real and the proposed mitigation is sufficient and relatively simple to implement (Valerie implemented it in half a day, ~20 lines of code).
+    *   Some noted that the attack's practical relevance is debated, as it could be mitigated by disabling weak key exchanges or is costly to perform online. However, the author argued that quantum computers will make such attacks cheaper over time, and the fix is worth doing.
+    *   Ben (UK NCSC) confirmed the draft mitigates the key compromise impersonation (KCI) variant of the attack as well.
+    *   Daniel Vangis pointed out that this change helps with security proofs for multiple key agreement extensions.
+    *   **Open Issues**: How to compose this with session resumption (proposal: indicate negotiation status in the ticket), and finding a better name for the draft.
+*   **Action Items**:
+    *   Seek open-source implementations.
+    *   Discuss composition with session resumption and naming on the mailing list.
+    *   Code point registration will occur after the draft stabilizes.
+
+### CAM-based Authentication for IKEv2 Draft (draft-ietf-ipsecme-cam-auth)
+
+*   **Motivation**: ML-KEM is significantly more efficient than ML-DSA (50% shorter messages, 5x faster). CAM-based authentication offers security properties not available with signature authentication (e.g., full repudiation, PQC security for session key even if ephemeral KEX is not PQC secure).
+*   **Approach**: Integrates a PQA-like (Post-Quantum Authentication) protocol into IKEv2.
+    *   Reuses IKE_SA_INIT for ephemeral hybrid key exchange.
+    *   Relies on RFC 9867 for optional group PPK to protect identity.
+    *   Leverages HASH_URL for large, infrequent CAM certificates.
+    *   Uses IKE_INTERMEDIATE exchanges for CAM certificate and encapsulated shared secret key exchange.
+    *   IKE_AUTH for key confirmation.
+*   **Key Confirmation**: Introduces `SSConf` value to detect misconfigurations (e.g., private key not matching public key in certificate).
+*   **Security Concerns**: Scott Fluhrer raised concerns about formal security validation and replay protection, specifically for liveliness checks. Chris Patton suggested involving Tom Wiggers for review.
+*   **Alternatives Discussed**: Reducing round trips by moving certificate exchange earlier, with potential trade-offs in identity hiding or requiring complex "future key" protection.
+*   **Action Item**: Formal security review and discussion on liveliness checks to be pursued on the mailing list. The chair indicated a desire to focus on a single, clear approach (e.g., the original straightforward sequence) if adopted.
+
+### Frodo KEM in IKEv2 with Hybrid and PQC KEMs Draft (draft-ietf-ipsecme-frodo-kem-ikev2)
+
+*   **Motivation**: Frodo KEM is a PQC KEM scheme receiving strong recommendations from European authorities, making it a good backup for ML-KEM.
+*   **Updates (Version 02)**:
+    *   Reduced code points from 6 to 4, aligning with ISO standardization focus on security levels 3 and 5.
+    *   Addressed the ephemeral nature of Frodo KEM and the need to avoid key material reuse (which RFC 7296 permits for other KEMs).
+    *   Noted the relevance of the downgrade attack prevention draft.
+    *   Clarified reasons for supporting both AES and Shake variants (performance optimization across different hardware platforms).
+    *   Specified payloads for KEI and KERR.
+*   **Discussion**:
+    *   Scott Fluhrer questioned the need for both AES and Shake variants if performance differences are minor. The author stated that performance varies significantly across hardware, with AES variants performing better with hardware acceleration.
+    *   Ben (UK NCSC) emphasized the need for explicit text regarding the non-reuse of ephemeral Frodo KEM key material, as it overrides RFC 7296.
+    *   Andrew Cagney (Leadly Respond) highlighted the importance of CPU performance for high-end servers.
+*   **Decision**: The authors are asking for working group adoption.
+
+### McLeese KEM in IKEv2 Draft (draft-smyslov-ipsecme-mcbits-ikev2)
+
+*   **Challenge**: McLeese KEM has very large public keys (~1MB) but small ciphertexts. IKEv2 payloads are typically much smaller (KE payload max 60KB, UDP/IP max 64KB).
+*   **Required Extensions**: To support McLeese, multiple extensions are needed:
+    *   `big-payloads` draft (draft-smyslov-ipsecme-big-payloads)
+    *   IKE message fragmentation (RFC 7383)
+    *   TCP encapsulation (RFC 9329) to avoid UDP/IP fragmentation issues for reliability.
+    *   Intermediate exchanges and additional key exchange extensions.
+*   **Cross-Protocol Coordination**: The author suggested coordinating with TLS and SSH drafts for McLeese to agree on parameter sets and encodings.
+*   **Immediate Ask for IPSECME**: Adopt `big-payloads` and `reliable-transport` drafts as they are foundational for McLeese and potentially other large payloads (e.g., CRLs).
+*   **Discussion**:
+    *   The chair noted that TCP encapsulation's 16-bit length field (RFC 9329) is a limitation, suggesting a 30-bit length field could be negotiated.
+    *   HASH_URL was suggested as an alternative for long-term McLeese keys to reduce on-the-wire size.
+    *   `big-payloads` was noted as useful for other scenarios beyond McLeese, such as large CRLs.
+    *   Local testing of McLeese with `big-payloads` over TCP has been successful, albeit not very fast (<1 second for negotiation).
+*   **Decision**: No immediate adoption call for the McLeese KEM draft, but the `big-payloads` and `reliable-transport` drafts were identified as candidates for adoption due to their broader utility.
+
+### Beat Mode Update Draft (draft-moskowitz-ipsecme-beat-mode-update)
+
+*   **Purpose**: To extract Beat Mode from Appendix B of RFC 7402 (HIP) and make it a standalone document.
+*   **Proposed Change**: A minor fix to support IPv4 fragments by carrying fragment information in a pseudo-header within the encrypted payload, similar to existing IPv6 fragment support.
+*   **Coordination Issue**: Beat Mode is currently defined in RFC 7402 within the HIP context. Creating a standalone document requires updating RFC 7402 to point to this new RFC, to avoid having two conflicting definitions, especially given kernel code implementations of Beat Mode.
+*   **Discussion**: Deb Cooley (SEC AD) stressed the importance of synchronizing the update with RFC 7402 to prevent inconsistencies and maintain deployment compatibility.
+*   **Decision**: The adoption call for the `beat-mode-update` draft is postponed until the coordination and update plan for RFC 7402 (HIP) is resolved.
+
+### Open Discussion
+
+*   **Experimental RFCs**: The chair asked implementers if any existing experimental RFCs (e.g., `childless-ike-sa-initiation`, past authentication methods) are being used in practice, and if they should be advanced to standard track or declared failed experiments. Andrew Cagney mentioned `childless-ike-sa-initiation` is used in the real world with security labels, though not strictly as per the RFC.
+*   **BCP 89 (Sub-network Design) and IPSEC**: Chris Box (Independent) presented on BCP 89, which recommends reordering for TCP over multiple links, and asked if a more relaxed approach to reordering in sub-networks would negatively impact IPsec (e.g., replay protection).
+    *   **IPsec's Response**: IPsec already contends with reordering; replay windows (typically 64 packets) handle minor reordering. Large reordering (e.g., across satellite links) remains a challenge, and EESP is partly designed to address this. RFC 9347 implements stricter reordering for traffic flow confidentiality.
+*   **ESP Fragmentation Detection**: Daniel Vangis noted his document on detecting ESP fragmentation. The Transport Area Director suggested the TSV working group could look at it if IPSECME formally requests it, especially if it involves more than just notification.
+
+## Decisions and Action Items
+
+*   **DSCP-LP Draft**: The chair will initiate a working group last call for `DSCP-LP` once it is published as an Experimental RFC.
+*   **PFSInfo Draft (draft-kivinen-ipsecme-pfsinfo)**: The chair will initiate an adoption call.
+*   **EESPxV2 Draft (draft-ietf-ipsecme-eespxv2)**: The discussion regarding the use of '0' for `max_crypt_offset` will continue on the mailing list.
+*   **Enhanced ESP Draft (draft-ietf-ipsecme-eesp)**:
+    *   Transport mode will be retained.
+    *   Authors are free to remove the payload info header as a default in tunnel mode.
+*   **Downgrade Prevention Draft (draft-ietf-ipsecme-downgrade-prevention)**:
+    *   Open source implementations are desired.
+    *   Discussion on session resumption composition and draft naming will occur on the mailing list.
+    *   Code point registration will await draft stabilization.
+*   **CAM-based Authentication for IKEv2 Draft (draft-ietf-ipsecme-cam-auth)**: Formal security review and discussion on liveliness checks to be pursued on the mailing list. The chair indicated a preference for working group focus on a single, clear approach if adopted.
+*   **Frodo KEM in IKEv2 Draft (draft-ietf-ipsecme-frodo-kem-ikev2)**: The authors are asking for working group adoption.
+*   **Beat Mode Update Draft (draft-moskowitz-ipsecme-beat-mode-update)**: Adoption call is postponed until coordination with RFC 7402 (HIP) updates is resolved.
+*   **Experimental RFCs**: Andrew Cagney (Leadly Respond) to send a message to the mailing list for wider discussion on the status and usage of experimental RFCs.
+*   **ESP Fragmentation Detection**: Daniel Vangis to bring his draft on detecting ESP fragmentation to the mailing list for further discussion and potential engagement with the TSV working group.
+
+## Next Steps
+
+*   **Chair Actions**:
+    *   Initiate adoption calls for `PFSInfo` and `Frodo KEM in IKEv2`.
+    *   Initiate WG Last Call for `DSCP-LP` (once experimental).
+    *   Follow up on `Beat Mode Update` synchronization with RFC 7402.
+    *   Send email to the list regarding experimental RFCs.
+*   **Draft Authors**:
+    *   `EESPxV2`: Continue mailing list discussion on `max_crypt_offset` value.
+    *   `Downgrade Prevention`: Encourage open-source implementations, engage in mailing list discussions on open issues.
+    *   `CAM-based Authentication`: Pursue formal security reviews and mailing list discussions.
+    *   `McLeese KEM`: Monitor progress of `big-payloads` and `reliable-transport` drafts.
+    *   `ESP Fragmentation Detection`: Engage the mailing list and potentially TSV working group.
+*   **Working Group**:
+    *   Participate in adoption calls and mailing list discussions for ongoing drafts.
+    *   Provide feedback on experimental RFCs and potential advancements.
