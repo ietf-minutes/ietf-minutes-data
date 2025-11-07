@@ -1,0 +1,59 @@
+# NFSV4
+
+## Summary
+
+The NFSV4 working group meeting covered the status of several in-progress and proposed drafts, including internationalization, ACLs, flex files/erasure coding, and the RFC 8881bis document. Key discussions revolved around the coordination and potential conflicts between various ACL drafts, the technical approach for erasure coding with an emphasis on chunk-level atomicity, and strategies for reviewing the voluminous RFC 8881bis. The group decided to adopt Chuck Lever's NFSv3 ACL draft as an informational document and planned to schedule interim meetings to facilitate the review of RFC 8881bis, starting with the Directory Delegations section.
+
+## Key Discussion Points
+
+*   **Notewell Reading**: The IETF Notewell was read at the start of the meeting.
+*   **Adopted Documents Status**:
+    *   **Internationalization Draft**: Chairs (Chris) are conducting a working group last call review. A concern was raised regarding Appendix A being referenced as normative text while being labeled as informative, requiring clarification and potential edits.
+    *   **NFSV4 Uncacheable Draft (Tom)**: The base document has been adopted by the working group but has not yet been approved for the IETF stream. It needs to be converted from a draft-Haines to draft-IETF document, incorporating Dave's review comments, and then split into two separate documents as previously agreed.
+*   **New Document Adoption Asks**:
+    *   **Copy Implementation Experience (Chuck)**: Seeking discussion, Chuck Lever is still determining if it will become a working group draft or an experience draft.
+    *   **NFSV4 ACLs (Chuck)**: An adoption call has been requested for this draft.
+    *   **POSIX ACLs (Rick)**: Rick had previously asked for an adoption call for this draft.
+*   **Flex Files and Erasure Coding (Tom)**:
+    *   **Document Consolidation**: The flex files document now incorporates erasure coding, simplifying the discussion to a single document.
+    *   **Erasure Coding Approach**: Focus is on a "consistent writer" model, preventing two writers from overlapping. The core concept is chunk-level atomicity, where the individual write operation itself is not a full all-or-nothing transaction.
+    *   **Consistency and Integrity**: A chunk is "consistent" if all its parts have the same "guard" (client ID + timestamp) and "integrity" if consistent and passes CRC32 checks.
+    *   **Writing Strategy**: Uses `chunk_write` to Data Servers (DSs), with DSs saving prior chunk contents. `chunk_finalize` commits the chunk.
+    *   **Race Conditions and Repair**: If races occur, the chunk is locked. The Metadata Server (MDS) picks a winning client to repair the file by unlocking and rewriting sections.
+    *   **Unresolved Writes**: If clients disappear, a future reader determines inconsistency and reverts to prior contents. Christoph raised concerns about the complexity and added variables this introduces.
+    *   **"Safe Buffer" Discussion**: Christoph questioned the concept of a "safe buffer" for prior contents, suggesting it might lead to global state leakage without clear ownership, preferring it be tied to an owner (e.g., a private client layout). Tom will take this to the mailing list.
+*   **ACL Documents Review (Chuck's NFSv3 ACLs, Rick's POSIX ACLs, Dave's NFSv4.1 ACLs)**:
+    *   **Complementary vs. Conflicting**: Chuck Lever's opinion (relayed by the chair) is that the three drafts are complementary and could advance as a cluster.
+    *   **Specific Document Context**:
+        *   Chuck's NFSv3 ACLs: Documents existing 20-year old V3 implementations, providing historical context.
+        *   Rick's POSIX ACLs: A V4.2 extension.
+        *   Dave's NFSv4.1 ACLs: Addresses V4.1.
+    *   **Need for Chuck's V3 ACLs**: Christoph questioned the need for the V4.1 ACL document if POSIX ACLs are done. The AD (Gory) questioned why the working group should spend energy on a V3 spec, suggesting it might be better as an independent submission or informational document.
+    *   **Industry Involvement**: Rick emphasized the need to involve Windows and Apple implementers in V4 ACL discussions, as V4 ACLs are crucial for these platforms. Apple's NFS client was noted to have been recently upgraded to 4.1. The chair offered to reach out to these communities and provide Macs for testing.
+*   **RFC 8881bis (Dave Black)**:
+    *   **Scope**: This document addresses numerous errata, security issues (OSIS, lack of thread analysis), ACL approach, session handling, and RDMA problems inherited from previous versions (e.g., V4.0).
+    *   **Progress**: Significant work has been done on renaming/renumbering sections (per AD/chair suggestion), and cleanup for internationalization. Directory Delegations feature is now well-addressed.
+    *   **PNFS Integration**: Tom's work (RFC 8434) on PNFS has been integrated into 8881bis, establishing a framework for optional features and defining layout types.
+    *   **Review Challenge**: The document is currently around 850 pages, posing a significant challenge for review by the community and IESG.
+    *   **Target Date**: July (approximately 9 months away).
+*   **Document Review Process**: Rick suggested a section-by-section review approach for large documents like 8881bis, possibly through interim meetings, to manage the review load. The AD (Gory) concurred, emphasizing the need for an audit trail for section-by-section review.
+*   **Lagging Documents**: Security and 5662bis drafts have not yet been adopted, with no objections heard to their adoption.
+
+## Decisions and Action Items
+
+*   **Decision**: Chuck Lever's NFSv3 ACL draft (for documenting old V3 protocol implementations) received no objections for adoption as an **informational document**.
+*   **Action Item (Tom Haines)**: Update the "NFSV4 Uncacheable" draft to convert it to an IETF stream document, incorporate Dave Black's review comments, and then split it into the two agreed-upon documents. (Estimated completion: today, following the meeting).
+*   **Action Item (Chair)**: Resolve the issue in the Internationalization draft where Appendix A is listed as informative but contains normative statements and references.
+*   **Action Item (Chair)**: Initiate an adoption call for Chuck Lever's NFSV4 ACL draft.
+*   **Action Item (Chair)**: Schedule interim meetings for the working group to review sections of RFC 8881bis. The first interim will focus on the Directory Delegations section.
+*   **Action Item (Chair)**: Circulate a poll to the `NFSV4@IETF.org` and `Linux-NFS` mailing lists to determine suitable dates for interim meetings, aiming for one in early December and another in late January/early February.
+*   **Action Item (Chair)**: Reach out to the Apple and Windows communities to solicit their participation and feedback on the various ACL documents.
+*   **Action Item (Tom Haines)**: Take the discussion regarding the "safe buffer" concept in erasure coding (specifically relating to private client layouts vs. global state) to the mailing list for further discussion.
+
+## Next Steps
+
+*   **Interim Meetings**: Actively participate in the scheduled interim meetings, focusing on specific sections of RFC 8881bis (starting with Directory Delegations) to ensure comprehensive review and progress towards the July target date.
+*   **ACL Model Coordination**: Continue discussions on the mailing list to clarify the relationships and ensure proper coordination between the different ACL documents, especially regarding the V4.1 and POSIX ACLs.
+*   **Community Outreach**: The chair will perform outreach to Apple and Windows implementers to gather their input on the ACL documents.
+*   **Erasure Coding Refinement**: Further discussion and refinement of the erasure coding approach, particularly regarding the "safe buffer" and failure handling.
+*   **Document Adoptions**: Push for adoption calls for the Security and 5662bis drafts.

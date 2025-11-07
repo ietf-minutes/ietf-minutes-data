@@ -1,0 +1,91 @@
+# IDR
+
+## Summary
+The IDR session covered several drafts focusing on BGP-LS extensions for Segment Routing (SR) policy information, scheduled paths, and composite SR policies. Discussions emphasized the need for clear use cases, alignment with existing work in other working groups (Spring, PCE, TBR), and consistent encoding mechanisms. Additionally, two FlowSpec drafts were presented: one proposing a packet content filter for DDoS mitigation, and another for a feedback loop mechanism to verify FlowSpec rule installation and effectiveness. A final presentation detailed BGP extensions for SRv6 and MPLS transport interworking. Common themes included the importance of detailed technical justifications, addressing operational and security considerations, and ensuring interoperability with established protocols and data models.
+
+## Key Discussion Points
+
+*   **General Working Group Guidance (Jeff Tantsura, Chair):**
+    *   Jeff reiterated the IETF principle of collaborative document progress, urging authors and participants to provide cross-review of proposals, both editorial and technical.
+    *   He highlighted thematic groupings within IDR: BGP-LS for Segment Routing and FlowSpec types of work. Expertise in these areas was encouraged to contribute to document reviews.
+
+*   **Supplement of BGP-LS Distribution for SR Policy Information (Presented by Yowlio):**
+    *   **Problem:** Current BGP-LS distribution for SR policies lacks information on administrative state, backup path status, and generic 32-bit MPLS LSCs when carrying SR Segment-List information.
+    *   **Proposal:** Introduce new flags (S-flag for administrative shut, B-flag for backup path) in the SR-Segment-List TLV and a new MPLS LSC sub-TLV for generic 32-bit MPLS LSCs.
+    *   **Discussion:**
+        *   Zafar Ali (Cisco Systems): Suggested aligning the backup path discussion with the PCE working group's work and clarifying the administrative state in relation to SR policy data models.
+        *   Sue Hares: Asked for clarification on the relationship between this draft and the existing adopted "reverse path segment" draft and PCE multi-path work. She requested authors to respond on the mailing list if it's not related.
+        *   Jeff Tantsura: Emphasized that protocol encoding discussions should align with subject matter experts in the Spring Working Group rather than being debated solely in IDR.
+    *   **Action Item:** Authors to engage in PCE WG discussions regarding backup paths and clarify the relationship with the reverse path segment work on the mailing list.
+
+*   **BGP-SR Policy Extensions for Scheduled Path (Presented by Wang Minnichu):**
+    *   **Motivation:** Address use cases for networks with discontinuous links, frequent topology changes, and high resource utilization efficiency (referencing RFC 8934).
+    *   **Proposal:** Extend BGP-SR policy with schedule time information (ID, start/end time, recurrence, frequency) to allow head-ends to dynamically enable/disable candidate paths or segment lists.
+    *   **Discussion:**
+        *   Zafar Ali: Questioned if the requirement originated from the TBR working group and expressed concern about the added complexity of signaling complex schedules via BGP for what might be a controller function.
+        *   Linda Marcus: Asked for clarification on how this draft positions itself against the TBR scheduling draft (which directly controls links).
+        *   Li Zhang (co-author): Responded that the draft is not solely for TBR but also includes RFC 8934 use cases and addresses scenarios with unstable controller connections.
+        *   Jeff Tantsura: Highlighted comments from chat (Drew) suggesting alignment with PCEP RFC 8934 formatting for time information rather than re-defining it.
+        *   Jeff and Sue Hares: Emphasized that the primary point of contention appears to be the clarity and justification of the use cases, as similar functionality can be achieved in multiple ways. They encouraged authors to clearly articulate use cases and to engage in discussions with Spring, PCE, and TBR WGs to ensure consistent mechanisms.
+    *   **Action Item:** Authors to clarify the use cases for scheduled paths, align the time information format with PCEP RFC 8934, and engage with TBR/PCE/Spring WGs. Sue Hares will initiate a mailing list discussion to gather feedback on the use cases.
+
+*   **BGP Extension of SR Policy for Composite CP (Presented by Joe):**
+    *   **Background:** RFC 9256 defines composite SR policies; PCE supports distributed composite CPs, but RFC 9130 (BGP-LS SR Policy) lacks similar mechanisms.
+    *   **Proposal:** Define a `Constituent SR Policy Attribute Sub-TLV` within the CP of an SR policy, including `Color` and `Weight`, and an `Operational Per Flow Forwarding Class Sub-TLV`.
+    *   **Discussion:**
+        *   Sue Hares: Raised concerns about how the proposed `Color` interacts and establishes precedence with existing color mechanisms, specifically the `Tunnel Encapsulation Attribute` color and `Tunnel Color Extended Community` (RFC 9012). She requested clarity on this relationship.
+    *   **Action Item:** Authors to clarify the relationship and precedence of the proposed `Color` with existing color mechanisms. Sue Hares will send specific questions to the mailing list.
+
+*   **BGP-LS Extension for SR Policy Composite CP (Presented by Chang Wang):**
+    *   **Background:** RFC 9157 describes BGP-LS advertisement of SR policies, but not for composite CPs.
+    *   **Proposal:** Define a `Composite CP TLV` within `CP NLI Link Attributes`, including `Color`, `Weight`, and `Forwarding Class`.
+    *   **Discussion:**
+        *   Sue Hares: Reiterated the same questions regarding the `Color` and `Weight` as the previous draft, specifically asking about their source (e.g., head-end, candidate path, link) and the inheritance/precedence rules. She noted the need for specificity in the draft.
+        *   Chang Wang (co-author): Suggested that the color in this draft is distinct from the color in the candidate path TLV.
+    *   **Action Item:** Authors to provide more detail on the source, inheritance, and precedence of `Color` and `Weight` in this BGP-LS extension, and to examine RFC 9012 for context. Sue Hares will send specific questions to the mailing list.
+
+*   **Packet Content Filter for BGP FlowSpec (Presented by Yu-Jia):**
+    *   **Problem:** Modern DDoS attacks (carpet bombing, random IPs/ports, fixed payload characteristics) are difficult to identify and mitigate using existing FlowSpec filters.
+    *   **Proposal:** Introduce a new `Packet Content Filter` (or `Payload Filter`) for FlowSpec to match fixed payload characteristics, designed to comply with FlowSpec V2.
+    *   **Results:** Testbed validation showed effectiveness against various DDoS attacks and reduced load on scrubbing devices.
+    *   **Discussion:**
+        *   Maria: Expressed concerns about the maintainability of P-type/O-type fields (suggesting an IANA table) and the lack of security considerations, especially regarding potential oscillations or BGP control plane disruption if misused across AS boundaries.
+        *   Jeff Tantsura: Encouraged authors to contribute operational and security considerations to the new FlowSpec V2 document. He also emphasized the need to discuss scaling considerations for this feature, given FlowSpec's deployment on both security appliances and edge internet routers.
+        *   Jonathan (Metro Optic): Suggested that the document propose or hint at implementation strategies, as current ASIC hardware might not support such complex filters, potentially leading to traffic flooding routing engines instead of being filtered in hardware.
+    *   **Action Item:** Authors to consider requesting an IANA table for P/O types, add comprehensive security and operational considerations (including AS boundary interactions, oscillations, and scaling implications), and discuss hardware implementation challenges in the document.
+
+*   **BGP Flowspec Extension for Feedback Binding (Presented by Yu-Sha):**
+    *   **Problem:** Controllers lack visibility into the actual installation and effectiveness of FlowSpec rules on routers due to potential policy conflicts, hardware limitations, or inactive roles.
+    *   **Proposal:** Introduce a `Feedback Action` (a unique ID) within FlowSpec rules. Routers would establish a telemetry session with the controller and report rule status (receive, install, effective, remove) and hit statistics, correlated by the `Feedback ID`.
+    *   **Encoding:** The presentation discussed using either large BGP communities or the community container for encoding the feedback action.
+    *   **Discussion:**
+        *   Jonathan (Metro Optic) and Jeff Tantsura: Welcomed the proposal as a good idea aligning with ongoing FlowSpec V2 discussions. They advised against using large BGP communities and suggested the `community container` as the preferred mechanism for encoding such information in FlowSpec V2.
+    *   **Action Item:** Authors to refine the definitions and encoding, focusing on the `community container` for the feedback action, and explore integration with BMP or other telemetry-based feedback reports.
+
+*   **BGP Extensions for SRv6 and MPLS Transport Interworking (Presented by Swadesh Gurval):**
+    *   **Background:** This draft signals SRv6 SIDs (specifically DTM46, DTM, and DPM behaviors) with BGP-LU routes for transport interworking between SRv6 and MPLS domains, as described in Spring WG documents.
+    *   **Proposal:** Define a new `SRv6 Transport TLV` within the `BGP Prefix-SID Attribute` (RFC 8669) to announce SRv6 SIDs for these interworking behaviors, reusing existing SID Info and SID Structure sub-TLVs.
+    *   **Two Mechanisms:**
+        1.  **Shared SRv6 SID (DTM46/DTM):** Border nodes allocate an MPLS label and an SRv6 SID (DTM46/DTM) that can be shared across multiple BGP-LU routes. MPLS packets are encapsulated into IPv6.
+        2.  **Per-Prefix SRv6 SID (DPM):** Border nodes allocate a unique MPLS label and SRv6 SID (DPM) for each BGP-LU prefix, creating a translation between SRv6 and the label.
+    *   **Discussion:**
+        *   Keir Prattel (Arcus): Recommended adding explicit error handling procedures to the draft for cases where a receiving router does not support the new TLV.
+    *   **Action Item:** Authors to add error handling procedures to the draft.
+
+## Decisions and Action Items
+
+*   **General:** Authors across all drafts are encouraged to send specific questions, use case clarifications, and technical details to the IDR mailing list for deeper discussion and to ensure alignment with existing work.
+*   **SR Policy Information (Yowlio):** Engage with PCE WG discussions on backup paths; clarify alignment with reverse path segment work on the mailing list.
+*   **Scheduled Paths (Wang Minnichu):** Clarify use cases; align time format with PCEP RFC 8934; engage with TBR/PCE/Spring WGs. Sue Hares will start a mailing list discussion.
+*   **Composite SR Policy (Joe & Chang Wang):** Clarify the relationship, source, inheritance, and precedence of the proposed `Color` and `Weight` with existing color mechanisms (e.g., RFC 9012). Sue Hares will send specific questions to the mailing list.
+*   **Packet Content Filter (Yu-Jia):** Consider IANA table for P/O types; add security, operational, and scaling considerations; discuss hardware implementation.
+*   **FlowSpec Feedback (Yu-Sha):** Refine definitions and encoding, focusing on the `community container` for feedback action.
+*   **SRv6/MPLS Interworking (Swadesh Gurval):** Add error handling procedures to the draft.
+*   Several drafts indicated an intent to request Working Group adoption in future steps, pending resolution of open questions and feedback.
+
+## Next Steps
+
+*   The IDR working group will continue these discussions on the mailing list, particularly focusing on the clarity of use cases, alignment with other working groups' efforts (Spring, PCE, TBR), and consistency of encoding mechanisms.
+*   The chairs plan to initiate mailing list discussions where necessary to facilitate progress.
+*   The next IDR meeting is intended for IETF 125 in Chenjin.
+*   The chairs thanked Ging Dong for the secretary work during the session.
