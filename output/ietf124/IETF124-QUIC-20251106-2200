@@ -1,0 +1,108 @@
+# QUIC
+
+## Summary
+
+The QUIC Working Group meeting covered updates on the working group's re-charter and the status of several drafts. Key discussions revolved around the Q-log draft's scope and extensibility, a new proposal for QUIC Packet Received Timestamps (particularly its interaction with existing ACK frame structures), and a significant presentation on QUIC Stream Multiplexing (QMAX) as a potential new work item. Initial interest was also gauged for a server-preferred address extension and a proposal for exchanging congestion control data.
+
+## Key Discussion Points
+
+*   **Working Group Administrative Updates**
+    *   The working group's re-charter has been completed, formally adding "QUIC Stream Multiplexing" as a fourth work area.
+    *   Three working group documents (Q-log, Multipath, Greasing) have passed Working Group Last Call (WGLC) and are awaiting shepherd's write-ups for advancement to the IESG.
+    *   Many other documents remain "stuck" and require progress.
+
+*   **Q-log Draft (draft-ietf-quic-qlog)**
+    *   **Status Update**: An interim meeting helped resolve several long-standing issues, leaving 10 open issues and 3 minor editorial PRs.
+    *   **Tooling**: Internal Q-log tooling has been open-sourced, and QVIS is receiving a significant update. There are plans to deprecate support for earlier Q-log formats.
+    *   **External Uptake**: Q-log definitions are being used and adopted in other working groups (TSVWG, MOQ, AVTCORE) and there's interest from SCOR and HTTP.
+    *   **Scoping Discussion**:
+        *   A 2021 decision limited Q-log's scope to avoid delays, focusing on QUIC core and extensions registered by year-end.
+        *   Question arose whether to revisit this decision to include "quick wins" from newer extensions (e.g., WebTransport's Reset Stream At and Capsules) given the three-year gap.
+        *   **Discussion highlights**:
+            *   Lars-Zegov suggested publishing the core document now and creating new documents for any extensions to avoid further delays.
+            *   Christian noted that while defining new frames for extensions is straightforward, updating tools like QVIS to interpret them correctly (especially for features like multipath) is complex. He offered to work on a multipath Q-log extension after the core document's publication.
+            *   Martin, a co-editor, agreed on the need for timely publication, stating that small PRs (like those for Reset Stream At and Capsules) would not delay the core document, but larger efforts like multipath Q-log should be separate.
+            *   Gary Fairhurst questioned the sufficiency of the current framework for extensions. The editors affirmed the framework's robustness, supported by namespacing.
+            *   A sense of those present indicated a willingness to proceed with merging small, ready-to-go PRs even if they technically bend a previous self-imposed rule on scoping. Editors will confirm this on the mailing list.
+    *   **JSON Streaming**: The JSON streaming serialization format remains a potential blocker; the chairs solicited input from those with strong opinions or knowledge to resolve this.
+
+*   **QUIC Packet Received Timestamps (draft-ietf-quic-ts)**
+    *   **Status**: Adopted draft (0.0), editors Ian Swett and Joseph.
+    *   **Purpose**: Allows peers to report packet received timestamps for ACK packets, adding fields at the end of the existing ACK frame. Timestamps are connection-local.
+    *   **Key Design Issue: Independence from ACK Frame**:
+        *   Proposal to make it an independent frame was discussed.
+        *   Editors' view: Timestamps are closely tied to ACKs (like ECN counts); separation adds unnecessary complexity. Existing implementations (e.g., Google congestion controller) expect data with ACKs.
+        *   **Discussion highlights**:
+            *   Lars-Zegov raised concerns about modifying the base QUIC specification for ACK maintenance and the "always append" rule.
+            *   Christian argued that changing the parsing of an *existing frame type* based on transport parameter negotiation is a significant departure from QUICv1's design, which typically uses different frame types for different formats. He prefers new frame types, even if it leads to a "combinatorial explosion" of frame types, as it's more robust for QUICv1.
+            *   Kazuho countered that reusing the same ID and changing the format avoids a combinatorial explosion of frame IDs and potential exhaustion of short IDs.
+            *   Ted Hardy characterized this as a fundamental design decision about how parsing strategies are determined (frame type/version vs. transport parameter), not a minor preference.
+            *   Alessandro and Kazuho explored the idea of a separate timestamp frame that *must* follow an ACK frame in the same packet, but issues like retransmission and lack of specified frame ordering in a packet were noted.
+        *   **Outcome**: No consensus on this fundamental design question. Editors will take the discussion back for further consideration.
+    *   **Other Issues**: Discussion on best practices for timestamp reporting (e.g., handling limited capacity, prioritizing latest vs. highest packet numbers, and interaction with the ACK Frequency draft) and security considerations (preventing congestion controller manipulation).
+
+*   **QUIC Stream Multiplexing (QMAX) (draft-kazuho-quic-qmax)**
+    *   **Chairs' Introduction**: This is the new re-chartered work item. The presentation aimed to gauge interest in the current draft as a starting point for adoption.
+    *   **Kazuho's Proposal (V-Frames Approach)**:
+        *   **Motivation**: Provide a unified API for application protocols over different transport substrates (e.g., TCP+TLS vs. UDP+QUICv1) to avoid redundant protocol development.
+        *   **Design Goals**: Minimize divergence from QUICv1 to maximize adoption by existing QUIC stacks. Outsource heavyweight functions (loss detection, congestion control, packetization, encryption) to the underlying substrate.
+        *   **Protocol Overview**:
+            *   Negotiation via TLS ALPN (e.g., H3 over QMAX).
+            *   New `QMX_TRANSPORT_PARAMETERS` frame to carry QUIC transport parameters (some are banned, e.g., `original_source_connection_id`). A new `max_frame_size` TP specifies maximum size for frames with omitted length fields.
+            *   Uses QUICv1 frame encodings directly on the byte stream. Stream frames are always in order, and the offset field is required.
+            *   Receivers must handle partial frames; existing QUICv1 truncated frame logic can be adapted.
+            *   ACK frames are explicitly prohibited as the substrate handles retransmission.
+        *   **Implementation Experience**: Reported as easy to implement in `quickly` (half a day) and `quic-go` (one hackathon).
+        *   **Discussion highlights**:
+            *   Ted Hardy raised a significant concern about ossification. He argued that QMAX, as a common API, might ossify QUIC to a specific variant (QUICv1 over TLS/TCP), potentially hindering future QUIC versions or applications (like MOQ) that require specific transport interactions.
+            *   Kazuho argued that the API contract for streams and datagrams is robust enough, akin to SCTP, and the ossification concern might not apply to the application/QUIC stack interface.
+            *   Yaroslav suggested focusing on TLS 1.3 over TCP, adding an ALPN signaling mechanism for non-TLS use cases, reconsidering the 16KB `max_frame_size` default, and clearly outlining QMAX's role as a fallback with its downsides.
+            *   Guillaume expressed interest for QUIC over RDMA, suggesting QMAX should broadly support any stream, potentially including QUIC's own encryption if TLS is not trivial.
+            *   Martin (chair) clarified that TLS is the *default* security provider for bi-directional byte streams, not the exclusive one, and that ossification could be mitigated by subversion negotiation. He reiterated that MOQ over TCP is understood to be a less optimal choice.
+            *   Alessandro and Eric generally supported the direction and minimizing divergence from QUICv1 for pragmatic reasons, but acknowledged potential future debates on efficiency vs. simplicity.
+            *   A poll of the room indicated that out of 95 participants, 29 considered the draft a suitable starting point for adoption, while 21 did not. The "no" voters (Ted Hardy, Christian) emphasized that the negotiation capabilities (transport parameters, frame types) need to be aligned with how QUICv1 handles them before adoption.
+        *   **Outcome**: No decision on adoption. Chairs will confer offline with authors and the AD, and discussions will continue on the mailing list.
+
+*   **Server Preferred Address Extension (draft-mmanias-quic-new-preferred-address)**
+    *   **Presenter**: Marko. Co-author Martin.
+    *   **Problem**: While clients can migrate connections anytime, servers can only specify a preferred address at the connection's beginning (via the Preferred Address Transport Parameter). There's no mechanism for a server to request a migration mid-connection. This is particularly relevant in peer-to-peer contexts where the server/client role can be arbitrary.
+    *   **Proposal**: A new `NEW_PREFERRED_ADDRESS` frame that allows a server to request a client migrate to a new address dynamically. It leverages existing logic from the Preferred Address TP.
+    *   **Discussion highlights**:
+        *   Marko's use case: A peer (acting as a server) connected to a mask proxy wants to migrate to another mask proxy.
+        *   Christian clarified that this frame is orthogonal to multipath and would work whether or not multipath is negotiated. He reiterated that security concerns around dynamically changing addresses had previously prevented such proposals.
+        *   Eric suggested that the design should consider different types of migration requests (e.g., optional vs. mandatory) and how new Connection IDs are managed.
+        *   David Schinazi found the peer-dependent proxying compelling and believed the security issues, while present, are tractable.
+    *   **Outcome**: Discussion will continue on the mailing list.
+
+*   **Exchanging Congestion Control Data (draft-jan-quic-congestion-data-transfer)**
+    *   **Presenter**: Rich.
+    *   **Problem**: Need a mechanism to exchange congestion control information, especially for "careful resume" in future connections, as servers don't always connect to the same clients.
+    *   **Proposal**: Two new QUIC frames: `CONNECTION_CD_INFO` (sender provides CC info, integrity-protected with an unspecified server-known identifier, some parts clear) and `REQUEST_CC_DATA` (peer requests CC info).
+    *   **Transport Parameter**: `support_congestion_data` parameter with options for consumption, caching, or consideration.
+    *   **Data Format**: TLV (Tag-Length-Value) with ~24 types (RTT, slow start status, etc.). Sent *in the clear* over QUIC encryption.
+    *   **Discussion highlights**:
+        *   Lars-Zegov noted similarities to previous BDP frame discussions and questioned the comparability of CC data between different stacks and the necessity of making it visible to the client when opaque tokens could be used.
+        *   Ian Swett requested more detailed security considerations.
+        *   David Schinazi asked for clarification on how these frames would be embedded and parsed within a packet.
+    *   **Outcome**: The draft is in production use (TikTok) and seeks working group adoption, but likely needs further revision. Discussion will continue on the mailing list.
+
+## Decisions and Action Items
+
+*   **Q-log Draft**:
+    *   **Decision**: Editors will proceed with merging small, ready-to-go PRs for minor extensions (e.g., Reset Stream At, Capsules) even if it bends a previously self-imposed scoping rule, based on the sense of the room. This decision will be confirmed on the mailing list.
+    *   **Action Item**: Editors to take discussions on JSON streaming format and broader scoping to the mailing list.
+
+*   **QUIC Packet Received Timestamps Draft**:
+    *   **Action Item**: Editors will re-discuss the fundamental design question of whether to change parsing of an existing frame type via transport parameter negotiation or to define new frame types for extensions, based on the divided opinions presented.
+
+*   **QUIC Stream Multiplexing (QMAX) Draft**:
+    *   **Action Item**: Chairs will confer offline with authors and the AD regarding the mixed interest shown in the poll, and further discussions will be solicited on the mailing list to address concerns, particularly regarding ossification and negotiation alignment.
+
+*   **Server Preferred Address Extension & Exchanging Congestion Control Data Drafts**:
+    *   **Action Item**: Authors are encouraged to continue discussions on the mailing list to address feedback, elaborate on security considerations, and refine design choices.
+
+## Next Steps
+
+*   Working group participants are encouraged to engage in discussions on the mailing list for all presented drafts, providing feedback and contributing to proposed solutions.
+*   The chairs will provide updates on the QMAX adoption process and Q-log status on the mailing list.
+*   Authors of the new address and congestion control drafts are encouraged to refine their proposals based on the initial feedback.
