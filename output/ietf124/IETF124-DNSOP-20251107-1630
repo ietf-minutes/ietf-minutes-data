@@ -1,0 +1,95 @@
+# DNSOP
+
+## Summary
+
+The DNSOP session covered a range of topics, including proposed mechanisms for indicating zone cuts, extensions for delegation record types, updates to DNSSEC algorithm rules, improvements for private DNSSEC, strategies for DNSSEC disaster recovery, and the publication of domain "for sale" indicators. Discussions highlighted the technical merits and potential operational impacts of each proposal, often leading to recommendations for further mailing list engagement or re-evaluation of scope within the IETF or other streams. A significant meta-discussion also took place regarding the future home and organization of Post-Quantum DNSSEC work within the IETF. The chairs indicated upcoming changes to how presentations and drafts are accepted, with details to be announced on the mailing list.
+
+## Key Discussion Points
+
+*   **Delegation to the Empty Label (draft-andrews-dnsop-delegation-to-empty-label)**
+    *   **Problem:** How to indicate a zone cut (e.g., for `dot internal`) without specifying a server, avoiding ambiguity when a name exists internally but not globally.
+    *   **Proposal:** Use an `NSR` set with the empty label (`.`) as the target in an `NS` record. This signals a zone cut exists but no server is globally available.
+    *   **DNSSEC Integration:** Allows publishing `DS` records for internal zones, enabling DNSSEC validation without distributing trust anchors.
+    *   **Precedent:** Similar use of `.` in `SRV`, `MX`, `SVCB`, `MNAME`, and `RNAME` records.
+    *   **Impact:** No protocol changes required, but DNS parser/syntax checkers might need updates.
+    *   **Testing:** Preliminary experiments show no immediate damage; further testing planned to observe resolver behavior.
+    *   **Clarification:** This mechanism is intended for *any* zone to publish an entry point for an internal zone, not specifically for a global `dot internal` in the root.
+    *   **Concerns (Mark Andrews):** Recursive servers, especially in chains, could repeatedly attempt resolution, leading to `SERVFAIL`. This was argued to be "bad protocol design" and that existing insecure delegation methods are superior.
+    *   **Action:** Discussion to continue on the mailing list, specifically requesting testing with multi-layer forwarders.
+
+*   **DNS Protocol Modifications for Delegation Extensions (draft-arenz-dnsop-delegation-extensions)**
+    *   **Motivation:** To allow a *range* of RR types to exist at a delegation point, not just the single type currently being developed for `DELIC`. The IESG INT area director recommended bringing this to DNSOP.
+    *   **Proposal:** Allocate a range of types for future extensions at delegation points, using the same mechanism as `DELIC`.
+    *   **Support:** Strong support from several individuals, including Ray Bellis and Shumon, for reserving ranges and considering updates to `RFC6895` (IANA Considerations for DNS).
+    *   **Non-Impediment:** The author emphasized that this is not an alternative to the `DELIC` draft and intends to avoid delaying `DELIC`'s progress.
+    *   **Clarification (Paul Hoffman):** Noted that while `DELIC` might get a range, `DELIG` (Delegation Insecure) would still need a separate, distinct record.
+    *   **Action:** Chairs indicated strong support for early adoption and fast-tracking this work, encouraging continued discussion on the mailing list regarding its relationship with `RFC6895`.
+
+*   **Multiple Algorithm Rules in DNSSEC (draft-wessels-dnsop-multi-algo-dnssec)**
+    *   **Problem:** Current DNSSEC requirements for signers (use all algorithms) and validators (use any valid path) create operational complexities during algorithm transitions or with multi-signer setups.
+    *   **Key Proposal:** If a zone advertises only universal algorithms, signing with *one* is sufficient. If it uses formerly universal or no universal algorithms, it *must* sign with all. This is intended to ease transitions while preserving downgrade attack protection.
+    *   **Validator Behavior:** Proposed that if a mainstream algorithm is locally disabled (e.g., by OS policy), validators should treat validation paths using that algorithm as *insecure*, not bogus.
+    *   **Related Work:** Discussion about synchronizing with Steve Crocker's DNSSEC Algorithm Lifecycle draft.
+    *   **Arguments for (Shumon, Victor, Peter Thomassen):** The use cases for multi-signers and graceful handling of algorithm deprecation (e.g., Red Hat issue) are valid. This draft addresses catastrophic failure modes when lifecycle transitions fail, which the lifecycle draft does not cover. It does not add protocol complexity, rather it clarifies operational best practices and implementation behavior.
+    *   **Arguments Against (Mark Andrews):** Attributed issues (like Red Hat's) to operator error, not protocol design flaws. Warned against managing DNS algorithms in this way, predicting long-term operational problems.
+    *   **Action:** Discussion to continue on the mailing list, with a specific request for Mark Andrews to document previous concerns regarding forwarder situations.
+
+*   **Private DNSSEC and Private OID (draft-andrews-dnsop-private-alg-ds)**
+    *   **Problem:** `DS` records for private DNSSEC algorithms (`Private DNS`, `Private OID`) are ambiguous because the algorithm number alone doesn't uniquely identify the algorithm, unlike standard algorithm types. This creates issues, especially with pre-publishing `DS` records or determining if a supported algorithm is actually in use.
+    *   **Proposal:** Introduce new `DS` hash algorithm types that include the specific private algorithm identifier at the beginning of the hash, similar to `DNSKEY` and `RRSIG`.
+    *   **Support (Chair):** Views this as fixing a bug in the original implementation, potentially useful, but needs thorough testing (BQC).
+    *   **Alternative (Philip):** Suggested that resolvers could fetch the `DNSKEY RRset` to match public keys and determine the exact algorithm, then treat unmatched `DS` records as not present.
+    *   **Response (Mark Andrews):** Acknowledged that fetching `DNSKEY` works in some cases but not for pre-publishing and can impact downgrade resistance.
+    *   **Action:** Discussion to continue on the mailing list to resolve these technical details.
+
+*   **Disaster Recovery for DNSSEC (draft-courage-dnsop-disaster-recovery-dnssec)**
+    *   **Problem:** The necessity of keeping private keys confidential (e.g., with HSMs) often prevents backups, which is problematic for disaster recovery. Secret sharing schemes are operationally complex and can fail.
+    *   **Proposal:** Outlines a key rollover process for disaster recovery when a private key is inoperable, leveraging `RFC7543`. A critical step is that the signer must *not* remove old `RRSIG`s during the transition.
+    *   **Status:** Internal disaster recovery exercises are planned, and early feedback from implementers is positive.
+    *   **Support (Stephen Ebbing, Peter Thomassen):** The draft provides a useful, protocol-compliant "how-to" guide for a specific operational challenge without adding protocol complexity, requiring only minor software changes.
+    *   **Concerns (Johan, Jim Reid):** Questioned the necessity, suggesting HSMs should support backups. Expressed confusion about the `RFC7543` reference, finding the approach overly complex for a niche policy regime. Suggested it might be better suited as a `BCP` or for `IESG` `ARC` review rather than a formal `RFC`.
+    *   **Action:** Discussion to continue on the mailing list.
+
+*   **Putting a "For Sale" Sign on a Domain Name (draft-davids-for-sale-sign-for-domains)**
+    *   **Problem:** No standardized way to indicate that a registered domain name is available for sale or lease.
+    *   **Proposal:** Use a `TXT` record under a special underscore label (`_for-sale.<domain_name>`) containing structured data (e.g., asking price, contact email, landing page URL).
+    *   **Use Case:** SIDN (.nl registry) has implemented this in production since 2022 to connect buyers and sellers, without commercial involvement from the registry.
+    *   **Technical Status:** Draft is mature, with a working demo. DNS Director review found it technically sound, requiring no DNS protocol or software changes.
+    *   **IETF Stream Discussion:**
+        *   **Chair:** Recommended keeping it in the Independent Submission stream, as it's more about registrar/ICANN community consensus than IETF protocol consensus. DNSOP has too much work.
+        *   **Support for RFC (John, Tobias):** Agreed it was technically fine for `ISE`. An `RFC` (even an `ISE` one) would provide significant credibility for broader adoption by registrars and domain parkers.
+        *   **Eliot Lear (Independent Submissions Editor):** Confirmed that `ISE` would seek expert review, welcoming input from DNS experts. Emphasized that the IETF as a whole decides where rough consensus helps.
+    *   **Action:** The consensus was for the draft to remain in the `Independent Submission` stream but to be published as an `RFC` for credibility among its target community.
+
+*   **Method to Identify Administrative Boundary of IDN Names (draft-kangyang-dnsop-idns-administrative-boundary)**
+    *   **Problem:** Applications struggle to recognize variant IDN names (e.g., simplified and traditional Chinese characters for the same entity) as belonging to the same administrative boundary, despite human recognition.
+    *   **History:** Previous efforts in the IDN working group and a 2023 BoF failed to gain traction or form a working group.
+    *   **Proposal:** Use `DS` records to link variant domain names to a common "anchor" or "intermediary" name, thus signaling a shared administrative boundary to applications.
+    *   **IETF Stream Discussion:**
+        *   **Chair:** Noted that new `R-types` are not inherently "expensive" but require expert review. Raised concerns that the idea had been previously rejected by IETF and questioned whether it was truly a DNS problem or an application problem. Emphasized the need for application-side support and security implications if domains change ownership.
+        *   **Concerns (Tobias, Victor, John):** Agreed that DNS's tree-shaped nature is intended to cover such cases. Viewed the problem as social rather than technical. Noted that solutions for TLD variants already exist (e.g., via `DS` records). Cited a decade of lack of application interest in auto-configuring for variant names, suggesting it's not a problem the community considers worth solving.
+    *   **Action:** No support for this work in `DNSOP`. The presenter was encouraged to seek support from the application community.
+
+*   **Post-Quantum DNSSEC Strategy (draft-sury-dnsop-pq-dnssec-strategy)**
+    *   **Problem:** Post-Quantum (PQ) cryptography poses significant risks to DNSSEC. New PQ algorithms often have characteristics (e.g., larger key/signature sizes) that are not a perfect fit for existing DNSSEC mechanisms, requiring new strategies and protocol changes.
+    *   **Collaboration:** Highlighted extensive community collaboration (PQDNSSEC mailing list, hackathons, NIST, academic, operator communities) to research, implement, and evaluate PQ algorithms for DNSSEC.
+    *   **Strategy Draft:** The first version focuses on crypto agility and security, proposing two classes of algorithms (resilient fallback, routine performance) and techniques like MTL mode to mitigate impact.
+    *   **Meta-Discussion:** The core question was where this extensive PQDNSSEC work should be standardized within the IETF (e.g., DNSOP, a new group like DNSEXT, or a combination). Noted `CFRG`'s disinterest in Merkel tree constructs and the need for cryptographic expertise.
+    *   **Recommendations (Paul Hoffman, Florian, Andre):** Praised the draft for defining the scope of work. Suggested that the work is significant enough to warrant a dedicated working group or focus group, possibly involving cryptographers and DNS experts, as it might be too broad or specialized for DNSOP alone. Paul Hoffman advised clarifying that "migration" in the draft refers to standards evolution, not deployment guidance.
+    *   **Action:** This was a high-level discussion to inform the broader IETF on how to organize the significant upcoming PQDNSSEC work (likely via the `DNS@IETF` initiative). No specific DNSOP adoption decision was made.
+
+## Decisions and Action Items
+
+*   **Delegation to the Empty Label:** Discussion to continue on the mailing list, focusing on Mark Andrews' concerns about recursive server behavior and testing with multi-layer forwarders.
+*   **DNS Protocol Modifications for Delegation Extensions:** Chairs indicated strong support for early adoption and fast-tracking the document. Authors encouraged to continue discussions on the mailing list regarding potential updates to `RFC6895`.
+*   **Multiple Algorithm Rules in DNSSEC:** Discussion to continue on the mailing list. Mark Andrews was asked to document his previous concerns regarding forwarder situations.
+*   **Private DNSSEC and Private OID:** Discussion to continue on the mailing list to hash out technical details and address concerns about downgrade resistance and pre-publishing.
+*   **Disaster Recovery for DNSSEC:** Discussion to continue on the mailing list to address the utility and scope of the document, including whether it's best suited as a BCP or RFC.
+*   **Putting a "For Sale" Sign on a Domain Name:** Consensus was to proceed via the Independent Submission stream, aiming for publication as an RFC to lend credibility for broader adoption by registrars and the domain industry. DNSOP will not take on this work.
+*   **Method to Identify Administrative Boundary of IDN Names:** No support for this work within DNSOP. The author was encouraged to seek support from the application community.
+*   **Post-Quantum DNSSEC Strategy:** This was a discussion to gather input for the broader IETF community (likely `DNS@IETF`) on how to organize and progress the significant PQDNSSEC work. No immediate DNSOP adoption decision.
+
+## Next Steps
+
+*   Chairs plan to announce changes to how presentations and drafts are accepted, with an open discussion on the mailing list before the next in-person IETF meeting.
+*   Mailing list discussions are expected to continue for several drafts as indicated in the "Decisions and Action Items" section.

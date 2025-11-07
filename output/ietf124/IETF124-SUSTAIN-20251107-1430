@@ -1,0 +1,111 @@
+# SUSTAIN
+
+## Summary
+
+The SUSTAIN session featured five technical presentations covering a range of topics related to sustainable networking. Discussions included detailed models for router energy consumption, a proposal for ICMP extensions to carry environmental data, an overview of the Carbon Accounting Alliance, and an empirical study on the energy impact of 3G network shutdowns. Key findings highlighted the challenges in accurate power measurement, the potential for data plane visibility for environmental metrics, the importance of engaging with carbon accounting professionals, and the often-overestimated energy savings from legacy network technology sunsets.
+
+## Key Discussion Points
+
+*   **Modeling and Optimizing Router Energy Demand (Romain G., ETH Zurich)**
+    *   **Problem:** Existing network optimization works (e.g., link sleeping) struggle to accurately estimate energy savings due to a lack of precise power models for routers and links.
+    *   **Methodology:** Developed a top-down, granular power model using external power measurements. The process involves establishing a baseline, then measuring power deltas from plugging/unplugging transceivers, activating interfaces, and generating traffic (various packet sizes, bandwidths, transceiver types). Tools for this automation are publicly available.
+    *   **Model Components:** Router power draw is modeled as a sum of base power, power cost per interface (dependent on transceiver type and configuration), and traffic costs (physical forwarding per bit, header processing per bit).
+    *   **Validation & Findings:**
+        *   Model successfully captures fluctuations due to traffic and interface state changes.
+        *   Internal Power Supply Unit (PSU) measurements are often unreliable and inconsistent.
+        *   Data sheets are generally unhelpful and can sometimes even *underestimate* actual power draw, contradicting their usual purpose of providing generous overestimates.
+        *   **Crucial Insight:** Simulating link sleeping on an underutilized network (Telia) showed <1% energy savings, despite turning off ~30% of links. This is because transceivers often remain powered even when links are logically down, indicating a software/driver issue rather than a fundamental limitation of the optimization technique.
+        *   Operating System (OS) upgrades can significantly (e.g., 10%) increase router power draw due to changes in control loops (e.g., fan management).
+        *   Some vendors (e.g., Juniper) are addressing this "always-on" power issue by introducing configuration options to truly power off unused service lines/ports.
+    *   **Resource:** The "Network Power Zoo" is a public database of collected power-related data.
+    *   **Q&A:**
+        *   Luis (Telefónica) clarified that the current characterization focuses on monolithic/fixed chassis routers, with modular chassis being a more complex future direction.
+        *   Chinmay (Intel) inquired about Linear Pluggable Optics (LPO) for lower power consumption. Romain confirmed these were not specifically tested, but the model assumes a constant power draw for optical transceivers once plugged in, which aligns with observed data sheet values.
+
+*   **ICMP Extensions for Environmental Information (Carlos P., Juniper & Janem V., Intel)**
+    *   **Motivation:** Network devices collect significant environmental data (power, temperature). ICMP-based tools (ping, traceroute) are universally available for network operation and debugging. The success of RFC 4884 for MPLS path information provides a precedent for extending ICMP.
+    *   **Objective:** Provide accessible visibility of environmental information to operators at the data plane level, correlating directly with network activity. This does not preclude richer collection methods like YANG.
+    *   **Approach:** Extend existing ICMP messages, specifically the extended echo reply (RFC 8335), to carry new environmental information elements.
+    *   **Defined Elements:** Initially, power draw (chassis, component), throughput, and EERC (Environmental Efficiency Rating Component) were defined in 32-bit and 64-bit variants. The 32-bit variant is being deprecated to standardize on 64-bit for future-proofing and implementation simplicity.
+    *   **Proof of Concept (POC):** Two implementations exist (BPF/C-based and Python/Scapy-based), demonstrating the ability to append environmental extensions to ICMP echo replies, with backward compatibility for receivers not configured with the new extensions.
+    *   **Discussion:**
+        *   Doug (IETF) emphasized that IRTF's role is research, and experiments are crucial to inform future standardization efforts.
+        *   Eve (Co-chair) suggested a hackathon to gather diverse feedback and accelerate engagement from hardware manufacturers, developers, and operators, particularly to understand discrepancies between expected and actual measurements, as highlighted in Romain's talk.
+        *   Jan (Acreo AB) and Eve noted the potential for IETF to contribute YANG models for the underlying data structures currently shared in Excel spreadsheets by carbon accounting professionals.
+
+*   **The Carbon Accounting Alliance - How I took in how to get into it and what to do with it (Jan N., Acreo AB)**
+    *   **Carbon Accounting Alliance (CAA):** A non-profit association of over 800 companies and professionals focused on measuring and reporting carbon emissions.
+    *   **Engagement:** Jan joined the CAA as an individual to bridge the gap between technical networking standards (IRTF/IETF) and carbon accounting practices. He is particularly interested in their Software Interoperability Working Group.
+    *   **Conference Learnings (Key Concepts in Carbon Accounting):**
+        *   **Measurement Methods:**
+            *   *Spend-based accounting:* Applies emission factors to company expenditures (e.g., CO2/dollar). Often proprietary, but CAA is starting "Carmen Commons," a not-for-profit common library of emission factors.
+            *   *Activity-based accounting:* Analyzes emissions from specific activities. More accurate but more labor-intensive. There's a recognized need to combine both.
+        *   **Energy Mix Accounting (Scope 2):**
+            *   *Market-based accounting:* Accounts for the energy mix based on what a company pays for (e.g., premium for solar power).
+            *   *Location-based accounting:* Accounts for the energy mix based on the grid's geographic point. Both approaches are used, each with pros and cons (e.g., market-based incentivizes greener purchases, location-based reflects physical reality).
+        *   **Challenges & Observations:**
+            *   Many countries' legislations reference the GHG Protocol, an external data source from a US non-profit, which is unusual for legal frameworks.
+            *   Scope 2 and Scope 3 accounting are considered "broken" or difficult to do properly without universal participation.
+            *   Need for consistent system boundaries and critical importance of **transparency** (traceability, verifiability, trust) in all calculations.
+    *   **Next Steps/Suggestions:** Jan intends to participate in the CAA Software Interoperability Group. The question was raised if IETF/IRTF should formally send a representative, which was clarified by Doug (Co-chair) that individuals can join in their own capacity.
+    *   **Q&A:**
+        *   Marisol inquired about Scope 4 (avoided emissions). This was discussed briefly at the conference but not a major theme due to its complexity and "hairy" nature (e.g., how to count emissions avoided by not flying).
+        *   Adrian asked about CAA's focus on standards. While they monitor other organizations, the software interoperability group had little insight into the IETF/IRTF or general software space, underscoring the need for engagement. Eve suggested Yang models as a potential IETF contribution to standardize the data structures currently exchanged in spreadsheets.
+
+*   **PATH Energy TrophY Radio API aka Petrom - The Augmented Version (Adrian G., Deutsche Telekom)**
+    *   **Context:** The original Petra API, developed in the IETF Green WG, aims to provide visibility into the energy consumption of network paths. It acts as an interface between consumers (orchestrators, customers) and the network controller, which retrieves data from individual devices.
+    *   **Augmented Motivation:** To expand beyond simple power consumption/energy efficiency and encompass a broader scope of sustainability attributes.
+    *   **Key Updates:**
+        *   **New Energy Attributes:** Added Energy Mix, Greenness Degree (quantifies sustainability based on renewables), Sustainable Score (links greenness degree with Volts/Gigabit), Power Usage Effectiveness (PUE) for infrastructure comparison, Transmission Loss (likely to be renamed to Energy Transmission Loss), and Idle Energy.
+        *   **Double Counting:** Clarified that the API itself does not prevent double counting in recursive usage; the entity consuming the API must manage this.
+        *   **YANG Model:** Updated to reflect the new attributes.
+        *   **Use Cases:**
+            *   Extended SD-WAN use case to include 5G slice and multi-domain orchestrators, enabling energy-aware slice definition.
+            *   Introduced "Greener Slices" use case: routing traffic (or a percentage thereof) through network paths using low-carbon footprint devices or renewable energy sources, aligned with sustainability agendas.
+    *   **Next Steps:**
+        *   Gather further RG feedback.
+        *   Refine wording to avoid confusion with the IETF Green WG (e.g., avoiding "green" in attribute names).
+        *   Extend source/destination definition beyond Layer 3 IPs for greater generality.
+        *   Address stability of API answers over time (e.g., how stable is the energy mix reported).
+        *   Explore new incentive scenarios and use cases.
+        *   Maintain linkage with the IETF Green WG.
+        *   Solicit feedback on potential new names for the API (e.g., Petram, Patra, Pathom, Pathos, Patronus).
+    *   **Q&A:**
+        *   Dirk questioned the certification of information accuracy. Adrian stated that the API relies on the network domain or controller for data, and certification should come from those entities.
+        *   Dirk also commented on the "Greenness Degree," suggesting a focus on overall carbon emissions/intensity (including lifecycle emissions, where nuclear might be "greener" than some renewables) rather than solely renewables, to provide a more comprehensive sustainability metric. Adrian acknowledged this as a valid discussion point for the sustainable score.
+
+*   **Impact of 3G Shutdown on Network Energy Consumption (Juha K., University of Helsinki)**
+    *   **Context:** Industry reports often claim significant energy savings (hundreds of percent) from shutting down older mobile network technologies like 3G. This study used real operational data to verify these claims.
+    *   **Data Source:** 1500 Telia base stations in Finland where 3G (900MHz band) was shut down and the frequency was refarmed for 4G.
+    *   **Key Findings:**
+        *   **Limited Direct Savings:** The direct energy savings from shutting down 3G were minimal, approximately 20 watts per sector (60 watts per base station), which is less than 1% of the total base station power. This is significantly lower than industry claims.
+        *   **Refarming Negates Savings:** When the 900MHz band was subsequently refarmed for 4G, the power consumption returned to approximately the original levels. Therefore, the net energy saving from 3G shutdown was effectively zero.
+        *   **Traffic Migration:** A small portion of 3G traffic initially migrated to 2G, causing a temporary spike in 2G load. However, over time, users upgraded their 3G-only devices, and 2G load returned to previous levels. Overall, the amount of traffic carried by 3G was too small to have a significant impact on 4G or 5G traffic on other frequency bands.
+        *   **Primary Benefit: Capacity:** The main benefit of 3G shutdown and refarming is the increased capacity provided by 4G on the same frequency band, not energy savings.
+        *   **Other Impact:** Some 3G-only embedded devices (e.g., in cars, IoT) lost connectivity, effectively forcing users to upgrade or lose functionality.
+    *   **Conclusion:** Based on real operational data, shutting down 3G and refarming the spectrum did not result in significant energy savings. The primary outcome was increased network capacity and forced device upgrades.
+    *   **Q&A:**
+        *   Ian (Co-chair) asked about embodied carbon (e.g., from building new sites or hardware manufacturing). Juha clarified that since modern hardware is often multi-Radio Access Technology (RAT), shutting down 3G typically does not involve removing physical hardware or building new sites. Refarming is often a software change. Building new sites is a separate embodied carbon discussion.
+        *   Dirk inquired about the use of energy-saving features in LTE (e.g., Self-Organizing Networks, cell switching). Juha confirmed these are used, and ongoing research is exploring machine learning to optimize cell site turn-off, MIMO muting, and other radio optimizations, while also evaluating their impact on Quality of Experience.
+        *   Yari asked about a general tendency for "more downlink traffic" with new generations. Juha clarified this refers to the natural growth in user data consumption that new technologies enable, not a specific spike caused by the 3G shutdown itself.
+
+## Decisions and Action Items
+
+No formal decisions were made by the RG during this session. However, the following suggestions and opportunities for future work were highlighted:
+
+*   **ICMP Extensions for Environmental Information:**
+    *   Continue experimentation and proof-of-concept development to gather more practical insights.
+    *   **Action Item (Suggestion):** Consider organizing a hackathon to solicit broader community involvement and test the proposed ICMP extensions in diverse environments, particularly to evaluate the accuracy and consistency of reported environmental data from various devices.
+    *   **Action Item (Suggestion):** Explore the potential for IETF to contribute YANG models for standardizing the data structures used in carbon accounting reporting, as currently these are often spreadsheet-based.
+*   **Carbon Accounting Alliance Engagement:**
+    *   **Action Item (Suggestion):** Individuals interested in carbon accounting should consider joining the CAA to bridge the communication gap between technical networking and carbon accounting professionals.
+*   **PATH Energy TrophY Radio API (Petra) Augmented Version:**
+    *   **Action Item:** The authors will gather and incorporate feedback from the RG, particularly regarding the definition of "Greenness Degree" and "Sustainable Score" to ensure robust and comprehensive metrics.
+    *   **Action Item:** The authors will refine the API's naming and terminology to avoid confusion and make it more broadly applicable.
+    *   **Action Item:** The authors will explore extending the API's scope beyond Layer 3 IP addresses to define paths more generally.
+
+## Next Steps
+
+*   The SUSTAIN RG will continue to foster research and discussion on these and related topics.
+*   Presenters are encouraged to continue their work, incorporate feedback, and potentially collaborate on the suggested next steps (e.g., hackathon for ICMP extensions, engagement with CAA, refinement of Petra API).
+*   The community is invited to engage with the presenters and the RG via the mailing list for further discussions and contributions.

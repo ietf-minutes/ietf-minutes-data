@@ -1,0 +1,59 @@
+# RATS
+
+## Summary
+
+The RATS session covered updates on the Co-Serve draft (now a Working Group adopted document), a new proposal for Trustworthy Workload Identity in RATS aiming for "relying party empathy" and business-centric claims, a discussion on standardizing Geographic Claims for attestation results, and a detailed presentation on Threat Modeling for RATS, highlighting issues with replay, relay, and diversion attacks, and proposing improvements to existing RFCs. The session emphasized the need for more focused technical discussions and clearer definitions of security considerations for researchers and protocol designers.
+
+## Key Discussion Points
+
+*   **Co-Serve (Concise Selector for Attestation Endorsements and Reference Values)**
+    *   **Progress Update**: Paul announced that `draft-ietf-rats-co-serve` is now an adopted Working Group document. Two new co-authors, Gary and Ding, have joined.
+    *   **API Bindings**: Version 2 of the draft includes concrete HTTP API bindings, specifically a transactional request/response model using HTTP GET where the query is part of the URL path. This enables deterministic CBOR encoding of queries and leverages HTTP caching.
+    *   **Service Discovery**: A service discovery protocol using RFC 8615 well-known URLs has been added. The discovery document provides API endpoints and supported media types, conveyed in CBOR or JSON.
+    *   **Future Work**: The focus will shift to shoring up existing content, specifically enhancing the supply chain threat/trust model, and improving security and privacy considerations (particularly regarding the aggregation concept). All feedback is being captured in GitHub issues.
+    *   **Running Code**: A proof-of-concept (POC) implementation for server-side Co-Serve is now mainline in the Verrazon project. This allows Verrazon to act as an endorsement district and reference value provider. Experimental proxy plugins demonstrate Co-Serve as a proxy layer to external cloud services (Nvidia Rim, KDS). Golang and Rust common library support for the Co-Serve data model is in progress, building towards an end-to-end client-side story.
+    *   **Discussion**: Usama queried the role of an "aggregator" in the Co-Serve model, particularly in the context of the running code examples. Paul clarified that aggregation is an implementation detail, not a prescriptive architectural requirement, but the data model must be rich enough to support it if implementers choose to use it. Thomas (via chat) affirmed that the aggregator should not be dropped from the draft to analyze its implications.
+
+*   **Trustworthy Workload Identity in RATS**
+    *   **Motivation**: Mark Nova presented a joint submission from the Trustworthy World Identity Special Interest Group at the Confidential Computing Consortium. The goal is to expand the total addressable market for confidential computing by making workload identity manageable and deployable at scale. He highlighted that current RATS attestation results are "fragile" (e.g., based on firmware versions, boot counts) and not "relying party friendly," leading to unmanageable deployments.
+    *   **Claims Mapper**: A new architectural building block, the "Claims Mapper," is proposed. It takes evidence or attestation results as input and outputs a stable, business-centric workload identity and additional claims (e.g., "running on approved hardware," "located in Germany").
+    *   **Credential Acquisition Mechanisms**: The proposal outlines various flows for obtaining a credential key (self-generated or retrieved from a key store) and a credential (from verifier, credential authority, or workload owner), contingent on remote attestation. Four specific flows were presented, involving interactions between workload, verifier, credential authority, and key store.
+    *   **Security Considerations**: Identified key trusted entities (verifier, CA, key store) and the need for TLS between them. Challenges include maintaining claims during live migration (e.g., from Germany to France) and protecting against relay, replay, and redirect attacks.
+    *   **Discussion**: Aaron raised concerns about compatibility with the Wimsy architecture (e.g., agent-based attestation, lack of crypto binding for transaction tokens). Mark acknowledged architectural incompatibilities but stressed the need for solutions compatible with existing enterprise identity systems. Gary questioned the need for a separate workload identity when platform-specific attestation (like AMD SEV S&P) already provides attested workload identity. He also expressed concern about third-party credential issuance based on a one-time attestation, where the security state might change later (e.g., during live migration). Mark emphasized hardware-neutral, business-centric policies for broad adoption. Hank noted that the Claims Mapper functions like an appraiser procedure and could potentially be integrated into a verifier.
+
+*   **Geographic Claims for RATS**
+    *   **Problem Statement**: Michael Richardson presented the challenge of consolidating diverse geographic attestation methods into a single, consistent result for relying parties. The goal is for a verifier to produce a single geographic result (e.g., jurisdiction) without the relying party needing to understand the underlying method.
+    *   **Methods**: Discussed methods include auditor endorsement, GPS, LTE tower triangulation, and speed-of-light measurements.
+    *   **Document Organization**: Michael sought input on how to structure the work: a single document with appendices for methods, or multiple method-specific documents feeding into a common results document.
+    *   **Use Cases**: Highlighted regulatory compliance (e.g., GDPR requiring location in EU), AI agent interactions, and contractual obligations.
+    *   **Discussion**: Usama sought clarification on how a verifier would judge location, noting the importance of jurisdiction over precise coordinates. Michael explained that mechanisms could include signed endorsements, trusted data from cellular providers, or physics-based proximity measurements, all abstracted by the verifier to a simple jurisdiction claim. Mark suggested this is a special case of composite attestation and should align with how other hardware claims are handled. Diego recommended separating the evidence building/exchange (core RATS) from specific location methods (referenced externally). Hank proposed including freshness (timestamp, epoch ID), source of claim processing, an IANA registry for location methods, and considerations for distributed systems in the attestation results. Deb raised concerns about privacy implications of location data.
+
+*   **Threat Modeling for RATS**
+    *   **Focus**: Usama Dresden provided a technical deep dive into threat modeling, focusing on replay, relay, and diversion attacks, and proposing concrete mitigations. He emphasized the need for RATS documents to clearly articulate security and privacy considerations for researchers and protocol designers.
+    *   **Replay Attack**: Described replay scenarios across multiple connections (where attester state changes) and within a single connection.
+        *   **Mitigation**: Freshness criteria (nonces, synchronized timestamps, epoch IDs/handles). Usama noted confusion around existing definitions of "epoch handle" and "epoch ID" in RFCs.
+    *   **Relay Attack**: Explained how an adversary can forward a nonce to a genuine attester, obtain valid evidence, and then impersonate the genuine attester to the relying party.
+        *   **Mitigation**: Binding the evidence to the specific secure connection/channel (e.g., TLS).
+    *   **Diversion Attack (For-Shadow Attack)**: A network adversary redirects a connection intended for a specific infrastructure provider to a compromised machine.
+        *   **Mitigation**: Binding the evidence to the infrastructure provider (e.g., proving the attester is in a Meta data center).
+    *   **Proposed Specification Improvements**:
+        *   **Unprotected Evidence (RFC 9334)**: Usama argued that unsigned evidence is "completely useless" and offers no security advantage over basic TLS, emphasizing the need for a signature chain to a root of trust.
+        *   **Missing Roles/Messages (RFC 9334)**: Highlighted the absence of an "identity supplier" role and a conceptual "identity" message, which are crucial for distinguishing genuine attester replicas and preventing consensus manipulation. Also, identified a missing "Attestation Challenge" message for freshness.
+    *   **Discussion**: Hank agreed with most mitigation methods, especially channel binding for replay attacks. He also noted that if an attester produces "unbelievable" (false) evidence, it implies a broken TCB/root of trust. Usama clarified that replay involves replaying *old, valid* evidence, not generating false evidence. Deb suggested filing individual issues on GitHub for each problem raised to facilitate consensus, but Usama questioned where to file issues for existing RFCs. Jean noted that RFC 9334's appendix already addresses replay through the concept of "thresholds" for acceptable staleness.
+
+## Decisions and Action Items
+
+*   **Co-Serve Draft (`draft-ietf-rats-co-serve`):** Continue development based on GitHub issues and working group feedback. Focus on strengthening the threat/trust model and security/privacy considerations.
+*   **Trustworthy Workload Identity:** No immediate decisions, the proposal is for further working group discussion and potential adoption.
+*   **Geographic Claims:** No decisions made; Michael Richardson is seeking input on the organizational structure of the associated documentation.
+*   **Threat Modeling for RATS:**
+    *   The chairs will establish a mechanism (e.g., GitHub issues, wiki for future drafts, or updates to RFCs) to track and address Usama's points regarding security considerations and specification improvements.
+    *   Usama is encouraged to submit his comments and concerns to the RATS mailing list for further discussion.
+
+## Next Steps
+
+*   **Co-Serve:** Co-authors to address outstanding GitHub issues, particularly around the supply chain threat model and security/privacy considerations. Continue proof-of-concept implementations to validate the specification.
+*   **Trustworthy Workload Identity:** Authors to engage with the working group on the mailing list for detailed analysis of the proposed flows and security implications.
+*   **Geographic Claims:** Further discussion on the mailing list to determine the preferred document organization and scope for standardizing geographic attestation results.
+*   **Threat Modeling for RATS:** The chairs will work to facilitate the tracking and resolution of Usama's detailed security concerns and proposed improvements across relevant RATS documents.
+*   **General:** Chairs noted the need for more interim meetings to allow for focused, in-depth technical discussions to achieve consensus on various topics. Working group participants are encouraged to provide reviews on drafts ready for progression to Last Call.
