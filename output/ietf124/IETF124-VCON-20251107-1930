@@ -1,0 +1,88 @@
+# VCON
+
+## Summary
+
+The VCON working group met to discuss updates to the core VCon draft, including several proposed changes and a review of open issues, with the goal of moving towards a Working Group Last Call by the next IETF meeting. Key discussions covered clarifying distinctions between core VCon objects, establishing conventions for representing unknown entities, and reviewing two proposed extensions: the Lawful Basis extension and the World Transcription Format (WTF) extension. Several decisions were made regarding the scope and structure of the core draft and these extensions. An interim meeting in January was proposed to resolve remaining issues.
+
+## Key Discussion Points
+
+*   **Draft Naming Convention**: A long-standing issue regarding the duplicate "vcon" in the draft name (`draft-ietf-vcon-vcon-core`) was raised.
+*   **Recent Core Draft Changes**:
+    *   Renamed "appended object" to "amended object" and updated schema.
+    *   Adopted an extension mechanism over semantic versioning.
+    *   Changed "must support" for extensions to "critical" for consistency.
+    *   Added text for handling missing `encoding` parameters in `dialog` objects and improved the description of "object group" purpose.
+    *   Confirmed `disposition` remains in the core.
+    *   Clarified that `dialogues` and `attachments` are not necessarily in chronological order, emphasizing `startTime` for ordering.
+*   **Distinction between Dialogue and Attachment**:
+    *   The proposed distinction was that "dialogue" is transcribable (spoken or typed), while "attachments" are describable (e.g., photos, forms) but not transcribable.
+    *   Concerns were raised about video-only dialogue not being "transcribable" and the current model's limitation on directly analyzing attachments.
+    *   Discussion included the possibility of analysis referring to attachments, potentially mutually exclusively with dialogues.
+    *   An alternative view suggested "dialogue" as conversation artifacts, "analysis" as reportable ideas (e.g., GDPR processing), and "attachments" as anything else, noting attachments could be added later by a data controller, not necessarily a party.
+*   **Session ID Representation**: Changed from a SIP header-like string to an object with `local` and `remote` tokens, which can be a single ID or an array parallel to the `parties` array.
+*   **SMTP Party Inclusion**: For SMTP messages, all `From`, `To`, `CC`, and `BCC` parties would be included in the `dialogue` object, with `From` being the originator (first party).
+*   **Handling of Unknown Parties and Dialogues**:
+    *   The challenge of representing parties or dialogues (e.g., an unrecorded consultative call leg) for which no data is initially known, but might be discovered later, was discussed.
+    *   Options included using `null`, special index values, or dedicated objects.
+    *   There was a strong argument for using an object to represent unknown entities, allowing for distinguishing between multiple unknown parties and adding metadata about the reason for their unknown status (e.g., "purged", "anonymous call").
+*   **DTMF / Key Events**: A proposal to capture DTMF events within party history, including up/down events, digits, timestamps, and duration.
+*   **Open Issues Review**:
+    *   **VCard/JCard**: The existing parameter for VCard/JCard in the `party` object, which has seen no use cases, was considered for removal.
+    *   **SHA-512**: The default hash algorithm for externally referenced body parts, SHA-512, was reviewed against a suggestion for SHA-384.
+    *   **Group Object**: The concept of aggregating VCons using a `group` object array, which has not been widely implemented or tested, was discussed.
+    *   **Content Hash for Inline Body**: The idea of including a content hash for bodies embedded directly in the VCon (not externally referenced) was considered and dismissed.
+    *   **Separate Recordings**: Acknowledgment that further exploration is needed for associating separate recordings for individual speakers within a single call.
+    *   **Cert Expiration and Long-Term Storage**: The problem of VCons needing long-term storage for compliance, but certificates expiring, was discussed. A strategy of re-signing the VCon with new JWS before expiration, creating a chain of signatures, was explored.
+    *   **Civic Addresses (E-Crit)**: The `civic_addresses` (RFC 6442, E-Crit) parameter was considered for removal from the core due to lack of use cases.
+    *   **Time-based GPS Location/Time Zone**: Parameters for time-based GPS location updates and current time zone for parties were also considered for removal.
+    *   **Other Headers**: Participants were encouraged to identify any missing communication platform headers that should be included in the core.
+    *   **`type` field for Attachment and Analysis Objects**: The question of whether `attachment` and `analysis` objects require a `type` field was debated, considering the vast potential number of analysis types.
+*   **Lawful Basis Extension**:
+    *   Presented as a replacement for the "consent extension," broadening its scope to cover all lawful bases for data processing (consent, contract, legal obligation, vital interest, public task, legitimate interests).
+    *   Aims to support data subject rights and privacy, particularly granular consent.
+    *   Includes fields for `lawful_basis`, `expiration`, `purpose_grants` (permissions), optional `terms_of_service`, `status_interval`, `content_hash`, `registry` (for transparency services), and `proof_mechanisms`.
+    *   Discussion highlighted the GDPR-centric terminology and its applicability across jurisdictions, as well as challenges related to differing jurisdictional norms and opt-in/opt-out semantics.
+*   **World Transcription Format (WTF) Extension**:
+    *   Proposed as an extension to define a common transcription format for VCon, aiming to improve interoperability among various transcription providers.
+    *   The extension applies normalization during conversion, allowing original outputs to be kept.
+    *   Includes `metadata`, `transcript` (text, language, duration, confidence), and `segments` (time-aligned, speaker-identified chunks) as required layers, with optional layers for `words`, `alternatives`, `extensions`, `enrichments`, and `quality`.
+    *   Open questions included confidence score representation, handling enrichments, streaming support, and IANA considerations for provider identification.
+    *   The distinction between `party` (VCon's understanding of an individual) and `speaker` (transcription's estimation) was clarified.
+*   **JSON Schema**: A request to include a JSON Schema as an appendix in the core VCon draft was made.
+*   **Jonathan Rosenberg's Use Case Text**: Discussion on including his use case description and parameter definitions (some of which map to core VCon fields) in the draft.
+*   **Rowan's Mimi Extension Update**: An update on the Mimi extension, adopted as a work group item, which includes IANA registrations, language fixes, changes in party history for room metadata, and consolidation of `message-ID` with the core. Calls for more review of the extension.
+
+## Decisions and Action Items
+
+*   **Draft Naming Convention**: The draft name will be updated in the next iteration to remove the duplicate "vcon" (e.g., `draft-ietf-vcon-core`), starting with -00 and marking the current version as abandoned.
+*   **Session ID Representation**: An empty object (`{}`) will be used to represent the absence of a session ID for a party.
+*   **SMTP Party Inclusion**: For SMTP messages, the `From`, `To`, `CC`, and `BCC` fields will be included as `parties` in the `dialogue` object, with `From` being the originator (first party).
+*   **Unknown Parties/Dialogues**: Unknown parties and dialogues will be represented by dedicated objects (rather than `null` or special index values) to allow for distinction between multiple unknown entities and the inclusion of contextual metadata. Dan will propose a concrete object structure.
+*   **DTMF / Key Events**: The field will be generalized to "key events" rather than specifically "DTMF events."
+*   **VCard/JCard in Party Object**: The VCard/JCard parameter will be removed from the core VCon draft.
+*   **SHA-512**: The default hash algorithm for externally referenced body parts will remain SHA-512.
+*   **Group Object**: The `group` object will be moved out of the core draft and developed as a separate extension.
+*   **Content Hash for Inline Body**: A content hash will not be included for bodies embedded directly within the VCon (unless part of JWS signature).
+*   **Cert Expiration Strategy**: A strategy for long-term VCon storage involving re-signing the VCon with a new JWS before the previous one expires, creating a chain of signatures, will be documented as an approach. The procedure for re-signing, including prior validation steps, needs further detail.
+*   **RFC 6442 Civic Addresses**: This parameter will be removed from the core VCon draft.
+*   **Time-based GPS Location/Time Zone**: These parameters will be removed from the core VCon draft.
+*   **`type` field for Attachment and Analysis Objects**: An open text field, potentially named `purpose`, will be used initially. Future extensions may define enumerated `type` fields if specific use cases arise.
+*   **JSON Schema**: The JSON Schema for VCon will be included in an appendix of the draft. Rob volunteered to assist with this.
+*   **Jonathan Rosenberg's Use Case Text**: Jonathan's use case description and parameter definitions will be included in an appendix.
+
+## Next Steps
+
+*   **Dan Petrie**:
+    *   Refine the distinction between `dialogue` and `attachment` and propose concrete text, especially for "attachments not contributed by a person."
+    *   Propose a concrete object structure for representing unknown parties and dialogues on the mailing list.
+    *   Document the detailed procedure for the certificate re-signing strategy for long-term VCon storage.
+    *   Review the Mimi extension draft for any components that should be considered for the core VCon draft.
+    *   Spin a new iteration of the VCon core draft prior to the proposed January interim meeting, incorporating agreed-upon changes.
+*   **Working Group**:
+    *   Schedule an interim meeting in January to address remaining open issues and prepare for WG Last Call.
+    *   Participants are encouraged to review the Mimi extension.
+    *   Participants are encouraged to provide specific suggestions for any other missing communication platform headers.
+    *   Suggestions for hackathon topics are welcome.
+*   **Rob**: Assist with the inclusion of the JSON Schema in the VCon core draft's appendix.
+*   **Thomas Howe**: Continue updating the Lawful Basis extension and World Transcription Format (WTF) extension documents.
+*   **Chairs**: Sync on the mailing list for interim timing and details.

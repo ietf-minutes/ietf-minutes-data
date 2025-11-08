@@ -1,0 +1,96 @@
+# RADEXT
+
+## Summary
+
+The RADEXT session covered updates on several ongoing and proposed work items, emphasizing the need for rechartering the working group to accommodate new areas of interest. Key discussions included the progress of the RADSEC (Radius DTLS with TLS bis) document, a proposal to split the "Deprecating Insecure Practices" draft into two, updates on "Connect Info" and "Location Objects with Uncertainty" which are awaiting rechartering for adoption, and an informational draft on "Proxy Load Balancing." A new proposal for "Radius over Quick" generated significant discussion regarding its readiness for adoption, requiring implementation experience and alignment with current RADIUS security best practices. The session concluded with a detailed discussion on the working group's rechartering effort, outlining existing and proposed new work items, including a list of requested documents from the Wireless Broadband Alliance (WBA).
+
+## Key Discussion Points
+
+*   **Administrative:**
+    *   Note takers and Jabber monitor were identified.
+    *   A liaison statement was received from the WBA CTO, encouraging the RADEXT Working Group to work on documents related to Wi-Fi mobility. These drafts include "Connect Info," "Location Objects with Uncertainty," "Proxy BCP," "RADIUS Congestion Control," "5G Authentication and Authorization," and "Emergency Preparedness (EPCS)."
+    *   The session agenda included a discussion on rechartering RADEXT, as the current charter is nearing completion and there is interest in new work items.
+
+*   **RADSEC (Radius DTLS with TLS bis):**
+    *   **Progress:** The Working Group Last Call (WG Last Call) concluded, and numerous comments were received and addressed. Many changes are in the GitHub repository but not yet reflected in the Datatracker.
+    *   **Name Change:** The document's name was changed from "Radius DTLS (with D in parentheses)" to "RATSEC" to encompass both TLS and DTLS transports, aiming to reduce confusion.
+    *   **Content Refinements:** Appendices detailing successful deployments (e.g., eduRoam, OpenRoaming) were removed as they are not typically suitable for a standards-track document. Terminology was clarified.
+    *   **Protocol Error Handling:** The document will significantly reduce discussion of protocol error specifics. Clients *must* accept protocol error packets and stop retransmissions. Servers *may* send them, with detailed guidance deferred to a separate protocol error document (which references an existing RFC for the packet type, with more behavioral details in a draft).
+    *   **Implementation Considerations:** Guidance specific to implementations may be moved to a dedicated section.
+    *   **Trust Models:** The SHA-1 certificate fingerprint trust model (inherited from RFC 6614) is likely to be removed due to SHA-1's deprecation and a general sense that it is not widely implemented or beneficial. The status of "Raw Public Key" as an existing 6614 mechanism was questioned; if it's a new addition, it should potentially be a separate experimental document.
+    *   **Discussion:** A sense of those present indicated agreement to remove the SHA-1 fingerprint. The normative referencing of an existing protocol error RFC (for the packet type) was clarified as acceptable, without delaying publication.
+
+*   **Deprecating Insecure Practices:**
+    *   **Proposal:** The document, previously lengthy, has been split into two:
+        1.  "Review of Radius Security and Privacy" (informational, providing historical context and rationale).
+        2.  "Deprecating Insecure Practices" (normative, containing actionable standards updates).
+    *   **Goal:** Publish the normative document immediately after RADSEC. The history document would be an informational reference, not blocking the normative document.
+    *   **Discussion:** The working group will need to adopt the informational history document as a work item. A Working Group Last Call (WGLC) for the normative "Deprecating Insecure Practices" document is expected soon after the working group has had a chance to review the split drafts.
+
+*   **Connect Info:**
+    *   **Background:** Previously presented, feedback suggested going via the independent submissions editor route due to complex data type concerns. The working group later considered it a candidate for adoption.
+    *   **Feedback:** All co-authors and other respondents were supportive of adoption. Concerns persist about complex data types and overloading the syntax with both connection-specific (e.g., RSSI) and generic environmental metrics (e.g., channel, noise level).
+    *   **Observations:** Rough consensus on the usefulness of formalizing a connect info syntax. A single RADIUS attribute might not convey all necessary key-value pairs.
+    *   **Proposal:** Define a set of per-station key-value pairs for "Connect Info." Address legacy signaling (speed, channel) and consider defining a separate RADIUS attribute or using vendor-specific attributes for station-agnostic information.
+    *   **Status:** Informational document, awaiting rechartering for formal adoption.
+
+*   **Location Objects with Uncertainty:**
+    *   **Motivation:** RFC 5580 uses RFC 3825 for geospatial objects, which is obsoleted by RFC 6225. RFC 6225 enhances location options and specifically defines uncertainty (option 144). Regulatory bodies (e.g., EENA) now require location information with uncertainty and confidence factors (95% confidence assumed per RFC 7549).
+    *   **Proposal:** Define a new location profile type (Type 2) in RFC 5580, based on RFC 6225 contents, to signal geospatial location with uncertainty and a 95% confidence level.
+    *   **Status:** Awaiting rechartering for formal adoption.
+
+*   **Proxy Load Balancing:**
+    *   **Purpose:** An informational document addressing challenges in RADIUS proxy deployments, specifically EAP session continuity during home server failures and DDoS protection.
+    *   **Server Affinity:** Proposes an 8-bit identifier for home servers, embedded in the state attribute, to maintain affinity without requiring proxy state.
+    *   **Rate Limiting:** Describes a "negative cache" approach for DDoS protection, blocking repeated authentication attempts from abusive clients after multiple rejections. No protocol changes are required.
+    *   **Discussion:** This approach addresses pathological supplicant behavior (e.g., immediate retransmission after a reject), which is common in some widely deployed implementations despite established best practices for exponential backoff. It is intended as an informational or experimental document, not standards track.
+
+*   **Protocol Error (Standardization):**
+    *   **Motivation:** Standardize the protocol error mechanism defined experimentally in RFC 7930. The existing RADIUS protocol has a flaw where well-formed, but unprocessable, packets from known sources must be discarded silently. This leaves clients guessing if the packet was lost or unhandled, leading to retransmissions and 8-bit ID space exhaustion.
+    *   **Function:** Protocol error acts as a link-layer signal indicating "I received your packet but cannot process it; please do something else." This frees the RADIUS ID.
+    *   **Progress:** Implementations exist (FreeRADIUS, RADSEC proxy, Cisco), and corner cases identified during hackathons are being addressed.
+    *   **Discussion:** The document aims to fix a 30-year-old protocol design flaw.
+
+*   **Radius over Quick:**
+    *   **Motivation:** Clarified ambiguous descriptions and added use cases for Quick as an optional RADIUS transport: leveraging multiple Quick streams for congestion control, faster handshakes, and network mobility for clients. Quick's built-in encryption simplifies security configuration.
+    *   **Proposed Mechanism:** Uses bi-directional Quick streams for different transaction types (e.g., authentication, accounting), aiming to avoid head-of-line blocking.
+    *   **Operational Considerations:** Configuration for multiple streams, using a single UDP port, MIB/Yang updates for Quick metrics, server liveness detection, and handling stream/connection termination on errors. The 1-octet RADIUS ID limits 256 concurrent transactions per Quick connection. EAP sessions should use one Quick stream each.
+    *   **Discussion:**
+        *   **Implementation:** No prototype implementation exists yet.
+        *   **Foundation:** Must be based on the latest RADSEC (TLSBis) document, not RFC 6614, as RADSEC addresses many existing issues.
+        *   **Quick Usage:** The current draft's use of Quick streams may not effectively solve head-of-line blocking; expert review on Quick mechanisms is needed.
+        *   **Peer Authentication:** The draft is silent on peer authentication, which is crucial and detailed in RADSEC.
+        *   **Management:** Current RADIUS has MIBs, not Yang; a new Yang module would be needed for Quick-specific management.
+        *   **Benefits:** Quick could potentially address UDP fragmentation issues and head-of-line blocking if each RADIUS request used a separate Quick stream.
+        *   **Readiness:** The general sense of those present was that the draft is highly premature without implementation and clear operational demand from deployers (e.g., OpenRoaming, eduRoam). It needs significant overhaul, possibly even a complete rewrite after experimental implementation.
+        *   **Performance:** RADIUS/EAP is a lockstep protocol, not inherently performance-sensitive. Quick's value would be in fixing operational issues, not necessarily speeding up authentication directly.
+
+*   **Rechartering Discussion:**
+    *   **Current Work Items:** The working group plans to finish existing chartered documents: RADSEC (very close to completion), "Deprecating Insecure Practices" (now split), and "Status Server and Loop Detection." These will remain in the charter.
+    *   **WBA Requested Work Items:** There was strong support to include the WBA-requested documents ("Connect Info," "Location Objects with Uncertainty," "Proxy BCP," "RADIUS Congestion Control," "5G Authentication and Authorization," "EPCS") in the new charter. The intent is to clearly position RADEXT as the place for new RADIUS attribute definitions and extensions, allowing quicker adoption via milestones.
+    *   **Other Potential RADEXT Work:**
+        *   "Review of Radius Security and Privacy" (informational document split from deprecation draft) is clearly in scope.
+        *   "Proxy Load Balancing" is also clearly a RADIUS protocol work item.
+        *   **DMM Mobility & Roaming Problem Statement:** A problem statement combining roaming and mobility, referencing various technologies including RADIUS. Its placement (RADEXT vs. DMM WG or a new process) needs further discussion with the responsible AD and working groups.
+        *   **Radius over Quick:** Given the preliminary nature and lack of implementation, a sense of those present indicated that it should not be immediately adopted as a work item with a milestone. However, the charter *could* include more general language about "considering modern transport protocols" or "initial investigations into Radius over Quick" to allow future work without immediate rechartering if implementation and demand emerge.
+    *   **IANA Registries:** The chairs will review RADIUS IANA registries to see if categories can be relaxed from "RFC Required" to "Specification Required" for simpler attribute definitions, streamlining the process while still maintaining IETF oversight via designated experts.
+    *   **Timeline:** The chairs aim for rapid rechartering (weeks to a few months). An interim meeting post-rechartering was suggested to quickly progress some of the new work items that are in good shape.
+
+## Decisions and Action Items
+
+*   **Decision:** The RADSEC document will be renamed "RATSEC" to cover both TLS and DTLS. Appendices on deployments will be removed. The SHA-1 fingerprint trust model will likely be removed.
+*   **Decision:** The "Deprecating Insecure Practices" document will be split into two: an informational "Review of Radius Security and Privacy" and a normative "Deprecating Insecure Practices."
+*   **Action Item:** Janfred to provide a new version of the RADSEC draft with all feedback integrated by early December.
+*   **Action Item:** The working group will conduct a short WG Last Call for the updated RADSEC draft.
+*   **Action Item:** The working group will review the split "Deprecating Insecure Practices" and "Review of Radius Security and Privacy" drafts.
+*   **Action Item:** The chairs will draft rechartering text to include a clear mandate for RADEXT to handle new RADIUS attribute definitions and extensions, facilitating quicker adoption of documents like the WBA-requested ones.
+*   **Action Item:** Authors of the "Radius over Quick" draft are encouraged to base future work on the RADSEC (TLSBis) document, seek expert consultation on Quick mechanisms, and prioritize implementation and demonstrate operational demand before seeking working group adoption.
+*   **Action Item:** The working group is encouraged to review the DMM Mobility & Roaming problem statement, and further discussion will be held with the ADs regarding its appropriate placement within the IETF.
+*   **Action Item:** Chairs to work with the Security AD (Paul Wouters) to review RADEXT's IANA registries for potential relaxation of "RFC Required" to "Specification Required" for certain attribute types.
+
+## Next Steps
+
+*   The chairs will finalize the recharter text based on the discussions and seek IESG approval.
+*   Upon rechartering, the working group will formally adopt the identified candidate drafts (especially the WBA-requested ones) and issue appropriate milestones.
+*   Consider scheduling an interim meeting in late January or early February to maintain momentum and rapidly progress documents once the new charter is in place.
+*   The "Radius over Quick" draft authors are encouraged to continue working on implementations and gathering operational requirements, potentially leading to an experimental RFC in the future.
