@@ -1,0 +1,158 @@
+# OAUTH Session - IETF 124
+
+## Summary
+
+The OAUTH session at IETF 124 covered a packed agenda of drafts, ranging from updates on client attestation and client ID metadata to new proposals for DPoP usage, browserless app-to-app federation, and refresh token/authorization expiration. Significant discussion revolved around the evolving definition and usage of client IDs, the balance between increased security and complexity, and the appropriate scope for new OAuth extensions. Several drafts saw calls for adoption or indicated readiness for Working Group Last Call, with others continuing to solicit feedback.
+
+## Key Discussion Points
+
+### Aditation-based Client Authentication (Paul Winstanley for Hannes Tschofenig)
+*   **Status Update:** One new release (version 07) since IETF 123, incorporating most feedback. Three major topics remain open.
+*   **Issue 1: Generic Mechanism vs. Client Authentication:**
+    *   Current draft defines the mechanism as client authentication, but OAuth typically allows only one client authentication method.
+    *   Numerous individuals desire to use this as an *additional* mechanism for signals.
+    *   **Proposed Direction:** Define client attestation as a generic mechanism first, then explicitly define how it can be used *as* a client authentication mechanism (optional feature).
+    *   **Proposed Naming:** Rename to "Keybound Client Attestation" to remove "authentication" from the title.
+    *   **Discussion:** Philip indicated that the current spec doesn't preclude general use and that implementations already handle similar scenarios (e.g., MTLS for channel constraint alongside PKCE for client auth).
+*   **Issue 2: Client ID Definition:**
+    *   Draft uses client ID for "client instances" (individual deployments/software), but client ID in OAuth is often for the "whole solution" or "class of client instances."
+    *   Subject of client attestation JWT must equal client ID; ISS value in attestation PoP JWT must match client ID.
+    *   **Discussion:**
+        *   Aaron Parecki and Brian Campbell noted that client ID generally refers to a "family of software" or "class" of clients, while DPoP keys identify instances. Re-defining client ID in this draft would be problematic.
+        *   Justin Richer agreed, stating client IDs are a "mess" and this draft is not the place to solve that problem.
+        *   Mike Jones recalled that RFCs have explicitly avoided taking a position on client ID per instance vs. per client software.
+        *   Consensus leaned towards keeping client ID as referring to a class, and this draft should not redefine it, but could clarify how an attestation is bound to an instance.
+*   **Issue 3: DPoP Optimization:**
+    *   **Problem:** If client attestation is used with DPoP, there are two proofs of possession.
+    *   **Proposed Direction:** Skip the client attestation PoP if DPoP is present and uses the same key, especially when keys are in remote HSMs (expensive operations).
+    *   **Discussion:** Aaron Parecki supported this, noting the expense of multiple PoP operations with HSMs.
+
+### Client ID Metadata Document (Aaron Parecki)
+*   **Description:** Clients publish metadata about themselves on a URL and use that URL as a client ID. Useful when pre-registration is not possible (e.g., self-hosted services, MCP clients).
+*   **Status:** Adopted last month. Received significant feedback during call for adoption.
+*   **Use Cases:**
+    *   Enterprise IDPs: Can still use client ID URL, allowing clients to function without knowing IDP's pre-enrollment specifics.
+    *   Client Impersonation: Mitigated for web servers (JWKS URI), iOS/Android (using attestation draft for confidential client equivalent). Desktop apps remain largely unsolved.
+*   **Planned Updates (based on feedback):**
+    *   **SSRF Mitigations:** Recommend AS doesn't fetch data until user logged in, explicit `Accept` header, avoid fetching if DNS resolves to private IP ranges.
+    *   **Restrict URL properties to HTTPS:** Prevent malicious JavaScript/shortcuts in logo/client URLs.
+    *   **Security Considerations for Metadata Changes:** Advise AS to consider revoking consent if client metadata (e.g., logo, redirect URI) changes significantly.
+    *   **Require HTTP 200 for Metadata Fetch:** Disallow redirects to ensure integrity.
+*   **Discussion:**
+    *   Justin Richer and Brian Campbell reported successful implementations and positive experiences, especially for federated ecosystems and dynamic environments.
+    *   Max Gerber Stitch noted challenges with preview environments generating unique client IDs, seeking advice.
+    *   Adam Lemmon mentioned developing a service to mediate client metadata and provide stable URLs.
+
+### Deepop for Device Authorization Grant (Aaron Parecki)
+*   **Problem:** Device Code Flow clients (e.g., smart TVs) are often public clients and vulnerable to token theft. DPoP can mitigate this, especially when combined with app attestation.
+*   **Proposal:** Explicitly define the inclusion of a DPoP proof in the device authorization endpoint request and again at the token endpoint (when polling for the access token).
+*   **Discussion:**
+    *   Philip said some implementations already pass `dpop_jkt` at the authorization endpoint, and this should be an option.
+    *   Brian Campbell disagreed, arguing the `jkt` in PAR was for existing request parameters, and this is a new conceptual jump. He felt adding optionality here might be overcomplicating.
+    *   **Decision:** This is the first version of the draft presented to the WG. Ambivalence on immediate adoption; discussion will continue on the mailing list.
+
+### Deepop for JWT Authorization Grant (Aaron Parecki)
+*   **Problem:** RFC 7523 (JWT Bearer Grant) doesn't specify how the token was obtained. If a token is DPoP-bound (e.g., via Token Exchange), a standard `jwt-bearer` grant loses the DPoP binding end-to-end.
+*   **Proposal:** Define a new `grant_type: urn:ietf:params:oauth:grant-type:jwt-deepop` to indicate a DPoP-bound JWT assertion.
+*   **Use Case:** Identity chaining, allowing end-to-end DPoP binding when exchanging an initial DPoP-bound access token for a JWT assertion, then using that assertion to get a DPoP-bound access token cross-domain.
+*   **Discussion:**
+    *   Individuals from Raiffeisen Bank International supported the draft, having a similar use case for mobile banking apps where the JWT issuer is a backend component.
+    *   Philip suggested dropping the token type from the grant name (e.g., just `jwt` instead of `jwt-bearer` or `jwt-deepop`) to avoid needing new grant types for every binding and to address client uncertainty about token binding.
+    *   Christian Schuster raised concerns about security implications if an authorization server doesn't support DPoP binding for `jwt-deepop`, potentially leading to DPoP-bound tokens being presented as bearer tokens and losing security properties.
+    *   Justin Richer disagreed with Philip's suggestion for a generic `jwt` grant type, noting "a lot of devils in those details."
+    *   **Decision:** Discussion will continue on the mailing list due to significant technical points raised.
+
+### Browserless App-to-App (Aram K. Kocharyan)
+*   **Problem:** Existing OAuth app-to-app patterns rely on browser redirects, which create friction (deep links, user prompts) in federated use cases (e.g., bank groups, Swiss government EID apps).
+*   **Proposal:** Client app acts as its own user agent, interacting with a "native authorization endpoint" (RESTful API returning `application/json`).
+    *   Endpoint provides federating responses (next OAuth request), deep links (to user auth app), or input requests (e.g., email for routing).
+    *   User auth app invokes `native_callback_uri` (trusted via allow list or OpenID Federation) instead of redirecting to a browser.
+*   **Feedback & Updates:**
+    *   **Binding Response to User Agent:** Cookies re-introduced for state binding; Pixie made mandatory.
+    *   **PAR for Intermediary Brokers:** Recommended for handing down requests to reduce leakage/manipulation.
+    *   **Routing Response Privacy:** Added language to avoid sensitive details, but seeking more guidance.
+*   **Discussion:**
+    *   Roberta questioned sandboxing concerns and information stealing via deep links; Aram confirmed security considerations address this, aiming for the correct app and restricting input to non-sensitive data.
+    *   Justin Richer asked about "First Party Apps" draft; Aram clarified this is not a first-party scenario as domains are different and client app does not serve challenges.
+    *   Paul Winstanley noted similarities with OpenID for VCI's interactive authorization endpoint design.
+    *   Torsten Lodderstedt suggested looking at the "Seamless Access" project for discovery flows and sensitive information handling.
+*   **Next Steps:** Seeking additional review, aiming for adoption call at next IETF meeting.
+
+### Refresh Token and Authorization Expiration (Nick Watson)
+*   **Problem:** Clients need to know about two distinct expiration concepts:
+    *   **Authorization Expiration:** How long the client has access to resource owner data (e.g., user selects 30-day access).
+    *   **Credential Expiration:** How long the refresh token itself can be used.
+*   **Changes:** Removed "consent" from language; clarified authorization means scopes; rotation moved to informative section. Renamed fields to `refresh_token_timeout` and `authorization_expires_in`.
+*   **Discussion:**
+    *   George Fletcher noted `authorization_expires_in` could be one-to-many with refresh tokens if different scopes have different lifetimes; suggested returning the minimum value.
+    *   Aaron Parecki and Christian Schuster supported the draft and adoption call, emphasizing it allows "smarter" clients without over-complicating "dumb" clients.
+    *   Justin Richer highlighted that OAuth clients are often intentionally "dumb" and questioned the complexity vs. gain, though acknowledged use cases from "big partners" (e.g., Google limiting Gmail access). He stated deeper existential questions about artifact lifetimes exist but don't need to be solved by this draft if scoped simply.
+    *   Paul Winstanley found refresh token expiration valid for communicating to users but questioned the distinction between authorization and refresh token timeout, and "timeout" vs. "expires." Nick clarified these refer to different responsibilities (user/admin vs. AS policy) and use cases (keep-alive vs. rotation).
+    *   Brian Newbold pointed out the increased salience of knowing token lifetimes in federated ecosystems with diverse providers (e.g., scheduled posting).
+*   **Decision:** A call for adoption will be made on the mailing list in a week or two.
+
+### Separating Deepop Bindings for Access and Refresh Tokens (Yaroslav Tkachenko, Lauren Warth)
+*   **Problem:** Current DPoP binds all derived tokens (access, refresh) to the same key. If refresh token key is in an expensive HSM, this creates scaling issues for access tokens on edge workloads. Need faster containment of leaked refresh tokens than PKI revocation.
+*   **Proposal:** Introduce `dpop_rt` (DPoP for Refresh Token) as a new DPoP type, distinct from regular DPoP.
+    *   Allows a client to use DPoP for access tokens and DPoP_RT for refresh tokens.
+    *   Enables core systems (with HSMs) to manage `dpop_rt` for refresh tokens, while edge workloads manage regular DPoP for access tokens.
+    *   Minimizes blast radius of compromise for multi-tenant systems.
+*   **Discussion:**
+    *   Aaron Parecki clarified that the core workload would need access to the edge workload's key to issue new access tokens, making it an implementation detail. He supported it as an optional mechanism for "smart workloads."
+    *   Brian Campbell expressed concern about introducing additional complexity, stating DPoP was intentionally designed to be simple and that confidential clients already bind refresh tokens strongly to the client's authentication (often TPM/HSM). He suggested public key client authentication mechanisms might better address this need.
+    *   Lauren Warth emphasized the speed of revocation with DPoP_RT (cutting off HSM) versus slower PKI revocation.
+    *   Justin Richer and Torsten Lodderstedt questioned the premise that existing public key mechanisms are always PKI-backed and therefore slow, suggesting a re-evaluation of the problem space.
+    *   Joseph Heenan was in the queue but had microphone issues.
+*   **Next Steps:** Continue discussion on the mailing list.
+
+### Spiffy Client Authentication (Christian Schuster)
+*   **Problem:** Workloads using SPIFFE for identity (automatic provisioning, short-lived credentials, PoP) still use suboptimal methods (client secrets, separate key management) for OAuth client authentication to Authorization Servers.
+*   **Proposal:** Profile how SPIFFE identities (X.509-SVIDs or JWT-SVIDs) can be used for OAuth client authentication, leveraging RFC 7521 (JWT assertions) and RFC 8705 (MTLS).
+    *   Addresses the issue of `sub` claim in assertions needing to be the client ID, as SPIFFE IDs are distinct.
+    *   Outlines SPIFFE's key discovery (Bundle Endpoint) and specific security considerations.
+*   **Discussion:**
+    *   Andreas Fleming supported the work, suggesting more security considerations for JWT-SVIDs and potential integration with WITS/Whimsy identity tokens.
+    *   Jeff Laudeau supported high-assurance client authentication mechanisms.
+    *   Justin Richer noted this adds to the complexity of client ID semantics but supported bringing it to the WG to ensure proper differentiation from other client ID uses. He also encouraged broader applicability beyond just SPIFFE (e.g., WITS/Whimsy).
+    *   Peter Liu saw an opportunity to couple this authentication elegance with client ID metadata registration.
+    *   **Decision:** A call for adoption will be made on the mailing list.
+
+### Transaction Tokens (Christian Schuster)
+*   **Status:** Went through Working Group Last Call, feedback largely incorporated. Key change: field name `purpose` (not `scope`).
+*   **Discussion Points:**
+    *   **Request Context Validation:** Proposed that the draft should *not* mandate validation of the request context, leaving it to the Transaction Token Service (TTS) to decide what to include or reject.
+    *   **Replacement Flow:**
+        *   Christian Schuster questioned if the replacement process should exist in this draft, suggesting separating it due to its caveats and the need for more deployment experience.
+        *   Peter Saint-Andre noted that people will likely do replacements anyway, so some guidance might be useful.
+        *   Justin Richer argued against "replacement" or "extension" semantics, suggesting transaction tokens are immutable. Instead, it should be about generating a *new* transaction token in the context of an existing one, and provide security considerations for such scenarios.
+        *   Peter Liu and Torsten Lodderstedt agreed that a security considerations section for replacement scenarios (e.g., when it's appropriate, handling original context) would be a good approach.
+    *   **Extending Lifetime of Existing Token in Replacement:** Proposed to allow extending lifetime, contradicting current draft text.
+    *   **Modifying Context in Replacement:** Proposed to allow modification (e.g., adding fraud analysis results). Peter Liu expressed concern about mutability for agent-to-agent calls.
+*   **Decision:** General sense to move "replacement" discussions to security considerations or a separate draft, treating it as generating a new token in context. Discussions will continue on the mailing list.
+
+### JWT BCP Updates (Mike Jones)
+*   **Purpose:** Update RFC 8725 (JWT Best Current Practice) to include additional common implementation errors identified since its publication.
+*   **Status:** A new draft version was published two hours prior to the meeting. Authors believe it is ready for Working Group Last Call.
+*   **Discussion:**
+    *   Aaron Parecki confirmed he had reviewed the new version and found the deltas easy to read.
+    *   Brian Campbell stated that previous critical feedback and issues he had raised (some dating back to the last meeting) had not been addressed, making it *not* ready for WGLC. He was asked to send a list of these items to the mailing list.
+*   **Next Steps:** Seek reviews; Brian Campbell to provide outstanding feedback.
+
+## Decisions and Action Items
+
+*   **Aditation-based Client Authentication:** Discussion on client ID definition (class vs. instance) will inform future revisions. DPoP optimization proposal will be considered.
+*   **Client ID Metadata Document:** Draft updates will proceed based on discussed feedback (SSRF, HTTPS, metadata changes, HTTP 200 requirement).
+*   **Deepop for Device Authorization Grant:** Continue discussion on the mailing list regarding adoption and handling of `dpop_jkt` at the authorization endpoint.
+*   **Deepop for JWT Authorization Grant:** Continue discussion on the mailing list regarding grant type naming and security considerations for mixed-support environments.
+*   **Browserless App-to-App:** Seeking additional reviews, with an aim for an adoption call at the next IETF.
+*   **Refresh Token and Authorization Expiration:** A call for adoption will be made on the mailing list in a week or two.
+*   **Separating Deepop Bindings for Access and Refresh Tokens:** Continue discussion on the mailing list, specifically addressing the balance between complexity, security gains, and existing mechanisms.
+*   **Spiffy Client Authentication:** A call for adoption will be made on the mailing list.
+*   **Transaction Tokens:** Discussions regarding the "replacement flow" and modification of transaction context will be moved to security considerations within the current draft or considered for a separate document. Continue discussions on the mailing list.
+*   **JWT BCP Updates:** Seek reviews for the new draft version. Brian Campbell will provide a list of previously unaddressed issues to the mailing list for further consideration before a Working Group Last Call.
+
+## Next Steps
+
+*   Working group participants are encouraged to review the latest versions of the drafts discussed and provide feedback on the mailing list.
+*   Specific focus areas for discussion include the evolving definition of Client ID, the trade-offs of increased complexity in DPoP usage, and the scope of the "replacement" concept in Transaction Tokens.
+*   Several adoption calls are expected on the mailing list in the coming weeks.
