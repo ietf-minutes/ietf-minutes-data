@@ -1,0 +1,63 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+This virtual interim meeting focused on administrative updates, upcoming deadlines for IETF 124 in Montreal, and a deep dive into several technical issues surrounding `subscribe namespace` and related messages. Key discussions revolved around the separation of discovery mechanisms from active subscriptions, the need for publisher-initiated cancellation, and proper handling of various string parameters, including their logging and internationalization. A decision was made to target Draft 14 for interop at the upcoming IETF 124 hackathon, with a virtual hackathon for Draft 15 planned later in the year.
+
+## Key Discussion Points
+
+*   **Administrative Updates**:
+    *   Reminder of IETF Note Well, intellectual property, and code of conduct.
+    *   Scribe call: Gideon volunteered to scribe.
+    *   Upcoming Deadlines:
+        *   Call for Consensus on Draft 14 expired.
+        *   Today (October 20th) is the deadline for agenda requests for IETF 124 Montreal and draft submissions for presentation. Late requests for piggyback topics are more likely to be accepted than entirely new topics.
+        *   Deadline for comments on the Boulder Hybrid Interim (February, Google office) is also today.
+        *   Proposed virtual interim dates between IETF 124 and 125 were circulated for feedback.
+*   **IETF 124 Agenda Items - ABR and Ad Insertion**:
+    *   Alan expressed a need for presenters on Adaptive Bit Rate (ABR) and ad insertion topics for IETF 124.
+    *   Alan volunteered to make a baseline pass at preparing slides for ad insertion.
+    *   Martin committed to preparing ABR content.
+    *   It was noted that if no one articulates the ad insertion problem in MockT terms, the issue might be closed.
+*   **Subscribe Namespace and Discovery Issues**:
+    *   **Publisher Cancellation (Issue 1097)**: There is no mechanism for a publisher to cancel a `subscribe namespace` request, unlike other request/subscription lifecycles. A new message (e.g., `subscribe namespace done`) was suggested for symmetry.
+    *   **Solicited vs. Unsolicited Publish Namespace (Issue 843)**:
+        *   When a subscriber sends `subscribe namespace`, it solicits all `publish namespace` and `publish` messages. The current mechanism defines the arrival of these as identical to unsolicited messages, requiring individual acknowledgments (`OK` or `ERROR`).
+        *   This can lead to a large number of control messages, consuming request IDs and potentially blocking the control channel.
+        *   A key point of discussion was whether there's a use case for distinguishing between existing (discovered) and newly created namespaces/tracks. The general sentiment was that this distinction might not be critical.
+        *   Mike Bishop suggested that requiring an initial `subscribe namespace` (perhaps wildcard) from a relay could eliminate "unsolicited" `publish namespace` messages. However, a global wildcard subscribe is not currently supported due to track name constraints.
+        *   Victor and others articulated the need to differentiate between a "discovery mechanism" (learning what tracks exist) and an "active subscription" (receiving data).
+        *   The `forward` flag in `subscribe namespace` (forward=0 for discovery) was mentioned, but even with this, the current state machine requires individual `publish OK`/`publish ERROR` acknowledgments, which is problematic for discovery.
+        *   **Proposal**: Create a new "listen/discover namespace" message that unilaterally provides names and namespace information without creating additional state or requiring acknowledgments, potentially delivered on a data stream for flow control. The existing `subscribe namespace` would then be repurposed solely for establishing actual data subscriptions (like a "wildcard subscribe" for tracks).
+        *   Luke identified `subscribe namespace` as also serving to signal an origin for a namespace (routing state), and not purely for discovery. Mo emphasized that the original `announce` was for authorization, distinct from discovery or data subscription.
+        *   Suhas clarified that `publish namespace` / `announce` still establishes an authoritative relay (origin), while a `subscribe namespace` (without discovery) would set up data subscriptions.
+    *   **Blocking Control Messages/Request IDs (Issue 1098)**: `publish namespace` can block the control channel and consume request IDs. If discovery is separated, and `subscribe namespace` acts as a wildcard subscribe with explicit limits on subscriptions (e.g., using `max_tracks_selected` filter), this issue becomes less critical. Rate limiting for discovery mechanisms will still be necessary.
+*   **Hackathon Planning for IETF 124 (Montreal)**:
+    *   **Interop Target**: After a poll of those present, Draft 14 was strongly favored as the primary interop target for the hackathon. ALPN on Draft 14 was a secondary target. Draft 15 (expected by end of day) includes ALPN, `request OK`/`request ERROR`, and parameterized subscribe fields, making it a significant change not easily implemented in two weeks.
+    *   **Future Hackathon**: Mike English will coordinate a virtual hackathon for Draft 15 before the end of the year (December-ish) to ensure progress.
+*   **Character Sets, Logging, and Internationalization (Issues 1079, 1099)**:
+    *   **Reason Phrases (Issue 1079)**: Discussion on limiting `reason phrases` to a safe, log-friendly ASCII subset (e.g., 0x20-0x7e, similar to QUIC's `NO_ERROR` reason codes).
+    *   **Namespace and Track Names (Issue 1099)**: These are binary blobs at the MockT level and need a consistent, safe way to be represented (escaped) in logs and examples. A common formatting (e.g., dot-separated, file-safe characters) was proposed to aid security products and users.
+    *   **Internationalization**: Mike Bishop expressed a desire for internationalization support for `reason codes` to avoid an Anglo-centric ASCII world. Colin pointed out the complexity of internationalization (string comparison, display) vs. simple sanitization for logging.
+    *   It was agreed that `namespaces` and `track names` are binary blobs and should not be internationalized by the MockT spec itself but require a standard logging/escaping mechanism.
+    *   For `reason codes`, the question of internationalization remains open. IETF guidance will be sought.
+
+## Decisions and Action Items
+
+*   **Decision**: Gideon volunteered to scribe for this meeting.
+*   **Action Item**: Alan to prepare a baseline pass at ad insertion slides for IETF 124.
+*   **Action Item**: Martin to prepare ABR content for IETF 124.
+*   **Decision**: Draft 14 is the primary interop target for the IETF 124 hackathon. ALPN on Draft 14 is a secondary target. Draft 15 is not expected for broad interop at IETF 124.
+*   **Action Item**: Mike English to find a date for a virtual hackathon on Draft 15 (around December).
+*   **Action Item**: Alan to write a PR to address the `subscribe namespace` issues, focusing on separating discovery from active subscription and adding publisher-initiated cancellation.
+*   **Action Item**: Colin to write a PR for a normalized, safe-for-logging representation of namespace and track name tuples (as binary blobs).
+*   **Action Item**: Chairs to contact the IETF Internationalization Directorate for guidance on internationalization of `reason codes`.
+
+## Next Steps
+
+*   Authors and editors to finalize Draft 15 by today's deadline.
+*   Presenters to prepare content for ABR and ad insertion for IETF 124.
+*   Work on the proposed PRs for `subscribe namespace` changes and string parameter handling.
+*   Continue discussions on internationalization for reason codes based on IETF guidance.
+*   Prepare for the IETF 124 meeting in Montreal, with Draft 14 as the primary interop target for the hackathon.
+*   Schedule and plan the virtual hackathon for Draft 15.

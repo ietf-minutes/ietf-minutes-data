@@ -1,0 +1,48 @@
+# [LAMPS](../wg/lamps.html)
+
+## Summary
+
+This LAMPS working group session convened a design team to address issues with `draft-lamps-csr-attestation` after it failed to gain consensus during a previous working group last call. The document aims to standardize how attestation evidence (e.g., proof of private key in an HSM for CA/Browser Forum requirements) is included in a Certificate Signing Request (CSR). Discussion centered on the scope of the document, the terminology used, the proposed architectural models (Background Check and Passport), and specific data structures like the "hint" field and "attestation results." Critiques were offered regarding the document's complexity, its relation to the RATS working group, and the clarity of its specifications. The design team is tasked with recommending a way forward to revise the draft.
+
+## Key Discussion Points
+
+*   **Motivation and Scope**:
+    *   The CA/Browser Forum requires private keys associated with code signing certificates to be generated and stored in an HSM. The original goal was to provide a CSR attestation signed by the generating HSM to avoid manual proof.
+    *   The current draft, `draft-lamps-csr-attestation-21`, evolved from this narrow focus to a more general approach to carry *any* attestation evidence, including for enterprise use cases (e.g., BYOD device enrollment, VPN certificates) beyond just HSMs.
+    *   The authors' design objective is to define a CSR attribute for a generic payload, with no opinion on the payload's content, allowing for current and future evidence formats.
+
+*   **Critique of Current Draft (Mike St. John's Presentation)**:
+    *   **Abstract Change**: The abstract shifted from "conveyance of evidence and attestation results" to "conveyance of RATS conceptual messages" in `draft-21`, leading to concerns about semantic drift and potential misalignment with the working group's adoption intent.
+    *   **Verifier Architecture**: The document's verifier architecture is problematic due to undefined communication between the verifier and the Registration Authority (RA)/Certificate Authority (CA), requiring "magic knowledge" for implementation.
+    *   **Two Models (Background Check vs. Passport)**:
+        *   **Background Check Model**: Attester sends attestation in CSR to RA/CA, which then calls a verifier (potentially internal). This model is deemed more straightforward.
+        *   **Passport Model**: Attester calls a verifier first, receives an "attestation result," and includes that result in the CSR. This model's "attestation result" is "completely unspecified" and introduces an additional layer of indirection, making the verifier the true relying party, not the RA/CA. Mike St. John's recommended removing or simplifying this complexity, especially the attestation result as an ASN.1 object, suggesting it be handled in a separate document if needed.
+    *   **Hint Field**: The `hint` field in `EvidenceStatement` was found useful primarily for CMW (which is opaque at the PKI level) but not universally applicable, and its definition was underspecified. Recommendation was to demote it to the CMW structure or modify the `EvidenceStatement` to include a type-bound `aux` field.
+    *   **RATS Alignment**: The RATS model and terminology (e.g., "endorsement") were seen as not meshing well with PKI contexts, and RATS-specific content was suggested to be non-normative or moved to appendices.
+
+*   **Authors' Defense and Clarifications (Mike Unsworth's Presentation)**:
+    *   **RATS Terminology**: The shift to "conceptual messages" in the abstract was to align with RATS RFC 9334 terminology, where "conceptual message" is an umbrella philosophical term (not a wire format) covering evidence, endorsement, and attestation results.
+    *   **Passport Model Necessity**: The Passport model is considered necessary for closed ecosystems (e.g., "banana phone" manufacturers) where the CA does not get to see raw evidence but rather anonymized, cleaned-up "attestation results" from a trusted manufacturer's service. Distinguishing between evidence (potentially containing PII) and attestation results at the top level helps the RA handle them appropriately for privacy and legal reasons.
+    *   **IANA Registry**: A registry for OIDs and references to their definitions (e.g., CMW) was proposed to aid implementers in parsing. Concerns were raised about it becoming a "mess" with proprietary entries, and a suggestion was made to frame it as a "dictionary" of externally defined types.
+    *   **Hint Field Defense**: The hint field is believed necessary for container formats like CMW and WebAuthn, where a single OID might not be sufficient to determine which specific verifier to use (e.g., Yubico vs. Google WebAuthn verifier). The authors acknowledged the concern about the URN+port format appearing as a pingable address and were open to changing it to a numeric identifier.
+    *   **Implementations**: Siemens has implemented the draft for industrial PKI use cases (using RATS EAR and attestation results, distinct from CA/Browser Forum). A TPM 2.0 implementation also required a separate "glue layer" document (now to be published by TCG).
+
+*   **Design Team Feedback**:
+    *   **Steve Hanna**: Questioned if the broad approach can solve the initial CA/Browser Forum problem in an interoperable manner, given the unspecified aspects. Noted that existing implementations (Siemens, TPM) addressed different problems or required additional, non-standardized components.
+    *   **Carl Wallace**: Emphasized the critical need for a clear binding mechanism between the attestation and the public key in the CSR. Agreed with concerns about the "hint" field's current format and "attestation results" being underdeveloped. Suggested using the CMW type as a peer for attestation results.
+    *   **Tim Polk**: Sought clarification on the relationship between this document and RATS (aligned vs. subordinate), with AD Deb Shinder clarifying it's "aligned." Asked about mandatory-to-implement components for interoperability; the authors reiterated the intent was minimal – just to "stuff data into a CSR." Suggested simplifying or removing much of the "tutorial content" which may contribute to perceived complexity.
+    *   **Hannes Tschofenig**: Defended the tutorial content, noting it was added due to a general lack of understanding of remote attestation and was requested by various contributors. Welcomed specific feedback on which parts to remove.
+
+## Decisions and Action Items
+
+*   The design team (Carl Wallace, Steve Hanna, Tim Polk) will meet following this session to discuss the way forward.
+*   **For the Draft Authors**:
+    *   Review and potentially shorten or clarify tutorial content based on design team feedback, especially regarding aspects that make the document seem more complex than intended.
+    *   Consider changing the `hint` field's format from a URN with a port to a numeric identifier (e.g., an OID or single digit) to avoid security implications of appearing as a reachable address.
+    *   Address the need for a clear binding mechanism between the attestation and the public key in the CSR. This may involve revisiting the proposed IANA registry/dictionary or specifying requirements for expert reviewers.
+    *   Re-evaluate the "attestation results" object, its definition, and its references, considering its maturity and potential for merging related RATS drafts.
+    *   Explore framing the proposed IANA "registry" more as a "dictionary" of cross-references to external attestation definitions, and clarify the instructions for expert reviewers.
+
+## Next Steps
+
+The design team will provide a recommendation for revising `draft-lamps-csr-attestation`. The authors will then update the Internet-Draft, aiming for a successful working group last call that can achieve consensus.

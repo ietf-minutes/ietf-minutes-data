@@ -1,0 +1,73 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group met to discuss several ongoing drafts and a new proposal. Key topics included clarifications for CoAP's handling of critical options in non-confirmable requests, updates to the URI-Path Abbreviation (UPA) document, and reviews for the CoAP Properties (CoPa) and Non-traditional Responses documents, both of which are candidates for Working Group adoption. A proposal for a new special-use domain name, `me.arpa`, for CoAP discovery was also presented and discussed.
+
+## Key Discussion Points
+
+### URI-Path Abbreviation (UPA) Document - Section 2.4 Clarification
+
+*   **Issue**: Discussion around the surprising text in Section 2.4 regarding appending URI-Path Abbreviation components to an existing Proxy-URI, particularly in reverse proxy situations.
+*   **Context**: The text suggests that if a Proxy-URI is found, the URI-Path Abbreviation might need to be appended to it. This behavior is unexpected unless considering reverse proxy scenarios where the reverse proxy might add the abbreviation.
+*   **Outcome**: Christian to expand the text in the UPA document to clarify this interaction, especially regarding guidance for server operators using reverse proxies.
+
+### CoAP Clarifications (Coopclar) - Handling of Critical Options in Non-Confirmable Requests
+
+*   **Problem**: Issue 52 was raised regarding the handling of critical options in non-confirmable (Non) CoAP requests.
+    *   For confirmable (Con) requests, unrecognized critical options lead to a 4.02 Bad Option response, allowing clients to adjust.
+    *   For Non requests, the current specification (RFC 7252) implies a server must not send a 4.02 response, instead silently ignoring the message. This prevents discovery or negotiation processes that rely on 4.02.
+*   **Proposal**: Update the specification to allow servers to send a 4.02 Bad Option response for non-confirmable requests with unrecognized critical options, mirroring the behavior for confirmable requests. This would make the discovery/negotiation process consistent across message types.
+*   **Placement**: It was discussed that this change, while clarifying RFC 7252, could be included in the UPA document (which is already updating RFC 7252) rather than a standalone document or the Coreclar draft.
+*   **Diagnostic Payload**: The use of diagnostic payload (RFC 9290) was mentioned as a preferred, machine-processable method for error reporting, which influences the "shouldness" of providing a human-readable diagnostic string.
+*   **Impact**: Existing implementations would not immediately change, but the uncertainty in discovery processes would decrease over time as new implementations adopt the change. Client implementations not updated might reject an unexpected 4.02 response, but this is considered a limited impact.
+*   **Implementer Input**: John, an implementer, expressed strong support for allowing 4.02 responses for discovery in non-confirmable messages.
+*   **Poll**: A poll of the room was taken regarding moving this content (allowing 4.02 for non-confirmable messages) from the Coreclar draft into the UPA document: 8-0-0 in favor.
+
+### CoAP Properties (CoPa) Document
+
+*   **Reviews**: Reviews were received from Carles and Nikolaj. Christian acknowledged these inputs, stating that many points address editorial mistakes.
+*   **Discussion Points**:
+    *   **Shook Integration**: Christian noted two ways Shook could be used: generally with CoPa, or for "retconning" non-CoAP resources as CoAP, the latter having downsides regarding security mechanisms. He plans to clarify this distinction.
+    *   **BLE Unordered Writes**: Christian requested input from individuals with BLE experience regarding unordered writes over Mesh BLE, especially concerning MTU differences.
+    *   **RFC Editor Title**: A discussion point was raised about whether "CoAP" in the title needs to be expanded for RFC Editor. Christian expressed that CoAP should be recognized enough not to require expansion.
+    *   **Single-bit Message ID**: Christian highlighted the need for very clear editorial explanation on the single-bit message ID, particularly regarding advanced usages ("tricks"). He intends to clarify how minimal usage works with fancy peer behavior, possibly using an appendix to elaborate on non-mandatory advanced features without encouraging overuse or confusion.
+*   **Working Group Adoption**: The chairs indicated that a Working Group adoption call would be initiated for this document.
+
+### Non-traditional Responses Document
+
+*   **Reviews**: Marco confirmed his review was submitted; Jordan also has a review forthcoming.
+*   **Content Value**: Marco expressed his personal opinion that the document provides valuable common ground for non-intuitive aspects that have evolved in other documents, helping to avoid reinvention and mistakes.
+*   **Working Group Adoption**: The chairs indicated that a Working Group adoption call would be initiated for this document. No objections were heard.
+
+### `me.arpa` Proposal for CoAP Discovery
+
+*   **Proposal**: Esko presented a proposal for a new special-use domain name, `me.arpa`, to abbreviate host addresses in CoAP link format discovery (`/.well-known/core`) responses.
+*   **Motivation**: In CoAP discovery (especially unsecured CoAP leading to secured CoAP-S services), if the service is on the same host as the responder, `me.arpa` could act as a placeholder for the source IP address of the message containing the link format document. This avoids encoding literal IP addresses (e.g., hexadecimal ASCII) in the link, making the link shorter and enabling "ROM-ability" (static descriptions stored in ROM/flash) for simple devices.
+*   **IANA Registry**: It was noted that this would require registering `me.arpa` in the IANA "Special Use Domain Names" registry, which involves a Standards Action or IESG approval.
+*   **Procedural Placement**: The general consensus was that this proposal should be included within an existing standards-track document (e.g., the C-Brews key join proxy definition) rather than as a standalone document, to streamline the registration process.
+*   **Scope Debate**: While initially proposed for the C-Brews context, Esko favored a more general application for discovery where a device points to a secured service at its own IP address.
+*   **Concerns**:
+    *   Christian expressed some conflict, noting other formats (not RFC 6690) have base URI mechanisms.
+    *   He also highlighted potential complexities with URI resolution, how `me.arpa` would interact with hostname-based authorities, and TLS server name indication.
+    *   He also suggested considering a counterpart `u.r` for role reversal.
+    *   Nikolaj questioned if extending the link format to indicate changes in scheme/port while retaining the host would be a more direct solution, but this was deemed a larger project.
+*   **Status**: No immediate decision on adoption or direction was made, but the working group provided initial feedback and identified areas for further consideration.
+
+## Decisions and Action Items
+
+*   **Decision**: The CoAP specification (RFC 7252) will be updated to allow servers to send a 4.02 Bad Option response for non-confirmable requests when a critical option is unrecognized.
+*   **Decision**: The content clarifying the handling of critical options in non-confirmable requests will be moved from the Coreclar draft into the URI-Path Abbreviation (UPA) document (`draft-ietf-core-uri-path-abref`). This document will explicitly state it updates RFC 7252. A poll of those present indicated 8-0-0 in favor.
+
+*   **Action Item (Christian)**: Produce a new version of the `draft-ietf-core-uri-path-abref` incorporating the 4.02 Bad Option handling, mentioning the update to RFC 7252 in the header and abstract. Also, incorporate Esko's review and Carsten's private remarks into the draft.
+*   **Action Item (Christian)**: Incorporate review comments for the CoAP Properties (CoPa) draft and the Non-traditional Responses draft. Clarify the single-bit message ID description in CoPa, potentially using an appendix for advanced usage details.
+*   **Action Item (Chairs)**: Initiate a Working Group Last Call for the `draft-ietf-core-uri-path-abref` (UPA) document once the new version is available.
+*   **Action Item (Chairs)**: Initiate a Working Group Adoption Call for the CoAP Properties (CoPa) document.
+*   **Action Item (Chairs)**: Initiate a Working Group Adoption Call for the Non-traditional Responses document.
+*   **Action Item (Esko/Christian)**: Esko to continue exploring the `me.arpa` proposal, considering the procedural and technical challenges raised, particularly regarding URI resolution and potential for a general-purpose application or inclusion in `draft-ietf-lwig-cbor-brewsky-proxy`.
+
+## Next Steps
+
+*   The CORE WG anticipates running one Working Group Last Call (for UPA) and two Working Group Adoption Calls (for CoPa and Non-traditional Responses) in parallel. Participants are encouraged to review all three documents.
+*   Further discussion and development of the `me.arpa` proposal, including identifying the appropriate document for its inclusion and addressing the technical implications raised.
+*   The next interim meeting is scheduled for January 14.

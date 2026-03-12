@@ -1,0 +1,85 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ virtual interim meeting on December 1, 2025, covered several open technical issues and PRs. Key discussions included the timeline for cutting Draft 16, the handling of unknown ranges in fetch responses, the utility of a largest group subscription filter, and the classification and behavior of publisher parameters and track extensions. Decisions were made regarding unknown parameters, the handling of unknown extensions in caches, and the persistence of stop sending signals for subgroups. The filter design team's PR is expected to resolve all outstanding issues by the end of the day.
+
+## Key Discussion Points
+
+*   **Logistics and Deadlines**
+    *   The meeting took place on December 1, 2025.
+    *   Will volunteered to scribe, with Michael assisting.
+    *   Carpet adoption was recently completed.
+    *   Upcoming deadlines include a virtual interop on December 10 and another virtual interim on December 15. The next meeting after the holidays is scheduled for January 12.
+    *   Attendees were encouraged to submit agenda requests for future interims if they wished to cover topics beyond MOQ-T issues.
+
+*   **Draft 16 Timeline**
+    *   A discussion was held regarding the timing for cutting Draft 16.
+    *   The sense of those present was to assess the outcome of the December 10 interop for Draft 14. If Draft 14 shows good progress and exhaustion of enthusiasm, then a decision on Draft 16 timing could be made at the December 15 interim.
+    *   A post-mortem assessment of the December 10 interop was suggested to drive this discussion.
+
+*   **Issue 1331: Unknown Ranges and Fetch Response**
+    *   The issue proposes a mechanism for a fetch response to indicate that objects within a requested range are unavailable (e.g., not in cache, publisher unavailable) without preventing the delivery of available objects.
+    *   Initial feedback from a previous meeting suggested more granularity than a generic "unknown" status, proposing reasons like "publisher unavailable" or "timeout."
+    *   Further discussion leaned towards starting with a single "unknown" status, with the flexibility to add more specific reasons later if concrete use cases emerge for differentiated client behavior. Debugging use cases for more granularity were acknowledged but not deemed critical for initial implementation.
+    *   The idea of a "continue on error" request flag was discussed to allow subscribers to explicitly request partial responses. While some found it useful, the sense was that it might add unnecessary complexity; clients can always abort a fetch if the initial response is not what they want.
+
+*   **Issue 1362: Largest Group Subscription Filter**
+    *   This PR aims to reintroduce a `largest group` filter, allowing subscribers to receive the latest available group, which can be useful for handling reordered objects.
+    *   A suggestion was made to extend this to allow specifying a relative offset (e.g., "go back one group").
+    *   However, concerns were raised that this might be an incremental fix for a larger, underlying issue with `joining fetch` mechanics, which appears to be a source of ongoing issues and discussion within the WG.
+    *   The discussion indicated a preference to **park this PR** for now and address the broader design of `joining fetch` and object acquisition at a future meeting (potentially Boulder), rather than adding more complexity to the current design.
+
+*   **Publisher Parameters and Track Extensions**
+    *   Following the adoption of the track extension PR, the discussion focused on distinguishing between one-hop parameters and durable, end-to-end track extensions.
+    *   **Subscriber Parameters**: Consensus was reached that subscriber parameters are generally scoped to a single hop, unless a specific parameter explicitly defines behavior beyond a single hop.
+    *   **Unknown Parameters**: The sense of those present shifted from "ignored" to "disallowed" (leading to a connection close) for unknown parameters. If parameters are negotiated per-hop, then an unknown parameter should be considered a protocol error.
+    *   **Publisher Parameters**: A proposal to move several existing publisher parameters (e.g., `priority_publisher`, `delivery_timeout_publisher`) into track extensions was discussed.
+        *   `publisher_priority` was debated; it was suggested it might be more of a compression hint and thus hop-by-hop, rather than a durable track property.
+    *   **Decision**: Parameters must be negotiated; unknown parameters result in connection close. Subscriber parameters are one-hop. Publisher parameters will be divided into actual hop-by-hop parameters and durable extension-like properties (track extensions). The exact mapping for properties used by both subscriber and publisher (e.g., `delivery_timeout`) needs further refinement to avoid awkward dual definitions.
+
+*   **Issue 1332: (Quickly noted as ready to land)**
+
+*   **Issue: Unknown Extension Behavior in Caches**
+    *   This issue addresses how a caching relay should handle an object with an extension it doesn't understand, especially if it receives multiple copies of the same object with different values for that unknown extension.
+    *   Discussion on whether to merge, overwrite, or treat as malformed.
+    *   Consensus: Relays **must not merge** unknown extensions. They **should return the most recent complete set of extensions** from one source. While there's flexibility for relays to decide which source (e.g., based on arrival time, network path) to prioritize if multiple versions exist, the intent is to avoid modifying or combining parts of an unknown extension.
+
+*   **Issue: Enable Subgroup Streams Across Groups**
+    *   The observation was made that temporal sublayers in video often persist across multiple Groups of Pictures (GOPs), but the current MOQ object model requires terminating and restarting subgroups at each group boundary.
+    *   Concerns were raised about the invasiveness of changing the object model to support this, including implications for group headers, delta encoding, and priority.
+    *   **Decision**: **Close with no action.** This is considered an application layer complexity that can be handled outside of the core MOQ object model.
+
+*   **Issue: Single Subscribe Match Publisher and Namespace?**
+    *   A scenario was presented: Publisher 1 announces a namespace (`A`), and Publisher 2 publishes a track (`B`) within that namespace (`A`). If a subscriber requests `A.B`, should Publisher 1 (the namespace announcer) also receive the subscribe request?
+    *   The discussion indicated that, consistent with multi-publisher scenarios, Publisher 1 **would** receive the subscribe, even if it only announced the namespace. The specification may need clarification on this asymmetric case.
+
+*   **Issue: Publisher Remember Stop Sending**
+    *   The scenario: A subscriber sends `stop sending` for a specific subgroup, effectively closing the associated QUIC stream. Later, the subscriber might send `subscribe update forward 0` then `forward 1` for the entire track. Should the publisher remember the `stop sending` and not re-open a stream for the subgroup, even if new objects for it become available and the track subscription is reactivated?
+    *   Discussion explored whether all stream resets (e.g., due to `stop sending`, `forward 0`, delivery timeouts) should imply a persistent disinterest in that subgroup.
+    *   The sense of those present was that for a `stop sending` specifically targeting a subgroup, the publisher **should** remember that decision and not send further objects for that subgroup to that subscriber. This can be conceptualized as an implicit, subscriber-local filter.
+    *   However, the discussion acknowledged that generalizing this behavior to *all* stream resets (e.g., delivery timeouts) might be too prescriptive and lead to complex publisher state management. Publishers may not be able to store indefinite state for every subgroup.
+    *   **Decision**: A PR will be drafted to clarify that if a publisher receives a `stop sending` for a subgroup from a subscriber, it *should* remember this and avoid sending further objects for that specific subgroup to that subscriber. It aims for interoperability without being overly prescriptive on publisher internal state.
+
+## Decisions and Action Items
+
+*   **Draft 16 Timeline**: Assess Draft 14 interop on Dec 10. Make a final decision on Draft 16 timing at the Dec 15 virtual interim. Mike English is requested to post a post-mortem of the interop.
+*   **Issue 1331 (Unknown Ranges)**: Alan to update the PR to use a single "unknown" status for now, with flexibility to add more granular codes later.
+*   **Issue 1362 (Largest Group Filter)**: This PR is parked until a broader discussion on `joining fetch` mechanics takes place.
+*   **Publisher Parameters**: Alan to create or redo a PR:
+    *   Parameters must be negotiated; unknown parameters are a connection close error.
+    *   Subscriber parameters are one-hop scoped (with careful interpretation for new group requests).
+    *   Publisher parameters will be reclassified into hop-by-hop parameters and durable track extension properties.
+    *   The handling of mutable track extensions will be discussed separately.
+*   **Issue 1332**: This PR is considered ready to land.
+*   **Unknown Extension Behavior in Caches**: The specification will clarify that caching relays **must not merge** unknown extensions. They **should** return the most recent complete set of extensions from a single source.
+*   **Enable Subgroup Streams Across Groups**: Close issue with no action. Application layer can handle this complexity.
+*   **Single Subscribe Match Publisher and Namespace**: Alan to write a PR to clarify that a namespace announcer (P1) will receive a subscribe request for a track within that namespace, even if the track is published by another entity (P2).
+*   **Publisher Remember Stop Sending**: Alan to draft a PR as a straw man proposal for how publishers should treat `stop sending` for a subgroup, stating that they *should* remember this and not re-send objects for that subgroup to the affected subscriber.
+
+## Next Steps
+
+*   **December 10**: Virtual Interop.
+*   **December 15**: Next Virtual Interim. Alan to ensure there is time for other issues if requested.
+*   **January 12**: First virtual interim after the holidays.
+*   **Filter Design Team**: The filter design team is expected to provide a PR resolving all outstanding issues by the end of December 1.

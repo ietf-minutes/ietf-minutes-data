@@ -1,0 +1,142 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+This meeting focused on crucial updates to the LOC (Low Overhead Codec) draft and a series of open Pull Requests (PRs) related to MOQ protocol extensions and refinements. Key discussions revolved around the location of media-specific metadata, timestamp flexibility, media format compatibility, and several PRs addressing track extension headers, subscribe namespace functionality, error handling, object status, fetch responses, subscription updates, and track name encoding. Several decisions were made to advance the drafts, with some aspects requiring further offline discussion.
+
+## Key Discussion Points
+
+### LOC Draft Issues (Mo)
+
+1.  **Metadata Location (00:04:03)**
+    *   **Current State**: LOC metadata (timestamps, frame markers, audio energy, decoder config) is currently in general MOQ object header extensions, which some interpret as relay-relevant.
+    *   **Concern**: This pollutes general object header extensions with payload-format-specific metadata that relays may not care about.
+    *   **Proposal**: Revert to an earlier LOC design, moving media-specific metadata into a dedicated LOC payload header, forming a new LOC metadata registry. This keeps object header extensions strictly for relay-relevant information.
+    *   **Discussion**:
+        *   The timestamp is identified as a primary, almost universally needed extension.
+        *   Some participants questioned whether relays *might* eventually care about timestamps (e.g., for sender-side ABR).
+        *   The Decoder Config Record also exists as an LOC extension.
+        *   A sense of those present indicated a preference for putting data extensions not needed by relays into LOC head extensions as part of the MOQ payload.
+    *   **Decision**: Proceed with the proposal to move LOC media-specific metadata into a LOC payload header (a new registry) for data not relevant to relays. Parameters useful for relays should remain in general MOQ header extensions. This might lead to "double or triple registration" for some data across different registries.
+
+2.  **Timestamps Rigidity (00:18:50)**
+    *   **Current State**: Timestamps are rigidly defined as microseconds anchored at the Unix epoch.
+    *   **Concern**: This rigidity is not suitable for most applications, potentially leading to many different timestamp extensions.
+    *   **Proposal**: Make timestamps arbitrary (units and zero point defined by another extension, `time_base`), aligning with many OS and media APIs. `time_base` could be a group or track level extension.
+    *   **Discussion**: No objections were heard. The `time_base` could potentially be included in a catalog.
+    *   **Decision**: Proceed with making timestamps less rigid and introducing the `time_base` extension.
+
+3.  **Start Code Formats (00:22:15)**
+    *   **Concern**: The current LOC draft supports both length-prefixed and start-code-prefixed media formats (e.g., NAL units), primarily due to WebCodex supporting both. A suggestion was made to remove start code support to simplify the specification.
+    *   **Proposal**: Retain support for start codes due to WebCodex compatibility and minimal overhead in the spec. There's also a potential for confusion with the NXB format in WebCodex, which ties start codes to in-band parameter sets.
+    *   **Discussion**:
+        *   A participant argued that NXB (stack of byte format) is an older design for MP2 transport and is often ignored in modern file formats, suggesting removal would be cleaner.
+        *   Another participant favored retaining for maximum compatibility with WebCodex.
+    *   **Decision**: Retain support for start code formats, with the understanding that individual applications can profile this to require a specific format.
+
+### PR Discussions (Ian & Alan)
+
+1.  **PR 1374: Adding Track Extension Headers (Ian) (00:29:10)**
+    *   **Proposal**: Introduce "track extension headers" that are sticky and cached, similar to object extension headers, but applied to tracks. These can be defined to work on objects, tracks, or both.
+    *   **Discussion**: General agreement that this PR is close to ready. The naming could be refined later. This PR is seen as blocking other developments related to extension types.
+    *   **Decision**: Authors and editors should review and merge this PR soon.
+
+2.  **PR 1344: Subscribe Namespace on Stream (Ian) (00:32:04)**
+    *   **(Note: Originally referenced as 1334, corrected to 1344 during discussion.)**
+    *   **Proposal**: Moves `subscribe_namespace` to its own bidirectional stream. This addresses several issues:
+        *   **Request ID Exhaustion**: Prevents quickly blowing through request IDs.
+        *   **Functionality**: Allows subscribers to ask for only publish or only namespaces.
+        *   **Publisher Control**: Fixes an issue where a publisher couldn't close a subscribed namespace (now done by closing the stream).
+        *   **Efficiency**: No longer repeats namespace prefixes, saving bytes.
+    *   **Discussion**:
+        *   Concern was raised about breaking the current pattern of having only one bidirectional control stream, requiring changes in logic for identifying the main control channel.
+        *   The proposal was seen as solving real problems and a minimal, good "stab" at fixing issues without overreaching.
+        *   The idea of a "discovery track" as an alternative was mentioned but noted as "weird."
+        *   A participant suggested that this creates a pattern for binding control messages to data streams, which could expand to other areas (e.g., fetch).
+        *   The change in logic for bidirectional streams was acknowledged as a necessary evolution for future extensions.
+        *   The general consensus was that this is a correct step forward, especially for flow control and back pressure issues when learning about many track names.
+    *   **Decision**: General support to land this PR soon. Review and merge.
+
+3.  **PR on Request Error Retry Interval (Alan) (00:46:02)**
+    *   **Proposal**: Adds a `retry_interval` field to the `request_error` message. This allows the sender of an error to explicitly guide the receiver on when or if to retry (e.g., "don't ever retry," "retry immediately," "retry after X time").
+    *   **Discussion**:
+        *   A point was raised that if more messages move to bidirectional streams, `reset_stream` could be used for errors, potentially removing `request_error` (but losing detail like `reason_phrase` and `retry_interval`).
+        *   The usefulness of `retry_interval` was debated, especially for cases like server overload or token validity.
+        *   Questions arose about how speculative and "dicey" the computation of `retry_interval` might be, and whether the client could infer this without signaling. The sender has the most context.
+        *   The importance of signaling fatal vs. non-fatal errors was highlighted, with `retry_interval` potentially conveying both (zero for fatal).
+        *   A participant questioned if similar mechanisms in HTTP are actually used in practice.
+    *   **Decision**: No immediate conclusion. This PR requires more discussion, particularly with Colin who had significant comments on it. Participants were encouraged to add comments to the PR on GitHub.
+
+4.  **PR 1342: Missing Objects / Object Status (Alan) (00:53:05)**
+    *   **Proposal**:
+        *   Removes the ability to serialize the "do not exist" status anywhere in the protocol (it's implicitly conveyed in fetch).
+        *   Allows relays to remove redundant `prior_object_gap` or `prior_group_gap` extensions in fetch responses.
+    *   **Discussion**: General agreement.
+    *   **Decision**: This PR is close and should be landed soon.
+
+5.  **PR 1331: Allow Unknown Ranges in Fetch Response (Alan) (00:54:33)**
+    *   **Proposal**: Provides a mechanism for a publisher (or relay acting as a cache) to indicate "unknown" objects within a fetched range when it cannot fulfill the request (e.g., missing part of cache, publisher temporarily disconnected). This allows partial fulfillment rather than failing the whole fetch.
+    *   **Discussion**:
+        *   Use cases include a relay serving from a partial cache where the original publisher is offline, or a publisher temporarily overlapping groups.
+        *   A participant suggested distinguishing *why* an object is unknown (e.g., "publisher gone" vs. "cache doesn't have it").
+        *   The current PR has a conflict with PR 1342 (removal of "do not exist").
+        *   The transition from "unknown" to "does not exist" or successful retrieval was discussed, with both being valid depending on the scenario (publisher reconnects, or confirms object is gone).
+        *   Concern was raised about potentially breaking fetch semantics if "unknown" becomes an escape hatch.
+        *   A sense of the room indicated agreement on the usefulness of the functionality, but more detail is desired beyond a single "unknown" status, and PR 1342 should land first to resolve conflicts.
+    *   **Decision**: General agreement that this functionality is useful, but the exact encoding and level of detail for "unknown" status needs refinement. PR 1342 should land first, and then this PR will be rebased and further discussed.
+
+6.  **PR 1332: Subscribe Update to Request Update (Alan) (01:03:09)**
+    *   **Proposal**: Renames `subscribe_update` to `request_update` and expands its scope to non-subscription requests. This allows updating parameters like authorization for `publish`, `publish_namespace`, `subscribe_namespace`, and potentially priority for fetches.
+    *   **Discussion**:
+        *   This provides a useful generalization and extensible "hatch" for future updates.
+        *   Questions arose about how to handle `request_update` for short-lived transactions (like fetch) vs. long-lived ones, and what happens if a request is already closed.
+        *   The idea of `request_update` being scoped to its own bidirectional stream (if `subscribe_namespace` moves to one) was discussed as a future possibility.
+        *   A participant was uncomfortable with the broader architectural implications of this, fearing it might lead to a redesign of stream usage.
+    *   **Decision**: General support for this PR, acknowledging it's a useful generalization. More eyes on potential edge cases are desired. The discussion about general bidirectional stream usage will be deferred.
+
+7.  **PR on Start Location to Decrease in Subscribe Update (Alan) (01:11:45)**
+    *   **Proposal**: Allow `start_location` (beginning of the object range) to decrease (go backwards, even to zero) in a `subscribe_update`.
+    *   **Discussion**:
+        *   Initial concerns about racing conditions and stream handling were mitigated by the refined filter-based subscription model.
+        *   The current text allows for new streams to be opened if an object within the newly expanded (backward) range needs to be delivered and cannot be sent on an existing stream. This might lead to an object being delivered on N streams, which was a point of concern for some.
+        *   Complex edge cases involving out-of-order delivery, reconnections, and multiple publishers were mentioned.
+    *   **Decision**: General agreement to allow `start_location` to decrease in `subscribe_update`. Alan will send an email to the list to describe the complex out-of-order edge cases in detail for offline discussion.
+
+8.  **PR on Track Name Encoding (Alan) (01:19:10)**
+    *   **Proposal**: Provides recommendations for encoding full track names in logs: use `A-Z`, `a-z`, `0-9` unencoded, percent-encode other characters, use `.` to separate namespace tuples, and `-` to separate namespace from track name.
+    *   **Discussion**:
+        *   Initial thought was about log prettiness, but the PR also hints at broader application for file names and URLs.
+        *   The need for a common encoding scheme for namespaces and track names that is URL and file-safe was recognized as existing beyond just logging, for use cases like authorization.
+        *   A sense of those present indicated a desire to broaden the scope of this recommendation to provide a baseline encoding for MOQ track names and namespaces when URL/file safety is required.
+    *   **Decision**: Expand the scope of this PR to provide a recommended encoding for track names and namespaces in the core MOQ specification for use cases requiring URL and file safety. Further bike-shedding on character sets should happen on the PR.
+
+### Other PRs (Briefly mentioned by Alan due to time constraints) (01:24:50)
+
+*   **Enable mixing datagrams and streams in a single track**: Allows subgroups and datagrams in the same track, requiring preservation of the sending mechanism on a per-object basis.
+*   **Duplicate subscription processing**: Defines behavior when publisher and subscriber both try to establish a subscription to the same track (publisher wins, subscriber's initiated one gets torn down).
+*   **Largest group subscription filter**: Adds back this filter, meaning a subscription filter starts at `latest_group,0`.
+*   **Joining fetch for publish/unpause tracks**: Adds text to allow joining fetch for publications and for catching up from the latest group after pausing/unpausing a track.
+
+These were introduced very quickly, and participants were encouraged to review them on GitHub.
+
+## Decisions and Action Items
+
+*   **LOC Metadata Location**: Move media-specific metadata into a dedicated LOC payload header for data not relevant to relays.
+*   **LOC Timestamps**: Implement flexible timestamps with a `time_base` extension.
+*   **LOC Start Code Formats**: Retain support for both length prefixes and start codes for media formats.
+*   **PR 1374 (Track Extension Headers)**: Review and merge soon, as it is blocking other work.
+*   **PR 1344 (Subscribe Namespace on Stream)**: Review and merge soon due to addressing pressing issues.
+*   **PR on Request Error Retry Interval**: Continue discussion on GitHub, particularly regarding the usefulness and computation of the `retry_interval`.
+*   **PR 1342 (Missing Objects / Object Status)**: Land this PR soon.
+*   **PR 1331 (Unknown Ranges in Fetch Response)**: Refine the encoding and level of detail for "unknown" status. Land this PR after PR 1342.
+*   **PR 1332 (Request Update)**: Land this PR, with further review on edge cases.
+*   **PR on Start Location Decrease in Subscribe Update**: Land this PR. Alan will send an email to the list to provide concrete examples of out-of-order delivery edge cases for offline discussion.
+*   **PR on Track Name Encoding**: Expand the scope to provide a recommended encoding for MOQ track names and namespaces for general use cases requiring URL and file safety.
+*   **General**: All other briefly mentioned PRs should be reviewed on GitHub.
+
+## Next Steps
+
+*   Editors to review and merge PRs 1374, 1344, 1342, 1332.
+*   Alan to prepare an email detailing the "moving backwards" edge cases for `subscribe_update` for the mailing list.
+*   Participants are encouraged to review open PRs and GitHub issues, especially those requiring further technical discussion (e.g., Request Error Retry Interval, Unknown Ranges in Fetch Response).
+*   The next interim meeting is scheduled for December 1st.
