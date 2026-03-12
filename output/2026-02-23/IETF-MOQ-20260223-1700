@@ -1,0 +1,84 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+This virtual interim meeting of the MOQ working group covered two main technical topics: the bidirectional streams Pull Request (PR) and the ongoing discussion and open questions surrounding the Switch PR for track switching. The working group reached rough consensus to merge the bidirectional streams PR. The discussion on the Switch PR highlighted several areas requiring further refinement, including the definition of common group boundaries, strategies for pre-warming versus on-demand subscriptions, and its interaction with "rewind" functionality. No immediate decisions were made on the Switch PR, but the PR author was encouraged to address feedback and simplify the proposal.
+
+## Key Discussion Points
+
+### Administrative and Announcements
+
+*   **Note Well**: The IETF Note Well was presented, reminding participants of IP rights and the Code of Conduct.
+*   **Scribe**: Magnus Westerlund volunteered to scribe for the session.
+*   **Upcoming Deadlines**:
+    *   **Interim Venue Poll**: Closes February 28th for European interim (London or Istanbul).
+    *   **Draft 16 Diff Consensus Call**: Deadline today (February 21st). Participants needing more time were encouraged to speak up.
+    *   **Secure Objects Adoption Call**: Ends tomorrow (February 22nd).
+    *   **IETF 125 Agenda Requests**: Due March 2nd.
+    *   **Virtual Interim Dates (IETF 125 to Europe interim)**: Proposed for Mondays (except Memorial Day week) until June 9-12. Feedback on dates and a potential weekly rhythm (90-minute Monday sessions) requested by March 9th. One participant expressed urgency to meet more frequently to resolve issues.
+    *   **Draft 16 PRs**: Approximately 20 PRs are in flight, with editors aiming to land about 15 for the upcoming Draft 16 release. Review and feedback are highly encouraged.
+
+### Bidirectional Streams PR
+
+Ian Swett presented an update on the bidirectional streams PR, incorporating feedback from the Boulder interim.
+
+*   **Motivation**: Addresses head-of-line blocking between requests (especially for relays), allows cancellation of subscriptions even with flow control issues, and improves request update mechanisms. It also provides flexibility for adding more per-request information in the future.
+*   **PR Overview**:
+    *   Moves all main request types (not just `SUBSCRIBE_NAMESPACE`) onto their own bidirectional control streams.
+    *   Does not change how objects are sent.
+    *   Removes `MAX_REQUEST_ID` and `REQUEST_ID_BLOCKED` messages, leveraging QUIC stream limits.
+    *   Adds a `required_request_id` field (delta-encoded) to allow optional sequencing of requests. A value of zero indicates no dependency; other values reference a previously sent request. This aims to restore sequencing properties desired by some participants, allowing a sender to enforce processing order.
+*   **Discussion**:
+    *   **`request_id` semantics**: Clarified that `request_id`s should be monotonically increasing for receiver tracking, even if not strictly enforced by the protocol for ordering purposes.
+    *   **`REQUEST_UPDATE` and `request_id`**: Confirmed that `request_id`s are still needed in `REQUEST_UPDATE` (and `REQUEST_OK`/`REQUEST_ERROR`) for acknowledging specific updates, as responses may arrive out of order.
+    *   **Reusing control streams**: A participant questioned reusing a single control stream for multiple requests to achieve sequencing. Ian noted this would be a substantially different design with challenges related to cancellation and potential state management issues.
+    *   **DoS and timeouts**: Concerns about a client referencing non-existent `request_id`s and causing the server to queue indefinitely were addressed by reliance on QUIC stream flow control and an expected timeout mechanism.
+    *   **Spec Assumptions**: Participants, including Martin Thomson, raised concerns that much of the existing spec implicitly assumes ordered processing of control messages due to them historically being on a single stream. While the PR introduces a mechanism to *request* ordering, implementers must be vigilant for unintended breaks, though it was acknowledged that even in Draft 16, a strict application-level processing order was not explicitly guaranteed.
+*   **Consensus Check**: No strong objections were voiced against merging the PR. The chairs noted the long-standing discussion and perceived readiness.
+
+### Switch PR (Track Switching)
+
+Gwendal Le Grand presented the `Switch` PR, which enables a client to request a relay to switch a subscriber from one track to another at a common group boundary. The discussion often referenced a separate DTS (Dynamic Track Selection) proposal, which is relay-initiated.
+
+*   **Common Group Boundary**:
+    *   **Definition**: Debated whether "available" means the first packet of the first object of a group, the entire first object, or the entire group. A preference was expressed for the first packet of the first object for simplicity and speed.
+    *   **Time Alignment**: The PR currently does not enforce strict time alignment, assuming the client (e.g., via catalog) knows tracks are aligned. This can lead to issues if an old track is far ahead of a new one.
+    *   **Timeout**: DTS proposes a timeout for considering tracks "qualified" for switching. Gwendal preferred a "natural timeout" (end of current group N) over a pre-configured one, but acknowledged complexity.
+*   **"Cache" Requirement**:
+    *   Clarification: Does `Switch` require a "caching relay" (honoring Fetch) or just some form of memory/buffer/queue?
+    *   Discussion: Alan suggested `Switch` implicitly requires a cache. Others suggested it could be implemented suboptimally (e.g., as a "next group filter") by non-caching relays, but some level of buffering (1-2 groups) at the MOQ layer is beneficial for optimal performance and decision-making.
+*   **Pre-warming vs. On-demand Subscriptions**:
+    *   **On-demand (current PR)**: Client sends `Switch` with a full track name, relay creates new subscription upstream. Pros: zero RTT from client to switch, no imposed relay subscriptions (DOS concern). Cons: potential delay in receiving data.
+    *   **Pre-warming (alternative)**: Client establishes subscriptions for all desired tracks (e.g., `forward=0`) beforehand, then sends `Switch` referencing an existing subscription ID. Pros: guaranteed established subscription, cached data, faster switch. Cons: one RTT to establish, potential DOS concern for relay if many tracks are pre-warmed unnecessarily, business model implications for pulling content to the edge.
+    *   Discussion: Participants debated the trade-offs. Composability of `Subscribe` and `Switch` was favored by some. The PR could be adjusted to support both modes (e.g., making track name optional in `Switch`). Use cases beyond ABR (e.g., VR headset selecting slices) strongly favor on-demand to avoid impractical pre-warming.
+*   **Switching for lagging subscribers (Rewind-like behavior)**:
+    *   If a subscriber is behind live, and a `Switch` is requested to an older `group_id` that the relay has in its cache/buffer, the relay would effectively deliver cached objects via a `Subscribe` stream, mimicking `Fetch` or `Rewind`.
+    *   Discussion: Alan highlighted that this behavior mirrors the (unresolved) `Rewind` proposal. Concerns were raised about breaking the `Fetch`/`Subscribe` paradigm.
+*   **Target Group ID**:
+    *   A new parameter in the PR allows a client to specify a `target_group_id`, potentially requesting a switch within the currently playing group.
+    *   This can cause duplicates if the client has already received parts of that group from the old track, requiring the client to de-duplicate. This is seen as acceptable if explicitly requested by the client.
+    *   Question of explicit notification for successful switch/duplicate handling.
+*   **Extension vs. Core Feature**:
+    *   The PR currently suggests `Switch` as an optional extension.
+    *   Strong sentiment was expressed by some that `Switch` should be a core protocol feature for client determinism and broad applicability, rather than a negotiable extension. A relay might implement it with varying levels of performance (e.g., based on cache depth), but the functionality should always be present.
+*   **Overall Feedback on Switch**:
+    *   The chairs noted confusion and the number of unresolved design degrees of freedom.
+    *   Encouraged Gwendal to address ambiguous feedback, potentially simplify the PR for a Minimum Viable Product (MVP) by reducing the number of "knobs," and engage more directly on GitHub.
+    *   Participants were encouraged to read the PR text and provide concrete suggestions rather than just high-level discussion.
+    *   A public written proposal for `Rewind` is anticipated, which will interact with `Switch` functionality.
+
+## Decisions and Action Items
+
+*   **Bidirectional Streams PR**:
+    *   **Decision**: Working group reached rough consensus to merge the bidirectional streams PR (PR #1449).
+    *   **Action Item**: Editors and authors will conduct a final review and aim to merge the PR into the next draft version (Draft 16) by Monday, February 26th.
+*   **Switch PR**:
+    *   **Action Item (Gwendal Le Grand)**: Address ambiguous feedback in the PR, consider simplifying the proposal for an MVP by reducing the number of configurable options, and explore allowing both pre-warming and on-demand subscription modes.
+    *   **Action Item (Working Group)**: Review the Switch PR on GitHub and provide concrete technical suggestions and feedback.
+
+## Next Steps
+
+*   **Bidirectional Streams**: Editors to proceed with merging.
+*   **Switch**: Continue refinement and discussion on the PR, with anticipated further deliberation at a future meeting.
+*   **Upcoming Deadlines**: Participants are reminded to respond to the interim venue poll by February 28th, engage with the Draft 16 diff consensus call, and note IETF 125 agenda request deadlines.
+*   **Draft 16**: Working group members are encouraged to review open PRs to help land critical updates for Draft 16.

@@ -1,0 +1,55 @@
+# [RATS](../wg/rats.html)
+
+## Summary
+
+This virtual interim meeting of the RATS WG featured two presentations. The first discussed an individual draft proposing an EAT profile for device assignment in confidential computing environments, aiming for a uniform and architecture-agnostic way to represent device trust metrics. The second presentation covered a security analysis of attestation binding mechanisms, highlighting vulnerabilities like relay attacks when evidence is bound to an unauthenticated peer, and discussed how RATS should address security considerations in its documents. Chairs provided specific guidance on updating existing RFCs (errata/update drafts) and establishing security guidelines for new drafts (wiki-based template).
+
+## Key Discussion Points
+
+*   **EAT Profile for Device Assignment (Mathieu/Thomas)**
+    *   **Purpose:** To describe devices (e.g., GPUs, storage) assigned to a Confidential Virtual Machine (CVM) in a confidential computing environment. These devices become part of the CVM's trust boundary and need to be represented to external verifiers.
+    *   **Approach:** The draft defines an EAT profile to describe devices using relevant trust metrics, measurements, and identity in a uniform, architecture-agnostic way, binding this information to the wider CVM context.
+    *   **Data Model:** The proposed EAT claim set is called "DAT" (Device Attestation Token). It includes a nonce for freshness and uses the `eat.sub_mod` claim for device-specific information. It supports a naming convention for unique device identification.
+    *   **Device Claims:** Currently, SPDM and PCIe legacy are described. Plans for CHI and CXL are in progress. The device claims set is designed to be extensible for future bus technologies.
+    *   **SPDM Claims Details:** Includes SPDM artifacts like certificate chains (mandatory and optional vendor/integrator chains) and measurements (component type, digest/raw measurement). An optional signature for the full SPDM conversation transcript can be included.
+    *   **Open Questions:**
+        *   How to handle future SPDM specification updates that might break backward compatibility (suggested: change profile name).
+        *   Interest in conveying partially available SPDM artifacts (e.g., for live updates).
+        *   Broader usability of the specification and necessary changes for wider adoption.
+    *   **Discussion:**
+        *   **Need for information:** Verifiers need this information for a full picture of the CVM's TCB (Trusted Computing Base) including attached devices.
+        *   **Location of work:** The sense of the room was that RATS defines the extensible framework, while specific CDDL definitions for bus technologies (e.g., SPDM with DMTF, PCIe SIG) could be defined by those respective SDOs to better track their specifications.
+        *   **Certificates format:** Suggested using certs-only signed data or a sequence of certs for easier decoding.
+        *   **Key ownership:** For the devices under consideration, there's an independent root of trust, meaning the device itself owns the keys, separate from the CVM or platform. Vendor provisioning of these keys is out of scope.
+*   **Security Analysis of Attestation Binding Mechanisms (Usama)**
+    *   **Background:** Work presented previously at IETF 124, focusing on layered attestors (Intel TDX, ARM CCA) and dynamic workloads. Uses formal methods (ProVerif) for analysis.
+    *   **Binding Mechanisms:** Explored TLS client nonce, dedicated attestation nonce, TLS exporter, server public key, and combinations. Asked the WG for input on any missed mechanisms or interesting combinations.
+    *   **Relay Attacks:** Demonstrated relay attacks where an adversary can present genuine evidence obtained from an AI agent to a verifying relying party, leveraging issues with binding mechanisms.
+    *   **Core Problem:** Evidence is bound to an unauthenticated peer during intro-handshake attestation (e.g., TLS server, ad-hoc responder) before full authentication, leaving it vulnerable. This is a generic characteristic of protocols, not specific to TLS.
+    *   **Mitigation:** Post-handshake attestation, ensuring binding occurs after peer authentication.
+    *   **Discussion:**
+        *   **Relevance to RATS:** The work is for RATS awareness, not adoption of a TLS-specific attestation protocol. The findings are relevant to the RATS Interaction Models draft's security considerations, emphasizing that evidence must be bound to an authenticated peer.
+        *   **Man-in-the-Middle scenario:** The presented attacks are a form of Man-in-the-Middle, but in the context of attestation, assume leakage of one private key (e.g., TLS private key) while a separate attestation key remains secure, highlighting the value of independent roots of trust.
+        *   **Transcript hash effectiveness:** Including a transcript hash in evidence during intro-handshake is insufficient as it doesn't protect the critical application traffic secret and authentication isn't complete.
+        *   **Security Considerations in RATS Documents:**
+            *   **Usama's proposal:** Either provide a baseline draft that other drafts can point to for security considerations (Option 1) or a guideline draft that assists authors in writing their security sections (Option 2).
+            *   **AD's (Ned) opinion:** Prefers Option 2 (guidelines) to avoid boilerplate text and encourage tailored security considerations.
+            *   **June's opinion:** Expressed concern that a guideline document could become a "single-point feeling" reflecting only a small group's opinion, preferring a distributed approach where each document defines its own.
+            *   **Chairs' guidance (Ned/Kathleen):**
+                *   For **published RFCs with security gaps**: File an errata for small, specific changes (quicker), or write an update draft for larger, more fundamental changes (longer process, requires WG consensus). One update draft can target multiple RFCs if the issues are common.
+                *   For **new RATS drafts**: A wiki-based template for security considerations will be established. Authors will be encouraged to cut, paste, and customize this content, which will be enforced by chairs and security reviewers. This avoids a single static document and ensures consistent best practices.
+
+## Decisions and Action Items
+
+*   **Meeting Cancellation:** The RATS virtual interim meeting scheduled for tomorrow (the day after this session) is cancelled due to a lack of topics.
+*   **Future Interim:** The chairs will attempt to schedule another RATS virtual interim meeting before March 1st (before IETF 129 in China).
+*   **Security Considerations Guidance:**
+    *   The working group will move towards a wiki-based template for security considerations for *new* RATS drafts. This template will provide guidance and common text that authors can customize.
+    *   For *existing* RATS RFCs, identified security gaps should be addressed via errata for minor issues or update drafts for significant changes, following IETF processes.
+*   **Action for Usama:** Engage with the chairs and the working group to determine the best path for addressing the identified security considerations in existing RATS RFCs, potentially via a single update draft or individual errata, and contribute to the development of the wiki-based security considerations template.
+
+## Next Steps
+
+*   Chairs to work on setting up a wiki for RATS security considerations guidelines.
+*   Usama to consider proposing specific text for updates/errata to existing RATS RFCs based on his analysis and the guidance provided.
+*   The community is encouraged to continue the discussion on security considerations and binding mechanisms on the RATS mailing list.

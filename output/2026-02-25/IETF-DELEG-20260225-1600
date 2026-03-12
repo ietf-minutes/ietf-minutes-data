@@ -1,0 +1,64 @@
+# [DELEG](../wg/deleg.html)
+
+## Summary
+
+The DELEG Working Group held an interim meeting to discuss implementation experiences, specification clarity, and potential future extensions. Implementers shared their experiences, noting generally straightforward implementation with some specific tricky areas such as indirection, the ADT bit rollout, and the definition of the S-list. Discussions highlighted areas for clarifying specification text, particularly around DNSSEC signing requirements, the ADT bit's operational guidance, and the concept of NS synthesis. The group decided against mandating NS synthesis within the protocol, treating it as a zone data management issue, and opted to defer formal work on secure transport extensions until after IETF 125 to maintain focus on the base specification.
+
+## Key Discussion Points
+
+*   **Implementation Experiences:**
+    *   **Akamai (Ralph):** Found implementation straightforward, reusing SVCB code. The "Include Deleg I" and subsequent recursion logic were identified as tricky areas. An issue with a non-NS use case was discovered and fixed during early testing.
+    *   **Evan:** Primarily implemented the authoritative side. Noted a challenge with BIND's preference for child NS records, seeing DELEG as an opportunity to move towards a parent-centric resolver design. Experienced "picky" parsing ambiguities in the specification text, which were mostly clarified with the authors.
+    *   **Paul Wouters:** Implemented a Python resolver for testing. Found DELEG relatively easy after handling NS records and general delegation. Noted that indirection for DELEG records was similar to CNAME chasing. Plans to develop a test harness and test cases for resolvers.
+    *   **Libor Pelton (CZ.NIC):** Found changes to the zone signer and answering routines straightforward. The primary difficulty encountered was the operational rollout of the ADT bit and DNSKEY, which involves multiple steps and waiting intervals, making it a "difficult thing" from an operational perspective.
+*   **Specification Clarity and Ambiguities:**
+    *   Petter requested feedback on specific unclear sections of the draft.
+    *   An implementer (Meek Gibbon, via Paul Wouters) had a question regarding zones without NS records, which was resolved by referring to existing document text.
+    *   Evan raised ambiguity in the document's normative language (e.g., "has to be," "can be," "should be"), particularly regarding whether DNSSEC signing is a *requirement* for DELEG, which was clarified as not being a strict requirement.
+    *   Petter acknowledged the challenge of avoiding restatement of existing DNS behavior while providing clear guidance. Paul Wouters agreed that less repetition is generally better but stressed the need to clearly differentiate DELEG's behavior from traditional DNS where applicable.
+*   **Term Change (Deleg I to Deleg Param):** Discussion indicated that the name change was generally accepted, with a sense that the wire format definition is more critical than the specific name.
+*   **S-list vs. Set:** A new implementer was confused by the term "S-list" (implying duplication) versus the actual requirement for a non-duplicative set of server addresses. It was confirmed that Section 5.1.4 of the current draft explicitly specifies it as a "set" to avoid security issues from duplication.
+*   **ADT Bit and Operational Guidance (Section 6.3.1):**
+    *   Petter highlighted Section 6.3.1, which describes the "safest possible way" to introduce the ADT flag, and requested feedback from operators.
+    *   Paul Wouters predicted that the ADT bit guidance might still be misinterpreted by operators and could potentially require a future update or separate document for clarification.
+    *   Libor Pelton reiterated the operational complexity of ADT bit rollout but felt that the document itself might not need further changes, but rather external guidance on smooth rollout processes.
+*   **Additional Examples and Test Cases:**
+    *   Paul Wouters is developing a test harness and resolver test cases, intending to have them ready for IETF 125, potentially for the hackathon. He also offered to maintain a public repository of DELEG test cases and implementations.
+    *   Libor Pelton mentioned publicly available example zones under `d.xdp.cz`.
+    *   Petter suggested adding an "implementation status" section directly into the draft, including test data, for easier discoverability, with the understanding it could be removed or trimmed before publication.
+*   **NS Synthesis:**
+    *   Tayl voiced opposition to including NS synthesis within the protocol, viewing it as a limited corner case for administrators and software, not a core protocol feature.
+    *   Petter and Ralph strongly opposed *mandating* NS synthesis, citing security implications (e.g., unsigned NS records reducing security, DELEG supporting more than NS). They noted that synthesis is a zone data management choice, not a protocol requirement.
+    *   Ben suggested a "must not" for authoritative servers synthesizing NS records without private arrangement, referencing zone transfer integrity and DNSSEC.
+    *   Paul Wouters and Petter disagreed with a "must not," stating that the protocol should describe wire behavior, not dictate zone management. They reinforced that the document should mention what happens if NS records are present or absent, and that adding NS records has security implications.
+    *   Evan suggested acknowledging the *possibility* of synthesis (a weak "may") in the document to prevent recurring questions, even if the document doesn't specify *how* to do it.
+    *   There was a sense that an appropriate place for this discussion would be in operational considerations, stating that zone data management is out of scope while acknowledging the idea and its potential security implications.
+*   **IANA Early Allocation:**
+    *   Petter inquired about the readiness for IANA early allocation for DELEG and DELEG PARAM RRs, given stability of the wire format and names.
+    *   Ralph cautioned that this needs careful consideration, including specific numbers and coordination with the DNSOP working group for DELEG RR.
+    *   There was a sense that this discussion should be revived on the mailing list for wider agreement before proceeding.
+*   **"Delegation to Nowhere" / NXDOMAIN for Legacy Clients:**
+    *   Discussion touched on concerns (raised by Paul Wouters and Joe Ebley externally) regarding zones without NS records and the behavior of legacy clients (NXDOMAIN vs. no error).
+    *   Ralph and Paul Wouters characterized "delegation to nowhere" as a bad idea, potentially leading to servfail and security issues, and an operational rather than DELEG protocol concern, frequently discussed in DNSOP.
+    *   Petter clarified that NXDOMAIN behavior for legacy clients stems from existing DNS specifications (RFC 1035, 4035) and DELEG cannot change it for old clients. Implementations might choose to deviate for local policy, but the spec should mandate legacy-compatible behavior (NXDOMAIN).
+*   **Extensions for Secure Transports:**
+    *   Paul Wouters, the proponent, questioned the timing for starting work on secure transport extensions, offering to draft initial text. He expressed concern about diverting focus from the base specification.
+    *   There was a mixed view: some felt it was time to ensure extensibility of the base spec, while others preferred waiting.
+    *   Jim emphasized waiting until the base protocol specification is "done and dusted" (closer to final, ideally WG Last Call) to avoid premature "boiling the ocean" and maintain focus.
+    *   Ben highlighted a key upfront design question for secure transports concerning the relationship between DNSSEC, DANE, and PKI across different resolver and zone configurations, suggesting a focus on requirements first.
+
+## Decisions and Action Items
+
+*   **Decision:** The DELEG Working Group will not mandate NS synthesis from DELEG records in the protocol. This is considered a zone data management issue outside the scope of the DELEG protocol specification.
+*   **Decision:** Formal drafting and extensive discussion on secure transport extensions for DELEG will be deferred until after IETF 125, allowing the working group to focus on bringing the base DELEG specification closer to completion.
+*   **Action Item:** Dwayne will revive the discussion on the DELEG mailing list regarding IANA early allocation for DELEG and DELEG PARAM Resource Records, including specific numbers, and will ensure consideration of potential interactions with the DNSOP Working Group.
+*   **Action Item:** Paul Wouters will start working on a draft for secure transport extensions in the background and will announce this on the mailing list to solicit potential co-authors, but will defer formal publication of the draft until after IETF 125.
+*   **Action Item:** New text will be added to the operational considerations section of the DELEG draft to acknowledge the idea of NS synthesis, stating that zone data management is outside the scope of the document, but also noting the security implications of having NS records when not strictly necessary.
+*   **Action Item:** Paul Wouters will create and maintain a public running list/repository of DELEG test cases and implementations, including build instructions where helpful.
+*   **Consideration:** The working group will consider adding an "implementation status" section to the DELEG draft itself, for easier discoverability of test data and implementation experiences, with the understanding that this section could be removed or trimmed before final publication.
+
+## Next Steps
+
+*   Continue to refine the base DELEG specification, addressing identified ambiguities and enhancing clarity, particularly around the ADT bit and operational guidance.
+*   Address the IANA early allocation discussion on the mailing list to reach a concrete proposal.
+*   Defer the secure transport extensions work to maintain focus on the base specification, with preliminary work on requirements and a draft beginning after IETF 125.

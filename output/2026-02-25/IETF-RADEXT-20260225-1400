@@ -1,0 +1,106 @@
+# [RADEXT](../wg/radext.html)
+
+## Summary
+
+This interim RADEXT meeting focused on two primary areas: finalizing outstanding issues for the RADSEC draft (which has passed IETF Last Call) and discussing the proposed rechartering of the working group. Key technical discussions included the prohibition of Zero RTT in RADSEC, the integration of ALPN, and considerations for post-quantum cryptography within RADIUS/RADSEC deployments. The working group reached consensus on several RADSEC draft issues and outlined a path forward for the rechartering process and future work.
+
+## Key Discussion Points
+
+### RADSEC Draft Issues (draft-ietf-radext-radsec-15)
+
+The RADSEC draft has passed IETF Last Call and is on the agenda for an early March telechat. Remaining issues from reviews were discussed.
+
+*   **Zero RTT**: Russ Housley's review highlighted concerns. The working group had previously changed the recommendation from "not recommended" to "prohibited" due to minimal benefit and complexity of secure implementation against replay attacks. It was noted that a future document could update this if Zero RTT becomes beneficial.
+*   **"Configured Trust Base" Definition**: The term lacked a clear definition. This remains an open issue, and suggestions for a precise definition are encouraged via pull requests.
+*   **Session Key Updates / High-Volume Connections**: Russ pointed to `draft-ietf-tls-extended-key-update` for updating session keys. The sense of those present was that the document's current "beware of secret usage" guidance for key lifetimes is sufficient, as the TLS extended key update is primarily for new entropy.
+*   **New Trust Model (TLS X.509 PKIX PSK)**: Russ suggested adding a trust model combining X.509 certificates with PSK for potential quantum-safe properties. Given the lack of implementation experience, the working group decided to postpone this to a future update document, similar to the Zero RTT approach.
+*   **RFC 9325 Reference**: A flagged major issue concerning the reference to RFC 9325 (TLS BCP) was withdrawn by the reviewer as the reference was exact.
+*   **ALPN (Application-Layer Protocol Negotiation)**: A suggestion was made to add ALPN to the RADSEC document to mitigate protocol confusion attacks, leveraging the "radius 1.0" ALPN string defined in the RADIUS 1.1 document.
+    *   **Discussion on Mandate vs. Recommendation**: Implementers noted existing usage of ALPN in some codebases. Concerns were raised about mandating it late in the process and potential breakage with pre-TLSbis implementations.
+    *   **Consensus**: A show of hands indicated broad agreement (8-0) to include some text about ALPN. A subsequent poll on "must" versus "should" for ALPN implementation led to a strong sense (8-0 against "must") that it should be a "should." Further discussion clarified that implementations *should* allow ALPN with the "radius 1.0" string (even if RADIUS 1.1 is not fully implemented) and *must* continue to support requests that do not use ALPN for backward compatibility.
+*   **Trust Base Changes - Reassessing Validity**: Mia suggested changing the "should" to "must" for reassessing peer validity when the configured trust base changes, and also adding auditable logging.
+    *   **Discussion**: Arguments were heard for both "should" (optimizations, not disconnecting if CA not used) and "must" (leaning towards security/paranoia, "reassess" doesn't necessarily mean disconnect).
+    *   **Consensus**: A show of hands indicated weak consensus (4 in favor, 1 against, 3 no opinion) for changing to "must reassess." It was decided to seek further feedback on the mailing list for this point due to the weak consensus.
+*   **Fallback Logging**: Mia suggested that fallback from DTLS to UDP (if explicitly configured) must be logged as a security-relevant event.
+    *   **Discussion**: Arguments against including logging specifications in a protocol document were raised. It was noted that this "fallback" is often a configured load-balancing scenario rather than an insecure fallback.
+    *   **Consensus**: A show of hands indicated strong consensus (9-0) that this text is not needed.
+*   **Yang Models**: Jürgen Schoenwalder inquired about Yang models. It was noted that this is not currently in the charter as a deliverable and would require a working group member to champion the work if desired. No immediate action for this document.
+
+### Rechartering Discussion
+
+The working group reviewed proposed new charter text and discussed future work items and milestones.
+
+*   **Proposed Charter Text**:
+    *   **Main Paragraphs**: General agreement on the core responsibilities: maintaining RADIUS, defining extensions, best practices, and guidance for security/reliability. Coordination with other bodies (WBA, eduroam) was also accepted.
+    *   **Redundancy**: A paragraph emphasizing security, privacy, and stability was deemed redundant with the last sentence of the main responsibility paragraph and will be removed.
+    *   **Backwards Compatibility**: A paragraph stating "non-backwards compatible changes need to be documented and justified" was noted as being copied from the previous charter and will be retained, along with a reference to the RADSEC RFC.
+    *   **"Stability"**: Mark Grayson suggested adding "stability" to the list of encouraged attributes (security, privacy, reliability). This was agreed upon to be included.
+*   **Current Work Items & Milestones**:
+    *   **Existing "In Progress" Items**:
+        *   `draft-ietf-radext-radsec` (RADSEC): Near completion.
+        *   `draft-ietf-radext-deprecating-insecure-practices` (Deprecating Insecure Practices): Target for publication ASAP, ideally with RADSEC.
+        *   `draft-ietf-radext-radius-security-privacy-review` (RADIUS Security and Privacy Review): Spun off from the deprecating practices draft; target for publication ASAP.
+        *   Multi-hop status check and loop prevention documents: Target for August/September timeframe.
+    *   **Simple Adoption Items**:
+        *   Connect Info attribute.
+        *   Attributes for emergency preparedness and caring.
+        *   Location attributes with uncertainty in RADIUS.
+        *   These three documents are considered in good shape and well-understood. The working group agreed to officially adopt them as soon as the charter update is complete and aim for ISG submission in the August/September timeframe.
+*   **Other Proposed Work Items (Not Yet Milestones)**:
+    *   Proxy Load Balancing / Proxy BCP.
+    *   RADIUS Congestion Control.
+    *   Distributed Roaming and Mobility Problem Statement (Mark Grayson): This might require specific charter text or additional milestones, but further discussion is needed.
+    *   RADIUS over QUIC: Considered a transport-layer issue, potentially requiring a recharter if adopted.
+    *   Quantum Resistant Crypto: Discussed as part of Heki's presentation (see below).
+    *   General consensus not to add milestones for these items at this time, but to continue discussion and potentially add milestones or further recharter later as they mature.
+
+### Quantum Resistant Cryptography for RADSEC (Heki's Presentation)
+
+Heki gave a brief presentation on post-quantum encryption requirements and their implications for RADSEC, primarily focusing on TLS.
+
+*   **TLS's Role**: TLS is expected to provide most of the necessary post-quantum security for RADSEC.
+*   **Two Main Problems with Quantum Attacks on TLS**:
+    1.  **Harvest Now, Decrypt Later (HNDL)**: An attacker records current encrypted traffic and later decrypts it using a future quantum computer to discover session keys.
+        *   **Solution**: Hybrid key agreement methods (e.g., ML-KEM), which combine classical and post-quantum algorithms. These are already available in newer TLS implementations (e.g., OpenSSL 3.6+). This protects bulk data transfer keys.
+    2.  **Breaking Certificate-Based Authentication**: A quantum computer could break current public-key cryptography, allowing man-in-the-middle attacks by forging certificates.
+        *   **Status**: Post-quantum safe certificates (e.g., ML-DSA keys) are still a work in progress. Transition challenges exist (e.g., clients not understanding new certificate types).
+        *   **TLS-PSK**: Notably, TLS-PSK (Pre-Shared Key) does not use certificates, making it inherently resistant to this specific attack vector.
+*   **RADSEC Recommendations**:
+    *   Ensure TLS endpoints are configured to allow hybrid key agreement.
+    *   Use up-to-date TLS implementations.
+    *   Consider adding configuration parameters and logging to track the use of post-quantum resistant key agreement methods.
+    *   Keep track of IETF and NIST developments in this area.
+*   **Discussion on Guidance Document**: Margaret suggested writing an informational or BCP document on recommendations for configuring TLS for RADIUS with quantum resistance. There was agreement that such a document would be useful and falls within the updated charter's scope (guidance on security and privacy). Heki expressed willingness to contribute.
+
+## Decisions and Action Items
+
+### RADSEC Draft (draft-ietf-radext-radsec-15)
+
+*   **Decision**: Zero RTT is **prohibited** in RADSEC.
+*   **Action**: Solicit suggestions/pull requests for a definition of "configured trust base."
+*   **Decision**: ALPN text will be included. It will state that implementations **should** allow ALPN with "radius 1.0" (even if RADIUS 1.1 is not fully implemented), and **must** continue to support requests that do not use ALPN for backward compatibility.
+    *   **Action**: Jan Fred and Margaret to incorporate ALPN text into the draft.
+*   **Decision**: The requirement to reassess peer validity upon trust base changes will remain under discussion. A weak consensus for "must reassess" was observed, but **more feedback will be sought on the mailing list**.
+*   **Decision**: No text will be added regarding logging of DTLS fallback to UDP.
+
+### Rechartering and Future Work
+
+*   **Decision**: The proposed charter text will be updated to:
+    *   Remove redundant paragraphs regarding security/privacy/stability.
+    *   Add "stability" to the list of encouraged attributes (security, privacy, stability, and reliability).
+    *   Retain the backwards compatibility statement referencing the RADSEC RFC.
+*   **Action**: Chairs to finalize the updated charter text.
+*   **Action**: Chairs to finalize target dates for milestones for existing work items (RADSEC, deprecating insecure practices, radius security/privacy review, multi-hop status check, loop prevention).
+*   **Action**: Chairs to include Connect Info, Emergency Preparedness, and Location Attributes documents as milestones with target dates (e.g., August/September ISG submission) in the proposed charter.
+*   **Decision**: Other proposed work items (Proxy Load Balancing, RADIUS Congestion Control, Distributed Roaming and Mobility, RADIUS over QUIC) will not be added as milestones at this time, pending further discussion and maturation.
+*   **Decision**: Writing a guidance document on configuring TLS for RADIUS with quantum resistance is within the updated charter's scope.
+    *   **Action**: Seek a volunteer to author this guidance document, and for the working group to formally adopt it as a work item.
+
+## Next Steps
+
+*   The chairs will prepare the finalized RADSEC draft based on the discussion for the upcoming telechat.
+*   The chairs will distribute the updated proposed charter text and milestones to the RADEXT mailing list for final review.
+*   Following mailing list review, the chairs will submit the recharter proposal to the IETF AD for the ISG review and IETF Last Call process. This process is estimated to take 6-8 weeks, potentially concluding by the end of April.
+*   Following charter approval, the working group will formally adopt the Connect Info, Emergency Preparedness, and Location Attributes documents and proceed with Working Group Last Calls.
+*   The working group will continue to discuss and monitor the evolution of post-quantum cryptography and its application to RADIUS, encouraging the development of a guidance document.
+*   Attendees are encouraged to send any slot requests or agenda items for IETF 125 to the chairs promptly.

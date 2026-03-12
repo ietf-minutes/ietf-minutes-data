@@ -1,0 +1,68 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting focused on three main topics: clarifying YANG/CBOR identifiers, discussing the status and path forward for YANG metadata in CBOR, and addressing open issues in the COAP corrections and clarifications document (CORCLAR). Key outcomes include a path to rectify ambiguities in SID definitions via errata and a decision to move forward with a Working Group Adoption Call for the CBOR YANG Metadata document. Discussions also provided direction for URI-Path-Abbrev authors regarding Proxy-URI and error code usage.
+
+## Key Discussion Points
+
+### YANG/CBOR Identifiers (RFC 9595 / 9254 Clarification)
+
+*   **Problem Statement**: Carsten presented on the complexities of identifiers in YANG, specifically the distinction between schema nodes, data nodes, and instance identifiers. A significant point of confusion arises from the YANG definition of "data node" (a schema node that can be instantiated) vs. "data tree node" (an actual node in an instance data tree).
+*   **NIDs vs. SIDs**: Carsten introduced the term "NID" (Name-based Identifier) to describe the name-based path segments that SIDs (Schema Identifiers) encode. SIDs encapsulate the static, schema-defined parts of a path, while "predicates" (array indexes for lists/leaf-lists) are kept separate for instance identifiers.
+*   **RFC 9595 Inconsistency**: The IETF-SID YANG module in RFC 9595 defines a `schema-node-path` data type based on RFC 7950's `absolute-schema-node-id`. However, NIDs, as used in SID mappings, are "partially neutered instance identifiers" that intentionally *exclude* `choice` and `case` schema nodes. The examples in RFC 9595 correctly omit `choice` and `case`, but the descriptive text for `schema-node-path` suggests their inclusion, leading to a discrepancy. When a leaf inside a `choice`/`case` is used, the `choice`/`case` "springs to life" without needing its own identifier.
+*   **Tooling Impact**: Current PYANG versions attempt to instantiate `schema-node-path` in a way that includes `choice`/`case` nodes, conflicting with the intended behavior and examples.
+*   **Partial Implementations**: Esko raised the question of whether constrained devices must store the complete YANG model. It was clarified that partial implementations are expected, and servers can decide which cases within a `choice` to implement, ensuring consistency without needing to validate the entire model.
+*   **Scope of SIDs**: Wojtek questioned why `choice` and `case` nodes are excluded from SIDs, suggesting numbering everything simplifies implementation. Carsten reiterated that SIDs were designed for explicit points of interaction (e.g., RPCs, actions, notifications, data nodes), and `choice`/`case` don't serve that purpose directly in the data tree context. Broader XPath functionality remains available via name-based identifiers.
+*   **Inconsistencies in SID Lists**: Esko noted minor differences in the list of items assigned SIDs between RFC 9254 and RFC 9595 (e.g., YANG data structures mentioned in 9254 but not 9595).
+*   **Module Name SIDs**: The module name gets a SID to provide a base number for allocation registries and for meta-information about server capabilities (e.g., in YANG Libraries).
+*   **Keyless List/Leaf-List Identifiers**: Wojtek pointed out potential gaps in addressing keyless lists and leaf-lists with identifiers in RFC 9254.
+
+### YANG Metadata for CBOR (CORECOM / CORECONF)
+
+*   **Motivation**: There is a recognized need for a solution for YANG metadata (RFC 7952) in constrained systems, as metadata can serve as a catch-all for out-of-schema data without complex augmentations.
+*   **Current Draft**: Carsten presented on `draft-ietf-core-cbor-yang-metadata-03`, which proposes a simple approach using a new CBOR tag (109, corresponding to 'm' for metadata) to wrap instance representations with a metadata map. This design focuses on simplicity, similar to how XML attributes are mirrored, avoiding the complexity of JSON YANG metadata.
+*   **Working Group Adoption**: The draft is considered mature enough for a Working Group Adoption Call. The document originated in CBOR and has been cleared for consideration within CORE.
+*   **Metadata Use Cases**: Esko inquired if clients would also send metadata to servers. This is an open question that may need further discussion (potentially with Andy Biermann).
+*   **Representation Alternatives**: Discussion briefly touched on alternative representations (e.g., separating metadata from the actual item), but the current draft is seen as an existence proof, and better ways can be explored later.
+*   **Capability Indication**: Wojtek asked if support for the metadata tag would be mandatory. The current assumption is that implementations send metadata if the peer is known to process it. Capability negotiation (e.g., via YANG Libraries) will likely be needed.
+
+### COAP Corrections (CORCLAR)
+
+*   **Issue 51: Proxy-URI Usage**:
+    *   **Problem**: Clarification is needed on when proxies should use the `Proxy-URI` option, discouraging arbitrary use.
+    *   **Goal**: Emphasize frugality in using features to help partial implementations. Proxies should only use `Proxy-URI` when strictly necessary and when the peer is expected to implement it.
+    *   **Dependency**: This issue has implications for the `URI-Path-Abbrev` document (`draft-ietf-core-uri-path-abbrev`).
+*   **Issue 54: 4.05 vs. 5.01 Error Codes**:
+    *   **Context**: COAP uses HTTP-derived status codes. `4.05 Method Not Allowed` is a client error (permanent, implying the client should not retry without changing its request), while `5.01 Not Implemented` is a server error (temporary, implying retry might work later).
+    *   **Preference**: The RFCs might imply a preference for 4.05 for method-related issues, but 5.01 is also defined. A preference for 4.05 for methods not applicable by the server would be beneficial for implementers. 5.01 could be reserved for "weirder" unimplemented situations (e.g., unimplemented encoding in a path name).
+    *   **Piggybacked Responses for 4.05**: RFC 7252 states that `4.05 Method Not Allowed` "must always be piggybacked". This is problematic for non-confirmable requests, which do not have piggybacked responses. This is errata-level material.
+    *   **Suppression Policies**: The response might be influenced by suppression policies (e.g., `No-Response` option), which is a separate clarification point.
+
+## Decisions and Action Items
+
+### YANG/CBOR Identifiers
+
+*   **Decision**: The WG agrees to pursue an errata report for RFC 9595 to clarify the definition of `schema-node-path` in the IETF-SID YANG module, explicitly stating that it aligns with NIDs (Name-based Identifiers) and thus excludes `choice` and `case` nodes, consistent with examples.
+*   **Action Item**: Carsten and Esko, in collaboration with Andy Biermann, will develop draft text for the errata report in a git repository (e.g., CORE WG wiki/repo) for community review and input before official submission.
+*   **Action Item**: The PYANG tool chain will need to be fixed to align with the clarified definition.
+*   **Action Item**: Wojtek is encouraged to provide concrete examples on the mailing list for addressing keyless lists/leaf-lists with identifiers, and for potential scenarios where `choice`/`case` SIDs might be desired, to inform future discussions.
+
+### YANG Metadata for CBOR
+
+*   **Decision**: The chairs will initiate a Working Group Adoption Call for `draft-ietf-core-cbor-yang-metadata-03` to formally bring it under WG purview.
+*   **Action Item**: Carsten/chairs to explore use cases for client-sent metadata and other representation types during the adoption discussion.
+
+### COAP Corrections (CORCLAR)
+
+*   **Decision**: Text will be drafted for CORCLAR to clarify that the `Proxy-URI` option should only be used when necessary, discouraging arbitrary usage, and this clarification will inform updates to `URI-Path-Abbrev`.
+*   **Decision**: CORCLAR will be updated to indicate a preference for using `4.05 Method Not Allowed` for cases where a method is not applicable or implemented by the server, reserving `5.01 Not Implemented` for more general, "weirder" unimplemented functionalities.
+*   **Action Item**: An errata report will be filed for RFC 7252 to address the problematic requirement that `4.05 Method Not Allowed` responses "must always be piggybacked," acknowledging that this is not possible for non-confirmable requests.
+*   **Action Item**: Christian and Michael, as authors of `URI-Path-Abrev`, are requested to incorporate these discussions into an updated version of their draft to allow for a Working Group Last Call.
+
+## Next Steps
+
+*   The WG will proceed with the adoption call for `draft-ietf-core-cbor-yang-metadata-03`.
+*   Development of the RFC 9595 errata text will begin in a shared repository.
+*   The authors of `URI-Path-Abrev` will update their draft based on the discussions on `Proxy-URI` and error code usage, moving it closer to a WG Last Call.
+*   Further discussion on keyless list/leaf-list identifiers and `choice`/`case` SIDs will occur on the mailing list with examples provided by Wojtek.

@@ -1,0 +1,57 @@
+# [DNSSD](../wg/dnssd.html)
+
+## Summary
+
+This interim meeting focused on the status of the Multi-Q-types document and an in-depth review of open issues for the Time Since Received (TSR) document. The Multi-Q-types document has advanced to the RFC Editor. Discussion on the Advertising Proxy document was largely deferred due to ongoing implementation work. The working group made significant progress on clarifying and addressing several technical and editorial issues in the TSR document, assigning action items to resolve them. The broader context of dependencies with the SNAC document cluster was also discussed.
+
+## Key Discussion Points
+
+*   **Multi-Q-types Document Status**:
+    *   The document (Revision 10) was submitted to the IESG and has proceeded to the RFC Editor after an IESG review period.
+    *   A "Discuss" from Matt regarding API specification was resolved, primarily through text edits.
+    *   The substantive change since leaving the WG is that recursive servers *may* now fill their caches with requested answers, rather than *must*.
+*   **Advertising Proxy Document Status**:
+    *   The main holdup was the need for an implementation of the rewritten draft. An initial implementation has just been completed and requires debugging.
+    *   Detailed discussion of open issues for this document was deferred until the implementation is further tested.
+*   **Time Since Received (TSR) Document - Open GitHub Issues Discussion**:
+    *   **ASCII Art Diagram for Option Format**: Eske started a pull request. Ted provided a comment for refinement, specifically regarding chunking for better visual representation.
+    *   **"field days" in single quotes**: Identified as a simple editorial fix.
+    *   **Name of the Field in the Option**: Discussion on whether "Time of Registration" or "Time Since Received" or "Time Offset" is most appropriate. A sense of those present indicated "Time Since Received" is suitable for the field in the option, while "Time of Registration" refers to the locally stored absolute quantity. "Time Offset" was suggested as a clearer alternative to avoid confusion with the option name.
+    *   **Proxies and RFC 6762 Conflict Amelioration**: The current behavior described in RFC 6762, Section 7.3, for ameliorating conflicts, is not effective for Wi-Fi due to potentially long beacon intervals. It was proposed and generally agreed that addressing this general RFC 6762 update is out of scope for the current TSR document and should be handled in a future separate document.
+    *   **Multiple Proxies, Mixed Use (some TSR, some not)**: This is explicitly not a supported configuration. The Advertising Proxy draft requires TSR support. In non-compliant scenarios, conflicts will arise and be handled by existing mDNS conflict mechanisms.
+    *   **Non-Proxy Device Switching Between SRP and Native mDNS**: If a device roams and switches its mDNS behavior (e.g., from SRP with TSR to native mDNS without TSR), conflicts will occur and be handled.
+    *   **Processing mDNS Messages without TSR**: Clarification is needed in the document on how advertising proxies should handle conflicting data received from nodes not using the TSR option, particularly when TSR data already exists locally. This is a conflict, not just stale data.
+    *   **Inaccuracy in TSR Section 3.3**: The text "TSR data is only in probes" is incorrect, as TSR data is always included. An issue will be opened to correct this.
+    *   **Conflict Detection Due to Partial Sends**: When TSR is used as a stale indicator, partial sends are less of an issue. If a non-TSR message arrives and TSR data exists locally, it's an immediate conflict. The document needs to clarify this behavior.
+    *   **Handling Older Data Responses and Duplicate Suppression**: When a query receives a stale response (even if it's the first to respond), a proxy with fresher data should *not* suppress its answer. An explicit, non-normative example illustrating how a client would process adds/removes in such a scenario was requested.
+    *   **Client Waiting for Fresher Data**: It was agreed that clients should *not* introduce delays to wait for potentially fresher data. Such situations (stale data from a proxy) should ideally not occur due to multicast announcements, and adding delays would penalize normal operation for a rare edge case.
+    *   **Advertising Proxies Not Supporting TSR**: Such proxies are considered "broken" in the context of this specification, and their specific behavior does not need to be addressed by the TSR document.
+    *   **Additional API Considerations for Advertising Proxies**: Current mDNS APIs are insufficient for the nuanced control needed by advertising proxies (e.g., suppressing probes/announcements, explicitly indicating stale data without sending goodbye packets). A non-normative section suggesting API extensions to address these scenarios was proposed. A follow-on document for further exploration is anticipated.
+    *   **7-Day Maximum for TSR Timestamps**: The document's mention of mDNS implementations remembering time intervals for at least seven days (and clamping) needs clarification. For TSR, absolute timestamps are stored. The issue largely relates to embedded devices potentially lacking a reliable wall clock. The text should clarify that accurate representation beyond seven days isn't strictly required for all implementations, and ensure consistent "stale" vs. "conflict" language. A reference to the original requirement section is needed.
+    *   **Time of Receipt vs. Time of Processing**: To enhance accuracy, the document should recommend using the operating system's packet timestamp at the moment of receipt, rather than the potentially delayed timestamp from the application's event loop processing. Non-normative examples of OS-specific APIs could be added.
+*   **SNAC Document Cluster**: The ongoing cluster of documents dependent on Advertising Proxy and TSR, particularly the SNAC document, was highlighted as a critical motivation to finalize these drafts. Exploring options like making references informative for the SNAC router option was mentioned as a potential way to unblock the cluster.
+
+## Decisions and Action Items
+
+*   **Decision**: The Multi-Q-types document is now with the RFC Editor.
+*   **Decision**: Detailed discussion on the Advertising Proxy document is deferred until the initial implementation is thoroughly debugged.
+*   **Decision**: The issue regarding RFC 6762 conflict amelioration for Wi-Fi is out of scope for the TSR document and will be addressed in a future document.
+*   **Decision**: Multiple advertising proxies with mixed TSR/non-TSR support is not a supported configuration for compliant implementations.
+*   **Decision**: Clients should *not* introduce artificial delays to wait for potentially fresher data.
+*   **Action Item**: Ted to update the pull request for the ASCII art diagram for the TSR option format based on comments (specifically, chunking the representation).
+*   **Action Item**: Ted to clarify the name of the TSR field, considering "Time Offset" or "Time Since Received" to avoid confusion with the option name.
+*   **Action Item**: Ted to write text for the TSR document explaining how to process received messages *without* the TSR option when TSR data is held locally, treating such scenarios as conflicts. (Issue 17)
+*   **Action Item**: Ted to open an issue to correct the statement in TSR Section 3.3, "TSR data is only in probes," as it is incorrect.
+*   **Action Item**: Ted to clarify wording in the TSR document around conflict detection with partial sends and how non-TSR messages trigger immediate conflicts (Issue 15).
+*   **Action Item**: Ted to add a non-normative example to the TSR document illustrating client behavior (adds/removes) when processing older/stale data (Issue 16).
+*   **Action Item**: Ted to add a non-normative section to the TSR document discussing API considerations for advertising proxies, including control over probes, announcements, and goodbye packets for stale data (Issue 14).
+*   **Action Item**: Ted to revise the text in the TSR document regarding the 7-day maximum for timestamps, clarify the use of "stale" vs. "conflict" language, and add relevant section references (Issue 13).
+*   **Action Item**: Ted to update the TSR document to recommend using OS-provided packet timestamps for "time of receipt" and consider adding non-normative examples for Linux/Mac APIs (Issue 12).
+*   **Action Item**: All assigned individuals to prioritize progress on their respective action items.
+*   **Action Item**: Ted to continue debugging and iterating on the Advertising Proxy document.
+
+## Next Steps
+
+*   Authors will focus on resolving the remaining open GitHub issues for the TSR document, aiming to get it into a publishable state soon.
+*   Ted will continue work on the Advertising Proxy implementation and document, with a goal to resume detailed discussion on its issues once the implementation is stable.
+*   Discussions regarding the SNAC document cluster and potential strategies to unblock its dependencies will continue outside this interim, potentially during relevant IETF sessions next week.

@@ -1,0 +1,103 @@
+# [EDIINT](../wg/ediint.html)
+
+## Summary
+
+The first EDIINT Working Group meeting focused on reviewing the proposed updates for AS2 modernization, specifically the RFC 4130 BIS draft. The chair reviewed the working group charter, and the primary presenter, Debra Petter, introduced the context, guiding principles, and high-level changes for the AS2 modernization specification. A detailed section-by-section review of the draft was initiated, covering abstract, introduction, AS1/SMTP de-emphasis, normative references, and a new section on algorithm requirements. Significant discussion arose regarding backward compatibility, the deprecation of legacy algorithms (MD5, SHA-1, Triple DES, RC2), and the proposed AS2 versioning and discovery mechanisms. Due to time constraints, the presentation was adjourned before completion, with an agreement to schedule a follow-up interim meeting.
+
+## Key Discussion Points
+
+### Meeting Logistics and Introduction
+*   Initial audio issues were resolved, allowing the meeting to proceed.
+*   Joe Mocerino (Co-chair) presented the Note Well and general meeting etiquette.
+*   A volunteer was requested for note-taking.
+
+### EDIINT Working Group Charter Review (Joe Mocerino)
+*   **Goals and Scope:**
+    *   Update RFC 4130 to reflect current practices, align with internet/security standards, update references, improve clarity in message structure, signatures, receipts, and error handling.
+    *   Clarify backward compatibility to ensure existing AS2 deployments continue operating, preserving operational continuity and migration paths (but not guaranteeing interoperability across *all* legacy features/security levels).
+    *   Clarify and extend functionality by incorporating operational experience, documenting best practices, identifying interoperability challenges, and informing optional extensions for usability.
+*   **Deliverables:**
+    *   A Standards Track document updating RFC 4130.
+    *   Optional Informational documents covering best practices, migration strategies, and interoperability.
+*   **Out of Scope:** Development of new EDI/transport protocols, changes that break backward compatibility (excluding *required* security/standards updates), AS1 and AS3, updating/obsoleting RFC 6017 and RFC 6362.
+*   **Timeline:** Working group adoption of RFC 4130 BIS by Q2 2026, WG Last Call by Q4 2026, request publication by Q2 2027.
+
+### AS2 Modernization Specification (RFC 4130 BIS) Review (Debra Petter)
+
+*   **Context for Updates:**
+    *   RFC 4130 is over 20 years old, while the security landscape has evolved significantly (MD5, SHA-1, Triple DES, TLS 1.0/1.1 deprecated).
+    *   New implementations face interoperability issues due to references to insecure algorithms, ambiguities in protocol details, and missing documentation for widely used features (compression, AS2 reliability, CEM, filename preservation, multiple attachments).
+    *   Community request for updates to maintain authority and trust in the specification.
+*   **Progress Since IETF 128 (Dispatch BOF):** Formed an advisory group, collected implementation feedback, drafted a complete specification update, established a GitHub repository.
+*   **Guiding Principles:**
+    1.  Maintain backward compatibility (no breaking changes).
+    2.  Security modernization (modern algorithms, clear deprecation guidance, interoperability paths for legacy).
+    3.  Clarification over innovation (document existing, proven practices).
+    4.  Community-driven effort (reflects real-world experience).
+*   **Overview of Changes (Categories):**
+    *   SMTP de-emphasis (HTTP-centric).
+    *   Updated normative references (S/MIME 4.0, MDN, email format, cryptographic standards).
+    *   New algorithm modernization section (explicit must/should/deprecated).
+    *   Protocol clarifications (new AS2 version 1.3/2.0, AS2-Product header, proposed AS2 GET method).
+    *   Feature documentation (CEM, AS2 reliability/restart, compression, filename preservation, multiple attachments – all optional).
+    *   Enhanced disposition modifiers, security enhancements (HTTPS TLS, cert handling, cipher suites), improved examples.
+*   **Section-by-Section Review (Detailed):**
+    *   **Abstract:** Removed SMTP/AS1 comparisons, states it obsoletes RFC 4130 (meaning it becomes the authoritative spec while remaining backward compatible).
+    *   **Introduction:** Clear statement of RFC 4130 BIS as a revision, incorporates 20+ years of experience, modern security requirements, added RFC 2119 keywords, new backward compatibility appendix.
+    *   **AS1/SMTP De-emphasis:** Rationale: AS2 evolved independently, most implementations are HTTP-only, AS1 references cause confusion. Impact: Cleaner spec, maintains IANA registry compatibility. (Clarified: not a protocol change, but documentation clarity.)
+    *   **Normative Reference Updates:**
+        *   S/MIME 3.1 -> S/MIME 4.0 (adds authenticated encryption with auth-enveloped-data).
+        *   RFC 3798 -> RFC 8098 (MDN clarifications/fixes).
+        *   RFC 2822 -> RFC 5322 (email format).
+        *   Added RFC 2119/8174 (keywords), RFC 5751 (S/MIME 3.2 backward compatibility).
+        *   **Discussion on S/MIME 4.0:** Erik asked about multi-receiver encryption with auth-enveloped-data (affirmed as supported). Discussion on supporting S/MIME 3.2 for backward compatibility was clarified. Mark (co-chair) raised a macro concern about clarity when combining updates for an old spec and a new spec, suggesting a need for very clear distinctions in the document for the new protocol.
+    *   **Algorithm Requirements (New Section):**
+        *   **Hash Algorithms:**
+            *   RFC 4130: MD5 (allowed), SHA-1 (recommended).
+            *   BIS Proposal: MD5/SHA-1 deprecated (*must not generate*), SHA-256 (must), SHA-384 (must), SHA-512 (should).
+            *   **Discussion:** Erik and Asker Schmidt highlighted that "must not generate" for SHA-1 is problematic for backward compatibility with RFC 4130 systems, as it breaks compliance if an application interacts with a legacy partner. Suggested clarifying the "must not generate" in the context of *new* messages for *BIS-compliant* partners, but allowing generation for legacy partners, or changing "must not" to "should not". Debra suggested AS2 versioning (1.3/2.0) could be the driving indicator. Bojdar argued for keeping "must not" for broken algorithms. Mark emphasized separating requirements for AS2 version 1 (legacy) and version 2 (new).
+        *   **Content Encryption Algorithms:**
+            *   RFC 4130: No explicit requirements, Triple DES, RC2 commonly used.
+            *   BIS Proposal: AES-128-CBC (must), AES-256-CBC (should), AES-128/256-GCM (recommended for authenticated encryption). Triple DES/RC2 explicitly deprecated (*must not generate* unless legacy).
+            *   **Discussion:** Similar "must not generate" concerns for Triple DES/RC2 for legacy interactions. Bojdar suggested AES-256-CBC be a "must". Erik questioned the performance benefit of GCM as a key driver and noted S/MIME 4.0 adoption challenges due to library support. Debra proposed discussing whether S/MIME 4.0 should be a "must" or "should".
+        *   **Key Transport Algorithms:** RSA (min 2048-bit) (must), RSA-OAEP (should), ECDH (may).
+            *   **Discussion:** A participant suggested dropping RSA-OAEP as it was not widely adopted in the marketplace, while elliptic curve was.
+        *   **Digital Signature Algorithms:** MD5/SHA-1 (deprecated, *must not generate*), RSA with SHA-256 (must), RSA with SHA-384/512 (should).
+        *   **Migration Strategy (Phased Approach):** Phase 1 (enable modern, accept legacy), Phase 2 (prefer modern for new partners, maintain legacy), Phase 3 (gradually deprecate legacy). Appendix B provides detailed guidance.
+            *   **Discussion:** Participants reiterated that forcing upgrades on partners is not feasible for many organizations, especially those providing integration platforms. The "must not generate" was seen as making it impossible to claim compliance while maintaining backward compatibility. There was a strong call to relax this restriction, at least for interactions with legacy systems, possibly changing the wording to a "should not generate." The discussion highlighted the tension between moving to modern security and ensuring practical interoperability with the large existing AS2 ecosystem.
+    *   **HTTP and Headers:**
+        *   **HTTP Version Support:** HTTP 1.1 (must), HTTP 2/3 (may).
+        *   **TLS Requirement:** TLS 1.2 or higher (must).
+        *   **HTTP Response Status Codes:** Documented 102 (optional), 204 (preferred for async MDN), need to return responses quickly.
+        *   **Retry Guidance:** Defined retry logic for 400-level (no retry), 500-level (retry with exponential backoff), and connection failures.
+        *   **AS2 Version Header:** Existing AS2-Version 1.0, 1.1, 1.2. Proposal to add 1.3 or 2.0 to signal BIS features.
+            *   **Discussion:** Whether to use 1.3 (incremental evolution with backward compatibility) or 2.0 (major modernization with less backward compatibility). Erik voted for 2.0, but Asker argued for starting with 1.3 to ensure incremental adoption, fearing 2.0 might signal abandonment of existing solutions.
+        *   **AS2-Product Header:** New header (AS2-Product: VendorName:Version) for implementation tracking, debugging, interoperability testing. Follows HTTP User-Agent conventions.
+            *   **Discussion:** Should it be required for new versions?
+        *   **AS2 GET Method:** New optional method for initial certificate exchange and partner discovery (capabilities). GET request to endpoint, returns capabilities via EDIINT-Features header and certificates.
+            *   **Discussion:** Mark suggested using the `/.well-known` URI (RFC 8615) for discovery. Erik noted that `/.well-known` often uses JSON, which would add a new technology stack (vs. XML for AS2), and suggested looking at SEM for certificate bundling as a more AS2-centric approach.
+    *   **Feature Documentation Philosophy:** Documenting existing, proven, community-requested features (CEM, AS2 reliability/restart, compression, filename preservation, multiple attachments), marking them optional, referencing existing specs, and providing interoperability guidance.
+    *   **Specific Features (briefly introduced before adjournment):**
+        *   **CEM (Certificate Exchange Messaging):** Automated certificate exchange for renewal and rotation, reduces manual overhead.
+        *   **AS2 Reliability:** Checkpoint/resume, retries for 500-level HTTP errors, retransmission for unreceived async MDN.
+
+## Decisions and Action Items
+
+**Decisions:**
+*   No final consensus was reached on contentious technical points during this meeting. The discussions highlighted areas requiring further refinement in the draft and broader community input.
+
+**Action Items:**
+*   **Co-chairs:** Schedule another interim meeting in April to continue the presentation and discussion.
+*   **Debra Petter:**
+    *   Summarize the discussion points (especially regarding algorithm deprecation, AS2 versioning, and discovery methods) and circulate them on the EDIINT mailing list to gather broader community feedback.
+    *   Consider relaxing the "must not generate" requirements for deprecated algorithms (MD5, SHA-1, Triple DES, RC2) when interacting with legacy RFC 4130 systems, potentially to "should not generate" or by providing clearer conditional language.
+    *   Revisit the requirement for RSA-OAEP for key transport.
+    *   Gather working group input on whether to define the new AS2 version as 1.3 (incremental) or 2.0 (major modernization).
+    *   Explore the `/.well-known` URI for AS2 capability discovery, and consider the implications of JSON vs. XML for the response format, as well as alternatives like integrating with existing SEM mechanisms.
+    *   Consider moving AES-256-CBC to a "must support" category.
+    *   Consider adding AES-192 to the specification.
+
+## Next Steps
+
+*   The EDIINT Working Group will hold another interim meeting in April to continue the detailed review of the RFC 4130 BIS draft.
+*   Discussions on the identified contentious points will continue on the working group's mailing list to build consensus.
