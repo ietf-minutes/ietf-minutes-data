@@ -1,0 +1,100 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held a virtual interim meeting to discuss administrative updates, the agenda for the upcoming Boulder interim, and key technical topics. Administrative items included upcoming meeting dates, slide submission deadlines, and planning for a European interim. Technical discussions focused on a Pull Request (PR) to introduce bi-directional streams for control messages, a related PR addressing auth token compression, ongoing issues with joining fetch, and the future direction of object and track selection filters. A strong sense of the room supported landing the PR for bi-directional streams and the associated fix for auth token compression. Discussion on joining fetch highlighted several challenges and the need for further exploration. For filters, there was no immediate decision on splitting object from track filters, but a commitment to further discuss track selection filters at the Boulder interim.
+
+## Key Discussion Points
+
+### Administrative Updates
+
+*   **Minute Taker:** Mike volunteered to take minutes.
+*   **Upcoming Meetings and Deadlines:**
+    *   Agenda requests for Shenzen: February 18th deadline.
+    *   Boulder Interim: February 9th.
+    *   Slides for Boulder: February 5th deadline for chairs review. An exception was granted for Will to submit MSF/CMSF slides closer to the meeting due to a preceding face-to-face meeting. Participants were encouraged to share proposals/PRs on the mailing list a week prior to Boulder to allow early review.
+    *   One more virtual interim: February 23rd.
+    *   Shenzen IETF Meeting: March.
+*   **Agenda Quality:** A participant noted that agenda entries for virtual call-ins sometimes link to outdated draft versions, leading to confusion. Chairs acknowledged the issue and expressed a desire to improve. For the in-person Boulder interim, chairs indicated a "draconian" stance on slide submission deadlines to manage agenda time.
+*   **European Interim:** The week of June 8th was identified as the best time based on Doodle poll results, aiming for an interop on Monday/Tuesday and the meeting Wednesday/Thursday. Participants were asked to tentatively reserve this week in their calendars.
+
+### Boulder Agenda Bash
+
+*   **ABR Consolidation:** Ian volunteered to arrange an offline discussion with Will, Ali, and Gwendolyn to consolidate ABR presentations and ensure better alignment, reporting the outcome and schedule impact to the chairs.
+*   **DDoS Resource Protection:** Mike requested a late agenda item for DDoS resource protection.
+*   **Extensibility:** Alan suggested Ian's name should be associated with the extensibility discussion. Colin supported Ian driving this topic.
+*   **Advertising:** Will offered to reduce his advertising presentation time from 60 to 45 minutes to free up time for Mike's DDoS resource protection topic.
+*   **Joining Fetch:** Suhas requested clarity on the problems with the current joining fetch design before Boulder. Alan suggested the Boulder session needs to conclude with a "final plan" for joining fetch.
+
+### Technical Discussions
+
+#### Bi-directional Streams for Control Messages
+
+*   **Proposal:** Introduce bi-directional streams for SUBSCRIBE/UPDATE requests, moving them off the main control stream.
+*   **Motivation:** Address head-of-line blocking issues where one subscription's updates could clog the control stream for others, especially for relays. It also simplifies message correlation by stream and reduces draft lines.
+*   **Discussion Points:**
+    *   **Concerns about timing:** Some expressed concern about making a significant change late in the draft process.
+    *   **Rate Limiting:** Alan noted a potential loss of the existing request update rate limiting mechanism, suggesting it might need to be reopened as a separate issue.
+    *   **Subscription Lifetime:** Suhas raised a need for clarification on how subscription lifetimes and associated unilateral streams are managed when their bi-directional control stream closes.
+    *   **Prioritization:** Suhas also suggested further review on how priorities would work across multiple control streams per subscription.
+*   **Sense of the Room:** Victor, Will, and others expressed support for the change, viewing it as a beneficial technical direction, despite the "late" timing. Chairs indicated they would run a two-week consensus call on the mailing list to confirm the decision and aim to land the PR before the Boulder interim.
+
+#### Auth Token Compression
+
+*   **Problem:** The introduction of multiple bi-directional streams (e.g., for `SUBSCRIBE_NAMESPACE`) creates an issue where an alias registered on one stream might be used on another before the receiver has processed the registration, leading to a protocol violation due to out-of-order processing.
+*   **Proposed Solution (Band-Aid PR):** New rules to prevent out-of-order alias use: a sender must receive a response for an alias registration message before using that alias on a *different* stream. On the *same* stream, ordering is guaranteed, so no wait is needed. Also, an alias cannot be deleted if there are outstanding messages using it.
+*   **Alternative Discussion:** Alan suggested the feature could be made an extension, noting it's already effectively optional (default cache size zero). He also raised the possibility of leveraging QPack-like machinery for more robust out-of-order handling if compression is critical.
+*   **Discussion:**
+    *   Colin noted that tokens expiring or becoming invalid is a higher-level concern, and this compression is a performance/feature, not a security one, similar to HPACK/QPACK for HTTP cookies.
+    *   It was noted that this problem arises from control messages on different streams, similar to how `JOINING_FETCH` needs to wait for `SUBSCRIBE` responses, potentially adding an RTT.
+    *   The complexity of QPack-like solutions was acknowledged, suggesting it might be overkill for core MOQ.
+*   **Decision:** The sense of the room was to land the "Band-Aid" PR to fix the immediate issue and keep token compression in the core draft for now, rather than making it an extension.
+
+#### Joining Fetch Issues
+
+*   **Use Cases & Goals:** Starting at current/prior group, building a buffer behind live, quick startup, minimizing join latency, limiting relay buffering, avoiding useless objects, avoiding head-of-line blocking, and robustness to client/server time differences.
+*   **Motivations for Fetch:** Flow control for relays, ensuring all objects (and object ID gaps) are received, limiting streams, potential for VOD playback.
+*   **Conceptual Challenges:**
+    *   The clean separation of "past" (fetch) and "future" (subscribe) is blurred at the live edge due to reordering/prioritization in QUIC.
+    *   `JOINING_FETCH` is unique as an *imperative* request dependent on another request, adding complexity.
+*   **Practical Challenges:**
+    *   No single message to "start at current group."
+    *   Unreliable ways to get all desired objects quickly without publisher assumptions.
+    *   Clarifying `forward=1` behavior for subscription restarts.
+    *   Current design doesn't fully solve flow control problems for joined streams; `SUBSCRIBE` can still deliver past objects without flow control, leading to potential relay buffer exhaustion and dropped subscriptions.
+    *   `FETCH` can headline-block on objects the publisher doesn't cache or have, impacting startup latency. `unknown` ranges help but exacerbate the need for their frequent use.
+*   **Discussion:**
+    *   Alan and Victor suggested alternative flows using descending fetches and subscribes might optimize buffer building better than the scenario presented.
+    *   A participant suggested a single "join and fetch" message could simplify the API and publisher optimization.
+    *   There was debate on whether the problem lies with the spec allowing suboptimal flows or the design itself.
+    *   The discussion highlighted the complexity and numerous edge cases, especially with SVC and large buffers.
+*   **Conclusion:** The topic is complex and requires more focused discussion to fully understand the problems and potential solutions. It was agreed to take the discussion to the mailing list and potentially allocate more time at Boulder.
+
+#### Filters: Way Forward
+
+*   **Current State:** A PR for filters exists, but requires more work and addresses comments.
+*   **Proposal:** Split the filter PR into two:
+    1.  **Object Filters:** Seen as closer to completion and separable.
+    2.  **Track Selection Filters:** Needs more thought and discussion, particularly on the ordering of filter application (object vs. track) and scalability concerns.
+*   **Arguments for Splitting:**
+    *   Victor: Object filters replace existing filtering code, so landing them sooner would aid implementation cleanup. Track filters have unresolved scalability issues requiring more discussion.
+    *   Will and Ian: The functionalities are separable; object filters are independent of track selection, though track selection may depend on object filters.
+*   **Arguments Against Splitting:**
+    *   Suhas: The design decisions are intertwined (e.g., how "top-N" sets are determined per subscriber). Splitting risks doing filter cleanup multiple times.
+    *   Colin: Lack of clarity on the specific problems with track filters, making it hard to agree on a path forward. He emphasized the need to discuss the underlying issues first.
+*   **Conclusion:** No clear consensus on splitting the PR. There was a strong desire to dedicate agenda time at Boulder to discuss the track selection filter issues, particularly scalability and the intertwining design aspects. Suhas volunteered to talk to Mo (the original presenter) to coordinate the discussion for Boulder.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group will proceed with the PR to introduce bi-directional streams for control messages.
+    *   **Action Item:** Chairs to send a two-week consensus call on the mailing list for this PR, aiming to close it by the Friday before the Boulder interim.
+*   **Decision:** The "Band-Aid" PR to fix auth token compression for out-of-order alias use across streams will be landed.
+*   **Action Item:** Ian to arrange an offline discussion to consolidate ABR presentations for Boulder and report back to chairs on results and schedule impact.
+*   **Action Item:** Alan to follow up on the joining fetch topic after the meeting with an assessment of the current state and estimated time needed to close it out.
+*   **Action Item:** Suhas to discuss with Mo and other design team members regarding the track selection filter issues and prepare for a dedicated discussion at the Boulder interim.
+
+## Next Steps
+
+*   **Boulder Interim Preparations:** Submit slides by February 5th (with exceptions), engage in pre-Boulder discussions on ABR consolidation, joining fetch, and track selection filters.
+*   **European Interim Planning:** Participants to reserve the week of June 8th in their calendars.
+*   **Mailing List Discussion:** Continue the discussion on joining fetch and the problems identified with the current design, and further explore the specifics of track selection filters.

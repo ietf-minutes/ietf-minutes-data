@@ -1,0 +1,56 @@
+# [DKIM](../wg/dkim.html)
+
+## Summary
+
+The DKIM working group met to discuss the status of Draft Clayton (also referred to as DKIM2Spec), which incorporates concepts from the Message Instance document. Key discussion points included the policy for signing message headers (i.e., whether to sign everything or exclude certain headers), the proposed use of JSON encoding for message instance data, and the general readiness of Draft Clayton for Working Group adoption. No definitive consensus was reached on the header signing policy or the JSON encoding proposal, requiring further discussion. The working group indicated general support for adopting Draft Clayton as a WG document.
+
+## Key Discussion Points
+
+*   **Administrivia:**
+    *   Lori and John volunteered to take notes for the meeting.
+    *   Richard was running late, and Bron had to depart early.
+    *   A reminder was given regarding IETF processes and policies.
+*   **Message Instance Document / Draft Clayton (DKIM2Spec):**
+    *   Bron confirmed that most of the "Message Instance" document content had been merged into Draft Clayton (DKIM2Spec). The purpose of Message Instance is to snapshot each version of a message from the original composer to the final recipient, capturing changes like rewrites or header modifications to allow verification of DKIM1/DKIM2 signatures on previous message copies.
+    *   **Controversial Item: Header Field Hashing and Signing Policy:**
+        *   The current draft proposes a cryptographic hash of all header fields, *excluding* `Received`, `Return-Path`, `X-` headers, `DKIM-Signature`, and `ARC` headers.
+        *   **Arguments for exclusion (Richard):**
+            *   `Received` and `Return-Path` are trace headers; DKIM1 already excludes trace headers, and `Return-Path` should ideally only be present at final delivery. No perceived security properties for user presentation.
+            *   `DKIM-Signature` and `ARC` headers: Excluding these provides flexibility in signing order and avoids interaction issues if systems handle all three (DKIM1, DKIM2, ARC).
+            *   `X-` headers: Historically for private use (though this prohibition was later deprecated), not IETF-standardized, often internal/encrypted. A major mail handler requested their exclusion to simplify DKIM2 adoption, as internal systems frequently add `X-` headers and reconfiguring all internal MTAs to be DKIM2-aware would be costly and delay deployment. Richard argued `X-` headers have no meaning outside the originating boundary, so signing them is unnecessary.
+        *   **Arguments for signing everything / against exclusion (Dave, Pete, Alan):**
+            *   Concern about "foot guns": If a header is not signed, a bad actor could inject or modify it, potentially leading to security issues if a downstream system trusts it.
+            *   It is difficult for a validator to deterministically know what "everything" constituted for a given signature across multiple hops and independent implementations without an explicit list or a universally clear "sign all" rule.
+            *   DKIM1 allowed signers to choose what to sign, providing flexibility that a fixed exclusion list might remove.
+            *   The list of excluded headers might need to change over time, requiring document updates that could take years to deploy.
+            *   Pete emphasized that if an edge system validates an incoming message and then passes it through internal systems that add `X-` headers, the edge system should be able to legitimately sign all those headers when it sends the message out.
+        *   **Proposed Alternative:** Sign everything, and explicitly list the headers that were signed alongside the signature. Richard objected, citing clutter and the problem of distinguishing between an incompetent signer and malicious action if a security-relevant field isn't signed. He argued it's simpler to mandate signing all relevant headers, and systems not adhering will quickly learn they can't interoperate.
+        *   **Outcome:** No consensus was reached on the header field signing policy. The discussion requires further iteration.
+    *   **Recipes to Undo Changes:** The document proposes a mechanism ("recipes") for intermediate systems that modify messages to record how to revert to the previous message state. This allows a final recipient to reconstruct and validate earlier signatures. Security protections against misuse of recipes (e.g., using the same line twice) were noted as worth discussing.
+    *   **DKIM2 Key Discovery:** DKIM2 keys are intended to be pulled from the same place as existing DKIM keys, allowing silent upgrades for users of third-party infrastructure and minimizing DNS changes for self-hosted infrastructure.
+    *   **DKIM1 and DKIM2 Interoperability:**
+        *   A strong argument was made that once a message exits the DKIM2 ecosystem (i.e., goes to a DKIM2-unaware system), it should not be re-DKIM2'd.
+        *   Wei and Michael discussed the scenario of a DKIM1-signed message received by a DKIM2-aware mailing list, which then forwards it. The DKIM2-aware system could add a DKIM2 signature and a recipe, allowing a subsequent DKIM2-aware recipient to validate both the original DKIM1 and the new DKIM2 signatures.
+    *   **JSON Encoding for Message Instance/Recipes:**
+        *   A recent proposal suggested encoding the message instance data and recipes as a single Base64-encoded JSON blob within a header field, rather than using multiple key-value tags.
+        *   **Benefits (Richard):** Cleaner format, better handling of complex scenarios like algorithmic dexterity (e.g., for future cryptographic changes) and EAI (Email Address Internationalization) characters, simplifies parsing.
+        *   **Concerns (Alan):** Adds another layer to the parsing stack ("parsing turducken"), preference for human-readable headers (especially for abuse teams for manual assessment). Richard countered that headers are already long and often encoded, requiring tools anyway.
+        *   **Outcome:** The JSON proposal is new and requires more discussion and consideration regarding its implications, particularly for ordering within JSON and implementation.
+*   **Draft Clayton Working Group Adoption:**
+    *   A poll of the room indicated that the draft is in a reasonable state for Working Group adoption, though not yet ready for publication. There were no strong objections to initiating the adoption process.
+*   **Future Interims:**
+    *   The sense of those present was that an interim meeting before IETF 119 (Shenzhen in March) might not be necessary, preferring to revisit the need after the main meeting.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group expresses a general sense of support for adopting Draft Clayton (DKIM2Spec) as a working group document. The chairs will initiate the formal adoption call on the mailing list.
+*   **Action Item:** Participants are encouraged to continue discussion on the mailing list regarding:
+    *   The policy for signing header fields (e.g., "sign everything" vs. a specific exclusion list) within Draft Clayton.
+    *   The proposal to use JSON encoding for Message Instance data and recipes.
+*   **Action Item:** Lori and John, along with other participants, are requested to review and refine the meeting notes for accuracy and completeness.
+
+## Next Steps
+
+*   The chairs will initiate a Working Group Last Call for the adoption of Draft Clayton (DKIM2Spec) as a working group document on the mailing list.
+*   Further technical discussions on the header signing policy and the JSON encoding proposal will continue on the mailing list to work towards consensus.
+*   The need for additional interim meetings will be re-evaluated after IETF 119 in Shenzhen.

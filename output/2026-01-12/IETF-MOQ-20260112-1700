@@ -1,0 +1,68 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The Media Over QUIC (MOQ) Working Group held its first virtual interim of 2026. Key discussions included the Working Group's outlook for 2026, aiming for a "publicly deployable draft" by IETF 125, and a strategy for addressing the large number of open issues. Specific Pull Requests (PRs) were reviewed: PR 1390 (Track Properties vs. Message Parameters) was approved for merging, clarifying extensibility scoping. PR 1396 (Joining Fetch adjustments) was deferred, pending resolution of broader "joining fetch angst" and interactions with other in-flight PRs. A consensus was reached on adopting an EBML-style varint encoding, with specific code points reserved for future extensibility. Finally, PR 1389 (moving requests to bidirectional streams) was introduced, with a call for implementer feedback due to its significant architectural changes.
+
+## Key Discussion Points
+
+*   **Logistics and Future Meetings**
+    *   The deadline for agenda requests for the upcoming Boulder interim (February 9-12) was January 12th.
+    *   Draft 16 of the core specification was scheduled for release on January 12th.
+    *   A participant requested that the chairs set a date and potential location for the face-to-face interim following Shenzhen, targeting Europe. The chairs indicated this would typically be discussed and decided during the Boulder interim, but agreed to put out an online poll for potential dates sooner.
+*   **Editor's Outlook for 2026**
+    *   The Working Group currently has 113 open issues across its repositories. These were categorized: issues resolvable by in-flight PRs, issues marked "needs PR" (including half of ABR issues), editorial issues, issues marked "not transport" (6 issues), and "parked" issues (54, requiring other things to happen first).
+    *   The remaining 54 issues were further broken down into "joining fetch descent" (6 issues regarding design concerns), remaining ABR issues, a "switch" issue, a cluster of extensibility issues, a "track selection filter" issue, and 14 other miscellaneous issues.
+    *   **Goals for Boulder and Beyond**:
+        *   Aim to definitively close the "joining fetch descent" issues, either by resolving rough edges or adopting a new design. A participant suggested spending the next virtual interim on clarifying the *issues* with joining fetch before discussing solutions.
+        *   Seek proposals, ideally PRs, for all ABR (Adaptive Bitrate) related issues. An editor committed to writing PRs for most ABR issues.
+        *   Aim to close extensibility issues, including a recently raised issue on version negotiation (issue 1407).
+        *   The chairs indicated support for the editors issuing a warning to the list that issues without proposals by Boulder might be closed, provided adequate warning is given. A participant cautioned against collecting too many proposals without sufficient focus.
+    *   The overall goal is to reach a "publicly deployable draft" status by IETF 125, similar to the QUIC project's approach, indicating stability for production use, particularly for the application API and object model. A participant noted that the application API and object model need to be stable before such a declaration can be made.
+*   **PR 1390: Move Track Properties out of Message Parameters**
+    *   This PR moves track-level properties (e.g., media codecs) to track-level extensions, ensuring they are carried end-to-end from the publisher.
+    *   "Message parameters" (e.g., related to a single object or message) are now explicitly scoped to a single point-to-point hop, requiring negotiation; unknown message parameters will be rejected.
+    *   "Setup parameters" (for connection-level negotiation) continue to have unknown parameters ignored, as part of the existing version and extension negotiation story.
+    *   Discussion revolved around the distinction between message and setup parameters, the need for an IANA namespace for extensions, and the semantics of "reject unknown" vs. "ignore unknown" for different types of extensibility. Some participants expressed a desire for more clarity on the overall extensibility model. It was noted that the shared naming ("parameters") for conceptually distinct "setup parameters" and "message parameters" can be confusing.
+    *   **Decision**: PR 1390 was deemed ready and will be merged. Issue 1407, concerning the broader extensibility plan and version negotiation, will be discussed in a future interim.
+*   **PR 1396: Adjust joining fetch conditions**
+    *   This PR addresses an ambiguity in the current draft regarding the "joining location" when a `subscribe update` changes the `forward` bit from zero (paused) to one (active). The PR proposes to update the joining location at this transition point (and for similar `publish ok` cases).
+    *   A participant noted that some implementations currently start at the beginning of the group in such cases, which is not specified behavior.
+    *   Concerns were raised about the complexity of the proposed rules for updating the joining location, with suggestions for a simpler model (e.g., an explicit flag in `subscribe update` or updating on every `subscribe update`).
+    *   A chair suggested parking this PR until the filters PR and the bi-directional stream PR have landed, citing "joining fetch angst" and the desire to avoid revisiting the change multiple times. Another participant argued for merging to clarify a current specification gap.
+    *   **Conclusion**: There was no immediate consensus to merge. Victor's specific objections are to be discussed on GitHub. Pending broader resolution of joining fetch issues, the PR is parked. However, a participant indicated that the explicit "joining location" wording from this PR might be pulled into the filters PR to address current clarity issues.
+*   **Varint Encoding Discussion**
+    *   The discussion revisited the varint encoding scheme. The original PR proposed 4 bits in the leading byte to determine length (1, 2, 4, 8, 9 bytes). A participant requested a 6-byte encoding.
+    *   A new proposal was introduced to adopt a varint scheme consistent with RFC 8794 (EBML), which uses leading zeros to indicate length and offers 9 possibilities (1-8 byte lengths, with 3, 5, 6, 7-byte options). This approach was appealing to some as it avoids "reinventing" a common mechanism and has potential existing implementations in media contexts.
+    *   Concerns were raised about adopting an external specification as a hard dependency (EBML), the need for reserving code points for future extensibility (e.g., 128-bit integers or signed numbers), and whether all intermediate byte lengths (e.g., 3, 5, 7 bytes) are truly necessary based on common data ranges. It was suggested that the varint format itself might not be an area for extensibility, but rather an extension could define its own varint format.
+    *   **Decision**: A sense of those present indicated a preference for adopting the RFC 8794-style leading zero mechanism. The editors will finalize the PR with this style, but will explicitly reserve one or two code points (e.g., for 5-byte and/or 7-byte lengths) as "protocol error" in V1 for future extensibility.
+*   **PR 1389: Move remaining requests to bi-directional streams**
+    *   This PR proposes moving `subscribe`, `publish`, `track_status`, and `fetch` control messages from a single shared control stream to their own individual QUIC bidirectional streams. The `subscribe_namespace` messages were already moved in a previous PR (1344).
+    *   Benefits include eliminating `request_ID`s, simplifying `request update` logic, and mitigating Head-of-Line (HOL) blocking for critical operations like subscription cancellation, which can now be processed more quickly. It also removes 192 lines of text and six control messages, closing six issues.
+    *   Potential downsides include required changes to the `op_token_alias` system (which might motivate moving it to a separate draft) and the general coding effort.
+    *   Concerns were raised about potential HOL blocking spreading across multiple same-priority control streams. A participant emphasized the importance of `auth_tokens` remaining integral to the core specification, noting that changes to accommodate out-of-sequence processing might not be overly complex. The simplest fix for `auth_tokens` might involve waiting for a `request_ok` or `error` before pipelining aliases.
+    *   **Action Item**: The WG was encouraged to read and review PR 1389, and implementers were specifically asked to provide feedback on the proposed architectural changes.
+
+## Decisions and Action Items
+
+*   **Decision**: PR 1390 (Move Track Properties out of Message Parameters) will be merged.
+*   **Decision**: The chairs will put out an online poll to identify potential dates/locations for the face-to-face interim following Shenzhen, targeting Europe.
+*   **Decision**: The Working Group will adopt an EBML-style varint encoding (RFC 8794-like, using leading zeros), with the editors finalizing which 1-2 code points (e.g., 5-byte and/or 7-byte lengths) will be explicitly reserved as "protocol error" in V1 for future extensibility.
+*   **Action Item**: Chairs to send an email to the WG list indicating that proposals for ABR-related issues are needed by the Boulder interim, and issues without proposals may be closed after adequate warning.
+*   **Action Item**: Ian to write PRs for outstanding ABR issues (excluding the `switch` issue).
+*   **Action Item**: Alan to refine and share slides clarifying the "joining fetch" issues for discussion at the next virtual interim.
+*   **Action Item**: Editors to assign PRs for remaining "needs PR" issues before the Boulder interim.
+*   **Action Item**: The Working Group is requested to review PR 1389 (Moving requests to bi-directional streams) and provide implementer feedback.
+*   **Action Item**: Victor to resolve his substantive objections to PR 1396 (Joining Fetch adjustments) on GitHub.
+
+## Next Steps
+
+*   **Before the next virtual interim (February 23rd)**:
+    *   WG members should review PR 1389 and provide implementer feedback.
+    *   Alan will share clarified slides on "joining fetch" issues for discussion.
+    *   Editors will progress with ABR and other "needs PR" issues.
+    *   Discussions on issue 1407 (extensibility plan/version negotiation) are expected.
+*   **Boulder Interim (February 9-12)**:
+    *   Dedicated time for in-depth discussion and resolution of "joining fetch" issues, ABR, and extensibility.
+    *   Decision on the location for the post-Shenzhen face-to-face interim.
+*   Continue working towards the goal of a "publicly deployable draft" after IETF 125.

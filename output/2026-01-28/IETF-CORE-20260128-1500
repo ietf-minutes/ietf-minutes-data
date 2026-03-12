@@ -1,0 +1,70 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE working group interim meeting covered two main technical topics. First, a discussion on the procedure for SITFILE publication, particularly in relation to RFC 9595 and the `draft-ietf-anima-autonomic-bootstrap` (A366bis) document. This included clarification on developer types, IANA notes, and the conversion process from draft to final SIT files. Second, the group discussed a new draft proposing a method for YANG Metadata in CBOR, addressing complexities in JSON-based metadata and exploring CBOR's potential for a simpler solution, including considerations for naming, legacy attributes, and backward compatibility.
+
+## Key Discussion Points
+
+### SITFILE Publication Procedure (RFC 9595)
+
+*   **RFC 9595 Context:** Discussion centered around the procedures outlined in RFC 9595, particularly Section 6.4.3, for handling SIT (SID Identity) file publication alongside YANG modules.
+*   **Module Developer Types:**
+    *   **Type 1 (Self-Contained):** Developers create YANG modules and include the `.sid` file in their Internet-Draft (e.g., in an appendix). The `.sid` file allows for review (e.g., by the ASG) and is later removed by the RFC Editor upon publication. It was suggested to mark this section for removal using an `rfc-xml` feature and include an IANA note in the IANA Considerations section.
+    *   **Type 2 (SID-Aware):** Developers create modules but rely on a "SID designer" (an expert team) for SID assignments. They are aware of SIDs and might give a "heads up" to experts. The main distinction from Type 3 is the presence of an existing (experimental) SID file.
+    *   **Type 3 (Existing/Legacy):** Existing YANG modules that predate SID assignment mechanisms. These are handled by a "SID designer" / expert team. The `YangTooling` mailing list was noted as the forum for discussing SID generation for these modules.
+*   **Draft to Final SIT File Conversion:**
+    *   The approved document should contain the "final" `.sid` file.
+    *   The process involves converting the "unpublished" `.sid` file from the Internet-Draft into a "published" `.sid` file, which entails making allocations "final" or "stable".
+    *   Tools like `pjang-next` can facilitate this conversion, potentially using flags to mark allocations as final.
+    *   A key aspect is that once published, SIDs can be added but not removed to maintain backward compatibility.
+*   **Tooling and Validation:**
+    *   The importance of automated tooling for SID generation and validation was emphasized, especially to avoid manual errors (e.g., inconsistent dates between modules and SID files).
+    *   The `cramdown-rfc-extract` tool was mentioned for extracting source code, including `.sid` files, from Internet-Drafts. This tool handles RFC 8792 line wrapping and standard comment lines.
+    *   A need was identified to ensure tooling can verify that a SID file correctly points to the corresponding module version. This discussion point was suggested for continuation on the `YangTooling` mailing list.
+
+### YANG Metadata in CBOR
+
+*   **Problem Statement:** YANG metadata, as defined for XML (RFC 7952), is complex when adapted to JSON (RFC 7951) due to JSON's lack of attributes and undefined map order. CBOR offers a potentially simpler solution.
+*   **Proposed Solution (Current Draft):**
+    *   Use a new CBOR tag (tentatively IANA-allocated 109) to package an instance representation with its metadata.
+    *   The tag content would be a two-element array: `[metadata_map, instance_representation]`.
+    *   The metadata map can use either numeric SID deltas or name-based text strings as keys.
+    *   This structure allows metadata to be processed before the instance representation, meeting a strong requirement.
+*   **Naming Metadata Items in SID Files:**
+    *   SID files currently define SIDs for modules, identities, features, and data node schema identifiers. A new category, such as "enum annotation" or "enum metadata," needs to be added for metadata item identifiers.
+    *   While this addition to the SID file definition is technically non-backwards compatible, it is acceptable as it describes the data format, not a running server, and existing SID files will still work.
+    *   Implementation in tools like `pjang-next` would be required.
+*   **Legacy Compatibility (Metadata without YANG Modules):**
+    *   Some existing XML attributes used as metadata do not have corresponding YANG module definitions.
+    *   A proposal was made to potentially define a "legacy" YANG module to formalize these attributes for use with YANG-CBOR.
+    *   This requires identifying a stable, closed list of such legacy metadata attributes. It was suggested this might be a discussion for the Netmod WG.
+*   **Backward Compatibility for Implementations:**
+    *   Current YANG-CBOR implementations will not understand the new CBOR tag 109.
+    *   The recommendation is that implementations must be updated. A straightforward way to maintain compatibility during the transition is for old implementations to ignore the metadata by treating a `tag 109` structure as equivalent to its second element (the `instance_representation`).
+    *   This approach aligns with the need for simplicity in constrained environments.
+*   **Media Type Parameters:**
+    *   Consideration was given to adding a parameter to the `application/yang-data+cbor` media type (e.g., `metadata=true`) to signal the presence of metadata.
+    *   This could lead to a "combinatorial explosion" of content format IDs when combined with existing parameters (e.g., `id` vs. `text` map keys). While manageable within current CBOR content format ranges (16 bits), it raises scalability concerns for future additions.
+    *   The application context (constrained devices producing data, less constrained devices consuming it) suggests that updated readers/collectors would be necessary.
+    *   This discussion point will be integrated into the `yang-libraries` draft work.
+*   **Examples for Constrained Devices:**
+    *   It was suggested that practical examples illustrating the use of metadata in constrained (IoT) environments would be beneficial to support the working group adoption call. The current draft's examples are derived from RFC 7952 and may not fully cover IoT scenarios.
+
+## Decisions and Action Items
+
+*   **ESCO:** Upload slides from the SITFILE discussion to the data tracker entry for this meeting.
+*   **Karsten:**
+    *   Revise the YANG Metadata in CBOR draft (`draft-ietf-karsten-core-yang-cbor-metadata`) to incorporate discussion points, including the media type parameter and an initial approach for handling legacy attributes.
+    *   Add at least one example to the draft demonstrating the use of metadata in a constrained (IoT) environment.
+*   **Chairs (Marco):** Perform a quick sanity check with the CBOAR working group chairs regarding the `draft-ietf-karsten-core-yang-cbor-metadata` to ensure no conflicts or concerns exist.
+*   **CORE WG:** Initiate a working group adoption call for the `draft-ietf-karsten-core-yang-cbor-metadata` after Karsten's revised version is available and the sanity check with CBOAR is completed.
+*   **YangTooling Mailing List:** Continue the discussion on specific tooling issues related to SIT file validation (e.g., matching SIT files to module versions and ensuring date consistency) on the YangTooling list.
+*   **A366bis Authors (implied):** Ensure the `draft-ietf-anima-autonomic-bootstrap` incorporates the IANA note for SIT file removal and appropriate final text in the IANA considerations, confirming that the .sid file respects previous allocations.
+
+## Next Steps
+
+*   **Working Group Adoption Call:** The primary next step is to conduct a working group adoption call for the YANG Metadata in CBOR draft, following its revision and chair consultation.
+*   **Draft Revision:** Karsten will prepare a new version of the YANG Metadata in CBOR draft.
+*   **Chair Coordination:** The chairs will coordinate with the CBOAR WG chairs.
+*   **Tooling Discussion:** Further technical discussion on SIT file tooling and validation will proceed on the `YangTooling` mailing list.

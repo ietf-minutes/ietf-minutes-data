@@ -1,0 +1,58 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group held an interim meeting to review the status of the "DC-BOAR" draft and, specifically, to achieve consensus on the interpretation and use of tags 2 and 3 (big numbers) and their equivalence with major types 0 and 1. The editor provided an update on open issues and pull requests. A significant portion of the meeting was dedicated to a high-bandwidth discussion on the implications of this equivalence for interoperability, platform support, and deterministic encoding, including a presentation by one participant on the different "players" involved in CBOR communication. While no final decisions were made during the meeting regarding the equivalence, the discussion highlighted key considerations and helped identify specific action items for moving forward.
+
+## Key Discussion Points
+
+*   **DC-BOAR Draft Status:**
+    *   Three minor PRs (DCBOAR reference, new contributor, clarification) were merged into the O1 draft on GitHub, but not enough to warrant an O2 publication yet.
+    *   16 open issues remain, with some requiring significant writing work before broader discussion.
+    *   Open PRs include a new subsection on "when to use general serialization" (ready for review) and a "general recommendations section" (needs editing).
+*   **Appendices Normative Status:**
+    *   Rohan requested making some appendices normative, suggesting they be moved into the main document body to avoid misinterpretation of their importance.
+    *   The editor's initial goal was to keep the normative text under 10 pages, which led to content being placed in appendices.
+    *   It was agreed to discuss the appendices one at a time on the mailing list.
+*   **Test Vectors:**
+    *   The creation of comprehensive test vectors was identified as a significant, but highly valuable, amount of work.
+    *   The Chair noted that disagreements on serialization interpretation within the draft highlight the need for test vectors beyond those for RFC 8949, especially for edge cases and demonstrating various serialization behaviors.
+    *   A participant offered to contribute to test vector creation.
+    *   The Chair (as a WG participant) offered to host a separate repository (e.g., Codeberg) for test vectors and library outputs to aid in focusing future working group last call discussions.
+*   **Tags 2 and 3 (Big Numbers) Equivalence:**
+    *   The core question is whether to retain the equivalence between big numbers (tags 2 and 3) and major types 0 and 1, or to remove it.
+    *   **RFC 8949 Interpretation:** The editor believes RFC 8949 implies general equivalence, stating that numbers smaller than N64 max *must* be encoded as major type 0, never as a big number, though some textual wiggle room might exist.
+    *   **Pros for Retaining Equivalence (as presented by editor):**
+        *   Belief that RFC 8949 requires it.
+        *   Maintains a "unified integer space," which is clean.
+        *   Protocols (e.g., EAT) can rely on distinctions that might be lost if types are merged.
+        *   Existing implementations show varying but surprisingly high support for equivalence.
+        *   Implementation/API effort is neutral, depending on native platform support for big numbers.
+    *   **Cons Against Retaining Equivalence (as presented by editor):**
+        *   Adds complexity for determinism, as it "tweaks the data model" rather than just serialization.
+        *   It's a unique aspect that impacts both data model and serialization, leading to document structure confusion.
+        *   Complicates map key duplicate checking due to requiring data model interpretation.
+    *   **Interoperability Concerns (Carsten's perspective):**
+        *   CBOR tags are optional, meaning implementations can be at different levels of support.
+        *   An interoperability problem arises when a producer sends tags 2 or 3, and the consumer does not *understand* them (i.e., does not implement the extended generic data model for those tags, treating them as opaque containers).
+        *   Platform limitations (e.g., C's 64-bit limit, JS number limits) are orthogonal and not solvable by the CBOR specification itself.
+        *   The main problem identified is producers sending tags 2/3 for values that *could* be represented by major type 0/1, leading to latent interoperability failures if consumers don't fully support the tags. This is akin to "type switching" based on value, which can cause subtle, long-delayed breakage.
+        *   **Recommendations:** If consumer support for tags 2/3 is unknown, producers *should not* send those tags (especially for values that fit major types 0/1). Deterministic encoding inherently avoids this problem. API designers should be careful not to accidentally create such special cases.
+    *   **Rohan's Proposal:** Introduce *new tags* with the same semantics as tags 2/3 but explicitly *without* equivalence to major types 0/1. This would allow discouraging the old tags for deterministic encoding while still processing them correctly according to RFC 8949.
+    *   **Interoperability Importance:** While the editor noted interoperability as a "neutral" point in the pro/con list for the equivalence decision, Carsten strongly emphasized that interoperability is the paramount concern for standard bodies and should not be considered neutral. Rohan agreed, arguing that the current approach with optional tags and implicit equivalence hinders interoperability.
+
+## Decisions and Action Items
+
+*   **Joe** volunteered to assist with creating **test vectors**. Lawrence will provide guidance on format and location.
+*   **Rohan** will write a **PR to move normative appendices into the main document body**.
+*   **Rohan** committed to completing his other pending **general review comments and PRs**.
+*   **The Chair** offered to set up a **separate repository (e.g., on Codeberg)** to host test vectors and library outputs.
+*   **Lawrence (the editor)** is tasked with driving the **consensus discussion on Tags 2 and 3 equivalence** on the mailing list, taking into account the nuanced interoperability concerns raised.
+
+## Next Steps
+
+*   The discussion on Tags 2 and 3 equivalence, including the pros, cons, and interoperability implications, will continue on the **mailing list** to achieve working group consensus.
+*   Work on creating **test vectors** should commence.
+*   **Rohan** is expected to submit his PRs regarding **normative appendices** and continue work on other open issues.
+*   **Lawrence** will publish an **O2 draft** as soon as enough changes have accumulated to warrant a new publication.
+*   Working group participants are encouraged to engage actively on the mailing list and volunteer for open tasks.

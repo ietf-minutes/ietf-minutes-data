@@ -1,0 +1,55 @@
+# [VCON](../wg/vcon.html)
+
+## Summary
+
+The VCON Working Group held an interim meeting to review updates in the `vcon-02` draft, primarily presented by Dan Petrie, and discuss remaining open technical issues. Key topics included handling placeholders for SIP session IDs and unknown parties/dialogues, generalizing DTMF events, the status of the JSON schema, and several issues related to supporting separate and trimmed recordings per party. Decisions were made regarding the draft name and the need to address the challenges posed by trimmed recordings. Action items were assigned for further specification work and mailing list discussions.
+
+## Key Discussion Points
+
+*   **`vcon-02` Draft Updates:**
+    *   **SIP Session ID Placeholder:** For multi-channel recordings where some channels lack SIP session IDs, an empty object was chosen as a placeholder to maintain correspondence with the parties array.
+    *   **Archiving Signed VCONs:** The draft now specifies re-signing VCONs by encapsulating them in nested JWS objects before the original signature's certificate expires, based on advice from Jose experts.
+    *   **DTMF Event Generalization:** DTMF `up` and `down` events were generalized to `key up` and `key down` to allow for capturing other button press/release events beyond DTMF (e.g., kiosk buttons). This was a name change with no syntactic impact.
+    *   **JSON Schema:** An informational JSON schema was added as Appendix B. It is explicitly noted as non-normative due to insufficient testing and review, with the document's descriptive text remaining the normative specification.
+    *   **Unknown Parties:** To represent unknown parties, an empty party object should be used. This allows for distinguishing between multiple unknown parties, unlike a `null` or `-1` value.
+    *   **Anonymous vs. Unknown Parties:** Text was added to clarify the distinction between anonymous and unknown parties.
+    *   **Unknown Dialogues:** For dialogues where details are unknown (e.g., a consultative call in a transfer), an empty dialogue object should be used as a placeholder.
+    *   **Attachment `purpose` Parameter:** The `attachment` object now includes an open-text `purpose` parameter instead of a `type`, as there isn't a definitive set of semantic types for attachments.
+    *   **Removed Features:** The `group` object was removed from the core definition, to be considered an extension if real-world use cases emerge. The `group` array name is reserved for future use at the top level.
+    *   **Pending Fixes:** Spelling errors were corrected, and a to-do remains to fix a poor diarization example. Action to identify the IANA registry for JWE header parameter names is pending. A section on considerations for authors of VCon extensions is also needed.
+
+*   **Open Issues and Discussions:**
+    *   **Draft Name:** Dan Petrie requested keeping the current draft name (VCON) due to the significant effort involved in updating repository names, GitHub workflows, and regenerating numerous examples that reference the draft's URL. A sense of those present indicated agreement with this request.
+    *   **Analysis Object `type` List:** The current list of analysis types is likely incomplete. The group acknowledges the need for more input on additional types and whether they should be registered with IANA.
+    *   **Attachments without Contributing Party:** A concern was raised about attachments (e.g., lawful basis statements) that might not have an obvious contributing party. The current specification requires a party object reference.
+        *   Discussion proposed that every attachment *must* have a contributor.
+        *   Possible solutions: Expanding the party object to include types like `organization` or `bot`, or adding `company`/`department` parameters to party objects to label non-individual contributors.
+    *   **Analysis Object Referencing Attachments Directly:** The question was raised if analysis objects should be able to directly reference one or more attachment objects, in addition to or instead of dialogues. This would allow for analyses specific to a subset of attachments within a dialogue. A poll of the room indicated support for this concept.
+    *   **Separate and Trimmed Recordings:**
+        *   **Separate Recording Per Party:** It was confirmed that having separate recordings per party is already supported by the current VCon structure using multiple dialogue objects, one for each recording.
+        *   **Challenge: Parties Not in Recording:** A hole was identified regarding how to explicitly list parties that were part of a conversation but are not present in a specific recording segment.
+        *   **Challenge: Recordings Trimmed to Talk Spurts:** Trimming recordings to only contain active speech segments (`talk spurts`) introduces several issues:
+            *   Where to place party events (e.g., DTMF presses, join/leave events) if there's no continuous dialogue recording covering that time period?
+            *   Loss of explicit call start/end boundaries.
+            *   Loss of the concept of call segments.
+            *   How to differentiate between parties that are actively in a recording versus those who are only conceptually part of the conversation.
+        *   **Security Concerns:** A participant raised concerns about the security and surveillance implications of capturing all these details. It was clarified that VCON is a format for archiving, and the responsibility for security, privacy, access control, and redaction (via JWE encryption or redaction mechanisms) lies with the recording entity and broader VCON ecosystem.
+        *   **Sidebar/Consultation Calls:** Discussion touched on how to capture side rooms or consultation calls (e.g., agent speaking with supervisor) which often involve separate recordings or segments. This was seen as related to the trimmed recording problem.
+    *   **Multiple Parties in Transfer Roles:** The current transfer dialog structure assumes a single party for each transfer role (transferee, transferor, transfer target). The question was posed whether there are use cases for multiple parties in any of these roles (e.g., transferring to a conference with multiple initial participants). A sense of those present indicated this is not currently needed.
+
+## Decisions and Action Items
+
+*   **Decision:** The draft name "VCON" will remain unchanged due to the significant effort required for renaming all related assets and examples.
+*   **Decision:** The working group intends to solve the issues related to supporting separate and trimmed recordings, including how to handle events outside recording segments and the loss of call boundary context.
+*   **Action Item (Dan Petrie):** Send an email to the mailing list to gather more feedback on potential types for the analysis object's `type` parameter.
+*   **Action Item (Dan Petrie):** Draft text to allow the analysis object to directly reference one or more attachment objects (mutually exclusive with dialogue references) and present it for discussion at the next meeting/on the list.
+*   **Action Item (Dan Petrie):** Write up a proposal for handling attachments with no contributing party, including potential additions to the party object (e.g., `type` for organizations, `company`/`department` parameters), and discuss on the mailing list.
+*   **Action Item (Dan Petrie):** Develop and propose solutions for the identified issues concerning separate and trimmed recordings (handling events, call boundaries, party labeling), potentially including these in the next draft.
+*   **Action Item (Dan Petrie):** Bring the question of supporting multiple parties in transfer roles to the mailing list for broader feedback.
+*   **Action Item (Dan Petrie):** Investigate and propose the appropriate method for scheduling the next interim meeting (e.g., during IETF 125 timeframe, or separately), and ensure appropriate calendar invitations are sent out to maximize participation.
+
+## Next Steps
+
+*   Dan Petrie will follow up on action items, drafting proposed text and soliciting feedback on the mailing list for open technical issues.
+*   The working group will discuss scheduling an upcoming interim meeting, potentially coinciding with the IETF 125 timeframe, to continue working through these technical challenges and build consensus.
+*   The meeting minutes will be created from the recording and distributed.
