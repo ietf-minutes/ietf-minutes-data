@@ -1,0 +1,85 @@
+# [TOOLS](../wg/tools.html)
+
+## Summary
+
+This meeting provided an overview of the IETF's current email processing system, discussed proposed changes, and gathered feedback on various technical challenges. Key topics included the impending migration to Mailman 3, a new Data Tracker-integrated user interface for list management, DMARC rewriting and potential ARC adoption, support for Internationalized Domain Names (IDN) and Email Address Internationalization (EAI), current spam mitigation strategies, and challenges with disruptive participants. Significant discussions centered on the feasibility and planning for the Mailman 3 migration, alias management complexities (especially for RFCs), and improvements to bounce processing. The session also outlined future workshop topics for various tools initiatives.
+
+## Key Discussion Points
+
+*   **Current Mail Processing Overview:**
+    *   Inbound mail flows through Postfix, virus scanning, and SpamAssassin (permissive, with clear spam discarded early).
+    *   **Post-confirm** is a custom Python 2 service that ensures senders are approved, quarantining unconfirmed mail and sending a challenge. The approved sender list is pre-populated from list subscribers and other feeds.
+    *   Mail addressed to `dmarc.ietf.org` is unwrapped if the sender passes Post-confirm.
+    *   Mail for lists includes a Post-confirm challenge and has an `Archive-Date` header added before Mailman processing. Mailman performs its checks, DKIM headers may be removed, and a new DKIM signature is added on outbound.
+*   **Mailman 3 Migration:**
+    *   **Rationale:** Mailman 2 is unmaintained (except critical bugs), and Python 2 is end-of-life, making migration necessary. Mailman 3's Python libraries offer better integration opportunities.
+    *   **Architecture:** Mailman 3 is refactored into a core engine, a separate UI (Postorious, built with Django), and Python library interfaces. IETF will continue using its own archiving system, not Hyperkitty.
+    *   **Sandbox Experience:** It was reported that Mailman 2 and Mailman 3 are running *in parallel* on the sandbox server. Moving lists from Mailman 2 to Mailman 3 is a manual but not arduous process, indicating that an incremental migration is possible. This setup currently excludes IETF's Post-confirm and archive integration.
+*   **Improved User List Management (Jay's Proposal):**
+    *   A proposal to replace the Mailman web interface with Data Tracker-integrated list management was presented, aiming for easier subscription/unsubscription, viewing global settings, and clear list activity indicators (e.g., volume).
+    *   A feature to "pause mail delivery to all addresses" was discussed, which was requested by Eric Klein. A sense of those present indicated that implementing a system to retroactively resend mail later is overly complex and burdensome. If implemented, it would likely function as temporarily disabling mail reception.
+*   **DMARC Rewriting and ARC:**
+    *   The IETF currently performs DMARC rewriting on outbound mail from lists for senders with restrictive DMARC policies, rewriting the `From:` address to an IETF domain and setting up a temporary forward for replies. This is considered necessary until ARC (Authenticated Received Chain) is widely adopted.
+    *   ARC is an experimental draft. A few large operators are using it, but there isn't sufficient data to conclude its effectiveness. A sense of those present indicated that the IETF should wait for significant community demand before implementing ARC.
+*   **IDN/EAI (Email Address Internationalization) Support:**
+    *   EAI is a complex area, primarily due to one-way compatibility issues (ASCII users can email EAI users, but EAI users often cannot email non-EAI users).
+    *   While Postfix has good EAI support, many IMAP servers and Mail User Agents (MUAs) do not fully support it.
+    *   Adding EAI support to Mailman is considered a "huge project" due to aliasing and forwarding complexities.
+    *   A sense of those present indicated that the IETF should "eat our own dog food" by enabling EAI in the underlying Postfix system for experimentation with IETF staff addresses, but should advocate for Mailman developers to implement comprehensive EAI support in Mailman 3.
+*   **Spam Mitigation & Disruptive Participants:**
+    *   Current spam tools include virus scanning, SpamAssassin, and Post-confirm (effective against simple bots).
+    *   The **Global Allow List** (formerly whitelist) is regenerated daily from active Data Tracker addresses and manually added senders. It has grown to nearly 100,000 addresses, with a significant portion appearing to be illegitimate, raising concerns about potential spam attacks.
+    *   **Moderation tools** for disruptive participants include setting a moderated bit for individuals or entire lists. A sense of those present indicated that these tools are comprehensive but underutilized due to chairs' discomfort and political considerations rather than technical limitations.
+    *   The idea of implementing **rate limiting** (e.g., restricting posts to 5 messages per hour per list) was discussed as a potential way to slow down runaway discussions, reduce the burden on chairs, and mitigate perceptions of favoritism. This would be a feature request for Mailman 3.
+*   **Alias Management:**
+    *   The Data Tracker generates group and document aliases hourly, based on activity (5 years for groups, 2 years for drafts).
+    *   A key problem is that **aliases for RFCs** are not maintained indefinitely, leading to broken links in the Data Tracker.
+    *   New alias types were requested, such as "all authors for a group's documents" and "all chairs for an AD's group".
+    *   The cost of not timing out aliases (e.g., maintaining 50,000+ aliases) was discussed. Postfix is highly efficient with large lookup tables.
+    *   **DMARC rewriting is not applied to aliases**, causing delivery failures for recipients with restrictive DMARC policies.
+
+*   **Bounce Processing:**
+    *   Chairs managing large working groups use Mailman's bounce processing to identify delivery issues, but `listname-bounces@ietf.org` addresses are a "magnet for spam."
+    *   There is no current knob to apply specific spam thresholds or moderation rules to these bounce addresses within Mailman 2.
+    *   Addressing this effectively would require a code change to Mailman 3.
+
+## Decisions and Action Items
+
+*   **Mailman 3 Migration:**
+    *   A sense of those present indicated that the migration to Mailman 3 is not optional due to Mailman 2 and Python 2 end-of-life.
+    *   **ACTION:** Robert to send a summary of the sandbox Mailman 3 setup (including access information) to the tools-discuss list to gather broader feedback and encourage testing.
+    *   **ACTION:** Robert to develop a detailed migration plan for Mailman 3 to share with the IETF community.
+*   **DMARC / ARC:**
+    *   **DECISION:** The IETF will continue with its current DMARC rewriting scheme and wait for the broader community to demonstrate significant adoption and demand for ARC before prioritizing its implementation.
+    *   **ACTION:** Murray and John S. to follow up with Google contacts regarding their current status and data on inbound ARC validation.
+*   **IDN / EAI:**
+    *   **DECISION:** Enable EAI in the underlying Postfix system to allow experimentation with `staff.ietf.org` addresses.
+    *   **ACTION:** Glenn to coordinate the enablement of EAI on Postfix with IETF staff.
+    *   **ACTION:** John S. to engage with Mailman developers regarding EAI support in Mailman 3, noting potential funding opportunities from IANA.
+*   **Spam & Global Allow List:**
+    *   **ACTION:** Investigate the sources of growth for the Global Allow List, particularly the prevalence of illegitimate-looking addresses, and assess potential vulnerabilities.
+*   **Moderation Tools:**
+    *   **ACTION:** Explore the feasibility and design of a rate-limiting feature for mailing lists (e.g., X messages per hour per participant) as a potential request to Mailman 3 developers.
+*   **Alias Management:**
+    *   **ACTION:** John S. to consult Victor Duchovny (Postfix author) on the performance implications of maintaining a very large alias table (e.g., 50,000+ entries) indefinitely. If deemed feasible, IETF will proceed with maintaining RFC aliases indefinitely early next year.
+    *   **ACTION:** Robert and Glenn to experiment offline with regenerating alias tables to route outbound alias mail through Post-confirm's DMARC rewriting function.
+*   **Bounce Processing:**
+    *   **ACTION:** Advocate for Mailman 3 developers to add a feature allowing a spam score filter to be applied to bounce messages before delivery to list administrators.
+
+## Next Steps
+
+A series of workshops are planned to address various tools-related topics:
+
+*   **`doc.ietf.org` / URL Constructs:** Focus on canonical URLs for drafts/RFCs/artifacts, long-lived URLs, and stable links for external organizations.
+*   **Data Tracker Refactoring (multiple workshops):**
+    *   Affiliation tracking (history and freshness).
+    *   Modeling RFCs as distinct document objects (separate from drafts).
+    *   Improving interfaces for finding people and submitting drafts.
+    *   Enhancing the agenda interface for mobile use.
+    *   Addressing multiple Markdown forms and managing live/semi-live documents within the Data Tracker.
+    *   Improving role modeling for data-driven access control.
+    *   Mining and backfilling historical Data Tracker data (especially pre-2000s).
+*   **Mail Archive and General Archiving:**
+    *   Integrating chat logs (e.g., Zulip) with email archives for unified searching.
+    *   Developing tooling for better statistical views of archive data (e.g., posts per list/day, per participant/list/day).
+*   **GitHub Integration:** A workshop dedicated to capturing and representing the use of GitHub (issue trackers, development flow) within IETF's archiving and searching tools.

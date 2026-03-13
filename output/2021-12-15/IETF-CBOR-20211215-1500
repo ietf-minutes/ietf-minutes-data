@@ -1,0 +1,43 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+This interim meeting focused on two main technical issues: resolving an issue with CDDL `_dot_abnf` and `_dot_abnf_b` controls identified during AUTH48, and discussing the path forward for the "file magic" draft, particularly regarding the handling of CBOR and non-CBOR data sequences. A decision was made to adjust the CDDL text to clarify byte string usage. For the file magic draft, a new tag (`55801`) was proposed and discussed to explicitly allow non-CBOR data to follow a CBOR header, and a second working group last call was deemed necessary. The regular bi-weekly meeting schedule will be paused for the end-of-year holidays, resuming in the new year.
+
+## Key Discussion Points
+
+### CDDL Control `_dot_abnf` and `_dot_abnf_b` Issue (AUTH48)
+
+*   **Problem Identification**: During AUTH48, it was noted that while CDDL `_dot_abnf` and `_dot_abnf_b` are defined to accept both text and byte strings as their *target* (left-hand side), the *right-hand side* (the ABNF content) was only described to accept text strings. However, existing examples already utilized byte strings on the right-hand side.
+*   **Rationale for Byte Strings**: Using byte strings on the right-hand side is often more practical for incorporating line breaks and allows for easier copy-pasting into documents, as byte strings do not have the same JSON compatibility constraints as text strings.
+*   **Proposed Resolution**: The text should be updated to explicitly permit byte strings on the right-hand side of `_dot_abnf`.
+
+### File Magic Update
+
+*   **Background**: The current draft introduces tags `55799` (part of RFC 8949) and `55800`. `55800` provides a CBOR sequence with a short (typically 12-byte) CBOR data item as a prefix to identify the sequence. The issue arose because examples in the draft incorrectly showed `55800` being used to prefix non-CBOR data, while the text for `55800` is clear that it should prefix CBOR data.
+*   **Proposed Solution**: Introduce a new tag, `55801`. This tag will have the same meaning as `55800` (a CBOR header followed by data) but without the guarantee that the subsequent data is itself CBOR. This resolves the discrepancy and allows for labeling files where a CBOR header is followed by arbitrary data (which may or may not be CBOR).
+    *   `55800` indicates a CBOR header followed by a CBOR sequence.
+    *   `55801` indicates a CBOR header followed by data that is *not necessarily* a CBOR sequence.
+*   **Discussion on Implications**:
+    *   The coexistence of `55800` and `55801` was acknowledged as slightly "weird" but deemed a practical solution.
+    *   A participant raised a point about content format tags changing semantics when enclosed within `55800` or `55801`. Specifically, the byte string directly tagged by a content format number within `55800` or `55801` does not represent the content itself but is a fixed 3-byte sequence ('bor'). The actual content representation follows the `55800`/`55801` structure.
+    *   Concern was expressed that this introduces a new aspect to the general processing model for tags, where processing might need to occur "from the outside-in" rather than strictly from the inside out, similar to how CBOR-packed operates. This suggests that `55800`/`55801` tags "disarm" the processing of nested content format tags.
+*   **Next Steps for File Magic**: The updated draft (dash-07), including `55801` and revised examples, requires thorough review.
+
+## Decisions and Action Items
+
+*   **CDDL Control Issue**:
+    *   **Decision**: The text for `_dot_abnf` in CDDL will be changed in AUTH48 to explicitly allow byte strings on its right-hand side.
+*   **File Magic Draft**:
+    *   **Decision**: A new tag `55801` will be introduced in the draft to cover cases where a CBOR header prefixes non-CBOR data.
+    *   **Action Item**: Carsten (draft editor) will revise the draft (dash-07) to include `55801` and update examples accordingly.
+    *   **Action Item**: Michael to propose text on the implications for the general tag processing model, specifically regarding how `55800`/`55801` affect nested content format tags.
+    *   **Decision**: A second working group last call for the file magic draft will be initiated after the proposed changes are incorporated and reviewed, given the non-trivial nature of the changes.
+
+## Next Steps
+
+*   Complete the text changes for the CDDL `_dot_abnf` control in AUTH48.
+*   Review the updated file magic draft (dash-07) with the new `55801` tag and revised examples.
+*   Draft and review text on the tag processing model implications for the file magic document.
+*   Initiate a second working group last call for the file magic draft.
+*   The next regular CBOR WG meeting is scheduled for January 12th, 2024. The December 29th meeting is cancelled.

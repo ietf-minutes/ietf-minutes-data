@@ -1,0 +1,69 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+This interim meeting of the DNSOP Working Group focused on two main topics: resolving ambiguities in DNS terminology as part of the `rfc8499bis` document, specifically concerning the terms "in-bailiwick" and "glue", and discussing outstanding issues and proposed updates for the delegation revalidation draft. Discussions on terminology highlighted the confusion around "in-bailiwick" and the various interpretations of "glue," leading to an agreement for further refinement by the authors and chairs. For delegation revalidation, a detailed algorithm was presented, addressing limitations of a simpler approach and outlining plans for an updated draft with specific considerations for TTL usage, delegation changes, and abuse prevention.
+
+## Key Discussion Points
+
+### DNS Terminology (RFC 8499bis)
+
+*   **"In-Bailiwick"**:
+    *   Paul Hoffman presented on the term "in-bailiwick," noting its controversial nature since RFC 8499's publication and the lack of a clear definition in source RFCs.
+    *   There is disagreement on whether to define it or leave it undefined, with a weak sense that any definition might be confusing.
+    *   Paul Hoffman prefers defining terms but acknowledges the challenge of achieving consensus.
+    *   Suzanne suggested that a reasonable outcome could be to document that the term is ambiguous and potentially not useful, or context-dependent.
+    *   Warren added that for non-DNS experts, it would be helpful to explain why the term is problematic and what it might have meant in legacy use, even if deprecated.
+*   **"Glue"**:
+    *   Paul Hoffman presented the current draft's text on "glue," noting it quotes RFC 1034 and RFC 2181, leading to confusion.
+    *   He proposed a succinct definition quoting RFC 1034 ("data that allows access to name servers for sub zones is sometimes called glue data") and RFC 2181 (which broadened "glue" to include "any records in a zone file that is not properly part of that zone including name server records of delegated sub zones NS records address records that accompany those NS records... and any other stray data").
+    *   Matthias suggested that if there are two distinct definitions for "glue," perhaps a new term is needed for the broader RFC 2181 interpretation to avoid ongoing confusion.
+    *   The chairs noted that definitions should be kept separate from registry requirements.
+    *   It was acknowledged that the working group is in a position to invent or clarify terminology.
+    *   The "glue is not optional" draft was mentioned, with a note that definitions should be consistent across related documents.
+
+### Delegation Revalidation Draft
+
+*   **Draft Status and Authorship**: Shumon presented on the delegation revalidation draft, noting it's nearing completion. Paul Vixie joined as a co-author, and Punit was added as an editor.
+*   **Simple vs. Detailed Revalidation Algorithm**:
+    *   The draft currently describes a simple and a more detailed algorithm.
+    *   Paul Vixie provided an in-depth explanation of why the simple iterative algorithm, as previously conceived, is insufficient. Key reasons include:
+        *   Minimal responses can lead to cached NS sets expiring without revalidation.
+        *   More than one delegating NS set can be stale.
+        *   Need to look at the entire upward chain to ensure TTL coverage.
+    *   Paul presented a revised, clearer approach for the detailed algorithm (Section 4), acknowledging it needs language cleanup (e.g., removal of "in-bailiwick").
+    *   The algorithm involves walking upward from the answer record's owner name, identifying "revalidation points" where a delegation is "out of time" (cached longer than the lower of NS TTL or DS TTL).
+    *   Revalidation involves querying the delegator for an "in-bailiwick" (term to be fixed) name to check if the delegation is still valid or has changed.
+    *   Changes (name doesn't exist, different name, or different NS set) require pruning stale data from the cache.
+    *   The process repeats upward to the root or until a work limit is reached. A bug in previous implementations of this logic was also identified during the rewrite.
+*   **DS TTL Usage**:
+    *   Current DNS protocol specs suggest DS and delegating NS TTLs should match, but this isn't always true.
+    *   The latest draft text allows resolvers to use DS TTL in preference to delegating NS TTL.
+    *   A new proposal suggests using the *lower* of the DS and NS TTLs to compute the revalidation interval.
+*   **Delegation Changes**:
+    *   The draft includes a section on clearing stale data when delegation parameters change (e.g., complete removal or redelegation to new servers).
+    *   An exception is carved out for partial NS set changes to avoid unnecessary churn.
+    *   There was explicit request for confirmation of consensus on this text, which was broadly accepted as important for safety.
+*   **Lame Server Behavior**:
+    *   A suggestion was made to include what resolvers should do if the entire NS set for a child zone is lame.
+    *   The authors' current thinking is to *not* include this, as resolvers already handle this situation regardless of the draft, and including it would add complexity and broaden scope unnecessarily.
+*   **Optimization Suggestions (from Cloudflare)**:
+    *   **Caching minimal/full responses**: Resolvers could cache whether an authority server provides minimal or full responses, potentially foregoing explicit child NS set fetches. Authors expressed concerns about added complexity, unknown gain without measurement, and detecting state changes. *Suggestion: leave out.*
+    *   **Proactive NS set population by authoritative servers**: Authoritative servers using minimal responses could proactively populate the NS set in the authority section of DNSKEY queries. Authors raised concerns about added complexity, unquantified gain, and expanding the draft's scope to authoritative server behavior. *Suggestion: leave out.*
+*   **Abuse Prevention**:
+    *   To prevent resolvers from doing excessive work due to very low TTLs, it was suggested that the draft recommend resolvers place a lower bound on revalidation frequency.
+    *   A default value for this lower bound could also be recommended. This proposal was seen as a valuable addition.
+
+## Decisions and Action Items
+
+*   **DNS Terminology (RFC 8499bis)**:
+    *   **ACTION**: Chairs (Suzanne, Tim) and Paul Hoffman to work on updated text for "in-bailiwick" and "glue." The current direction for "in-bailiwick" is to describe its ambiguity and suggest deprecation, while potentially explaining its historical/legacy meaning. For "glue," the aim is to clarify its different uses, potentially by introducing new terminology for the broader definition from RFC 2181. This new text should be circulated on the mailing list for further discussion.
+*   **Delegation Revalidation Draft**:
+    *   **ACTION**: Authors (Paul Vixie, Shumon, Punit) to revise the draft with the proposed changes, including the detailed revalidation algorithm, and address the language around "in-bailiwick." The new text will first be reviewed by the co-authors before being posted to the mailing list.
+    *   **ACTION**: The WG requests resolver implementers to carefully review the new draft text, especially the detailed revalidation algorithm, to provide feedback and consider proof-of-concept implementations.
+
+## Next Steps
+
+*   Further discussion and review of the new terminology and delegation revalidation draft texts will continue on the DNSOP mailing list.
+*   The chairs plan to schedule more interim meetings in 2022, likely before IETF March, with a Doodle poll to determine dates.
+*   Authors interested in presenting documents for focused discussion at future interims are encouraged to reach out to the chairs.

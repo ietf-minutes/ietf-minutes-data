@@ -1,0 +1,45 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+This interim DNSOP session focused solely on the `draft-ietf-dnsop-extended-error-reporting` document (currently at -00 status and nearing expiration), presented by Roy Arends. The primary goal was to gather implementer feedback on specific technical points before the next draft revision, particularly concerning handling QNAME minimization, allowing unsolicited reporting agent domains from authoritative servers, and considerations for reporting specific Extended DNS Error (EDE) codes from RFC 8914.
+
+## Key Discussion Points
+
+*   **Introduction to Extended DNS Error Reporting:** Roy Arends introduced the `draft-ietf-dnsop-extended-error-reporting`, emphasizing its reliance on RFC 8914 (Extended DNS Errors). He noted encouraging adoption of RFC 8914 by major resolvers (Cloudflare, Quad9, OpenDNS) and authoritative servers (GoDaddy), indicating a solid foundation for error reporting.
+*   **QNAME Minimization and Error Reporting:**
+    *   **Problem:** When a resolver performing QNAME minimization encounters an error, it might report the same error multiple times for minimized QNAMEs, making it difficult for a reporting agent to identify the original problematic domain.
+    *   **Proposed Solution:** Encapsulate the erroneous QNAME with a special label, such as `_er.QNAME._er.AGENT.DOMAIN`, ensuring the QNAME is fully contained. The idea is to make anything not starting with `_er` ignorable.
+    *   **Feedback:** While there was no strong pushback against the encapsulation *idea*, Willem Toorop and others raised concerns about potential collisions if `_er` is part of a legitimate domain name. The existence of an underscore labels registry was noted as a potential avenue for defining such labels, with the understanding that collision avoidance is key.
+*   **Unsolicited Reporting Agent Domain from Authoritative Servers:**
+    *   **Problem:** The current draft requires resolvers to indicate support for error reporting via an EDNS(0) option. However, some authoritative servers might drop queries containing unknown EDNS(0) options (even if they support EDNS(0)), leading to resolver retries and delays.
+    *   **Proposed Solution:** Allow authoritative servers to return the reporting agent domain unsolicited (without the resolver explicitly signaling support), similar to how RFC 8914's EDE option works. This assumes resolvers are generally more resilient to unknown EDNS(0) options in responses.
+    *   **Feedback:**
+        *   Willem Toorop asked if this would be on every response or if authoritative servers should maintain state. Roy clarified the intention was for every response if space allows, to avoid state.
+        *   Peter Van Dijk and others expressed a strong preference for keeping the protocol stateless to avoid complexity and potential security vulnerabilities.
+        *   Paul Hoffman suggested a third option: authoritative servers could send unsolicited announcements randomly, not necessarily on every response, as a seeding mechanism. He also suggested leaving it optional for authoritative servers to decide when to send.
+        *   A suggestion was made to measure resolver resilience to unsolicited EDNS(0) options in responses. Roy expressed interest in pursuing this with Matt Larson and Joao.
+*   **Reporting Specific EDE Errors (RFC 8914):**
+    *   Roy presented a slide categorizing EDE error codes (e.g., Not Ready, Blocked, Not Authoritative, Not Supported; No Reachable Authority; Censored, Filtered, Prohibited) and asked if resolvers should report these back to the reporting agent.
+    *   **Feedback:**
+        *   Rolf Wopereis and Peter Van Dijk argued that the authoritative server should decide on a per-answer basis whether to include the reporting agent option, rather than the RFC prescribing a fixed list of errors to ignore.
+        *   Peter Van Dijk also raised the complexity of selecting a reporting agent domain when a resolution session involves multiple authoritative servers, potentially with different reporting agents, or when the error is not tied to a single authoritative response (e.g., "no reachable authority"). This requires explicit text in the document.
+        *   Paul Hoffman suggested a new EDE error code to indicate that all authoritative servers for a zone were tried and failed, as this would be valuable information for diagnosis.
+        *   Willem Toorop suggested that resolvers might need to implement sampling of error reports to avoid overload, especially when a single resolution session generates multiple errors. The consensus was that while sampling makes sense, the RFC should not be overly prescriptive on its implementation.
+    *   **Action for Roy:** Roy will draft text addressing these complex scenarios (how to pick a reporting domain, handling errors not from single authoritative responses) and circulate it to Peter Van Dijk, Peter van dijk, and Benno for review.
+*   **Implementation Status:** A proof-of-concept for the authoritative side exists in NSD from a hackathon, but no resolver-side proof-of-concept yet. Roy aims to organize a hackathon session at a future IETF to foster resolver implementations and testing.
+
+## Decisions and Action Items
+
+*   Roy Arends will revise the `draft-ietf-dnsop-extended-error-reporting` to incorporate the proposed QNAME encapsulation (with `_er` or similar) and allow for unsolicited reporting agent domains in authoritative server responses. This will be in v01, intended for submission soon.
+*   Roy Arends will draft specific text regarding how to select a reporting agent domain when resolution fails or involves multiple authoritative servers, and circulate it to Peter Van Dijk, Peter van dijk, and Benno for feedback.
+*   Roy Arends will collaborate with Matt Larson, Joao, and other interested parties to measure the resilience of resolvers to unsolicited EDNS(0) options in responses.
+*   Roy Arends will aim to organize a hackathon session at a future IETF meeting to facilitate implementation and testing of the resolver side of Extended DNS Error Reporting.
+*   The broader discussion on these technical points is encouraged to continue on the DNSOP mailing list.
+
+## Next Steps
+
+*   Roy Arends to submit an updated draft of `draft-ietf-dnsop-extended-error-reporting-01` incorporating the initial discussed changes.
+*   Roy Arends to continue engaging with implementers to refine the text regarding complex error reporting scenarios.
+*   The DNSOP chairs encourage authors of active drafts to request agenda slots for the upcoming IETF 112 meeting.
+*   The working group will continue to leverage interim meetings for focused discussions to maintain momentum on drafts.
