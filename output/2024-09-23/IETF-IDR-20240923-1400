@@ -1,0 +1,59 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR interim meeting focused on three key areas: Generic Metric extensions for BGP, Next Hop Characteristics (NHC), and Link Bandwidth extended communities. The session aimed to discuss current proposals, address known issues, and foster convergence on critical functionalities. Key discussions revolved around the scoping and transitivity of attributes, particularly concerning next-hop modifications and inter-domain scenarios, as well as interoperability challenges for Link Bandwidth. The meeting highlighted the need for robust error handling, discontinuity detection, and a unified approach to expressing forwarding information in BGP.
+
+## Key Discussion Points
+
+*   **Generic Metric Extensions (`draft-ietf-idr-generic-metric`)**:
+    *   **Problem Statement**: Existing AIGP (RFC 7311) is insufficient for end-to-end intent-based path selection across multi-AS common administration domains due to its limited metric types and deployment challenges. A new vehicle is needed for generic, accumulated metrics.
+    *   **Proposed Solution**: Utilize the Next Hop Capability (NHC) attribute for carrying generic metric information. NHC provides next-hop level scoping, is optional, and transitive.
+    *   **Mechanism**: Routers modifying the next-hop would accumulate local domain costs. Discontinuity flags (D-bit) are used to signal unsupported metrics or NHC implementations along the path.
+    *   **NHC vs. Multi-Top (M&H)**: NHC is preferred due to its built-in next-hop scoping and transitive nature with defined boundary policies. M&H, currently non-transitive, would require upgrades on all routers, including those not modifying the next-hop, which is operationally undesirable.
+    *   **Decision Impact**: Generic metric primarily influences route selection biasing, distinct from ECMP use cases.
+    *   **Open Point**: Clarification is needed on the interaction between bandwidth carried as an IGP metric type within `generic-metric` and the `link-bandwidth` extended community, as they serve different purposes (route selection vs. ECMP).
+
+*   **Next Hop Characteristics (NHC) (`draft-ietf-idr-next-hop-characteristics`)**:
+    *   **Purpose**: The NHC attribute informs downstream routers about forwarding plane characteristics, offering optional, transitive, TLV-based support for features like Entropy Label and Generic Metric.
+    *   **Recent Changes**: Renamed from "capabilities" to "characteristics" to avoid conflict with RFC 5492 terminology. Added aggregation rules and allocated a code point.
+    *   **Open Issue: Link-local Next Hops**: A scenario exists where link-local next-hops, if used exclusively, could lead to false positives in NHC comparison after a Next-Hop-Self operation.
+    *   **Proposed Solution**: Introduce a TLV within NHC to carry BGP identifier and AS number for unique qualification of link-local next-hops. This allows comparison with direct neighbor's open message information.
+    *   **Registry**: An informal, editor-managed registry for NHC TLV code points is currently in use. The chairs suggested using the IDR GitHub issue tracker for this.
+    *   **Implementation Status**: One implementation exists, and a second is reportedly in progress. The completion of a second implementation would facilitate publication.
+
+*   **Multi-Top (M&H) Attribute (`draft-ietf-idr-multi-top`)**:
+    *   **Problem Statement**: Current BGP attributes scatter forwarding information, limit advertising more than one next-hop (except Add-Path with its limitations), and make extension to new endpoint/encapsulation types complex.
+    *   **Proposed Solution**: M&H consolidates all forwarding instructions into a single, tightly-scoped attribute, including primary and repair paths, each with ordered forwarding actions and arguments (TLVs).
+    *   **Attribute Interaction**: Information within M&H is more specific and overrides information carried outside M&H for the same route, with exceptions like MPLS labels in 8277 NLRI.
+    *   **Error Handling (M-bit)**: A mandatory (M) bit at each layer of M&H allows hierarchical error handling. If an element with M-bit=1 is not understood, the error propagates up, potentially leading to the M&H attribute being ignored for the route, without session resets. A "dry-run" mode (M-bit=0) is possible.
+    *   **Continuity Detection (C/E bits)**: C-bit requests accumulation of values across next-hop-self operations, with each attribute defining its accumulation function (e.g., adding for IGP cost, minimum for bandwidth). The E-bit indicates if an attribute was added by an egress node (empty AS_PATH).
+    *   **Accumulated Metric in M&H**: M&H can carry a subset of IGP metric types (IGP cost, link delay), distinct from `generic-metric`'s encoding due to M&H's TLV structure and central handling of continuity detection. A separate registry for M&H-specific metrics was suggested.
+    *   **Scoping & Transitivity**: M&H is designed as non-transitive to minimize attribute escape and simplify continuity detection, focusing on forwarding-related properties for FIB installation, not purely control-plane path selection attributes like Local Preference.
+    *   **Open Point**: Discussion on whether the "advertising protocol next-hop" field can be removed from M&H given its non-transitive nature, though it still provides valuable scoping/validity information.
+
+*   **Link Bandwidth Extended Community (`draft-ietf-idr-link-bandwidth`)**:
+    *   **Problem Statement**: The original IDR Link Bandwidth draft (expired) defined it as non-transitive, but some implementations treat it as transitive, leading to interoperability issues. This has spurred multiple new drafts with different encoding formats and transitivity behaviors.
+    *   **Proposed Solution**: `draft-ietf-idr-link-bandwidth` aims to resolve interop by allowing senders to originate both transitive and non-transitive Link Bandwidth communities, with receivers accepting both.
+    *   **Conflict Management**: If multiple Link Bandwidth communities are attached, the lowest value is preferred; if equal, the transitive one is preferred (with policy override knobs).
+    *   **Status & Next Steps**: Deployments already feature both transitive/non-transitive versions, with increasing vendor support. The WG is requested to review, and a hackathon is proposed to demonstrate interoperability.
+    *   **Broader Context & Issues**:
+        *   **Encoding**: The current 32-bit floating-point format is problematic for Yang modeling (which prefers decimal64) and can cause configuration and accuracy issues. Other drafts (`bess-evpn-unequal-load-balance`, `le-link-bw-ext`) propose non-floating-point or 64-bit formats.
+        *   **Use Cases & Granularity**: A single Link Bandwidth attribute may not be suitable for all applications (e.g., internet, EVPN, fabrics). There might be a need for application-specific Link Bandwidth types.
+        *   **Scoping**: Current extended community transitivity (non-transitive for single AS, transitive for broader reach) is insufficient. There's a need to allow "non-transitive over the AS boundary" in controlled ways (e.g., `bgp-ebgp-dmz-link-bw`). This relates to the broader "attribute escape" problem.
+    *   **RFC 4360 Ambiguity**: Clarification is needed in RFC 4360 about whether a *new* non-transitive extended community can be intentionally attached and propagated across an AS boundary.
+
+## Decisions and Action Items
+
+*   The `draft-ietf-idr-generic-metric` document has been adopted as a Working Group document.
+*   The `draft-ietf-idr-next-hop-characteristics` document editors will prepare a version 16 to address the link-local next-hop issue. This revision is expected to trigger a Working Group Last Call for the new functionality.
+*   The chairs will facilitate a discussion between the IDR and BESS Working Groups regarding the `bess-evpn-unequal-load-balance` draft's encoding and its potential generic applicability across BGP Safis.
+*   The IDR chairs request the Working Group to consider a `RFC 4360 bis` to clarify the rules for attaching new non-transitive extended communities across AS boundaries.
+
+## Next Steps
+
+*   Working Group members are encouraged to review and discuss the `draft-ietf-idr-link-bandwidth` solution, and vendor participation is requested for a hackathon at the next IETF meeting to demonstrate interoperability.
+*   The IDR Working Group needs to discuss a more general solution for carrying domain-specific and scoped Link Bandwidth information, addressing encoding, multiple use cases, and enhanced scoping mechanisms.
+*   Kanthi (Multi-Top author) will add text to the M&H draft to clarify the distinction between forwarding-related properties included in M&H and purely control-plane attributes that remain outside.
+*   Working Group members interested in Yang modeling for Link Bandwidth are encouraged to follow work in OpenConfig and Netmod on handling 32-bit floating point numbers.
+*   All attendees are encouraged to follow up on discussion points on the IDR mailing list.

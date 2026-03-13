@@ -1,0 +1,56 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+This interim meeting featured a presentation by Fabian El-Hage and Michael Menth on their implementation experience with the MPLS Network Actions (MNA) framework on Intel Tofino hardware. The discussion covered the efficiency of MNA encoding, challenges with mutable data, Post Stack Data (PSD) integration, and proposed operational modes. Key insights into hardware constraints and potential simplifications were shared, leading to a discussion on the feasibility and practical implications of various MNA design choices.
+
+## Key Discussion Points
+
+*   **MNA Implementation on Intel Tofino**: Fabian El-Hage presented findings from implementing the MNA framework on Intel Tofino hardware, aiming to assess its efficient implementability. The Tofino serves as a reference architecture, with the premise that if it works there, it likely works elsewhere.
+*   **NAS Encoding Simplification**:
+    *   A proposal was made to eliminate the "initial opcode" LSE type by moving its configuration parameters into the TTL field of the BSL. This would simplify encoding and save 8 bits.
+    *   **Discussion**: Participants noted that the TTL field is necessary in an LSP LSE, citing issues with ancient hardware that may pre-decrement or check TTL before realizing its context.
+    *   **Decision**: This simplification (using TTL field) is not feasible due to backward compatibility with existing hardware. Further discussion on the mailing list was encouraged.
+*   **Post Stack Data (PSD)**:
+    *   The presentation discussed PSD, located below the MPLS stack, and its indication by a reserved bit (P-bit) in the NAS indicator. A bit is easier to implement for parsing than an opcode.
+    *   **Discussion**: A participant clarified that the working group draft does not currently define PSD encapsulation; it's an individual draft used for reference in this research. The relevance of this specific PSD encapsulation for MNA was questioned, given that working group drafts can change and other technologies (e.g., pseudo-wire, DetNet, BIER) have their own post-stack headers of varying sizes, which might require label-context-dependent parsing.
+*   **Mutable Data**:
+    *   Mutable data refers to values that change during packet forwarding (e.g., telemetry data collection like node IDs, timestamps). Only the last 8 bits of an LSE are mutable for backward compatibility, as legacy devices might use the MPLS label for load balancing.
+    *   **Discussion**: A participant (Greg) noted that no acknowledged working group use case requires mutable data *in* the label stack; the current proposal for telemetry data collection is to use PSD. It was acknowledged that mutable in-stack data presents a research challenge but is not a current WG requirement.
+*   **Hop-by-Hop NAS Replication vs. Preservation**:
+    *   Hop-by-hop NAS replication (multiple copies of NAS in the stack to ensure readability across nodes with different Readable Label Depths (RLD)) leads to larger stacks and complicates mutable data handling (e.g., copying updated data to other copies).
+    *   A concept of "hop-by-hop NAS preservation" was proposed: only one hop-by-hop NAS is placed in the stack (below the active segment), and an MNA-capable node that brings it to the top must move it deeper after processing. This reduces stack size and simplifies mutable data.
+    *   **Discussion**: This approach deviates from traditional MPLS Push/Pop paradigms and would not work with MNA-incapable nodes, making it incompatible with existing MPLS deployments.
+*   **Operational Modes Proposed**:
+    1.  **Compatibility Mode**: Utilizes hop-by-hop NAS replication, allowing a mix of MNA-capable and incapable nodes.
+        *   **ISD Only**: Less restrictive to RLD, few mutable bits available. Use cases: network actions not requiring mutable data (e.g., direct export).
+        *   **ISD and PSD**: More mutable data in PSD, but reaching PSD efficiently is a challenge. Use cases: network actions requiring mutable data.
+    2.  **Greenfield Mode**: Utilizes hop-by-hop NAS preservation, assuming MNA-capable nodes only and potentially entropy labels (allowing all data bits to be mutable in-stack).
+        *   **Discussion**: The "Greenfield" approach is not feasible for IETF as the internet cannot have "flag days" for such non-compatible deployments. However, the presenter noted ongoing work to make this mode compatible with MNA-incapable nodes.
+*   **P4 Implementation Insights**:
+    *   The P4 language was used to describe the data plane. The parser, control blocks, and deparser pipeline were described.
+    *   Parsing MNA: The implementation simplified parsing by treating all LSEs after the initial opcode as "subsequent opcodes" and deferring the distinction between opcodes and ancillary data (AD) LSEs to the processing stage, matching on the network action length field.
+    *   Stack Management: Internal P4 representation used "active segment stack," "intermediate segment stack," and "persistence stack," requiring optimization of their sizes based on network requirements and RLD.
+    *   Processing: Match-action tables are used for each LSE. Large NAS or multiple NAS may require packet recirculation, which can impact throughput but allows processing more actions than IPv6 extension headers typically permit.
+    *   PSD implementation requires parsing the full MPLS stack to find the bottom-of-stack bit, which is feasible on Tofino but adds recirculation overhead.
+*   **Example Network Action**: A simplified path tracing mechanism (collecting node IDs) was implemented as a proof of concept. This involved using an opcode, flags for metrics, reserved AD LSEs, and a mutable index field within an LSE to indicate where transit nodes should write their data. This ran at line rate (100 Gbit/s) without recirculation for the in-stack data only version.
+*   **Overall Conclusions**:
+    *   The MNA encoding can be implemented efficiently on hardware (Tofino).
+    *   Challenges exist with mutable data in-stack (due to replication needs) and PSD (efficiently reaching the bottom of the stack).
+    *   Proposed modes offer different trade-offs in compatibility, RLD requirements, and recirculation needs.
+*   **Tools Shared**: The presenter offered to share Python libraries for assembling/sending MNA packets and a Wireshark dissector extension.
+
+## Decisions and Action Items
+
+*   **Decision**: The TTL field in the BSL cannot be used for MNA configuration parameters due to backward compatibility requirements with legacy hardware that may process or check the TTL value.
+*   **Action Item**: Fabian El-Hage to upload the presentation slides to the interim meeting materials.
+*   **Action Item**: Fabian El-Hage to clean up and share the Python library and Wireshark dissector extension for MNA traffic (URL to be posted on the mailing list or added to slides).
+*   **Action Item**: Fabian El-Hage to review the IETF draft text regarding the TTL field in LSP LSEs and consider initiating a discussion on the mailing list if further clarification or alternative proposals are warranted.
+
+## Next Steps
+
+*   **Implementation Optimization**: Continue efforts to optimize the P4 implementation, specifically focusing on reducing the number of recirculations, and explore performance on Intel Tofino 2.
+*   **Greenfield Mode Compatibility**: Investigate how the "Greenfield mode" (hop-by-hop NAS preservation) could potentially be made compatible with MNA-incapable nodes.
+*   **Extend Network Actions**: Implement a wider range of Network Actions, such as those related to MPLS inband performance measurement or direct export iPM options.
+*   **Documentation**: Finalize and publish a paper on the findings and implementation experiences.
+*   **Community Collaboration**: Continue to engage with the working group for feedback and potential collaborations on specific network action implementations.

@@ -1,0 +1,55 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC Working Group met to discuss two primary topics: a new draft proposing a FEC (Forward Error Correction) fragmentation rule format, and ongoing terminology and architectural clarifications for the SCHC architecture document. Key discussions included the proposed FEC mechanism's integration with existing rules, the naming convention for SCHC data units, the interpretation of mandatory compression in RFC 8724 versus practical deployments, and the definition of a "SCHC Instance" to accommodate point-to-point and group communications.
+
+## Key Discussion Points
+
+*   **SCHC for ICMPv6 Working Group Last Call:** The chair announced that `draft-ietf-schc-oam` (soon to be titled "SCHC for ICMPv6") is currently in Working Group Last Call. Participants were encouraged to send their +1 votes to the mailing list.
+*   **SCHC FEC Fragment Rule Format (draft-alejandro-schc-fec-rule-format-00)**
+    *   **Presentation Overview:** Alejandro presented the initial draft for a FEC fragmentation rule format.
+    *   **Motivation:** FEC addresses real-life use cases in smart metering and aims to optimize traffic flow, especially in LPWANs where retransmissions are costly. It increases reliability and reduces the need for frequent downlink messages by sending redundant data.
+    *   **Proposal:** A new FEC rule type would be introduced, bound to an existing SCHC fragmentation rule (e.g., Rule 30 bound to Rule 20). This FEC rule would inherit context (dtag, fcn) from the parent fragmentation session and allow recovery of lost fragments without additional downlink messages.
+    *   **Backward Compatibility:** If a receiver does not implement FEC, it would simply drop FEC fragments, and the base fragmentation process would continue as normal, ensuring backward compatibility with RFC 8724.
+    *   **Discussion on Rule ID Binding:**
+        *   A participant raised concerns that a simple Rule ID might not be sufficient to link an FEC fragment to a specific fragmentation session.
+        *   The authors clarified that the FEC rule format would include an explicit attribute (e.g., `frag rule ID`) to bind it directly to its corresponding fragmentation rule, addressing this concern.
+    *   **Discussion on FCN Usage:**
+        *   A participant noted an inconsistency in the FEC draft where the FEC fragment's FCN points to the *last* recoverable tile in a window, which deviates from the standard FCN meaning of pointing to the *first* tile. This requires further clarification or adjustment.
+        *   The authors explained that for the example given, FEC assumes fixed-size fragments for XOR operations, and if fragment sizes change, the process would need to be reset.
+    *   **FEC Acknowledgement:** A question was raised regarding FEC fragments potentially requiring acknowledgements. It was clarified that while FEC aims to reduce downlink, in very poor radio conditions, more sophisticated behaviors might be needed, but FEC is a tool to improve reliability, not a universal solution.
+    *   **Draft To-Dos:** The authors identified several areas for future work in the draft: specifying behavior definitions for MTU changes, allowing for FEC methods beyond XOR, and properly defining the new rule data model.
+*   **SCHC Architecture Document Discussions**
+    *   **Terminology for SCHC Data Units:**
+        *   The discussion revisited the preferred term for "SCHC transmission unit" (STU) from a previous version of the architecture document. "SCHC Data Unit" (SDU) was suggested previously, and "SCHC Datagram" was explored in the last meeting.
+        *   A participant supported "SCHC Datagram" for its generic applicability across Layer 2 and Layer 3 contexts.
+        *   However, others preferred "SCHC PDU" (Protocol Data Unit) or "SCHC Data Unit" as more generic terms, as "datagram" has specific implications in other protocols (e.g., UDP).
+    *   **Mandatory Compression in RFC 8724 vs. Fragmentation-Only:**
+        *   RFC 8724's Figure 3 implicitly makes the compression stage mandatory. This forces devices only needing fragmentation to still define a "no-compression" rule, potentially wasting Rule ID bits.
+        *   It was noted that RFC 9442 (SCHC for Sigfox) effectively uses fragmentation only, indicating a real-world use case that bypasses mandatory compression.
+        *   A participant argued that SCHC's core purpose is header compression, and fragmentation alone is a Layer 2 function.
+        *   It was suggested that the architecture document should clarify that fragmentation-only is indeed possible, referencing RFC 9442, without deprecating RFC 8724 but rather explaining the design space.
+    *   **Definition of "SCHC Instance":**
+        *   The working group discussed whether a "SCHC instance" should be strictly defined as a point-to-point communication or if it could encompass more generic scenarios like point-to-multipoint or multicast (e.g., LoRaWAN DMS).
+        *   Three options were presented:
+            *   **Version A:** "SCHC Instance" is strictly point-to-point. (Simplifies wording but excludes group communication).
+            *   **Version B:** "SCHC Instance" is default point-to-point. Introduce "SCHC Group Instance" for group communication and "SCHC Any Instance" for generic application. (Potential ambiguity if "Group Instance" isn't a "SCHC Instance").
+            *   **Version C:** "SCHC Instance" is generic. "SCHC Point-to-Point Instance" is used for specific point-to-point cases. (Cumbersome wording as most use cases are point-to-point).
+        *   A participant argued for maintaining "point-to-point" as the fundamental definition for "SCHC Instance" due to management implications, suggesting that "group instance" could be a future extension.
+        *   Another participant suggested a hybrid approach (Version D, inspired by Marco's suggestion): "SCHC Pairwise Instance" for point-to-point, and "SCHC Instance" for the generic case, while still using "SCHC Group Instance" when needed.
+
+## Decisions and Action Items
+
+*   **SCHC PDU Terminology:** There was a sense of those present that "SCHC PDU" is a suitable term for SCHC data units, but final consensus will be sought on the mailing list.
+*   **Fragmentation-Only Clarification:** The architecture document will be updated to clarify that fragmentation-only deployments are possible, referencing RFC 9442, and explaining its relationship with RFC 8724's implicit requirement for compression. This acknowledges the flexibility without changing the core definition of SCHC.
+*   **"SCHC Instance" Definition:** Participants are requested to send an email to the mailing list indicating their preference among the proposed definitions (Versions A, B, C, or a modified Version D/Marco's suggestion) for "SCHC Instance".
+
+## Next Steps
+
+*   **SCHC for ICMPv6:** Continue to provide +1 votes on the mailing list for the Working Group Last Call.
+*   **SCHC FEC Fragment Rule Format:** Authors will address feedback on rule ID binding and FCN usage, and continue developing the draft, especially regarding behavior definitions and the rule data model. Further review and comments are welcome.
+*   **SCHC Architecture Document:**
+    *   Incorporate clarification regarding fragmentation-only use cases.
+    *   Await mailing list feedback on the precise definition of "SCHC Instance."
+    *   Seek final confirmation on "SCHC PDU" as the preferred terminology.

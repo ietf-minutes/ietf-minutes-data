@@ -1,0 +1,61 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+This meeting was the inaugural session for the IDR Flowspec V2 design teams, focusing on the "Basic IP Flowspec V2" (Design Team 1). The session introduced the motivation behind forming four parallel, open design teams: to accelerate the standardization and deployment of Flowspec V2 by breaking the extensive specification into smaller, implementable, and well-defined chunks. Key discussions revolved around the fundamental architectural changes in Flowspec V2, primarily the introduction of user-defined ordering for filters and actions, the structure of the NLRI, and challenges related to filter and action interactions and error handling. The chair emphasized the need for feedback from implementers and new use cases to ensure the design addresses current and emerging requirements.
+
+## Key Discussion Points
+
+*   **Motivation for Flowspec V2 Design Teams:** Flowspec V2, while functionally complete, was deemed too large for easy implementation. The goal is to create deployable "chunks" to accelerate standardization, driven by the needs of intent-based routing (e.g., CAR/CT).
+*   **Four Parallel Design Teams:**
+    *   **Design Team 1 (Basic IP):** Focuses on basic filters, current actions, and user ordering. This is the foundational component required for all Flowspec V2 implementations.
+    *   **Design Team 2 (More IP Filters):** Addresses additional IP filters, including those for payloads and SRv6 headers.
+    *   **Design Team 3 (Actions):** Deals with defining more actions and action sequences, potentially requiring mechanisms beyond extended communities.
+    *   **Design Team 4 (Non-IP Filters):** Focuses on non-IP related filters.
+*   **Core Addition in Basic IP Flowspec V2:** The most significant change is the introduction of **user ordering for filters**. This allows operators to define the precedence of rules, addressing a major limitation of Flowspec V1.
+*   **NLRI Structure:** The proposed Flowspec V2 NLRI includes:
+    *   **Order:** A user-defined order number, acting as the primary key for filters.
+    *   **Identifier:** A logging/tracking ID, potentially for grouping or operational purposes. There was discussion on whether this should be part of the NLRI key or a path attribute.
+    *   **Rule Match Condition:** Defines the filter components (type, operator, value).
+    *   **Actions:** Also to include ordering once beyond the basic specification.
+*   **Filter Components:** The initial basic IP filters will be Flowspec V1 components (IP Destination, IP Source, Protocol, Ports, TCP Flags, TTL, etc.) with the addition of TTL.
+    *   **Component Ordering Challenge:** Flowspec V1 component IDs are fixed, which dictates internal ordering. Adding new components like TTL (proposed as ID 14) raises questions about its precedence and potential for re-ordering or expanding the component ID space for future flexibility.
+*   **Action Challenges:**
+    *   Flowspec V1 actions lack user ordering, a defined interaction model, and failure handling.
+    *   Flowspec V2 aims to address these by enabling user ordering for actions, defining default interactions (if using extended communities), and specifying failure handling (e.g., stop on failure, continue, conditional execution).
+    *   Examples of interaction problems include conflicting rate limits (bytes vs. packets) or multiple redirect actions.
+    *   The use of extended communities for actions presents challenges when combined actions are desired (e.g., redirect IP in a specific VRF), as separate communities may not clearly indicate combined intent.
+*   **BGP's Role in Flowspec:** BGP is viewed primarily as a multicast distribution mechanism for filters (like a "spray repellent" for DDoS attacks). It is not intended for "SWAT"-like action-reply responses, which are better suited for protocols like PCE or NETCONF. Targeted BGP sessions with `no-advertise` communities remain a common deployment model.
+*   **BGPSEC Limitations:** BGPSEC is currently limited to IPv4/IPv6 unicast destinations and does not cover the full scope needed for Flowspec validation. RAS (Route Attestation for BGPSEC) might be a more viable path for enhancing Flowspec security.
+*   **Feedback Required from Use Cases:** The working group actively seeks input from new use cases like APN, CAT, SAVNET, and L2, especially regarding:
+    *   Required filter rules (including those for payloads, SRv6 headers, or time).
+    *   Necessary actions.
+    *   The concept of grouping functions (e.g., Group IDs, nested groups, actions on groups).
+    *   How the proposed user ordering design accommodates these new scenarios.
+*   **Key Questions for Future Discussion:**
+    *   How does user ordering and encoding support current and emerging use cases?
+    *   What happens if multiple Flowspec rules have the same user order value? (Fallback to component ordering, as in V1?)
+    *   How should Flowspec V1 and V2 rules be merged and ordered in a device? (Proposed: V2 first, then V1 at a fixed user order).
+    *   Does the NLRI format allow for new IP filters, dependencies between filters, and grouping/subgrouping?
+    *   How should errors in NLRI parsing (e.g., unknown TLVs) or during filter/action installation (e.g., unsupported hardware features) be handled? (e.g., skip, withdraw, log, Yang model).
+    *   Are the validity checks defined in Flowspec V1 (RFC 9117) sufficient for Flowspec V2?
+
+## Decisions and Action Items
+
+**Decisions:**
+
+*   Flowspec V2 development will proceed through four parallel, open design teams to enable faster progress and create deployable, modular components.
+*   The "Basic IP Flowspec V2" (Design Team 1) will focus on implementing user-defined filter ordering for Flowspec V1 filters plus TTL, along with current Flowspec actions.
+
+**Action Items:**
+
+*   **Participants:** Review `draft-hares-idr-flowspec-v2-04`.
+*   **Participants:** Prepare to discuss their use cases (APN, CAT, SAVNET, L2, SRv6) in upcoming meetings, specifically detailing filter requirements (including payloads), actions, and the need for grouping functions.
+*   **Participants:** Provide feedback on the seven key questions raised regarding ordering, V1/V2 merging, NLRI extensibility, error handling, and validity checks.
+*   **Sue Hares (Chair):** Send follow-up emails to all participants outlining the specific questions and relevant drafts for review.
+
+## Next Steps
+
+*   The next Design Team 1 (Basic IP) and Design Team 2 (More IP Filters) meetings are scheduled for next week.
+*   Design Team 3 (Actions) and Design Team 4 (Non-IP Filters) meetings are scheduled for May 10th.
+*   Discussions will continue on the IDR mailing list and IDR Wiki.

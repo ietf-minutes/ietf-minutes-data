@@ -1,0 +1,37 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH working group held an interim meeting to discuss the "Pika" Internet-Draft (formerly known as "Signed JWK Sets"). Pika proposes a standardized method for OAUTH/OpenID Providers (OPs) to publish signed JWK sets, addressing key distribution and historical verification challenges. The discussion covered the technical design, specific use cases (such as caching by untrusted intermediaries and verifying long-lived artifacts), and potential future extensions. While there was strong support for adoption, the chairs will consult further before initiating a formal Working Group adoption call.
+
+## Key Discussion Points
+
+*   **Problem Statement**: The current OpenID/OAUTH discovery mechanisms for fetching trusted keys via HTTP(S) present operational challenges:
+    *   **Key Server Availability and Scalability**: Transient outages, key rotation making older keys inaccessible, and heavy load on OP key endpoints dueients (e.g., in end-to-end encrypted applications like Zoom/Webex) can lead to service disruptions and authentication failures.
+    *   **Historical Verification**: Difficulty in verifying signatures on long-lived artifacts (e.g., software containers, admin actions) if the OP's signing key has rotated or is unavailable at the time of verification.
+*   **Pika Solution Overview**: Pika introduces a signed object format for OPs to cryptographically attest to their signing keys. This provides two primary benefits:
+    *   **Caching and Redistribution**: Enables untrusted intermediaries (e.g., application providers) to cache and redistribute OP keys without becoming part of the trust chain themselves. Clients still verify the keys using the issuer's signature.
+    *   **Historical Record and Verification**: Creates a verifiable record of which OP key was valid at a specific point in time, allowing for the validation of past credentials or signed artifacts even after OP key rotation.
+*   **Use Cases Discussed**:
+    *   **Distributed Relying Parties**: Facilitates key distribution for end-to-end encrypted applications where numerous individual clients need to verify credentials, reducing direct load on OP key endpoints.
+    *   **Long-Lived Artifacts**: Supports projects like Open Pub Key, verifiable credentials, and SD-JOTs, enabling the verification of software artifacts or other objects signed with keys bound by OP-issued credentials, even years after the original OP key might have rotated out of active use.
+    *   **Auditable Admin Actions**: Provides a lasting, verifiable record of actions taken by administrators, maintaining a chain of trust even if the administrator's signing key is no longer current or the administrator has left an organization.
+*   **Technical Design Aspects**:
+    *   Pika leverages a JSON Web Token (JOT) structure: a JWK set forms the JOT payload, and the certificate chain for the OP's signing key is included in the JOT header (`x5c`).
+    *   The trust chain for the OP's key is intended to align with the web PKI used for HTTPS, but conveyed within the signed Pika object itself, rather than relying on a live TLS connection.
+    *   Pika JOTs include `iat` (issued at) and `exp` (expiration) claims to define the overall validity interval of the signed key set.
+    *   Individual keys within the JWK set can also carry `iat` and `exp` fields, specifying the precise period during which the OP claims to have been signing with that particular key. This is crucial for historical verification.
+    *   The design incorporates `revoked_at` and `reason_code` fields for individual keys (adapted from the OAUTH Federation draft), enabling the historical revocation of compromised keys.
+*   **Design Rationale**: The Pika design intentionally reuses and adapts format and conceptual elements from the OAUTH Federation draft to avoid reinventing established mechanisms.
+*   **Minor Feedback**: A participant suggested either omitting the `typ: jot` header or using a more semantically meaningful type in accordance with JWT BCPs.
+*   **Trust Mark Inquiry**: A participant raised a question about exploring Trust Mark mechanisms within Pika, noting their potential relevance for cryptographic trust in certain EU use cases.
+
+## Decisions and Action Items
+
+*   The chairs (Rifaat and Hannes) will discuss the timing for initiating a Working Group adoption call for the Pika Internet-Draft. A decision will be communicated to the working group.
+
+## Next Steps
+
+*   The OAUTH WG chairs will determine whether to proceed with an adoption call prior to the Vancouver IETF meeting or to defer the discussion until the full working group can meet in person, possibly preceded by a call for feedback on the mailing list.
+*   Authors and interested parties are encouraged to monitor the OAUTH mailing list for updates regarding the adoption call and to engage in further technical discussion there.
+*   Participants from Docker and other organizations with relevant use cases are specifically encouraged to voice their support and provide feedback on the mailing list.

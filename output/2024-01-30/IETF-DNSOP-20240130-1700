@@ -1,0 +1,85 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+This DNSOP interim meeting was convened to bootstrap discussion around the "Delic" (Delegation in DNS) work, an effort to evolve DNS by allowing for future innovation, improving secure transport, and addressing challenges like DNS operator delegation. The session included a detailed presentation of the Delic draft, compliance testing results for legacy resolver compatibility, and a critical reflection on the proposal with various technical considerations and alternatives. A key outcome was a proposed re-scoping of the upcoming IETF 119 BoF to focus on Delic itself, with a view toward potential working group formation.
+
+## Key Discussion Points
+
+*   **Meeting Context and Goals**:
+    *   The interim was organized to provide early feedback on the Delic work, which at the time of planning did not yet have a formal draft, aiming to accelerate the process before IETF 119.
+    *   The primary goal for the meeting was technical discussion, explicitly deferring process discussions (e.g., working group formation) to a future BoF.
+    *   The IETF Note Well applies.
+
+*   **"Delic" Draft Presentation (Ralph) - Evolving DNS**:
+    *   **Motivation**: Address limitations in DNS evolution, including lack of easy extensibility, difficulties with encrypted transport from recursive to authoritative servers (e.g., DOH, DOT), and challenges with DNS operator delegation (especially key rolls for DNSSEC).
+    *   **Goals**: Allow future innovation (extensibility), maintain backward compatibility (not a "big bang" evolution), preserve DNS namespace/management boundaries/data structures.
+    *   **Origin**: Emerged from an IETF Prague hackathon, building on the SVCB (Service Binding and Parameter Specification via the DNS) record and drawing inspiration from earlier proposals by Tim April.
+    *   **Core Concept**: Delic is a parent-side-only SVCB-style record that creates a zone cut. It is designed to be signed (like the DS record) and discovered during the normal in-bailiwick processing, avoiding additional queries. This aims to eliminate ambiguity found with NS records (parent vs. child data).
+    *   **Required Changes**:
+        *   Authoritative servers need to provide Delic records alongside NS and DS records in referrals.
+        *   Special processing is needed for domains where parent and child zones are on the same servers (similar to existing DS handling).
+        *   Resolvers need to understand the Delic RR type and process its contents.
+        *   A DNSKEY flag is proposed to signal to resolvers that an authenticated denial of Delic (using NSEC/NSEC3) is expected, preventing downgrade attacks.
+    *   **Rationale for Design Choices**: Avoids "hacks" like using code points in DS records or out-of-band queries (e.g., underscore records), which often lead to compatibility problems and latency. The DNSKEY flag provides a single, zone-wide signal for authenticated denial.
+    *   **Future Use Cases**: DNS operator delegation (including NSEC), secure transport configuration, DNS-bound (for service discovery), and potential solutions for post-quantum DNS (e.g., larger signatures, new wire formats).
+
+*   **Compliance Testing Results (Roy Arends) - Legacy Resolver Compatibility**:
+    *   **Purpose**: To test how widely deployed legacy DNS resolvers react to Delic records, which are an unknown RR type to them. Specifically, whether they fall over or experience issues with:
+        *   Unsolicited signed or unsigned unknown records (Delic) in a delegation response.
+        *   Authenticated denials of unknown records (NSEC/NSEC3 proof of absence of Delic).
+        *   Unknown flags in DNSKEY records or unknown digest types in DS records (used for Delic signaling).
+    *   **Methodology**:
+        *   **Setup**: Created a test environment with parent and child zones, including a baseline, zones with Delic (signed with NSEC and NSEC3), and zones incorporating Delic signaling mechanisms (DS shim or unknown DNSKEY flag).
+        *   **Queries**: 15 distinct queries for TEXT records were sent.
+        *   **Implementations Tested**: Three versions each of BIND and PowerDNS Recursor, plus Unbound and Knot Resolver (8 implementations total). Each query was sent after restarting the resolver to prevent caching effects.
+    *   **Results**: All 120 queries (15 queries across 8 resolvers) were successful. Resolvers returned the expected AD (Authentic Data) bit when fully validated and did not when unsigned.
+        *   **Key Finding**: Tested resolver implementations had no issues with unsolicited unknown records or authenticated denials of unknown records in delegation responses. They correctly ignored DS records with unknown digest types (per RFC 4030) and unknown flags in DNSKEYs without ignoring the DNSKEY itself.
+        *   Similar tests by Paul Wouters in the past confirmed these behaviors.
+        *   Subsequent testing on public resolvers (Quad9, Quad8, Quad1) and via RIPE Atlas probes showed no issues.
+    *   **Tool**: `adns-server.py` by Shimon Huk was used for setting up the test environment.
+
+*   **Reflections on the Delic Draft (Paul Wouters, speaking as an individual)**:
+    *   **Noted Delic Features**: Parent-side only, SVCB-style, downgrade protection via DNSKEY flag, inclusion with NS queries without extra overhead.
+    *   **Costs of Delic**:
+        *   **Deployment Time**: Significant time required to update resolver and authoritative server software.
+        *   **Registrar/EPP Support**: Historically, DS record support at registrars is poor; introducing another parent-side record like Delic could face similar multi-year delays. CDs/CSYNC deployment also cited as slow.
+        *   DNSSEC deployment was delayed due to widespread broken DNS implementations incompatible with new DNS properties.
+    *   **Positive Aspects of Delic**:
+        *   Signed glue in the parent zone (improves DNS transparency).
+        *   Cryptographically committing to the delegation, preventing a parent from "sneakingly" taking over a child zone.
+        *   Storing child zone information at the parent (like DS).
+        *   Delegating DS management to the DNS operator.
+        *   Potential for multi-provider resiliency.
+    *   **Concerns/Areas for Discussion**:
+        *   **Privacy vs. Cost**: The trade-off between leaking name server names (which may not be a significant privacy concern for large providers) and putting all data at the parent (which can lead to outdated data if the name server changes). Questioned if additional queries to resolve name server capabilities are truly a major overhead, given amortization over many zones.
+        *   **Transport Security Alternatives**: Argued that DNSSEC primarily protects data integrity, while transport security (DoT/DoH) could leverage the existing Web PKI (e.g., ACME certificates) without requiring new DNS protocol modifications, potentially accelerating rollout. The "probe problem" for DoT/DoH might be overstated.
+        *   **Name Server Capability Updates**: If Delic stores name server capabilities at the parent, changes to those capabilities (e.g., certificate rolls) require parent-side updates. Proposed that name server capabilities should ideally be advertised *within the name server's own zone* (e.g., SVCB/Delic on the NS name itself) to allow for self-management without external dependencies.
+        *   **EPP/Registrar Integration**: Emphasized the significant challenge and delay in getting registrars and TLD operators (ICANN, ccTLDs) to support new record types like Delic.
+        *   **Alternative Approaches**:
+            *   Instead of a single Delic record, define a mechanism to mark a *range* of RR types as "resolve at parent" for future extensibility.
+            *   A "hack" using existing DS records: Reserve a DS algorithm and digest type to carry arbitrary data (e.g., key tag for RR type, RDATA for value), enabling "resolve at parent" functionality today without new protocol changes.
+            *   DS redirection is already possible, allowing a DS record to point to another DS record downstream.
+            *   The "multi-Qtype" draft offers a more generic solution for fetching multiple RR types in a single query, which could address the need for additional data without specific "free" inclusions with NS records.
+
+*   **General Discussion**:
+    *   **Resolver Testing**: Victor M. asked for testing the Microsoft Windows Server DNS resolver due to its different origin.
+    *   **Draft Clarity**: Victor M. strongly urged the authors to rewrite draft 00 "Delic" for better expository style, conciseness, and clarity, describing it as "confusing" and "haphazard." Roy Arends and Ralph Dolmans agreed, suggesting splitting the draft into a core specification, a use-case document, and an introduction.
+    *   **"Resolve at Parent" Range**: Ralph Dolmans confirmed that the idea of a range of RRs for "resolve at parent" was discussed by the authors and might be reconsidered.
+    *   **Name Server Sharing**: Ralph clarified that Paul Wouters' assumption about name server names changing between domains is not universal, and some implementations do not do this, noting that sharing can contribute to cache poisoning issues.
+    *   **More Records at Parent**: Victor M. asked for better motivation for use cases for additional records at the parent beyond signaling delegation.
+    *   **Resolver Query Budget**: Victor M. cautioned that placing too much data at the name server level could complicate resolver query budgets, especially under attack scenarios, due to the need for multiple queries.
+    *   **Web PKI and DANE**: Victor M. briefly noted the existence of DANE in the context of Web PKI discussion.
+
+## Decisions and Action Items
+
+*   **BoF Re-scoping (Decision by AD)**: Warren Kumari (AD) proposed that the IETF 119 BoF request related to Delic should be re-scoped to focus on "Delic itself" (rather than just extensions). The aim is to discuss potential working group formation, ideally in the Ops area, scheduled to facilitate participation from DNSOP attendees. Roy Arends (BoF requester) agreed to discuss this change with Warren.
+*   **Draft Improvement (Action Item for Authors)**: Authors are strongly encouraged to significantly revise the Delic draft to improve clarity, conciseness, and overall expository style. This may involve splitting the document into core specification, use cases, and an introduction.
+*   **Discussion Venue (Action Item)**: All future discussions regarding the Delic protocol and its specification should primarily occur on the `dnsop@ietf.org` mailing list. GitHub and Mattermost are appropriate for author collaboration and editorial work.
+
+## Next Steps
+
+*   The Delic draft authors will work on revising and improving the clarity and structure of the draft, potentially splitting it into multiple documents.
+*   The BoF request for IETF 119 will be adjusted to focus on Delic itself and the possibility of forming a new working group.
+*   Discussions on the technical merits and alternatives for Delic will continue on the DNSOP mailing list.
+*   A group of contributors plans to meet at the OARC workshop (prior to IETF 119) to continue working on Delic.

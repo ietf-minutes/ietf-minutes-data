@@ -1,0 +1,50 @@
+# [TOOLS](../wg/tools.html)
+
+## Summary
+
+The meeting provided updates on several key infrastructure projects. The email transition project is progressing, with a new strategy for warming addresses and a planned cutover. A recent Data Tracker search change was rolled back due to usability issues. Significant progress was reported on a new approach to file object serving, leveraging blob storage and Cloudflare Workers to improve performance and leverage cloud optimizations. Discussions also covered long-standing data inconsistencies (to be addressed separately) and the next steps for reimplementing liaison management functionality. Updates were also provided on the RPC Workflow 2 tool and the new RFC Editor website.
+
+## Key Discussion Points
+
+*   **Email Transition Project**:
+    *   Sirius is actively building a staging transfer server, with an initial data synchronization for the moved email system expected within the week.
+    *   An estimate for the full mail processing transition date from IETFA is anticipated next week.
+    *   The plan involves "warming" new email addresses through an HA proxy, which will initially direct 100% of mail back to IETFA, gradually shifting traffic to the new addresses.
+    *   A simultaneous cutover is planned for core processing elements including lists, aliases, post-confirm implementation, and Mailman.
+    *   SPF records and TLSA verifications will be updated for the new server addresses.
+*   **Data Tracker Search Change Revert**:
+    *   A previously implemented change to require POST requests with CSRF verification for Data Tracker searches was rolled back.
+    *   The change, intended to reduce load from bots and fuzzers, negatively impacted legitimate user traffic and, critically, broke caching for unauthenticated users who could not receive the necessary CSRF token.
+    *   There are no immediate plans to re-implement this change, with current focus shifted to addressing NFS server load issues.
+*   **Improving File Object Serving Performance**:
+    *   Analysis revealed that simply replacing NFS reads with an S3-compatible transport layer for serving content (Internet Drafts, meeting minutes) would not be performant enough, exhibiting an order of magnitude higher latency than NFS.
+    *   **New Strategy**: Store document content in blob storage. Cloudflare Workers will be used at the edge to assemble HTML views by integrating the document content from the blob store with metadata provided by the Data Tracker. This approach leverages Cloudflare's internal optimizations for serving content directly from blob storage.
+    *   Local testing with Minio (an S3-compatible implementation) confirmed that direct SSD reads are significantly faster than reads through a local S3-compatible interface, underscoring the need for cloud provider-specific optimizations.
+    *   **Strategic Direction**: Blob storage is intended to become the authoritative location for these objects. A file system image for services like rsync and IMAP will be derived from the blob store, possibly using triggers.
+    *   This move aims to create a more accurate and robust index of files and enable applications like the Data Tracker to maintain richer, more efficient metadata.
+    *   **Data Grooming**: An effort is underway to clean up the existing large file system (moved from IETFA) by identifying and removing unused data (e.g., old instances of systems) and archiving data with historical interest to appropriate cold or warm storage.
+*   **Acknowledged Long-standing Data Inconsistencies (Not part of current effort)**:
+    *   Existing issues include draft files in the archive lacking corresponding Data Tracker document records, and versions of drafts where the Data Tracker only has synthetic history objects, lacking full author or ISG state metadata.
+    *   A potential future approach for documents with incomplete history is to explicitly display "unknowns" for missing metadata fields.
+*   **Liaison Management Reimplementation**:
+    *   The priority for reimplementing the liaison management part of the Data Tracker was raised at the previous meeting.
+    *   Requirements are being refined, and Maria plans to consult with the IAB post-holiday for any additional input.
+*   **RFC Editor Website & RPC Workflow 2 Tool**:
+    *   Significant work has been completed on a staging infrastructure that provides an updated view of the Data Tracker state, the RFC series, and the RFC Editor Queue.
+    *   A live, restricted view of the new RPC Workflow 2 tool, connected to a backend with real data, is now available to the tools team and RPC members for iteration and feedback.
+
+## Decisions and Action Items
+
+*   **Decision**: The Data Tracker search change requiring POST with CSRF verification was rolled back due to adverse impacts on legitimate use cases and caching for unauthenticated users.
+*   **Decision**: To address file serving performance, the team will proceed with a strategy involving storing authoritative document content in blob storage and leveraging Cloudflare Workers at the edge to assemble HTML views, capitalizing on cloud provider optimizations.
+*   **Action Item (Robert)**: Begin drafting GitHub issues to outline the project description and requirements for the Liaison Management re-implementation.
+*   **Action Item (Maria)**: Review the GitHub issues for the Liaison Management re-implementation once available and provide feedback.
+*   **Action Item (Tools Team)**: Work to eliminate the reliance on `www.ietf.org/staging` for unposted document submissions, moving this functionality to be managed within the Data Tracker database with appropriate credential-based access.
+
+## Next Steps
+
+*   Receive an estimated transition date from Sirius for the full email system migration next week.
+*   Continue development and testing of the Cloudflare Workers and blob storage solution for improved file object serving performance.
+*   Progress on the Liaison Management re-implementation will proceed via GitHub issues.
+*   Further iteration and development on the RPC Workflow 2 tool and the new RFC Editor website.
+*   The next meeting is scheduled for early January.

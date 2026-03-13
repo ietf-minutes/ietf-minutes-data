@@ -1,0 +1,76 @@
+# [LAKE](../wg/lake.html)
+
+## Summary
+
+This interim meeting focused on two key technical topics: a presentation and discussion on Password Authenticated Key Exchanges (PKEs) and their relevance to Ed-Hoc, followed by preliminary evaluation results of two Pre-Shared Key (PSK) authentication variants for Ed-Hoc. The working group clarified its direction on PSK usage, indicating a preference for high-entropy keys and considering PKEs for future human-password use cases. Initial performance evaluations favored PSK Variant 2 due to better identity protection. The meeting also included planning for IETF 121 in Dublin, deciding to request a 90-minute slot, and a brief discussion on the future of the GREASE draft within the working group.
+
+## Key Discussion Points
+
+*   **Agenda Bash**:
+    *   Christian Amsüss requested to add a discussion on the future of the GREASE draft in LAKE at the end of the meeting, which was accepted and placed before AOB.
+*   **PKEs Presentation by Scott Flinn (Cisco Systems)**:
+    *   **Context**: LAKE is extending Ed-Hoc to include PSK authentication for session resumption and initial authentication.
+    *   **Current Proposals (Variant 1 & 2)**: Perform anonymous ECDH, stir PSK into derived keys, exchange encrypted data. Assumed to fail on PSK mismatch and protect against passive eavesdropping.
+    *   **Weakness (for human-selected PSKs)**: Vulnerable to active offline dictionary attacks if the PSK is guessable. An attacker can mimic a peer, capture authentication data, and then offline-guess the PSK.
+    *   **PKE Solution**: Bind key exchange and password to prevent separation, requiring an online attempt for each password guess, making dictionary attacks infeasible.
+    *   **Limitations & Costs of PKEs**: Cannot help if PSK is already known (e.g., sticky note). Requires larger changes to Ed-Hoc, takes longer to specify, uses more exotic crypto, and does not provide anonymity (responder needs to know which PSK to use).
+    *   **CFRG Activities**: CFRG endorsed CPACE (balanced PKE, both sides know password) and OPAQUE (augmented PKE, one side knows password). Neither are RFCs yet.
+    *   **CPACE Integration in Ed-Hoc (Example)**: CPACE modifies the Diffie-Hellman generator based on the password and a random value (Sid). Requires minor protocol changes but uses an `ATOR` function, which is not common in most crypto libraries.
+    *   **OPAQUE**: Assumes one side knows the password and the other does not (e.g., client registration with server). Model might not fit current LAKE PSK use cases.
+*   **Discussion: Do we need a PKE for Ed-Hoc?**:
+    *   It was reiterated that for high-entropy, machine-generated PSKs (e.g., for session resumption, automated provisioning), current Ed-Hoc PSK proposals are secure and PKEs are not needed.
+    *   For human-selected passwords, PKEs provide significantly better security against dictionary attacks.
+    *   **Rafa**: Current Ed-Hoc PSK discussions assumed high-entropy keys. Referenced TLS 1.3 security considerations on sufficient entropy.
+    *   **Christian Amsüss**: The Ed-Hoc PSK document should not just *state* keys must be high-entropy, but *point* to PKE material if human-selected passwords are ever considered, providing a path forward.
+    *   **Stephen Farrell**: Questioned if "in-between" use cases exist (e.g., short codes printed on devices). No one came forward with such compelling use cases.
+    *   **Paul Wouters**: Asked if PKEs are always strong enough given limited device connections.
+    *   **Christian Amsüss & John Preuß Mattsson**: Ed-Hoc can support many connections, so offline attacks are still a concern. PKEs might lose identity protection and use more exotic/less-trusted crypto.
+*   **Preliminary Evaluation Results of `draft-lopez-lake-ad-hoc-psk-01` by Ela Lopez**:
+    *   **Goal**: Integrate and evaluate two PSK variants (Variant 1 and Variant 2) for Ed-Hoc.
+    *   **Variants**:
+        *   **Variant 1**: ID_CRED_PSK sent in the clear in Message 1. Authentication happens earlier.
+        *   **Variant 2**: ID_CRED_PSK sent encrypted in Message 3. Authentication delayed.
+    *   **Evaluation Environment**: NRF52840 hardware (Cortex-M4, 64MHz), embedded TLS library (not cryptocell). Cipher suite: ECDH on P-256, SHA-256, AES-128-CCM.
+    *   **Metrics**: Security/Privacy, Message Size, Energy Consumption, Memory Consumption, Number of Operations.
+    *   **Preliminary Results**:
+        *   **Message Size**: V1 (93 bytes), V2 (88 bytes). V1 has an extra byte for ID_CRED_PSK and 9 extra bytes for Mac 2. V2 has 5 extra bytes from concatenated ciphertexts.
+        *   **Number of Operations**: Both variants have 2 asymmetric and 4 symmetric operations.
+        *   **Memory/Energy**: Still in process for detailed dynamic memory. Energy consumption (measured with power profiler) showed similar initiator time, with V1 having slightly lower charge than V2 for the initiator.
+        *   **Security/Privacy**: V1 offers less identity protection (ID_CRED_PSK in clear). V2 offers better identity protection, but authentication timing is later.
+    *   **Scott Flinn's Comment**: Variant 2 is slightly stronger against dictionary attacks as the attacker would need to mimic the responder.
+    *   **Rafa Leal**: Noted that if comparing 3 messages, V2 needs a Message 4 to achieve equivalent mutual authentication and implicit key confirmation as V1's 3 messages.
+    *   **John Preuß Mattsson**: V2 seems to be better for performance and identity protection. Formal verification will be important.
+    *   **Sense of the room**: Preference for Variant 2 due to better identity protection and slightly better performance. Authors encouraged to focus on V2.
+*   **Next Steps: IETF 121 Planning in Dublin**:
+    *   **Topics**: Remote attestation (Joan), zero-touch join (Joan), PSK draft (Ela), potential new drafts, fast testing tools (Upsala University).
+*   **Future of GREASE in LAKE (`draft-amsuss-lake-grease-extensions`)**:
+    *   **Christian Amsüss**: The document registers extensions that do nothing to prevent collisions and ensure robustness, similar to TLS GREASE. Code points need registering.
+    *   **Christian's Question**: Should the working group continue this, or should it go to ISE?
+    *   **Militia**: The topic fits the LAKE charter.
+    *   **Stephen Farrell**: Encouraged working group members to read the draft.
+*   **Any Other Business**:
+    *   **Yoran Johnsson**: Mentioned interest in Key Management Protocol for IEEE 802.15.4 in IEEE, where Ed-Hoc is a candidate. Encouraged interested parties to reach out to Tera and Yoran for offline discussions.
+
+## Decisions and Action Items
+
+*   **PSK for Ed-Hoc**:
+    *   **Decision**: The working group will proceed with PSK-based authentication primarily for use cases involving high-entropy, machine-generated keys.
+    *   **Action Item (Authors of PSK draft)**:
+        *   Update the draft to clarify that PSK is assumed to be a high-entropy key suitable for the protocol.
+        *   Consider including a reference to PKEs in the security considerations section of the PSK document, indicating their suitability for human-selected passwords and explaining why the current proposal is not designed for that.
+        *   Focus further development and evaluation on **Variant 2** of the PSK authentication method based on preliminary evaluation results and working group preference.
+*   **IETF 121 Meeting Planning**:
+    *   **Decision**: The chairs will request a **90-minute** meeting slot for LAKE at IETF 121 in Dublin to accommodate planned and new agenda items.
+    *   **Action Item (Chairs)**: Request the 90-minute meeting slot by the deadline and avoid Friday afternoon.
+*   **GREASE Draft (`draft-amsuss-lake-grease-extensions`)**:
+    *   **Decision**: The working group will continue with the GREASE draft as it fits the charter.
+    *   **Action Item (Christian Amsüss)**: Update the draft and submit a new version to prevent expiry.
+    *   **Action Item (Christian Amsüss)**: Prepare a brief presentation for IETF 121 in Dublin to discuss the draft further and potentially call for working group adoption.
+
+## Next Steps
+
+*   Authors of the PSK draft are encouraged to incorporate the working group's feedback, focusing on Variant 2 and clarifying security considerations for high-entropy keys, and publish a new version before the IETF 121 cutoff.
+*   Christian Amsüss to update and submit the GREASE draft, and prepare for discussion at IETF 121.
+*   The chairs will finalize the IETF 121 meeting request and work with authors to build the agenda.
+*   Further exploration of PKEs will be considered if compelling use cases for human-selected passwords with Ed-Hoc are identified and brought to the working group.
+*   Individuals interested in Key Management for IEEE 802.15.4 are encouraged to reach out to Tera and Yuran.

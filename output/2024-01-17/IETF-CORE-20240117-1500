@@ -1,0 +1,61 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This meeting primarily focused on a proposal by Christian Amsüss concerning the integration of the OSCORE Key Update (Kudos) mechanism with CoAP-OSCORE caching (Cash-OSCORE), particularly regarding the transport and processing of request hash values as nonces. A key clarification during the discussion was Christian's intent for the Cash-OSCORE deterministic request to trigger an *actual Kudos execution* (key derivation) for security context management, rather than merely transporting a nonce. The discussion explored technical implications such as nonce size encoding, placement within messages, and the current limitation of Kudos being defined for pairwise OSCORE, not Group OSCORE.
+
+The working group also received an announcement that the Yang SID document was approved for publication. Several decisions were confirmed regarding the simplification and evolution of the Kudos draft, including splitting off related functionalities into separate documents.
+
+## Key Discussion Points
+
+### Announcements
+*   **Yang SID Document Approved**: The IESG approved the publication of the Yang SID document shortly before the meeting. Carson pointed out that this was a very difficult RFC to get through the final stages, with work starting over a decade ago. It provides an efficient way to assign numbers to items in a Yang schema for compact management communication.
+*   **Rust CoAP Implementations**: Christian announced significant updates to the Rust implementations of CoAP, aiming for a better interface for both client and server sides. He will share a graph of the library components on the CORE mailing list.
+
+### Kudos Draft Status Recap
+*   The Kudos draft (draft-ietf-core-oscore-key-update) is being refined into three distinct parts:
+    1.  **Core Kudos Procedure**: Focuses solely on renewing master secrets and keys, preserving forward secrecy, and being agnostic to the original key establishment method. This will be the main content of the Kudos draft.
+    2.  **Key Usage Limits**: Originally part of Kudos, this functionality was split into a separate draft (draft-ietf-core-oscore-limits) in March 2023. Version 2 has been submitted to prevent expiration.
+    3.  **OSCORE Sender/Recipient ID Update**: This procedure, aimed at increased privacy, will also be split into a separate draft, as discussed at IETF 118.
+
+### Christian Amsüss's Proposal for Cash-OSCORE and Kudos
+*   **Background**: Christian's proposal (outlined in issues on the OSCORE key update and Cash-OSCORE repositories) aims to benefit Cash-OSCORE by enabling the transport of longer nonces (specifically, the request hash value, typically 32 bytes) in deterministic requests, using the mechanism proposed in Kudos.
+*   **Initial Understanding (Rickard/Marco)**: The initial interpretation was that the proposal was primarily about transporting the request hash value, using the nonce field in the OSCORE option or CoAP payload, without necessarily triggering a full Kudos key update execution.
+*   **Christian's Clarification**: Christian clarified that the intent *is* to actually run Kudos with the deterministic request hash as a nonce. This would update the key material, providing cryptographic binding and integrity protection, simplifying Cash-OSCORE's security context management and avoiding the need for "invisible Class I options" or explicit transport of the hash in the response. He envisions an ephemeral "Kudos run" for each request-response pair.
+
+### Discussion on Technical Implications
+*   **Encoding of Larger Nonce Sizes**:
+    *   **Current Kudos**: Nonce sizes 1-16 bytes, encoded in a 4-bit 'M' subfield of the X byte.
+    *   **Proposed New Encoding**: An extension mechanism was proposed, similar to CoAP option number Delta encoding, using 'M' field values 13 or 14 to signal the presence of a one- or two-byte extended length field. This could support nonces up to 65,855 bytes.
+    *   *Conclusion*: Such an encoding is technically doable but adds complexity to the OSCORE option's custom binary structure.
+*   **Positioning of the Nonce/Request Hash Value**:
+    *   **OSCORE Option**: Placing the value here would be integrity protected (as part of the external AAD in Group OSCORE for Cash-OSCORE, or through key derivation in Kudos).
+    *   **CoAP Payload**: Without a full Kudos execution, placing the request hash in the payload would lack integrity protection in the Cash-OSCORE response.
+    *   *Christian's Perspective (with Kudos execution)*: If Kudos is executed, the hash value (whether in OSCORE option or payload) feeds into key derivation, inherently protecting it. This would allow the hash to be elided from the response, which is a desirable property for Cash-OSCORE's multicast notifications.
+*   **Kudos for Group OSCORE**: A significant challenge is that the current Kudos draft is defined for pairwise OSCORE only, not Group OSCORE, which Cash-OSCORE utilizes. Adapting Kudos for Group OSCORE in an ephemeral, deterministic fashion for Cash-OSCORE would require further design work.
+*   **Performance and Message Processing**:
+    *   If the request hash is placed in the OSCORE option and not elided, it would lead to larger response sizes.
+    *   Integrating Cash-OSCORE with a Kudos-like mechanism could complicate message parsing, requiring checks beyond just the Kudos bit (e.g., checking the request KID).
+*   **Complexity of OSCORE Option Binary Syntax**:
+    *   Concerns were raised about adding more custom binary syntax (like the proposed extended nonce length encoding) to the OSCORE option, which already has its own bespoke structure. This contrasts with CoAP's more standard TLV encoding.
+    *   **Alternative Suggestion**: Hannes suggested considering a separate, dedicated CoAP option for extended OSCORE parameters. This option could use CBOR encoding for length-sensitive values like nonces, potentially simplifying parsing and avoiding further "binary syntax hacks" within the OSCORE option itself.
+
+## Decisions and Action Items
+
+*   **Kudos Draft Streamlining**:
+    *   The "Key Usage Limits" functionality will continue as a separate draft (draft-ietf-core-oscore-limits), with version 2 submitted.
+    *   The "OSCORE ID Update Procedure" will be split into a new, separate document.
+    *   The core Kudos draft will focus exclusively on the key update procedure.
+    *   The Kudos draft will be updated to allow for a more flexible message flow (not strictly request/response) and permit Kudos messages to be carried as regular application messages.
+    *   The draft will allow non-random nonces for capable devices while recommending random nonces.
+*   **Kudos and Cash-OSCORE Integration**:
+    *   The current Kudos draft does not necessitate longer nonces for its intended purpose.
+    *   The idea of adding complex custom binary syntax for longer nonces directly into the OSCORE option should be avoided if possible.
+    *   The alternative of a new, separate CoAP option for extended OSCORE parameters using CBOR encoding is a path to consider.
+
+## Next Steps
+
+*   **Christian Amsüss**: Will further investigate how the Kudos mechanism can be adapted for Group OSCORE (i.e., "Kudos for groups") and how such a mechanism would integrate with Cash-OSCORE to achieve the desired security properties and simplification. He will provide updates on the CORE mailing list or existing issues.
+*   **Kudos Authors**: Will proceed with splitting out the OSCORE ID Update procedure into a new document and continue work on the main Kudos draft based on the discussed simplifications.
+*   **Kudos Implementation**: Continue with current implementations of Kudos in Yggdrasil and C for testing on constrained devices.
+*   **Christian Amsüss**: Will share details and a component graph of the updated Rust CoAP implementations to the CORE mailing list.

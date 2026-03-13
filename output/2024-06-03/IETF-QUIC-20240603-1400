@@ -1,0 +1,67 @@
+# [QUIC](../wg/quic.html)
+
+## Summary
+
+The QUIC Working Group met to discuss several key issues related to explicit path IDs, focusing on simplifying the protocol, improving interoperability, and resolving ambiguities introduced by recent changes. Three main topics were on the agenda: the even/odd path ID split, path closing procedures, and connection ID allocation strategies. A sense of those present indicated a preference for simplicity and avoiding immediate changes that introduce additional complexity without compelling use cases. Concrete action items were assigned to authors for drafting PRs to address path closure and connection ID allocation recommendations.
+
+## Key Discussion Points
+
+*   **Overall Agenda Overview:** Mia presented three main discussion topics:
+    1.  Deconfliction of Path IDs, specifically the even/odd split proposal, in the context of potentially allowing server-initiated paths (Issue #292).
+    2.  Refinement of the path closing and retirement procedure (Issues #313, #366).
+    3.  Clarification of the connection ID (CID) allocation strategy for new paths (Issue #338), especially concerning the `MAX_ACTIVE_CONNECTION_IDS` parameter (Issue #332).
+
+*   **Path ID Deconfliction and Even/Odd Split (Issue #292):**
+    *   The discussion revolved around whether to implement an even/odd split for Path IDs to prevent conflicts, particularly if server-initiated paths (Issue #47) were allowed.
+    *   **Arguments against the split:** Mia proposed doing nothing, noting that existing mechanisms might cover deconfliction (e.g., client treating server-initiated validation as migration, or handling same 4-tuple with different Path IDs). It was argued that if server-initiated paths require new transport parameters, the split could be defined as part of that future extension. Christian agreed, highlighting the intricacy of PRs for symmetric setup and preferring to avoid "guesswork" now.
+    *   **Arguments for the split:** Quenton initially proposed the split for clear ownership of path creation. Michael Ericson also saw value if server-initiated paths were adopted, drawing parallels to stream IDs.
+    *   **Resource Control and `MAX_PATHS`:** Concerns were raised by Magnus about `MAX_PATHS` creating an attack surface, but Mia and Christian clarified that `MAX_PATHS` primarily controls the local endpoint's ability to send CIDs, and bidirectional Path IDs require both ends to issue CIDs for a given Path ID for a path to open. Martin highlighted ambiguity in the draft's phrasing of `MAX_PATHS`.
+    *   **Sense of the room:** There was a stronger leaning towards *not* adopting the even/odd Path ID split at this time. Participants felt it introduced undue complexity without a clear, compelling use case, and that a simpler approach was preferable for now. It was acknowledged that if issues arise later, the decision could be revisited. The long-standing Issue #47 (allowing server-initiated paths) will remain open for future discussion.
+
+*   **Active Connection IDs Parameter (Issue #332):**
+    *   The `MAX_ACTIVE_CONNECTION_IDS` transport parameter, originally a global limit in RFC 9000, was changed in the latest draft to apply *per-path*. This change prompted the introduction of `MAX_PATHS` to limit Path IDs.
+    *   **Mia's proposal:** Revert `MAX_ACTIVE_CONNECTION_IDS` to a *global* limit for the entire connection, thus potentially eliminating the need for the `MAX_PATHS` parameter. She argued that the true resource to control is the CID, and without `MAX_PATHS`, implicit control of active paths is still possible by not issuing CIDs for new Path IDs. This would simplify the protocol.
+    *   **Counter-arguments/Concerns:** Yanmai argued for `MAX_ACTIVE_CONNECTION_IDS` *per-path* to align with per-path CID sequence numbers and prevent endpoints from exhausting CIDs on old paths, potentially hindering new path creation. Christian expressed concern about re-evaluating fundamental design choices, noting that current implementations work. Magnus raised concerns about load balancer semantics requiring CIDs to be tied to specific network entry points, which Martin echoed, suggesting a need to bind CIDs to addresses. Lucas (chair) deemed the load balancer discussion tangential to Issue #332.
+    *   **Sense of the room:** While Mia's proposal aimed for simplicity, there was no strong consensus to change the current design, which already functions in implementations. The prevailing sentiment was to keep the current specification where `MAX_ACTIVE_CONNECTION_IDS` is per-path and `MAX_PATHS` provides a global limit.
+
+*   **Path Closing Procedure (Issue #313):**
+    *   The previous path closure procedure was ambiguous. It involved sending `PATH_ABANDON`, waiting 3 PTOs, then retiring CIDs.
+    *   **Proposal for change:** Require a symmetric `PATH_ABANDON` from both sides. When both sides have sent `PATH_ABANDON`, the path is considered closed, and all associated connection IDs (and other path state) are implicitly retired. This simplifies the process by removing the explicit `CONNECTION_ID_RETIRE` for paths and leverages the availability of other paths for ongoing communication. Christian advocated for this, highlighting that laziness would otherwise lead to memory leaks if CIDs weren't implicitly retired.
+    *   **Discussion on timers and reordering:** Martin and Mike raised concerns about reordered packets around `PATH_ABANDON` frames, potentially leading to stateless resets being generated. Christian suggested a "draining period" for the path, similar to connection draining, ending when the other side's `PATH_ABANDON` is received.
+    *   **Sense of the room:** There was agreement to simplify the path closure procedure with symmetric `PATH_ABANDON` frames and implicit CID retirement.
+
+*   **Requiring PATH_ABANDON on Timeout/Failure (Issue #366):**
+    *   The draft currently states that `PATH_ABANDON` *should* be sent on path timeout.
+    *   **Proposal:** Change this to a `MUST`, and also require it when path validation fails or when an endpoint no longer intends to use a Path ID. Yanmai supported this for a clear signal.
+    *   **Sense of the room:** General agreement to change `SHOULD` to `MUST` for sending `PATH_ABANDON` in these scenarios. This change is expected to be part of the PR for Issue #313.
+
+*   **Continuous Path IDs (Issue #318) and CID Allocation Strategy (Issue #338):**
+    *   The potential for deadlocks was discussed, where endpoints issue CIDs for non-overlapping Path IDs (e.g., one for Path ID 3, another for 5), preventing new paths from opening.
+    *   **Recommendations proposed:**
+        1.  Endpoints should provide CIDs for the *minimum* of their advertised `MAX_PATHS` values.
+        2.  Endpoints should use and provide Path IDs in *continuous and ordered* fashion (e.g., 0, 1, 2...).
+        3.  Allow abandoning of Path IDs for which no CIDs were received (i.e., paths that never fully opened) to free up the space.
+    *   Christian stressed that practical recommendations for continuous Path IDs would facilitate interoperability and avoid "crazy" allocation schemes. Yanmai noted that while full enforcement is difficult due to reordering, clear recommendations are important.
+    *   **Sense of the room:** There was clear interest and agreement on the need for better recommendations in the draft to improve interoperability and prevent allocation deadlocks.
+
+## Decisions and Action Items
+
+*   **Issue #292 (Even/Odd Path ID Split):** A sense of those present indicated no strong desire to implement an even/odd Path ID split at this time. The issue will be reflected in the notes and put to the mailing list for a consensus call to close with no action.
+*   **Issue #332 (Active Connection IDs Parameter):** A sense of those present indicated no strong desire to change the current design, where `MAX_ACTIVE_CONNECTION_IDS` is per-path and `MAX_PATHS` is a global limit. The issue will be reflected in the notes and put to the mailing list for a consensus call to close with no action.
+*   **Issue #313 (Path Closing Procedure):**
+    *   **Decision:** The path closing procedure will be updated to require a symmetric `PATH_ABANDON` from both endpoints, leading to implicit retirement of all associated CIDs and path state. A draining period will be considered to handle reordering.
+    *   **Action Item:** Christian will draft a PR for these changes. Mike volunteered to review this PR.
+*   **Issue #366 (Requiring PATH_ABANDON):**
+    *   **Decision:** The `SHOULD` for sending `PATH_ABANDON` on path timeout/failure will be changed to `MUST`. This will be incorporated into the PR for Issue #313.
+*   **Issue #338 (CID Allocation Strategy) / Issue #318 (Continuous Path IDs):**
+    *   **Decision:** The draft will include clearer recommendations for CID allocation strategies, specifically encouraging endpoints to:
+        *   Issue CIDs for a number of paths up to the minimum of the `MAX_PATHS` values advertised by both endpoints.
+        *   Use Path IDs in a continuous and ordered fashion.
+    *   **Action Item:** Quenton volunteered to draft a PR for these recommendations. Mia also offered to contribute to this PR.
+
+## Next Steps
+
+*   **PR Development:** Authors assigned action items will proceed with drafting the respective Pull Requests.
+*   **Mailing List Consensus Calls:** The chair will send an email to the QUIC mailing list summarizing the outcomes of the interop meeting, particularly for Issues #292 and #332, to allow for wider feedback and initiate consensus calls for closing these issues.
+*   **Draft Publication:** Authors plan to cut a new draft reflecting the agreed-upon changes before the next IETF meeting.
+*   **Next Interop:** An interop event targeting the next draft is planned before the next IETF meeting.

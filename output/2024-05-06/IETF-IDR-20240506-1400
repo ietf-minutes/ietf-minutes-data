@@ -1,0 +1,42 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR Working Group held an interim meeting to gather feedback on Flowspec V2 drafts, primarily focusing on Design Team 1 (basic IP filters, LRI, and actions) and Design Team 2 (additional filters, application-layer filters, grouping actions, interface sets, and emerging filters). Key discussions revolved around the challenges of user-defined versus default ordering in rule processing, the implications of adding new filter components on deployment and versioning, and the appropriate placement (NLRI vs. path attributes) for mutable identifiers like interface groups. Multiple use cases for new filters, including deep packet inspection, 5G mobility, Source Address Validation (SAVNET), CATS, and APN, were presented and discussed.
+
+## Key Discussion Points
+
+*   **Flowspec V2 Basic IP Filters and Ordering:**
+    *   A primary concern was balancing total user ordering with the desire for default ordering (e.g., by component number) within filter rules. While user ordering offers specificity, many implementations rely on default ordering for optimization.
+    *   The need for deterministic tie-breaking (e.g., by component type) for rules with the same user order was highlighted, especially when multiple controllers might inject rules with identical order numbers.
+    *   The packet format includes an "identifier" for debugging; its potential use as a non-key field for customer grouping or other purposes, and its mutability, led to discussion about whether it belongs in the immutable NLRI or a mutable path attribute.
+    *   **Sense of those present:** The ordering mechanisms (user order, component type order, and internal component ordering) are considered fundamental, but the exact balance between user-defined and default ordering requires further clarification.
+*   **Error Handling and Deployment:**
+    *   The importance of sensible error handling was stressed, noting that rule deployment failures can lead to network outages or inconsistent policy application.
+    *   When a rule fails to deploy on a subset of devices, the network becomes partially unprotected. There is a need for explicit notification (logging) and potentially telemetry to inform operators of such deployment inconsistencies.
+*   **Extending IP Filters and Versioning:**
+    *   A proposal for an "extended filter rule set" with an internal version number for filter components was presented. This aims to allow incremental additions of new filters (e.g., TTL, SID, NRP key, payload match, various IDs) without requiring a full specification freeze.
+    *   The use of a strict TLV format in Flowspec V2 makes the protocol-level addition of new components safer compared to Flowspec V1.
+    *   However, deploying new filter types (e.g., deep packet inspection) presents challenges for devices that do not support them. Options include ignoring the unknown filter or preventing propagation. The need for controllers to be aware of network device capabilities was emphasized.
+*   **Upper Layer and Grouping Filters (Use Cases):**
+    *   **TNA Aware Mobility (5G):** A use case leveraging Flowspec V1 UDP range, source/destination filters, and a generalized indirection ID action for mobile network to IP network transitions.
+    *   **Deep Packet Content Filter:** A proposal for flexible payload-based filtering to combat large-scale DDoS attacks. It specifies fields for packet type, hierarchical offset, content length, and a content/mask for matching. The variable length of the content filter's value raised a question about its definition.
+    *   **Interface Set (Jeff's Draft):** A mechanism to apply Flowspec rules selectively to groups of interfaces (equivalence classes like customers, transit peers) identified by a group ID.
+        *   **NLRI vs. Path Attributes:** The decision to place interface set information in an extended community (path attribute) was explained by the need for mutability and remapping across different provider domains or AS boundaries, as NLRI fields are meant to be immutable.
+        *   Directionality (inbound/outbound) for these filters was discussed, with inbound being the more commonly deployed and desired direction.
+    *   **SAVNET (Source Address Validation):** A proposal for an interface set filter, locally configured, to validate packet source addresses based on incoming interface and source prefix. It uses variable-length group identifiers and flags for validation. Concerns were raised about the immutability of such information if placed in the NLRI and whether Flowspec is the most suitable primary mechanism for SAV.
+    *   **APN (Application Plane Name):** Discussion on matching APN IDs, possibly located in IPv6 hop-by-hop options, destination options, or SRH TLVs. Group and subgroup IDs in extended communities were noted as a means to define traffic actions.
+
+## Decisions and Action Items
+
+*   No formal decisions were made during this discussion-focused interim.
+*   **Action Item:** The chair will raise the open questions regarding user ordering, error handling, deployment of extended versions, specific IPv6 filters, and general filter additions on the IDR mailing list for broader working group feedback.
+
+## Next Steps
+
+*   **Next Interim Meeting:** Scheduled for next week (Design Team 3 & 4), the agenda will cover:
+    *   Flowspec V2 actions (first hour).
+    *   L2VPN and NV03 (non-IP filters).
+    *   MLS filters (briefly).
+*   **Pre-reading:** Participants are encouraged to review the relevant draft proposals and the list of questions to be circulated on the mailing list in preparation for next week's discussions.
+*   **Continued Feedback:** The working group will continue to solicit feedback, particularly on the basic IP drafts, to progress towards their completion and enable implementation. Discussions around grouping mechanisms will also continue.

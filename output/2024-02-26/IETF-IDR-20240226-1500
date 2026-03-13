@@ -1,0 +1,55 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR Working Group held an interim meeting to review the status of ongoing work, including several drafts in their second Working Group Last Call (WG LC), and to introduce new drafts for discussion and potential adoption. Key technical discussions covered challenges and proposed solutions for forwarding loops with Route Reflectors performing next-hop-self, methods for limiting advertised BGP paths, discovery of next-next-hop information in data center CLOS networks, and enhancements for Source Address Validation (SAV) rule dissemination. The working group also discussed the ongoing refinement of BGP AIGP extensions for generic metric types and BGP SR policy extensions using templates. Several calls for consensus support, reviews, and mailing list discussions were made.
+
+## Key Discussion Points
+
+*   **BGP SR TE Policy Drafts:** The original `draft-ietf-idr-segment-routing-te-policy` was split into two drafts following an AD review. These drafts are in a second WG LC, with a need for more explicit consensus support. The updated text focuses on BGP SR Policy SAFI validating semantics and syntax.
+*   **BGP CAR/CT Drafts:** Both CAR and CT drafts are in their second WG LC. The CT work has been further split into three drafts: a base CT draft, a CT SRv6 draft, and a draft providing advice for Route Reflectors (RRs) with next-hop-self. Participants are encouraged to provide explicit support for the revised texts.
+*   **RR with Next-Hop-Self:** A draft outlining the problem of forwarding loops in Option C inter-VPN deployments, specifically with redundant AS Boundary Routers (ABRs) acting as RRs with next-hop-self, was discussed. Proposed solutions included:
+    *   Using the same cluster ID on all ABRs.
+    *   Accumulating AIGP cost on each next-hop-self re-advertisement.
+    *   Avoiding provisioning color tunnels between ABRs (if using BGP-CT).
+    *   A configurable path selection tiebreaker (considering cluster list before originator ID) was met with discomfort due to "fear of the unknown" and is being considered for removal from the draft. The "same cluster ID on all ABRs" approach appears to be the preferred method.
+*   **BGP Ad-Path Limit:** A new BGP capability was proposed to allow a receiver to signal to a sender the arbitrary number of paths it wishes/is capable of receiving. This aims to reduce memory and CPU consumption on low-resource devices. Discussion points included whether this should be a "must honor" or "good to honor" capability, and potential complexities with update group splits at Route Reflectors, distinguishing it from `RT Constraint`. The authors clarified it is not intended as a hard cap and implementations can selectively suppress advertisements.
+*   **BGP Next Next-Hop:** A new draft was introduced to facilitate Global Node Balancing in data center CLOS networks. It proposes a new TLV within the `BGP Next-Hop-Dependent Capability` attribute to carry next-next-hop BGP ID information. This enables upstream nodes (e.g., Leaf nodes) to identify and react to congestion on downstream links (e.g., Spine to Leaf links). It was clarified that this is primarily a topology discovery mechanism, with link quality/congestion information expected via a separate side channel.
+*   **BGP FlowSpec for SAV Rule Dissemination:** A draft proposed a new BGP Extended Community (`SAV Interface Set Extended Community`) within FlowSpec to disseminate Source Address Validation (SAV) rules. The intent is to bind valid/invalid incoming interfaces to specific source prefixes, improving accuracy over traditional uRPF, especially in asymmetric routing scenarios. Questions were raised regarding whether this functionality is more akin to a FlowSpec filter or action, and whether the defined community space is sufficient for domain-wide deployment.
+*   **BGP SAVNET:** Further updates were presented on BGP SAVNET, a mechanism to help routers generate SAV rules distributedly and automatically by extending BGP messages to carry SAV-specific information. The authors reported updates to the security considerations, clarification on prefix validation using ROA checks, and plans to discuss the work with the SAVNET working group and address convergence problems.
+*   **BGP Extensions to Carry Generic Metric Types (AIGP):** Discussion continued on addressing discontinuity issues when extending RFC 7311 (AIGP) to carry generic metric types. Two main options were considered:
+    1.  Evolving the existing AIGP attribute by adding flags (e.g., "discontinuous" or "normalized") to the generic metric TLV. This would require all BGP routers modifying the next-hop to support these extensions.
+    2.  Leveraging the Next-Hop Capability (NHC) attribute. NHC is optional and transitive, potentially minimizing required upgrades. This approach would entail routers modifying the next-hop and providing generic metric TLVs to support NHC and the generic metric attribute. NHC is seen as a better fit for enforcing attribute scoping. A critical point highlighted was the need for a contiguous domain of deployment for these metrics and consistency within an iBGP mesh to ensure proper route selection and avoid loops.
+*   **Advertising SR Algorithm Information in BGP SR Policy:** A draft proposing new segment types to carry optional SR algorithms for SR-MPLS SIDs and Adj-SIDs within BGP SR policy was presented. Updates include alignment with IPv4 unnumbered adjacency cases. The authors noted a lack of sufficient interest in a previous adoption call and are seeking more reviews to request a second WG adoption call.
+*   **BGP SR Policy Extension for Template:** A new draft proposing the use of templates to simplify configuration and avoid frequent BGP protocol changes for SR policies was discussed. Templates would group features meaningful to the head-end node of an SR policy and be identified by a configurable ID (local to the head-end). The BGP update message would carry the template ID in the SR policy candidate path attributes. Discussion included parallels to "profile ID" in PCEP and concerns about the scope of uniqueness and allocation management of template IDs, especially in scenarios involving Route Reflectors.
+
+## Decisions and Action Items
+
+*   **Draft Adoptions:**
+    *   `draft-g-idr-mbgp-extensions-for-map6` was adopted.
+    *   `draft-k-idr-multi-next-top-attribute` was adopted (pending upload).
+*   **CT Draft Split:** The CT work has been formally split into three drafts: a base CT draft, a CT SRv6 draft, and a draft for RR with Next-Hop-Self advice.
+*   **Draft Removal Policy:** The WG will begin to remove drafts older than 10 years without implementations. Authors of such drafts should notify chairs if their draft is still active or implemented.
+*   **Second WG Last Call Support:**
+    *   **Action Item:** Participants are requested to provide explicit support for the revised `BGP SR TE Policy` drafts and the `CAR/CT` drafts during their second WG LCs.
+*   **Call for Implementations:**
+    *   **Action Item:** Implementations are needed for `BGP model`, `Entropy Label`, and `2if-fit`. A third implementation is sought for `SD-WAN`. Developers are requested to inform the chairs.
+*   **Mailing List Discussions:**
+    *   **Action Item:** For `BGP Ad-Path Limit` (Donatas), Donatas, Jeff, and Alo are requested to summarize the concerns on the mailing list, and Ketan is requested to respond to those concerns.
+    *   **Action Item:** For `BGP Next Next-Hop` (Kevin Wang), Kevin and Jeff are requested to provide a summary of the issues raised during the meeting on the mailing list for continued discussion.
+    *   **Action Item:** For `BGP FlowSpec for SAV Rule Dissemination` (Nan), further discussion will be conducted offline regarding its classification as a filter vs. action and the appropriate number space for the extended community.
+    *   **Action Item:** For `BGP Extensions to Carry Generic Metric Types (AIGP)` (Shari), Shari and K Raj are requested to send their questions and responses to the mailing list.
+    *   **Action Item:** For `Advertising SR Algorithm Information in BGP SR Policy` (Y), questions will be sent to the list by the chair, and the draft will be added for a second adoption call.
+    *   **Action Item:** For `BGP SR Policy Extension for Template` (K), K Raj and K are requested to put their questions and responses on the mailing list for pre-IETF 119 discussion, including the suggestion to refer to PCEP's profile ID.
+
+## Next Steps
+
+*   **WG Last Call Schedule:**
+    *   Shepherd's reports for ongoing WG LCs are expected to be completed by Friday.
+    *   The chairs will discern working group consensus for the WG LCs by Friday.
+    *   Editors and authors are requested to release final versions of WG LC drafts by the 4th, enabling publication requests shortly thereafter.
+*   **CT Drafts:** Wait for re-review and closure from K and Jeff for the base CT draft. Follow up with the SPRING WG regarding the adoption of the SRv6 inter-domain endpoint behavior draft (which the CT SRv6 draft lies on).
+*   **BGP Ad-Path Limit:** Continue to gather comments, work on additional open-source implementations, and the authors intend to request working group adoption.
+*   **BGP SAVNET:** Authors will continuously refine the security and convergence sections of the draft and present the work to the SAVNET working group.
+*   **BGP SR Algorithm Info:** The authors will solicit more interest, reviews, and comments on the draft, with the aim of requesting a second working group adoption call in the near future.
+*   **New Drafts:** Authors of new drafts are encouraged to continue engagement on the mailing list to gather feedback and seek collaborators. Sufficient mailing list discussion is a prerequisite for future IETF meeting presentations.

@@ -1,0 +1,59 @@
+# [NETMOD](../wg/netmod.html)
+
+## Summary
+
+The NETMOD Working Group met to discuss the "Yang metadata annotation for the immutable flag" draft. The session focused on the technical semantics of the `immutable` metadata annotation, its hierarchical application, interaction with YANG lists and leaf-lists, and implications for server behavior during configuration operations. A significant portion of the discussion revolved around ensuring the annotation remains descriptive and does not inadvertently alter fundamental YANG/NETCONF transactional semantics. A show of hands indicated strong support for adopting the draft, with an understanding that the identified issues and clarifications would be addressed during the Working Group Last Call (WGLC) process.
+
+## Key Discussion Points
+
+*   **Introduction and IETF Not-Well**: The meeting began with a reminder of IETF rules, the Not-Well document, and guidelines for appropriate behavior and remote participation.
+*   **Motivation for the Immutable Flag**:
+    *   The `immutable` concept emerged from discussions around the system-config draft, aiming to identify non-modifiable system configurations.
+    *   It is considered independent of a specific system data store implementation, as immutable configuration can exist regardless.
+    *   The primary motivation is to provide clients with prior knowledge of immutable nodes, allowing them to avoid errors and making server behavior more transparent. Servers already reject modifications to such nodes, often with proprietary mechanisms.
+*   **Current Solution: YANG Metadata Annotation**:
+    *   The draft proposes a YANG metadata annotation named `immutable` (RFC 7952-based) with a boolean value.
+    *   It also defines a `with-immutable` query parameter for retrieval operations, ensuring the annotation is only returned when explicitly requested.
+    *   **Hierarchical Inheritance**: Immutability is hierarchically applied to descendant nodes until explicitly overridden, reducing response size.
+    *   **Descriptive Nature**: The `immutable` flag is designed to be descriptive (reporting server behavior) rather than prescriptive (dictating server behavior). This was a key reason for removing a previously considered YANG extension solution, which was seen as prescriptive.
+*   **Example and Inheritance Details**:
+    *   An XML example illustrated an `application` list with both system-defined (immutable) and client-defined (mutable) entries.
+    *   Discussion ensued regarding the default `immutable` value (understood to be `false` at the top level) and whether a server *must* omit redundant `immutable=false` annotations in responses (e.g., if inherited from a parent). The general sense was that the default is `false`, and while servers *should* be sparse, they *could* return redundant flags for flexibility.
+*   **Server Behavior and Immutability Changes**:
+    *   The draft states that immutability should not change frequently, ideally only during "system events" like software upgrades, hardware upgrades, or license changes.
+    *   There was discussion about how strictly this should be defined in the draft. The current draft allows a system to change both the value of an immutable node and the immutability status itself, with examples of situations when this *should* happen.
+*   **Interaction with Lists, Leaf-lists, and Ordering**:
+    *   Questions were raised about how `immutable` interacts with list entries, specifically regarding ordering (for `ordered-by user` lists) and the ability to add/delete list elements.
+    *   It was clarified that if a list entry is `immutable true`, its children cannot be created, modified, or deleted. However, a child node *can* override its parent's immutability (e.g., an immutable `application` entry could have a mutable `port-number` leaf).
+    *   A specific point in the draft, suggesting that if *all* leaf-list entries are `immutable true`, no further entries can be added, was questioned.
+    *   **Consensus**: The `immutable` flag has **no bearing on the order** of user-ordered lists or leaf-list entries. The discussion leaned towards the individual `immutable` flags on list/leaf-list entries being sufficient, rather than needing an overall list property for ordering or creation/deletion.
+*   **Dismissed Alternative Solutions**:
+    *   **NACM (Network Configuration Access Control Module)**: Rejected due to NACM's ability to be disabled, bypassed by emergency sessions, and the challenge of making NACM rules themselves immutable and non-overridable by clients.
+    *   **No-Tags**: Rejected because `no-tags` are returned via a separate module lookup and can be client-controlled (masked). The `immutable` annotation is intended to be inline with the data and server-controlled.
+    *   **YANG `deviation` statement**: Rejected as `immutable` is a node property, not an implementation limitation, and `deviation` cannot express instance-level immutability.
+*   **Interaction with Running Configuration and `edit-config`**:
+    *   The `immutable` annotation *can* be retrieved from the `running` data store.
+    *   Immutable configuration (originating from system data store) is not in `running` by default but can be copied there by a client.
+    *   An immutable item copied to `running` *can* be deleted from `running` (making it "invisible" there), but the system may still apply the underlying system configuration from the `intended` data store.
+    *   **Server Behavior on Modification Attempts**: A critical discussion centered on whether a server *must* reject `edit-config` operations that attempt to modify an `immutable` node.
+        *   There was a strong sentiment that servers **should not silently accept** configuration changes they will not apply. If a change cannot be applied, it *must* be rejected.
+        *   The group leaned towards a server **"may reject"** (rather than "must reject") a modification to an `immutable` node, allowing flexibility.
+        *   A key principle emphasized was that `immutable` should **not force clients into multi-step transactional behaviors** (e.g., delete an item then recreate it with a new value). Clients should be able to transition from any valid configuration A to any valid configuration B in a single atomic transaction, with the server handling the internal instrumentation. The `immutable` flag should not be used to prevent this.
+
+## Decisions and Action Items
+
+*   **Decision**: The Working Group expressed strong support for the adoption of the "Yang metadata annotation for the immutable flag" draft, with the understanding that specific comments and concerns raised during the discussion will be addressed.
+*   **Action Item (Chairs)**: Initiate a Working Group Last Call (WGLC) for adoption on the mailing list, explicitly referencing the conditions and open discussions.
+*   **Action Item (Authors - Chiffon Ma)**:
+    *   Review and clarify the language regarding the default `immutable` value and server behavior in returning redundant flags (e.g., suggesting sparse responses but allowing flexibility).
+    *   Tighten the language around the conditions under which a server may change immutability status or values, possibly making it more prescriptive on *when* it can occur.
+    *   Explicitly state that the `immutable` flag has no bearing on the ordering of user-ordered lists or leaf-list entries.
+    *   Address the concept of adding new elements to a list/leaf-list where all existing elements are marked `immutable true`.
+    *   Provide explicit definitions of the interaction with the `running` data store and `edit-config` requests, emphasizing:
+        *   Servers must not silently accept configuration changes that will not be applied.
+        *   The `immutable` flag should not be used to force clients into multi-step transactional operations (e.g., delete and recreate) for atomic configuration changes.
+
+## Next Steps
+
+*   The NETMOD chairs will initiate the Working Group Last Call (WGLC) for adoption of the draft on the NETMOD mailing list.
+*   Authors are expected to incorporate the discussed clarifications and address the raised concerns in subsequent revisions of the draft during the WGLC period.

@@ -1,0 +1,105 @@
+# [SCONE](../wg/scone.html)
+
+## Summary
+
+The first SCONE working group interim meeting focused on three main agenda topics: the consolidation of the SCONE and TRAIN protocol proposals, the semantic content and structure of the SCONE advice object, and planning for SCONE experimentation activities. Discussions highlighted key design differences and philosophical distinctions between the protocol proposals, identified requirements for a semantic advice object, and initiated a brainstorming session for future experimental work. A significant outcome was the decision to move towards a single, converged protocol draft.
+
+## Key Discussion Points
+
+### 1. Meeting Logistics
+
+*   **Note Taker:** Martin Duke volunteered to take notes, with Ted Hardy as backup.
+
+### 2. Consolidation of SCONE and TRAIN Protocols
+
+The discussion centered on comparing the TRAIN and SCONE protocol proposals, identifying design and philosophical distinctions for potential convergence.
+
+*   **Signal Encoding Format:**
+    *   **TRAIN:** Proposes using a minimal amount of bits (e.g., 6 bits in the QUIC long header) to map to predefined, standardized rate limits (up to 63 values). Rationale emphasizes minimal packet overhead and restricting expressiveness to only what's needed.
+    *   **SCONE:** Uses explicit rate signal fields (e.g., a 32-bit integer for bitrate and another for averaging window) allowing for any value within field bounds. Rationale prioritizes flexibility, assuming an inability to predict all useful values.
+    *   **Discussion:** An individual noted TRAIN's fixed location in the packet header could simplify router implementation. The trade-off between minimal bits (TRAIN) and flexibility (SCONE) was discussed. Concern was raised about whether limited, predefined values would suffice for real-world scenarios. Another individual noted that more exposed information (more bits, higher frequency) poses risks, suggesting mitigation through appropriate advice on sending frequency.
+    *   **Cleartext vs. Encrypted:** Both proposals effectively send information in cleartext. SCONE's use of crypto for initial QUIC packets (publicly known keys) doesn't provide meaningful confidentiality or obfuscation against determined observers.
+
+*   **Packetization Approach:**
+    *   **TRAIN:** TRAIN packets are inserted by QUIC endpoints *prior* to the end-to-end QUIC packet within the same UDP datagram. The rationale is to reduce off-path spoofing attacks by allowing the receiver to validate the inner QUIC packet.
+    *   **SCONE:** Network elements generate new packets in separate UDP datagrams, copying the 5-tuple and QUIC connection IDs from end-to-end packets. The rationale is that these packets can reach their target without being tied to existing QUIC packets.
+    *   **Discussion:** An individual preferred the appending approach (TRAIN) to avoid creating more packets and for potential fate sharing/loss detection using standard QUIC mechanisms. However, another individual questioned the security rationale of coupling, noting that neither TRAIN nor SCONE proposals offer authentication of the signal itself, meaning path access is needed to insert or modify, irrespective of coupling.
+
+*   **Signaling Frequency and Timeliness:**
+    *   **TRAIN:** Signals are inserted by QUIC endpoints at their discretion. This gives endpoints control over frequency and allows for dynamic policies to be signaled when a TRAIN packet is observed by the network element. However, for timely dynamic updates, servers would need to send TRAIN packets frequently, potentially leading to "useless" packets where the network has no new signal to insert.
+    *   **SCONE:** Packets are sent at the discretion of the network element, which is aware of when new information is available. This allows for timely delivery of dynamic policy changes (e.g., due to RAT type changes or data plan shifts), potentially less frequently than TRAIN.
+    *   **Discussion:** An individual suggested that policy changes are better initiated by the network due to its awareness of conditions. The burden on network elements to process frequent, potentially "nothing changed" TRAIN packets was highlighted. A concern was raised regarding SCONE's approach: if the network element sends packets at any time, it needs to reliably infer QUIC connection IDs and lengths, especially with migration, which might be challenging. The current SCONE proposal relies on the endpoint sending an initial SCONE packet, from which network elements derive necessary parameters, which might need resending upon 5-tuple changes.
+
+### 3. SCONE Advice Object (Semantic Content)
+
+The discussion focused on a proposal for a reusable, protocol-independent blob for semantic advice, using CDDL.
+
+*   **Goals:**
+    *   Reusable blob, independent of signaling channel (protocol or API).
+    *   Common understanding of network capabilities and readiness to share information.
+    *   Ensuring the signaled information is useful for applications and hosts.
+*   **Approach:**
+    *   Utilize CDDL for structuring the blob.
+    *   Leverage existing technologies for configuring policies in provider networks.
+*   **Structure of Advice:**
+    *   Can include multiple instances (e.g., per direction).
+    *   Same format for initial advertisement and refreshes.
+*   **Rate Limits:**
+    *   Defined two groups: a "moderated" one (Committed Rate (CR), Committed Burst Size (CBS)) and another for Peak Rate.
+    *   All parameters are currently optional. Discussion is needed on whether to keep all optional or stick to the "moderated" ones initially.
+*   **Scopes of Advice:**
+    *   **Subscriber Scope:** Network applies policy for a subscriber, who may have multiple hosts.
+    *   **Host Scope:** Policy for a directly connected host.
+    *   **Flow Scope:** Policy specific to a flow.
+    *   **Discussion:** Subscriber and Host scopes were seen as realistic and reflecting current deployments. Flow scope presented challenges, including lack of support in typical access routers and difficulty in partitioning resources to bind to specific flows. An open question remains on the need and implementation feasibility of flow scope.
+*   **Directionality:** Explicit information for Network-to-Host (default) and Host-to-Network. A compact encoding for when values are identical in both directions.
+*   **Reliable/Unreliable Traffic:** Proposal to include dedicated rate limits for reliable (e.g., QB) and unreliable (e.g., NQB) traffic. Signaling and identification of these flows would be up to the application. An open question if this distinction is necessary within the blob.
+*   **Traffic Categories:** Default "all traffic" category defined. A new registry is proposed for future, more granular traffic categories (e.g., 3GPP-defined).
+*   **Open Questions:** Need for Class ID and PHB information. Linking advice information to bearer level information (e.g., QoS parameters in cellular networks).
+*   **Feedback:** An individual appreciated the comprehensive look at the space of information, emphasizing the need to understand what specific elements (like burst sizes) are truly useful for applications like adaptive video. Another individual inquired about PHB information, specifically whether the advice assumes a single DSCP scope or requires maps for all DCSPs/PHB groups.
+
+### 4. SCONE Experimentation
+
+The discussion aimed to identify useful experimentation activities, categorizing them into two themes.
+
+*   **Theme 1: Technical Data for Scale Deployment:**
+    *   **Goal:** Bring relevant technical data to facilitate scaled deployment of SCONE.
+    *   **Questions:** Quantify benefits of QoE with SCONE-assisted application self-limitation vs. existing network throttlers. Assess CPU, memory, power, and incremental deployment complexities on the network side.
+    *   **Applicability:** Directly contributes to the applicability and manageability specification.
+
+*   **Theme 2: Running Code for Spec Clarity:**
+    *   **Goal:** Work out clarity and correctness of the SCONE protocol specification.
+    *   **Questions:** Identify loopholes, validate implementation complexity, interop, and debugging needs.
+    *   **Applicability:** Directly contributes to improving the protocol specification.
+
+*   **High-Level Questions for Experimentation:**
+    *   Necessity of realistic operator network configurations (or sufficiency of lightweight approximations).
+    *   Necessity of realistic server/client endpoints (or sufficiency of toy examples).
+    *   Exploring specific use cases like prefetching.
+
+*   **Brainstorming List for Contributions:**
+    *   Tools/methods to measure network impacts on throttlers/shapers (CPU, memory, power savings).
+    *   Testbed setups and orchestration scripts.
+    *   Repeating mask demonstrations (e.g., Brisbane).
+    *   Extensions to QUIC interop runner for SCONE support.
+    *   Operator core network emulation (e.g., using ns3 or TC).
+    *   Contributions to the SCONE ecosystem (QUIC stack, in-network signaling, application libraries).
+    *   Debugging tools (e.g., Wireshark decoder for SCONE).
+    *   An interop network with live components.
+
+*   **Discussion:** It was noted that a crucial aspect is to test *what amount or kind of signal* is actually useful for an application. Concerns were raised about the proprietary nature of many real-world policer/shaper implementations, making resource usage quantification difficult without vendor/operator data sharing. An individual emphasized the need for clear experiment definitions to demonstrate concrete QoE improvements for product and network planning. Another individual highlighted the importance of measuring performance impact on network elements for deployment.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group will move towards consolidating the TRAIN and SCONE protocol proposals into a single, combined draft.
+*   **Action Item:** Marcus (SCONE author) and an individual representing the SCONE viewpoint (Matt) will collaborate with the TRAIN authors to produce a new, combined protocol draft, incorporating the input from this discussion. Chairs will initiate a mailing list thread to engage TRAIN authors and facilitate this.
+*   **Action Item:** Abishek will lead an effort to collect information on various traffic policers and shaper implementations to inform the semantic workstream discussions, with a goal to present this before the Bangkok meeting.
+*   **Action Item:** Chairs will schedule future interim meetings, using an alternative calendaring tool (not Zal) and endeavoring to shift meeting times to accommodate a broader global audience, particularly authors not present at this meeting.
+*   **Action Item:** The working group will aim for a workable hackathon at IETF 122 in Bangkok (March), focusing on concrete steps towards implementing the emerging SCONE protocol.
+
+## Next Steps
+
+*   Continue the discussion on the combined protocol draft on the mailing list, providing feedback and contributions.
+*   Further refine the experimentation plans and objectives based on the brainstorming session, with a focus on defining clear experiments that demonstrate value to applications and network operators.
+*   Review Renji Tang's draft regarding acknowledging or conforming to signals.
+*   Chairs to provide updates on the schedule for the next interim meetings and the Bangkok hackathon planning.

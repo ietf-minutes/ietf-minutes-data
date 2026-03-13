@@ -1,0 +1,45 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI working group held an interim meeting on June 5th, focusing on metadata privacy, continuing discussions from the mailing list and previous interims. The session primarily involved Brendan presenting and whiteboarding examples related to his proposal, with no formal slides. A brief announcement was made regarding a new version of the content document, including CBOR binary format. A significant portion of the meeting was dedicated to clarifying the scope of discussions (MIMI vs. MLS), evaluating different metadata privacy models, and addressing challenges related to external joins, client-side policy enforcement, and handling invalid MLS commits. Attendees requested more detailed written documentation to facilitate understanding and comparison of proposals.
+
+## Key Discussion Points
+
+*   **Scope of Invalid Commit Problem:** Rowan clarified that issues related to in-depth MLS details and general MLS problems (e.g., detecting "badness" in commits) should be discussed in the MLS working group. MIMI should focus on problems that arise specifically due to MIMI's interactions with MLS.
+*   **Metadata Privacy Models:** Richard had previously outlined four privacy models:
+    *   A: Hub and followers see group info and membership.
+    *   B: Hub sees group info and membership; followers only see local membership.
+    *   C: Hub sees pseudonymous membership; followers only see local membership.
+    *   D: Each provider only sees local membership (Brendan's proposed direction).
+    Brendan noted that Model D was often considered "not possible" without clear reasons, prompting the whiteboard discussion to address concerns.
+*   **External Joins and Offline Users:**
+    *   A key requirement is for new clients or offline users to join a group and immediately send messages.
+    *   **Brendan's Proposal:** Uses a system of "Epochs" and "Commits." When a commit is sent, it creates a new Epoch. The DS hosts the group and can see commits and associated group info for the subsequent Epoch. For an external join, the DS provides group info for the latest Epoch to the new user, who then sends an external commit. This external commit is propagated, leading to a new Epoch if accepted by existing members.
+    *   **Privacy Implications:** Brendan argued that supporting external joins for new, non-member users inherently makes group membership public, as joining grants access to the ratchet tree. Conrad countered, suggesting scenarios like a user joining with a *new client* where privacy could be maintained via MIMI-level authentication, preventing *any* client from joining.
+    *   **Overhead:** Conrad raised concerns about the overhead of uploading the entire ratchet tree with each commit, especially with PQ cipher suites, if group info needs to be widely shared for joins.
+*   **Pseudonyms vs. Encrypted Ratchet Tree:**
+    *   Rohan suggested an approach where the Hub receives an encrypted commit (containing the roster) while followers do not, requiring pseudonyms.
+    *   Brendan noted that pseudonyms impose restrictions on joining and adding members, as decryption of pseudonyms would require an online group member to provide a decryption key.
+    *   Brendan proposed an alternative: encrypting the ratchet tree directly, allowing logarithmic data updates. This would enable "assisted joins" (sending a small welcome message to a new member) but not "external joins" (someone outside the group joining without prior consent/key sharing). This approach still presents metadata leakage challenges, though potentially less than full pseudonymity.
+*   **Group-by-Group Policy:** It was agreed that metadata privacy would likely be a group-by-group decision (negotiated by members or set by the creator). Brendan asserted that a Hub managing both private and non-private groups for the same users would not inherently lead to de-anonymization.
+*   **Policy Enforcement and Handling Invalid Commits (Forks):**
+    *   **Brendan's Proposal:** All policy enforcement is client-side. The DS blindly forwards all messages from presumed group participants. If an invalid commit is sent (e.g., by a client violating policy), other clients ignore it and proceed to the next valid commit. This creates a "fork," where the sender of the invalid commit is isolated in their own Epoch.
+    *   **Concerns:** Richard raised strong concerns about the detectability and operationalization of this model. He argued that silent partitioning (a client being unaware it's in a fork) is unacceptable and that clients would be "partitioned off for days or weeks."
+    *   **Proposed Resolution:** The DS could detect a fork (e.g., majority in Epoch C, one client in Epoch D) and terminate the group for the isolated client, prompting them to re-join the correct Epoch. This doesn't address scenarios where the *majority* of clients are buggy and create a defective fork.
+    *   **Unresolved Problem:** The group acknowledged that a robust recovery mechanism for forks, especially in cases of majority misbehavior, remains an unsolved problem and needs to be addressed on paper.
+*   **Fragmented Update Paths (MLS WG Scope):**
+    *   This specific type of MLS commit failure is difficult because not all group members will agree on the state.
+    *   Detection (e.g., via the MLS Epoch Authenticator) is possible, but proving misbehavior to the DS without compromising MLS security guarantees is the core challenge.
+    *   It was agreed that defining an MLS extension to allow proving fragmented update paths to a DS (e.g., by selectively revealing parts of the key schedule) should be a task for the MLS working group, as it's a direct cryptography problem.
+*   **Need for Documentation:** Several participants, including Richard and Eric, emphasized the need for Brendan's proposal to be written down in a formal draft to facilitate detailed review and comparison. There was also a strong call for a clear articulation of MIMI's metadata privacy *requirements* to serve as a benchmark for evaluating different solutions.
+
+## Decisions and Action Items
+
+*   **Brendan:** Write up the proposed scheme (currently in a gist/whiteboard) in a more detailed, formal draft format.
+*   **Conrad (with Brendan's input):** Produce a comparison document outlining the differences in functionality and privacy characteristics between the "pseudonymous approach" and Brendan's "encrypted approach" (which involves encrypting the ratchet tree).
+*   **Working Group:** Articulate a clear set of metadata privacy requirements for MIMI, to be used as a benchmark for evaluating different proposals.
+
+## Next Steps
+
+The working group will continue discussions on the mailing list, informed by the new draft from Brendan and the comparison document from Conrad. The formal articulation of MIMI's metadata privacy requirements will also guide future work.

@@ -1,0 +1,46 @@
+# [NETCONF](../wg/netconf.html)
+
+## Summary
+
+This virtual interim meeting of the NETCONF Working Group focused on how to support the requirements for extending the RFC 5277 NETCONF notification header, particularly in the context of Yang Push (RFC 8641) and other documents wishing to add metadata for non-XML encodings like JSON and CBOR. The primary goal was to address difficulties in validating such notifications and unblock the adoption calls for several related drafts. Discussion revolved around whether to fix the perceived gaps in defining the existing header for new encodings or to define an entirely new, extensible notification header.
+
+## Key Discussion Points
+
+*   **Problem Statement**:
+    *   The current NETCONF notification header (RFC 5277) is primarily defined in XML and lacks explicit Yang models or normative text for its representation and validation in JSON and CBOR encodings.
+    *   Yang Push (RFC 8641) and Subscribe Notifications (RFC 8639) implicitly rely on RFC 5277's header definition, leading to implementers making assumptions for non-XML encodings.
+    *   This lack of explicit definition hinders automated validation by Yang tooling and could lead to interoperability issues across different implementations.
+    *   There is a strong desire to extend the notification header with additional metadata fields (e.g., sequence ID, system name, observation time) for use cases like closed-loop automation and telemetry data ingestion.
+    *   A key concern is maintaining backwards compatibility with legacy clients while introducing new features.
+
+*   **Proposed Solution (Alex's `notif-yang` draft)**:
+    *   The draft aimed to address the perceived gap by defining normative text for XML, JSON, and CBOR encodings for the `notification` container with an `event-time` leaf, consistent with RFC 5277.
+    *   It also proposed a Yang `structure` to model this header, intending to allow Yang tooling to validate it. RESTCONF was explicitly excluded from its scope.
+    *   The approach intended to be backward compatible with RFC 5277.
+
+*   **Discussion and Concerns on `notif-yang` Proposal**:
+    *   **Yang Validation Limitations**: Several participants (Mahesh, Andy) raised concerns that Yang's modeling capabilities are not well-suited to represent the abstract "any data" element within the RFC 5277 notification structure (specifically the notification content). Yang tools typically perform multi-step validation rather than a single pass for such structures, indicating that the proposed Yang `structure` might not fully solve the validation problem in the intended way.
+    *   **Scope and Extensibility**: While `notif-yang` aimed to define the existing header, the broader discussion consistently pointed to the need for adding *new* fields and the desire for a more extensible header.
+    *   **Backward Compatibility Approach**: Questions arose on how new header fields or structures would be introduced without breaking legacy clients. The idea of clients "opting in" via subscription parameters was suggested.
+    *   **"Uber Notification" Idea (Kent Watson)**: A concept was introduced for a new Yang module defining a generic "Uber notification" container. This container would hold new header fields and an "any data" payload for the actual notification content. It could be conveyed over existing transports, but might involve discarding the transport's own `event-time` (e.g., from RFC 5277) if a new `event-time` exists in the Uber header, leading to potential data duplication in the wire.
+    *   **Transport vs. Application Layer**: There was discussion on whether transport protocols (e.g., UDP Notif, HTTP/S Notif) should define their own notification headers or if a unified application-layer header definition is preferable for consistency. A strong preference emerged for a unified application-layer definition.
+
+## Decisions and Action Items
+
+1.  **Consensus on Need for Yang Definition**: A poll indicated a strong sense in the room that a Yang definition for notifications is needed to define them in encodings like JSON and CBOR.
+2.  **Path Forward: New Header to Replace RFC 5277**: A subsequent poll revealed a strong sense of those present that a *new notification header* should be created to *replace* the RFC 5277 header for new clients, rather than being used as an encapsulated payload within existing headers.
+3.  **Key Characteristics of the New Header**:
+    *   It should be defined in Yang to enable robust tooling and validation.
+    *   It should explicitly define its encoding for XML, JSON, and CBOR.
+    *   It must support extensibility for new metadata fields (e.g., `system-name`, `sequence-id`, `observation-time`).
+    *   Clients should be able to "opt-in" to receive this new header (e.g., per dynamic subscription, per configured subscription, or via a global configuration knob on the network element). This allows legacy clients to continue receiving the old RFC 5277 header.
+    *   This approach aims to move away from the limitations of RFC 5277's XML-centric "any data" model for the header.
+
+**Action Items**:
+*   **Authors (Alex, Thomas, and other contributors)**: To collaborate on a new draft that defines a new, extensible notification header based on the consensus reached. This draft should address the Yang definition, encoding for JSON/CBOR/XML, extensibility for new fields, and the mechanism for clients to opt-in (e.g., updates to RFC 8639/8641 for subscription configuration).
+*   **Chairs**: To collate meeting minutes and distribute them.
+
+## Next Steps
+
+*   The authors will work on drafting the new document reflecting the decisions and emerging consensus.
+*   The chairs will evaluate the progress of the new draft and consider scheduling a follow-up interim meeting if the document is ready for review within a few weeks, otherwise, the discussion will continue at IETF 121 in Dublin.

@@ -1,0 +1,44 @@
+# [ANIMA](../wg/anima.html)
+
+## Summary
+
+The ANIMA Working Group held an interim meeting to discuss two primary topics: resolving open issues for documents currently in Working Group Last Call (WGLC), specifically focusing on CDDL definitions for the BRISKEE PRM draft, and progressing the BRISKEE Discovery draft, with a particular emphasis on the CoAP Link Format (CoLF) aspects including service name encoding, URI schemes, and the signaling of BRISKEE protocol variations.
+
+## Key Discussion Points
+
+*   **BRISKEE PRM CDDL Issues**
+    *   **`enroll-type` Definition:** The discussion centered on defining the `enroll-type` for trigger messages in BRISKEE PRM using CDDL. The goal is to allow extensible string values (e.g., `enroll-generic-cert`) for different enrollment types without a formal IANA registry at this stage.
+    *   **CDDL Syntax for Extensibility:** Carsten Bormann advised using a CDDL "socket" mechanism for extensibility: `$enroll-type-string /= "enroll-generic-cert"`. This allows new documents to extend the definition without modifying the original RFC. It was also recommended to avoid unnecessary inner JSON object braces for single values.
+    *   **Registry vs. RFC Updates:** The group discussed whether to create an IANA registry for `enroll-type` strings. Given the expectation of only a few values (e.g., `generic-cert`, `app-cert`), the sense of the discussion was that avoiding a registry for now and using RFC updates for new values is acceptable. An idea to include a forward-looking `enroll-app-cert` in the current document was cautioned against due to potential ISG pushback for undefined terms.
+
+*   **BRISKEE Discovery (CoLF)**
+    *   **Objective:** The Discovery draft aims to enable pledges to discover proxies, and proxies to discover registrars, and to signal various BRISKEE protocol capabilities.
+    *   **Service Name/Resource Type Encoding:** Clarified the use of resource types like `brski-do-jpy` (pledges discovering proxies) and `brski-rjpy` / `brski-rs` (proxies discovering registrars) for CoLF. The consistent abbreviation `JPY` for the stateless protocol was also discussed.
+    *   **CoLF Multicast Example:** An example was provided for multicast discovery (e.g., `ff02::fd` for `brski-do-jpy`) and the expected `Link-Format` responses.
+    *   **URI Encoding Limitations:** A key issue highlighted was the `Link-Format` requirement to include the full IP address and scheme (e.g., `coaps://[ff02::fd]:8485`) even when only signaling a different port on the same host. It was noted that this is an inherent limitation of the `Link-Format` specification (RFC 8288, formerly RFC 5988) and not easily circumvented without introducing non-standard extensions, which would likely face significant review hurdles.
+    *   **Query Filtering:** Filtering by scheme (e.g., `coaps` vs. `https`) in multicast CoLF queries is not directly supported by RFC 6690 for single query arguments, though it is possible when querying a CoAP Resource Directory.
+    *   **CoAP over TCP/TLS:** The existence of CoAP over TCP/TLS (RFC 8323, `coaps+tcp://`) was confirmed, but the general sense was that it's not currently recommended for typical constrained BRISKEE deployments due to its overhead compared to UDP-based CoAP, unless dealing with very large data transfers (e.g., post-quantum cryptography). No explicit support is planned for BRISKEE at this time.
+    *   **BRISKEE Protocol Variations:**
+        *   The need to signal combinations of protocol aspects (e.g., responder mode, voucher encoding, enrollment protocol) was discussed. A single string (e.g., `RRM-CMS-EST`) maintained in a registry was proposed to simplify parsing for implementations.
+        *   **`EST` string interpretation:** It was agreed that the `EST` string in variation descriptions implicitly refers to "constrained EST" when the transport context is CoAP, with the full semantics provided by the registry entry for the combined variation string.
+        *   **`BV` Attribute for CoLF:** A new `BV` (BRISKEE Variation) attribute was proposed for CoLF to carry these variation strings.
+        *   **Backward Compatibility:** For RFC 8995, an empty `BV` string would signify the default.
+        *   **Future Variations:** Several example variations (e.g., `RRM-Jose-CMP` over HTTPS, `PRM-CMP`) were identified as future or currently undefined, and it was suggested they be moved to a "potential future" section in the draft rather than being presented as current specifications.
+    *   **CoAP Resource Directory (RD):**
+        *   RD can serve as a centralized discovery mechanism for proxies to find registrars.
+        *   Registration: Devices would register their `.well-known/core` content with the RD. The content itself (e.g., resource types, `BV` attributes) would be directly reusable from local discovery.
+        *   RD Discovery: The mechanism for devices (specifically proxies) to discover the RD itself is outside the scope of the current draft and typically relies on pre-provisioning or deployment-specific methods, similar to Lightweight M2M.
+
+## Decisions and Action Items
+
+*   **Decision:** For the BRISKEE PRM draft, the `enroll-type` CDDL definition will use the extensible socket syntax (`$enroll-type-string /= "enroll-generic-cert"`) to allow future extensions without requiring an IANA registry for the `enroll-type` strings themselves at this time.
+*   **Decision:** No specific workaround for the `Link-Format` URI encoding limitation (requiring full IP/scheme/port in responses even for same host) will be pursued in the BRISKEE Discovery document due to the nature of `Link-Format` and potential IETF review complexity.
+*   **Decision:** When signaling BRISKEE protocol variations via strings (e.g., `RRM-COSE-EST`), the `EST` component will implicitly refer to "constrained EST" when the transport context is CoAP. The full semantics for such composite strings will be defined in the associated IANA registry.
+*   **Action Item (Stephan):** Update the BRISKEE PRM draft with the agreed CDDL for `enroll-type`.
+*   **Action Item (Toerless):** Refine the BRISKEE Discovery draft to move examples of currently undefined or future protocol variations (e.g., `RRM-Jose-CMP` over HTTPS, `PRM-CMP`) into a 'potential future' or example section rather than presenting them as current specifications.
+
+## Next Steps
+
+*   Continue to incorporate the discussed CoLF aspects and clarifications on protocol variations into the BRISKEE Discovery draft.
+*   The BRISKEE PRM draft will be updated to reflect the agreed CDDL syntax for extensibility.
+*   Further consideration of how to best describe Resource Directory interactions for BRISKEE discovery, particularly the discovery of the RD itself, will be needed but remains a deployment-specific consideration for now.

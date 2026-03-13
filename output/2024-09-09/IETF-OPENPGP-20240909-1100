@@ -1,0 +1,75 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+The OpenPGP Working Group met for an interim session. The meeting began with a brief recap of the successful completion and release of RFC 9580, the Crypto Refresh. The majority of the session focused on a detailed discussion of the `draft-ietf-openpgp-replacement-key-00` document, presented by Andrew Gallagher. Key design elements were reviewed, including the proposed subpacket structure, the concept of "imprints" (cryptographic digests whose algorithm matches the signing key), and the bi-directional binding mechanism. Several open questions were discussed, leading to decisions on the subpacket's class and version octets, but no immediate consensus on the contentious issue of including both fingerprints and imprints for target key identification. Other complex topics, such as encrypting to multiple keys for smooth transition and user experience for key creation, were deemed too complex for immediate resolution and will be taken to the mailing list for further discussion.
+
+## Key Discussion Points
+
+*   **RFC 9580 (Crypto Refresh) Status:**
+    *   The Crypto Refresh work is complete and has been released as RFC 9580.
+    *   Editors (Paul Neb, Daniel Kahn Gillmor, Eustace) handled extensive feedback from IANA and the RFC editor.
+    *   Implementers are encouraged to update internal references and draft citations to RFC 9580.
+    *   Interoperability has been demonstrated, with at least half a dozen development branches of OpenPGP implementations supporting version 6 keys, with hopes for new releases soon.
+
+*   **Replacement Key Mechanism Draft (`draft-ietf-openpgp-replacement-key-00`):**
+    *   **Design Overview:**
+        *   Proposed as a signature subpacket for revocation and self-signatures, primarily on direct key self-signatures.
+        *   Consists of a version octet, a class octet, and zero or more "targets."
+        *   Targets include a version-tagged fingerprint and an "imprint" of the target key.
+        *   **Imprint Concept:** An imprint uses the digest algorithm of the *enclosing signature* (not the target key's native digest algorithm, which might be deprecated like SHA-1 for V4 keys) to provide a cryptographically stronger reference.
+        *   **Bi-directional Binding:** The mechanism allows for a forward link (original key to replacement) and a reverse link (replacement key to original), distinguished by a flag. A bi-directional binding forms an equivalence relationship.
+        *   **Fallback Ordering:** The reverse subpacket can list multiple original keys, providing a preferred order for fallback (e.g., if a post-quantum key isn't supported).
+
+    *   **Discussion on Class Octet:**
+        *   The class octet contains flags (e.g., directionality, nullity to explicitly state "no replacement").
+        *   Andrew Gallagher argued it simplifies the design, allowing a single subpacket type and enforcing the "at most one" rule without requiring changes for future semantic variations.
+        *   Discussion touched on the difference between explicit nullity and simply omitting the subpacket, and the complexity of distinguishing between multiple subpacket types versus flags within one.
+        *   A poll was conducted to gauge sentiment.
+
+    *   **Discussion on Version Octet:**
+        *   Daphne argued for it as a "get out of jail card" for future design flaws, allowing for extensibility.
+        *   Daniel Kahn Gillmor (as an implementer) expressed concern about the added complexity of version negotiation and semantics for unknown versions, preferring a new subpacket type for major design changes.
+        *   A poll was conducted.
+
+    *   **Discussion on Imprint Fields vs. Fingerprints:**
+        *   Andrew argued that imprints ensure cryptographic strength matches the signing key, especially important for referencing older V4 keys with SHA-1 fingerprints, aligning with the strength of subkey binding signatures.
+        *   Daniel (Proton) supported the general concept of imprints and their use for V4 keys in key transparency.
+        *   Daniel Kahn Gillmor emphasized the narrative benefit: unequivocally stating OpenPGP does not depend on SHA-1 for new mechanisms.
+        *   Eustus argued that the security concerns for SHA-1 fingerprints in this context are low (requires second pre-image attack + key substitution), and adding both fingerprint and imprint might be the "worst outcome," suggesting going with only imprints and extending network protocols for lookup.
+        *   Daniel Kahn Gillmor suggested making the fingerprint optional, allowing immediate deployment with fingerprints for lookup, and a future path for omitting them when imprint-based lookup is widely supported (e.g., by hkp). This could be indicated by a zero-length fingerprint field.
+        *   Bart expressed cynicism about generic imprint lookup and concerns about adding complexity with optional fields, preferring either always including both or dropping one.
+        *   Multiple polls were conducted, revealing a lack of consensus.
+
+    *   **Discussion on Encrypting to Both Replacement and Original Keys:**
+        *   Eustus raised the scenario where a user might want correspondents to encrypt to both a new (e.g., post-quantum) key and an old (e.g., V4) key, due to multi-device support limitations (e.g., phone doesn't support PQ).
+        *   Andrew noted this is a "can of worms," reminiscent of existing issues with handling multiple encryption subkeys on a single key, where OpenPGP lacks consensus. Any solution should adhere to "least surprise."
+        *   Historical context: Commercial PGP had an "Additional Decryption Key" subpacket (ID 10) which failed due to bugs, and GnuPG has an "Additional Decryption Subkey" with unclear semantics.
+        *   Daniel (Proton) suggested that if all devices don't support the new key, perhaps a user shouldn't generate it yet, as there's no security benefit if encryption always targets the weakest link.
+        *   The group agreed this topic is too complex for immediate resolution and requires further discussion on the mailing list, potentially outside the scope of the current draft.
+
+    *   **User Experience for Key Creation:**
+        *   The draft needs to consider how users will create bi-directional signatures (forward and reverse).
+        *   Options include requiring both key materials online simultaneously (restrictive) or supporting creation on separate devices with subsequent confirmation/binding.
+        *   Daniel Kahn Gillmor encouraged implementers to consider how tools like Sop could create and evaluate such bindings for interoperability testing.
+        *   This topic was also deemed too open-ended for a poll and will be discussed further on the list.
+
+    *   **Minor Open Items:**
+        *   **Fingerprint Length Fields:** Necessary for parsing lists of targets, as fingerprint lengths are not fixed for all key versions. Will be added to the next draft.
+        *   **Language Improvements:** Ongoing editorial work.
+        *   **Terminology ("Bike Shedding"):** Shortening "replacement key signaling mechanism" to "replacement key mechanism," and standardizing "class octet" vs. "flags octet."
+
+## Decisions and Action Items
+
+*   **Decision:** The working group decided to **retain a class octet** within the subpacket to manage flags and future semantic variations. (Poll: 0 Yes, 8 No, 1 No Opinion on dropping it).
+*   **Decision:** The working group decided to **drop the explicit version octet** from the subpacket, preferring other mechanisms for extensibility. (Poll: 6 Yes, 0 No, 3 No Opinion on dropping it).
+*   **Action Item (Andrew Gallagher, Daniel Kahn Gillmor):** Develop and propose a mechanism for optionally including fingerprints (e.g., for deduplication when it's the same as the imprint, or for complete omission) for further discussion on the mailing list. One option to be presented will be to proceed with the draft as it currently stands (both imprint and fingerprint always present).
+*   **Action Item (Andrew Gallagher):** Add explicit fingerprint length fields to the next version of the draft to facilitate parsing lists of targets.
+
+## Next Steps
+
+*   **Mailing List Discussion:** Continue the discussion on the mailing list regarding the inclusion and optionality of imprint and fingerprint fields.
+*   **Mailing List Discussion:** Further explore the complex issue of enabling encryption to both replacement and original keys, considering multi-device scenarios and alignment with existing OpenPGP subkey handling. This may be punted to a separate draft or later work.
+*   **Mailing List Discussion:** Discuss user experience considerations for creating bi-directional key bindings.
+*   **Draft Update:** Andrew Gallagher will update the `draft-ietf-openpgp-replacement-key` to incorporate the decisions made (keeping class octet, dropping version octet) and to add fingerprint length fields.
+*   **Future Meeting:** A session for OpenPGP will be requested for the upcoming IETF meeting in Dublin to continue discussion on this draft.

@@ -1,0 +1,87 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI interim meeting continued its focus on Discovery requirements, reviewing previously discussed consensus points and delving into new areas like privacy implications and the trust model for authenticated mappings. Key discussions included finalizing identifier terminology, clarifying the scope of Discovery regarding spam and capability negotiation, and exploring mechanisms to protect querier and query privacy. While several points reached a level of group comfort, the discussion on receiver preferences and the detailed architecture for trusting authenticated mappings highlighted remaining open technical challenges, which will inform the upcoming Discovery Requirements draft for Vancouver.
+
+## Key Discussion Points
+
+*   **Administrative Items**:
+    *   The chair noted the Note Well.
+    *   No agenda bashes were submitted, so the meeting proceeded with the planned Discovery requirements discussion led by John Peterson.
+    *   The chair took notes due to fewer attendees.
+
+*   **Discovery Terminology Clarification**:
+    *   The group discussed replacing "SII" (Service Instance Identifier) and "SSI" (Service Specific Identifier) due to common confusion.
+    *   **Decision**: The terms **CPI (Cross-Platform Identifier)** and **PSI (Platform-Specific Identifier)** were adopted to distinguish between globally routable identifiers and those specific to a single platform. (Previously discussed "SSI" will now be referred to as PSI for consistency).
+
+*   **Review of Previous Consensus Points**:
+    *   **Discovery Providers (DPs)**: Generally expected to be operated by Message Service Providers (MSPs), leveraging their knowledge of users.
+    *   **Authenticated Mappings**: Cryptographic documents linking a user's CPI to an MSP where their identifiers are available. Trust in the signers of these mappings (potentially independent entities) is crucial.
+    *   **Discovery Queries**: Use CPIs as keys. If a PSI is already known for a specific service, Discovery is not needed.
+    *   **DMA Context**: Discovery is considered "extra credit" work beyond DMA mandates, aimed at improving user experience, meaning direct "spirit of DMA" guidance is limited for Discovery.
+    *   **Two-Fold Discovery Problem**:
+        *   **Authentication**: Establishing trust in authenticated mappings (not defining trust roots, but ensuring MSPs trust them).
+        *   **Distribution**: Aggregating and distributing these authenticated mappings. These problems are seen as separable.
+    *   **Architectural Neutrality**: The protocol should be designed to be as neutral as possible regarding who operates the DP and who queries it (e.g., individual handsets vs. MSPs).
+    *   **Agnosticism on Discovery Timing**: The protocol should work whether Discovery happens in real-time during message sending or during account creation/contact book synchronization.
+    *   **Fairness in Discovery**:
+        *   Concerns were raised about the potential for DPs operated by MSPs to introduce bias (e.g., preferring their own services).
+        *   General sentiment (though with some dissent from Echer) was that this is difficult to technically prescribe and is more a matter for policy/regulatory bodies.
+    *   **Discovery is Not Capability Negotiation**: Discovery's role is not to find common capabilities between platforms or perform offer/answer processes. It's about finding MSPs for a CPI.
+
+*   **Receiver Preferences**:
+    *   The group indicated a preference for receivers to set preferences over senders.
+    *   A desire to keep the mechanism simple and avoid complex policy documents (like those in real-time communications).
+    *   A need for receivers to sort incoming requests into "contexts" (e.g., work vs. personal contacts).
+    *   No clear consensus was reached on *what* receivers can express, or *who* (DP, MSP, endpoint) enforces these preferences.
+    *   Echer suggested a model where an endpoint/MSP consumes a list of eligible mappings (potentially annotated with context like "work phone") and sorts them locally, with "enables" or "acknowledges" being more appropriate than "enforces."
+    *   Tim raised a concern about DPS synthesizing user preferences, suggesting a need to prevent DPS from arbitrarily forging recipient preferences. DKG supported the idea of preferences being signed by a user identity.
+    *   Femi highlighted privacy concerns with broadcasting preferences if they are stored globally across DPs.
+
+*   **New Discussion Points: Privacy and Trust**:
+    *   **Sensitivity of Mappings (CPI to MSP)**:
+        *   Travis asserted this information (a CPI being active at a given MSP) is sensitive.
+        *   Echer and DKG argued that, while sensitive, it's unclear how to protect it effectively from enumeration attacks given the potential scale of DPs and the "permissionless" nature of becoming an MSP. Echer questioned if rate limiting is sufficient.
+        *   John noted that some gatekeeper providers consider this information to be effectively public.
+        *   Rowan suggested that a "Discovery-less" MIMI protocol, avoiding CPIs, might sidestep this problem.
+    *   **User Consent for Mapping Creation**:
+        *   Travis suggested the protocol should be capable of both consent and non-consent, leaving the decision to MSPs/DPs, acknowledging legacy user bases.
+        *   Echer emphasized the difficulty of technical requirements for consent due to the client-MSP interaction being out of scope. He suggested aiming for compatibility with end-to-end semantics (e.g., user digital signature) even if practical implementations might be MSP-mediated.
+        *   Jonathan highlighted the user experience of actively participating in a verification process (e.g., OTP), implying it's not just a bulk publication.
+        *   DKG proposed that mappings should be certified/signed by the user's own long-term key (a "self-sig") to ensure user consent and create backpressure against arbitrary publications.
+        *   Alyssa asked if consent is per-MSP or per-CA; John responded that it would be per-MSP since the mapping links a CPI to an MSP.
+    *   **Spam Prevention for CPIs**:
+        *   John noted that CPIs (like phone numbers) are "front door" identifiers, inheriting existing spam problems from other networks. He questioned if Discovery has a spam prevention obligation.
+        *   Echer argued against making spam prevention a strong requirement for Discovery, stating that concealing identifiers has thin evidence of effectiveness and that large providers can often effectively enumerate anyway.
+        *   Travis agreed it's not a strong requirement, suggesting basic rate limiting but leaving robust spam prevention to post-discovery mechanisms within providers.
+        *   **Decision**: There was a general sense that Discovery is not responsible for **spam prevention** aimed at CPIs; this is a post-Discovery issue.
+    *   **Protection Against Data Collection Threats (Correlation)**:
+        *   There was group agreement on the obligation to prevent correlation threats between Discovery queries and messages.
+        *   **Decision**: For privacy, the requirements should mandate either **hiding the querier's IP address** from the MSP/DP (e.g., via IP blinding/Oblivious HTTP with an independent trusted party) OR **hiding the data being requested by the MSP from the DP** (e.g., via Private Information Retrieval - PIR).
+        *   Discussion on practicalities included the need for additional trusted parties for IP blinding, the "hairy" threat models, and the "social graph" leakage (who knows who is talking to whom). DKG asserted that protecting the social graph is more important than hiding the CPI-MSP binding if a tradeoff is necessary.
+
+*   **Trust and Identity: Making Authenticated Mappings (Who and How?)**:
+    *   **Coupling CPIs with MIMI Identities**: There was an acknowledged desire for CPIs (when discovered) to have a complementary relationship to MIMI identities for end-user identity assurance in communications.
+    *   **Trusting Mapping Creation**:
+        *   John presented a strawman model involving a **three-way handshake**: User, MSP, and an independent **ID Prover (like a Certification Authority)**.
+        *   In this model, the ID Prover (e.g., for E.164 numbers) would send a code to the user (e.g., SMS), the MSP would relay it back, and the ID Prover would then issue a credential binding the CPI to the MSP, confirming user consent/ownership.
+        *   Echer discussed the "physics" of such a system, noting that for CPIs like SMS/email, the user is inherently involved as clients cannot easily intercept these messages. He also raised the question of the cardinality of cryptographic credentials (one per user vs. one per user-MSP pair).
+        *   DKG clarified that separate MLS keys for different CPI-MSP pairings are acceptable, but each MIMI identity should agree to its mapping to a CPI. He reinforced the need for the user's keying material to self-agree to the mapping to prevent arbitrary publications by MSPs.
+        *   Giles and Jonathan raised operational concerns: Cadence/timing/expiry of ownership (e.g., number recycling, user passively stopping service), which are significant but exist regardless of the mapping architecture.
+        *   Tim expressed concern about the volume and cost of requests a CA-like "ID Prover" would need to handle if it were involved in every transaction, but John clarified it would primarily be an enrollment function, not per-query.
+
+## Decisions and Action Items
+
+*   **Decision**: The group agreed to use **CPI (Cross-Platform Identifier)** and **PSI (Platform-Specific Identifier)** as the preferred terminology for identifiers moving forward.
+*   **Decision**: The Discovery protocol design should strive for **architectural neutrality** regarding the operation of Discovery Providers and the entities querying them.
+*   **Decision**: Discovery is explicitly **not responsible for common capability negotiation** between platforms.
+*   **Decision**: Discovery is explicitly **not responsible for preventing spam** directed at CPIs; this is considered a post-Discovery concern.
+*   **Decision**: To prevent correlation threats during Discovery, the requirements will mandate either **IP blinding** (or similar mechanisms to hide the querier's IP from the MSP/DP) OR **Private Information Retrieval (PIR)** (or similar mechanisms to hide the queried data from the DP).
+*   **Action Item**: John Peterson, Giles Clark, and Femi Olumofin will lead the effort to draft an updated Discovery Requirements document for discussion and potential adoption ahead of the Vancouver IETF meeting.
+
+## Next Steps
+
+*   The next MIMI interim meeting (in two weeks) will focus on Mimi Protocol issues, including scrubbing issues and Pull Requests on relevant documents.
+*   Rowan will gather input on a privacy threat model for the Mimi Protocol and seek implementer feedback on the importance of external commits.
+*   The consensus call on the wire encoding format for BEI content is concluding today. Participants are encouraged to provide feedback on the list regarding TLS Presentation Language versus CBOR.

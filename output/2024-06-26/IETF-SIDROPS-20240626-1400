@@ -1,0 +1,68 @@
+# [SIDROPS](../wg/sidrops.html)
+
+## Summary
+
+The SIDROPS Working Group met to discuss the status of several critical drafts related to RPKI and BGP security. Key discussions focused on the ASPA verification draft, including its terminology, structure, and the implications of its AFY-agnostic design, as well as the ASPA profile draft's recommendations for managing large numbers of provider ASNs. The RDP same-origin policy draft was also discussed, with updates on its Working Group Last Call and a final comment on clarifying the mitigated threat. Unfinished agenda items will be carried over to the IETF 120 meeting in Vancouver.
+
+## Key Discussion Points
+
+### ASPA Verification Draft (draft-ietf-sidrops-aspa-verification)
+
+*   **Ruediger's Feedback:** Ruediger raised concerns regarding terminology (preferring "validation" for AS path checks and reserving "verification" for BGPSEC), document structure, and the adequacy of the security considerations section. He particularly questioned the implications for operators of the AFY-agnostic approach, especially concerning incongruent IPv4 and IPv6 AS topologies.
+*   **Yoav's Response on AFY-Agnostic:** Yoav reiterated the Working Group's consensus from June 2023 to proceed with an AFY-agnostic approach as the minimum viable product. This decision was based on benefits for BGP implementations (easier performance) and operators (reduced misconfiguration). He acknowledged the need for better explanations of implications, suggesting an appendix enumerating examples of potential incongruence.
+*   **Randy's Comment:** Randy suggested incorporating the discussion of IPv6/IPv4 neighbor set differences into the security considerations, given that a third of IPv6-enabled ASes have different neighbor sets than their IPv4 counterparts.
+*   **Shri Ram's Clarification on Terminology:** Shri Ram explained that current drafts use "validation" for X.509 certificate validation and "verification" for the use of validated ASPA/ROA objects in path checks. He also noted that Ruediger's concerns regarding the security considerations section had been addressed in recent GitHub updates, expanding on different types of path manipulations ASPA cannot detect.
+*   **Kireeti's Concerns:** Kireeti expressed concern about removing AFY from BGP mechanisms, highlighting the potential dangers with new SAFI coming up and the evolving cloud peering landscape. He supported adding an appendix to discuss peering implications.
+*   **Olaf's Critique of AFY-Agnostic:** Olaf questioned if the AFY-agnostic approach could make ASPA useless if V4/V6 topologies continue to diverge. He suggested that relying on implementation ease as a primary design driver could be a "slippery slope."
+*   **Yoav's Defense of AFY-Agnostic:** Yoav argued against extrapolating design from default-free zone data, pointing out that AFY-agnostic simplifies dual-stack evolution for operators by not requiring separate ASPA declarations for IPv4 and IPv6. He also clarified that the ASPA specification explicitly limits its scope to IPv4 and IPv6 unicast.
+*   **Shri Ram's Support for AFY-Agnostic:** Shri Ram added that AFY-agnosticism supports traffic engineering flexibility and errs on the "safe side" by potentially declaring an invalid path as valid, which is less harmful than declaring a valid path as invalid. Claudio echoed this sentiment, emphasizing operator adoption ease.
+*   **Shri Ram's Presentation on Draft Updates:**
+    *   Addressed all comments from the previous Working Group Last Call and new feedback from IETF 116 in Prague.
+    *   Expanded security considerations to explain three types of shortcomings ASPA has regarding path manipulations.
+    *   Clarified handling of "Mutual Transit" and "Complex" peering relationships by sticking to "BGP session types" rather than defining new BGP roles.
+    *   Confirmed the core algorithm's correctness (after a bug fix in 2021).
+    *   Presented detailed explanations of invalid detection (requiring two "not Provider" hops facing each other) and distinguished between Upstream and Downstream path verification.
+    *   Discussed recommendations for Mutual Transit and Complex relationships (registering as providers if applicable, airing on the safe side).
+    *   Described specific path manipulation shortcomings ASPA cannot detect (e.g., path shortening, AS removal/addition), noting BGPSEC would be needed for these.
+    *   Noted two diverging versions on GitHub (PR 24 and Alexander's master), with PR 24 being more detailed and Alexander's more concise. Requested WG help to converge.
+*   **Claudio and Matthias on Documentation:** Claudio stated the algorithm is stable, and the current discussion is primarily about documentation style (concise vs. detailed explanations). He suggested an appendix for extra explanations. Matthias (implied from "tasillo and others") proposed separating the algorithm section into an "easy to implement" version and one explaining the "semantics of valid, invalid, and unknown" to cater to different needs and foster better understanding.
+
+### ASPA Profile Draft (draft-ietf-sidrops-aspa-profile)
+
+*   **Version 18 Update:** Yoav presented version 18, which is considered stable and implemented by several parties.
+*   **DoS Attack Mitigation:** The main change is a note recommending RPKI validator implementers be aware of potential DoS attacks using ASPA objects with an excessive number of provider ASNs. While the ASN.1 profile doesn't impose a limit, RTR has a 16-bit field (max 65535).
+*   **Validator Limits:** The draft recommends validators collate all ASPA objects for a customer ASID, impose a reasonable limit (e.g., 4,000 to 10,000), log errors if the limit is exceeded, and *not* emit partial lists.
+*   **Kireeti's Pacing Query:** Kireeti asked if pacing data to RPKI routers to avoid BGP flaps should be considered. Yoav noted that the current RTR design makes pacing difficult and that the goal of the limit is to prevent resource consumption by overly large objects.
+*   **Olaf's Comments:** Olaf confirmed the RTR limit of 65,535 but noted that other mechanisms (like file system-based transport) lack such limits, making validator-imposed limits crucial. He suggested a configurable maximum limit in the profile, though Yoav explained that a limit on a *single* object in the profile wouldn't prevent multiple objects from exceeding the overall validated payload limit. Ruediger suggested configurable limits for validators with warnings.
+
+### RDP Same Origin Policy Draft (draft-ietf-sidrops-rpki-rrdp-same-origin)
+
+*   **Problem Statement:** Yoav presented the issue where RDP XML allows referencing snapshots or deltas across different FQDNs. This enables a tiny publication point to increase resource consumption on other, larger publication points (a simple DoS vector).
+*   **Solution:** The draft proposes a "same-origin policy" (a concept from the web) to forbid following references or HTTP redirects to resources hosted on different FQDNs. This ensures publication point operators bear the cost of hosting their own data.
+*   **Implementation Status:** Key RPKI client, routinator, rpki-prover, and Fort development teams are in agreement. RPKI Client and Routinator have already released implementations.
+*   **Impact:** The solution is incrementally deployable, backwards compatible (existing RPKI deployments are already compliant), and reduces DoS risk as relying parties upgrade.
+*   **Working Group Last Call:** The draft is currently in Working Group Last Call, closing July 1st.
+*   **Draft Update:** Based on Alberto's feedback, detailed explanations of *how* the exploitation works were removed from the draft, as they were deemed confusing.
+*   **Randy's Request:** Randy suggested re-adding some documentation of the specific threat/how the exploitation works to make the motivation clearer.
+
+## Decisions and Action Items
+
+### Decisions
+
+*   The Working Group (re-affirming June 2023 consensus) will continue with an AFY-agnostic approach for ASPA verification as the minimum viable product.
+*   The ASPA Profile draft recommends RPKI validator implementers enforce reasonable limits (e.g., 4,000-10,000) on the number of provider ASNs per customer ASID, log errors if exceeded, and **not** emit partial lists.
+*   The RDP Same Origin Policy draft is currently in Working Group Last Call.
+
+### Action Items
+
+*   **Yoav (ASPA Verification):** Add an appendix to the ASPA verification draft explicitly detailing the implications of the AFY-agnostic approach for operators, including examples of incongruent AS topologies and scenarios where ASPA provides/does not provide protection.
+*   **Shri Ram, Alexander, Claudio (ASPA Verification):** Convene a focused discussion or meeting to converge the two diverging GitHub versions (PR 24 and Alexander's master) of the ASPA verification draft. The goal is to balance detailed explanation with conciseness, potentially separating core implementation logic from intuitive semantics, with input from additional reviewers (e.g., Matthias, Tasillo).
+*   **Chairs (SIDROPS, IDR):** Cross-reference the ASPA verification draft with IDR and consider presenting it in a joint session once it matures further.
+*   **Yoav (RDP Same Origin Policy):** Re-add more specific, yet concise, documentation about the threat model and exploitation mechanism that the same-origin policy is designed to mitigate.
+*   **Chairs:** Carry over remaining agenda items to the IETF 120 agenda in Vancouver.
+
+## Next Steps
+
+*   **ASPA Verification Draft:** The co-authors will work to converge the differing versions and address the documentation style, potentially aiming for a renewed Working Group Last Call or direct publication request once resolved.
+*   **ASPA Profile Draft:** The draft will continue its progression towards publication, with implementations monitoring the impact and effectiveness of the recommended provider ASN limits.
+*   **RDP Same Origin Policy Draft:** The Working Group Last Call will conclude on July 1st, after which final feedback, including Randy's request, will be incorporated to prepare the draft for IESG review and publication.

@@ -1,0 +1,56 @@
+# [TOOLS](../wg/tools.html)
+
+## Summary
+
+The TOOLS working group discussed significant progress on infrastructure transitions, including the successful migration of core IETF applications and wikis, and an updated plan for the mail processing chain migration. Key technical challenges related to PDF generation on the DataTracker and IPv6 support for outbound email were highlighted. The group also touched on data transparency initiatives and a recent update to the IETF Privacy Statement.
+
+## Key Discussion Points
+
+*   **Infrastructure Transition Progress:**
+    *   Major applications (DataTracker, www.ietf.org, mail archive, rsync, IMAP services) were successfully migrated on June 20th, completing a scheduled 4-hour outage in two hours. Few post-transition issues were reported.
+    *   Increased visibility into individual service behavior post-transition has already identified opportunities for optimization and redesign.
+    *   Authors' and chairs' wikis were moved from AWS to DigitalOcean.
+    *   The IETF infrastructure is strategically shifting away from AWS towards DigitalOcean and Azure, driven by lower costs, better cost control, and reduced management overhead for simpler services.
+    *   Deployment mechanisms were simplified, moving from Helm-based to Kustomize-based, significantly accelerating deployment capabilities. CI/CD pipelines now deploy to Azure (staging) and DigitalOcean (production), demonstrating cloud provider independence.
+
+*   **Mail Processing Chain Migration:**
+    *   The planned end-of-June cutover for the mail processing chain was delayed due to caution regarding system readiness, particularly given past Mailman 3 migration challenges.
+    *   A revised transition model was outlined: Mailman will be split into its own service. Non-meeting affecting lists will be transitioned first (starting with test lists), followed by other non-meeting lists before IETF 120, and all remaining lists after IETF 120.
+    *   **IPv6 Support for Mail:** Initial lack of IPv6 outbound support for email was noted.
+        *   Mark from Serius indicated that IPv6 *receiving* capability on MX and Mailman hosts is in place. He believes the issues for *sending* email over IPv6 from AWS might be resolved but needs confirmation from his engineering team.
+        *   The IETF's intent is to incrementally move towards full IPv6 support for all systems where feasible, acknowledging that the initial transitional phase may not offer complete support.
+        *   A sense of those present indicated a strong long-term desire for all IETF email to operate over IPv6.
+
+*   **PDF Generation Performance Issues:**
+    *   Analysis revealed that PDF generation for Internet Drafts consumes 10-15% of DataTracker's processing load.
+    *   Some PDF generation calls do not return, causing worker processes to be killed and temporarily reducing DataTracker performance.
+    *   Rate limiting has been implemented to mitigate impact from heavy crawlers requesting PDFs.
+    *   A discussion is ongoing on the `tools-discuss` mailing list (cross-posted with `wgchairs`) regarding whether PDF documents should continue to be provided at all. Mixed opinions have been observed.
+    *   Technical challenges: The current implementation builds PDFs on request, blocking the HTTP processing path. This model, intended for dynamic regeneration as PDF tools evolve, places a heavy, often unanticipated, load on the system.
+    *   Proposed solutions include moving PDF computation out of the HTTP request path and exploring pre-computation for recent documents (especially those with XML source) at submission time.
+    *   Simply scaling up resources (e.g., higher-tier CPU in DigitalOcean) is unlikely to fully address the issue, particularly for non-returning computations.
+
+*   **Operational Data Transparency:**
+    *   The tools team has increasing access to valuable operational data (e.g., via Grafana).
+    *   A desire was expressed to share this data more openly with the community, aligning with the IETF's value of transparency, while acknowledging the need for trust and appropriate access controls.
+    *   Community members interested in accessing this operational data were encouraged to come forward.
+
+*   **Privacy Statement Update:**
+    *   The IETF Privacy Statement has been corrected to accurately reflect the use of the HTML5 web storage API (local storage and session storage) by several IETF systems, which was previously misstated as not being used.
+
+## Decisions and Action Items
+
+*   **Decision:** The mail processing chain migration plan has been adjusted to a phased rollout:
+    *   Finishing development of the transitional mail system.
+    *   Splitting Mailman into its own service.
+    *   Transitioning non-meeting affecting lists first (test lists, then other non-meeting lists) *before* IETF 120.
+    *   Transitioning all remaining lists *after* IETF 120 ends.
+*   **Action Item:** The community is encouraged to participate in the ongoing discussion on `tools-discuss` regarding the future provision of PDF-formatted Internet Drafts.
+*   **Action Item:** Community members interested in gaining access to operational data (e.g., via Grafana) should contact the tools team.
+
+## Next Steps
+
+*   Continue extensive testing of the mail processing chain migration, with a target go-live by the end of the month (after IETF 120).
+*   Further technical exploration and potential redesign of the PDF generation process, focusing on moving computation out of the HTTP request path and exploring pre-computation strategies.
+*   The IETF 120 Code Sprint will take place immediately before the IETF 120 meeting.
+*   The IETF 120 meeting will follow.

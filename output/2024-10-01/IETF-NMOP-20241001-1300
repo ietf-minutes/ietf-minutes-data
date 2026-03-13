@@ -1,0 +1,103 @@
+# [NMOP](../wg/nmop.html)
+
+## Summary
+
+This NMOP inter-meeting focused on clarifying the digital map concept and its terminology, consolidating requirements, and discussing initial assessment plans. Key discussions revolved around the precise definition of "topology" and "digital map," the scope of information included in the core digital map, and how existing YANG models (RFC 8345, RFC 8795) can serve as foundations or require extensions. Two assessment approaches were presented: a shared code implementation using RFC 8345 augmentations and a proposal for leveraging T-Topology (RFC 8795) with profiling and view mechanisms.
+
+## Key Discussion Points
+
+### Introduction and Document Status
+
+*   The inter-meeting had three objectives: agree on concept definitions, consolidate requirements, and increase visibility on assessment experiments/options.
+*   The `draft-ietf-nmop-digital-map` document was recently adopted by the working group.
+*   A new milestone for the digital map draft aims for submission to the IESG by June next year, targeting WG Last Call on requirements and definitions by April/May.
+
+### Concept and Terminology Discussion (Presented by Olga)
+
+*   **Proposal for Digital Map Terminology**:
+    *   Keep the term "digital map" but define it better and independent of the "digital twin" concept (which is considered one use case).
+    *   Clarify that the digital map includes only core multilayer topology and links to other YANG modules and data.
+    *   Issues opened on GitHub (e.g., vague term, relation to digital twin, topology definition) are being tracked.
+*   **Definition of "Topology"**:
+    *   A poll of the room and discussion indicated that "topology" lacks a universally agreed IETF definition, with many RFCs using it without formal definition.
+    *   A proposed definition for "topology" was presented (physical or logical nodes/links/interfaces and their relationships) along with "topology layer."
+    *   Concerns were raised about potential confusion with existing uses of "topology" in other RFCs (e.g., RFC 8345, RFC 8795).
+    *   Suggestions included defining "digital map topology" or simply focusing on "topology layer" if "topology" alone is too generic.
+    *   A sense of those present indicated a need to clarify the relationship between "digital map" and existing topology concepts and use cases (e.g., T-Topology).
+*   **Definition of "Digital Map"**:
+    *   The draft proposes: "a basis for operative network and service models that provides topological information of the network. It provides the core multilayer topology and how to connect them to the other models/data."
+    *   References to "digital twin" definitions and architecture were removed from the draft.
+    *   It was reiterated that the digital map is not the "full model of all data" but a layered, multi-layer topological model from bottom to top, with links to other models/data.
+    *   Digital twin is now listed as just one of the use cases.
+
+### Requirements Discussion (Presented by Olga)
+
+*   **Requirements Categories**: Requirements were previously grouped into Core, Design, and Architectural. The rationale was explained, but a discussion on the continued usefulness of these categories is needed.
+*   **Core Requirements**:
+    *   **Basic Model**: A basic model with network, node, link, and interface entity types should be understandable without deep knowledge of specific augmentations (referencing RFC 8345 intent). A discussion arose regarding the historical split and interaction between RFC 8345 (network topology) and RFC 8795 (T-Topology) and their respective capabilities for multi-layer and multi-domain modeling.
+    *   **Layered Topology**: Support for layers from physical up to service and application. A key discussion point was the need to correlate client-layer links (e.g., VPN) to their underlying server-layer paths, especially for multi-layer visualization and what-if analysis. Challenges with dynamic paths and their inclusion in the core map were noted.
+    *   **Open Programmable Digital Map**: Provide both read operations (views) and write operations (offline simulations, what-if scenarios). The discussion again highlighted the need for traffic information for meaningful what-if analysis, with some suggesting this is an application concern, while others argued the core map needs to provide correlations to support it.
+    *   **Standard API**: A standard, multivendor API is needed for read/write, queries, and linking to external models, addressing identified gaps in existing core models.
+    *   **Cross-Domain Common API**: The same API should apply across different administrative domains (e.g., access, core, data center, vendor-specific).
+    *   **Semantics**: The digital map needs adequate topological semantics for layering, roles (primary/backup), and directional properties, but not necessarily complex semantics for path computation (which might reside in controllers/knowledge graphs).
+    *   **Layer Navigation**: Support intra- and inter-layer relationships, acknowledging some existing support and gaps in RFC 8345.
+    *   **Extensibility with Metadata**: Allow extending the digital map with metadata (e.g., labels) for information not covered by YANG.
+    *   **Connect to Other Models**: A more generic requirement to interact with other models (YANG and non-YANG) rather than "pluggable modules."
+    *   **Graph Traversal**: Clarification is needed on whether the API should optimize for graph traversal or if applications will retrieve data and perform traversal on their own graph storage.
+    *   **Scope (Only Topological)**: The digital map should contain *only* topological information and adequate pointers to other functional data/models (e.g., configuration, assurance metrics), not all of that data itself.
+    *   **Properties/Attributes**: Identify core properties that belong in the digital map (e.g., process ID, area ID for ISIS) versus those that are external.
+    *   **Conditional Retrieval**: Allow operators to retrieve specific parts of the digital map based on conditions.
+    *   **Geospatial and History**: Support geospatial location (referencing RFC 9179) and historical snapshots with timestamps.
+    *   **Usability**: The API should be simple to understand and integrate, allowing application developers to work with the core model without needing to comprehend all augmentations.
+*   **Identified Gaps**: Missing semantic support and supporting relations for multi-point, bidirectional, and cross-domain partitioning were noted as potential future requirements.
+
+### Assessment Plan: ITF YANG Modules (Presented by Sherif)
+
+*   A public code repository implementing RFC 8345 with augmentations (Layer 2, Layer 3 Unicast, ISIS) was shared.
+*   The implementation leverages configuration files to define devices, Neo4j DB, and Netconf scenarios (collecting data from devices or using pre-existing files).
+*   Internal models (yellow for exposed API-like structures, green for internal implementation) are mapped from device data.
+*   The `knowledge` component includes mapping logic (extracting/generating entities and relations) to populate the graph database.
+*   Demonstrated Neo4j output showing Layer 2 connectivity, ISIS neighbors, and supporting relations for multi-layer traversal. An API response example (filtered and full) was shown.
+*   **Next Steps**: Implement OPF, develop a capacity planning example, add SRv6, and connect topology to configuration modules. Feedback and usage of the code are encouraged.
+
+### Assessment Plan: T-Topology (Presented by Italo)
+
+*   T-Topology (RFC 8795) can support digital map use cases, but clarification is needed on the exact relationship between "digital map" and "T-Topology" (subset, superset, or intersecting set).
+*   For a "full lifecycle" digital map, T-Topology might need additional information not currently defined.
+*   RFC 8795, being an augmentation of RFC 8345, defines WDM, MPLS, etc., which are critical for multi-layer networks.
+*   **Existing Implementations/PoCs**:
+    *   Two ETSI plugtests for multi-domain microwave networks successfully used a simple profile of T-Topology for inter-domain topology discovery and multi-layer navigation. This highlighted the benefit of profiling YANG models.
+    *   A China Mobile event demonstrated multi-domain OTN networks with Huawei and Nokia, using T-Topology for service setup.
+*   **Concerns about T-Topology Complexity**:
+    *   Not all use cases require implementing the entire T-Topology model; profiling is needed.
+    *   Proposes submitting a **problem statement to the NETMOD WG** to define a standardized mechanism for profiling existing YANG models to prevent proliferation of new, overlapping models.
+    *   Information formatting: T-Topology information (e.g., bidirectional links, connections over a link) might not be explicitly formatted as desired by some digital map applications.
+    *   Proposes submitting another **problem statement to the NETMOD WG** to standardize "application-specific views" of existing YANG data stores to avoid creating new models solely for different formats.
+*   **Hackathon**: A hackathon for bidirectional links and multi-layer navigation is proposed, but resources are not yet secured.
+
+### Summary of Open Discussion Points (Chairs)
+
+*   **Hackathon Coordination**: Need more detailed planning and coordination between Sherif's and Italo's proposals for hackathons for the next IETF meeting.
+*   **Terminology (Topology)**: Two camps exist on whether a formal definition for "topology" is needed, and if so, whether it should be IETF-wide or restricted to NMOP, and to clarify the link between RFC 8345 and RFC 8795. This discussion will continue on the mailing list.
+*   **Requirements (Dynamic Information)**: Clarification is needed on whether dynamic information should be part of the core digital map or excluded. Further feedback on the mailing list is encouraged.
+*   **Requirements Cleanup**: Some requirements appear redundant and require cleanup.
+
+## Decisions and Action Items
+
+*   **Decision**: The working group will continue to use the term "digital map" but refine its definition to be independent of "digital twin" and explicitly state its focus on core multilayer topology and links to other models/data.
+*   **Action Item (Adrian)**: Review the proposed definition of "topology" against existing RFCs and provide feedback to the mailing list.
+*   **Action Item (Olga)**: Drive a mailing list discussion on:
+    *   The necessity and scope of a formal "topology" definition within IETF/NMOP.
+    *   Clarifying the relationship between `ietf-network-topology` (RFC 8345) and `ietf-te-topology` (RFC 8795) in the context of digital map.
+    *   The scope of dynamic information within the core digital map.
+*   **Action Item (Olga)**: Review and refine the requirements, including consolidating redundant ones, making the "pluggable modules" requirement more generic to "connect to other models," and revisiting non-functional/architectural requirements to ensure they are API-focused.
+*   **Action Item (Sherif and Italo)**: Coordinate discussions and plans for hackathon activities (e.g., OPF, capacity planning, bidirectional links, multi-layer navigation) for the upcoming IETF 121 meeting.
+*   **Action Item (Italo, or interested parties)**: Consider drafting and submitting problem statements to the NETMOD WG regarding the need for standardized YANG model profiling and application-specific views of YANG data stores.
+
+## Next Steps
+
+*   Continue the discussion on terminology (especially "topology" definition and its scope) and requirements on the mailing list. Olga will lead efforts to converge on these points by the next IETF meeting.
+*   Olga to integrate feedback from the inter-meeting into the draft, ensuring all scope concerns are addressed and submitting a new version prior to IETF 121.
+*   Sherif and contributors will continue with their implementation, focusing on OPF, capacity planning, SRv6, and linking topology to configuration modules, encouraging community feedback on the shared code.
+*   Italo and collaborators will further develop hackathon plans and consider drafting problem statements for NETMOD.
+*   All participants are encouraged to review the updated draft and provide further input on the requirements.

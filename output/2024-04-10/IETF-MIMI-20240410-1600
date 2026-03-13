@@ -1,0 +1,64 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+This interim meeting focused on three key areas: a bug scrub of the MIMI Architecture and Protocol drafts, a discussion on a new proposal for metadata minimization, and a brief overview of the MIMI content format. Key discussions revolved around the explicit consent mechanism, the complexities and requirements of abuse reporting, and a novel "Tree Wrap" mechanism for privacy-preserving credential management. While no major protocol decisions were finalized, several pull requests were reviewed, and directions for further work were established.
+
+## Key Discussion Points
+
+*   **MIMI Architecture Draft Status:** The MIMI Architecture draft currently has no open issues or pull requests. A tracking issue for metadata privacy will be filed.
+*   **MIMI Protocol - Consent Mechanism (Pull Request):**
+    *   **Proposal:** Introduce primitives for requesting, cancelling, granting, and revoking consent between users. This primarily targets the initial connection establishment phase (e.g., adding a user to a group) and does not inherently affect existing group memberships if consent is revoked.
+    *   **Privacy Concerns:** Discussion included potential privacy implications, such as not wanting to leak information about a user denying consent.
+    *   **Conclusion:** The group agreed to merge this PR as a starting point, with the understanding that the author would resolve minor conflicts and further iterate on details.
+*   **MIMI Protocol - Abuse Reporting (Pull Request):**
+    *   **Mechanism:** Proposed mechanism involves reporting specific abusive MLS messages, including decryption keys and nonces.
+    *   **Forgery Risk:** Significant discussion on whether a complainant could forge abusive content.
+        *   MLS signatures, bound to group ID and epoch, offer some protection against forgery compared to AAD.
+        *   Concerns were raised regarding the ability of a provider (especially in a pseudonymous context) to verify signatures without linking to real identities, which risks de-anonymization. Message franking was suggested as a potential solution.
+        *   The chairs noted that defining such authenticity mechanisms for abuse reports, particularly within the MLS context, is valuable work for the MIMI WG.
+    *   **Report Destination:** Discussion covered potential destinations for abuse reports: the reporter's provider (client-to-provider interaction, likely out of MIMI scope), the Hub (for room policy enforcement, reputation management), the abusive user's provider, and other involved providers.
+        *   It was suggested that the mechanism should be a generic "send report to provider," potentially anonymously, with providers deciding on usage based on legal/regulatory requirements.
+    *   **Charter Scope:** The charter explicitly excludes "metadata processing to manage spam and abuse" and "development of anti-spam or anti-abuse algorithms." However, defining the metadata to be exchanged and mechanisms for its authenticity (e.g., forgery protection) is considered within scope, as these are inputs to those out-of-scope processes.
+    *   **Client vs. Server Policy:** The need to support abuse mitigation for existing messaging services was highlighted. A concern was raised about avoiding a situation where MIMI implicitly requires large legal teams for participation by externalizing too much responsibility for abuse handling to individual providers without clear protocol mechanisms.
+*   **MIMI Protocol - Internal Identifiers (Pull Request):**
+    *   **Purpose:** Provide a mechanism for a client to map a human-meaningful or user-visible service-specific identifier (e.g., handle, email, phone number) to a purely protocol-internal identifier (e.g., for key package requests) on a *specific, known provider*.
+    *   **Distinction from Discovery:** This mechanism is distinct from provider discovery; it assumes the target provider is already known. It addresses cases where a user might explicitly tell someone "I'm on [Provider X] with [identifier Y]."
+    *   **Identifier Formats:** Discussion on the necessity of enumerating identifier types (OIDC claim, email, etc.) versus using an opaque string. Providing specific types could aid searching on the provider.
+    *   **HTTP Method:** The current PR uses a GET request with a body, which is non-standard and would need to be changed (e.g., to POST).
+*   **MIMI Metadata Minimization Proposal (Draft):**
+    *   **Goals:** Prevent remote service providers from tracking a user's activity *across groups* by employing pseudonyms. It differentiates between a user's local service provider and remote hubs.
+    *   **Non-Goals:** Complete anonymity, obfuscating network traffic patterns, or hiding in-group activity (the server can still see actions of a pseudonymous user within a single group).
+    *   **Mechanism:** Uses "pseudonymous credentials" containing a user pseudonym, client pseudonym, per-group signature public key, and an *encrypted real credential*.
+    *   **Challenges:** Authenticating group members and managing/distributing these credentials.
+    *   **"Connection" Notion:** The approach relies on a notion of "connections" (similar to a contact list) between users, allowing a connected user to reveal the real identity associated with a pseudonym. An alternative was proposed where a user could reveal their identity within a group at any time, not necessarily requiring a prior connection.
+    *   **Connection Establishment (Sketch):** A "seal senders" inspired approach was sketched, where clients publish connection initiation keys. An initiator creates a temporary group to securely exchange a "connection key" (linking real and pseudonymous identities) with a responder.
+    *   **Key Package Uploads:** Challenges arise with multiple clients for a user and ensuring consistent user-level pseudonyms across key packages used in a group. Last Resort Key Packages (reused when others run out) could leak cross-group identity without careful management (e.g., cycling multiple Last Resort packages).
+    *   **Credential Key Management ("Tree Wrap"):** A novel "Tree Wrap" protocol was proposed to manage the keys for decrypting the "real credentials" within pseudonymous credentials.
+        *   **Goals:** Provide efficient forward secrecy (new members don't see old keys) and post-compromise security (leaving members can't track future changes) for these credential encryption keys.
+        *   **Mechanism:** Uses a tree-wrapping structure similar to MLS's ratchet tree, allowing logarithmic complexity for add/remove/update operations. New joiners would download the tree (adding ~32 bytes to group state download).
+    *   **Open Problems:** Key rotation (connection keys, credential keys, user-level pseudonyms within groups) and potential integration with MLS virtual clients.
+    *   **Group Discussion on Approach:**
+        *   **Server Visibility:** Applying the "Tree Wrap" directly to the MLS ratchet tree could offer more privacy but would significantly reduce the server's ability to perform policy checks or track commits. Service providers are generally unwilling to rely entirely on client-side policy control.
+        *   **Value Proposition:** The work was praised as innovative for next-generation encrypted group protocols and privacy protection, but questions were raised about its applicability to DMA/interoperability with existing silos given its reliance on a more robust identity/pseudonym infrastructure. It could potentially serve as an alternative, more private "MIMI mode."
+*   **MIMI Content Format Comparison (TLS Presentation Language vs. CBOR):**
+    *   **Background:** A previous straw poll for the concrete syntax was split between TLS Presentation Language (TPL) and CBOR.
+    *   **Comparison:** A brief comparison of TPL and CBOR representations for `MimiContentHeader` and `MimiContentMessage` showed minor size differences (TPL slightly smaller for some cases due to less need for explicit type/length elements within vectors).
+    *   **Request for Feedback:** The author requested feedback on ensuring the most idiomatic representation in both TPL and CBOR, as well as comments on performance and library support.
+
+## Decisions and Action Items
+
+*   **Consent Mechanism PR:**
+    *   **Decision:** Merge the Consent PR as a starting point.
+    *   **Action Item:** Rowan to resolve current conflicts in the Consent PR.
+*   **Abuse Reporting PR:**
+    *   **Action Item:** Rowan to revise the Abuse Reporting PR, specifically to address the reported forgery problem (requiring advice on cryptographic mechanisms) and to ensure protection of the reporter's identity. Further clarification on the endpoint(s) for abuse reports (Hub vs. inter-provider) is also needed.
+*   **Internal Identifiers PR:**
+    *   **Action Item:** Rowan to update the HTTP method for the Internal Identifiers PR (change from GET with body to a suitable alternative like POST).
+
+## Next Steps
+
+*   **Continue Work:** Authors of the Metadata Minimization proposal (Conrad and Rafael) will continue refining the draft and gathering feedback from the working group.
+*   **Content Format Feedback:** The working group is encouraged to review the comparison of TLS Presentation Language and CBOR for the MIMI content format and provide comments on idiomatic usage, performance, and library support.
+*   **Next Interim Meeting:** The next scheduled interim is on **April 23rd**, with a focus on **Discovery requirements and proposals**.
+*   **Further Interims:** The chairs are open to scheduling additional interims to continue discussions on ongoing topics as needed.

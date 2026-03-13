@@ -1,0 +1,69 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This session provided an update on FedCM (Federated Credential Management), a W3C Web Platform API designed to assist identity federation flows in browsers while preserving user privacy and eliminating passive tracking methods (like third-party cookies, link decoration, and redirects). The presentation covered FedCM's high-level goals, API structure from both Relying Party (RP) and Identity Provider (IDP) perspectives, current implementation status, and future work streams. A significant portion of the discussion focused on the potential impact and necessary integration work with OAUTH and OpenID Connect specifications, particularly regarding token semantics and broader authorization flows.
+
+## Key Discussion Points
+
+*   **Motivation for FedCM**:
+    *   Deprecation of third-party cookies and increased focus on eliminating link decoration and redirects, which historically enabled passive user tracking across the web.
+    *   Need for the browser (user agent) to assist identity flows without re-enabling tracking or requiring a complete rewrite of existing identity specifications (e.g., OpenID Connect, SAML).
+    *   Central goal: Ensure user consent for disclosing identity information between parties.
+
+*   **FedCM API Overview**:
+    *   A web platform API (`Navigator.credentials.get()`) that allows RPs to initiate identity federation flows.
+    *   **RP perspective**: Simple API call with `provider` (IDP config URL), `client_id`, and `nonce`. Designed to be low-lift for RPs.
+    *   **IDP perspective**: Requires several new HTTP endpoints defined by the IDP, with varying privacy characteristics:
+        *   **`/.well-known/web-identity`**: Static, no cookies, origin, or referer. Used for verifying IDP configuration without exposing RP information.
+        *   **`config_endpoint`**: Also no cookies, origin, or referer. Provides IDP branding and other endpoint URLs.
+        *   **`accounts_endpoint`**: *First* endpoint to receive IDP cookies, allowing the browser to query active sessions. Still no origin or referer.
+        *   **`client_metadata_endpoint`**: No cookies, but *origin is passed*. Provides RP-specific information (e.g., privacy policy, terms of service) for display in the browser UI.
+        *   **`assertion_endpoint`**: A POST request, credentialed with IDP cookies, origin passed. Returns an opaque `token` (string) after user consent.
+        *   **`disconnect_endpoint`**: Credentialed, origin passed. Allows an RP to sever the relationship with an IDP account.
+
+*   **Visual User Experience**:
+    *   On desktop, an iframe-like modal is presented by the browser.
+    *   On mobile, a modal popup from the bottom appears, similar to the desktop experience.
+    *   Examples: booking.com on Chrome/Android uses FedCM in production.
+
+*   **Status and Adoption**:
+    *   Work originated in a W3C Community Group (CG). A new W3C Working Group is forming (expected June) to advance FedCM to Recommendation track.
+    *   Implemented and shipped in Chrome 108 and Microsoft Edge. Firefox has an implementation behind a feature flag. Safari has publicly stated support.
+
+*   **Future Work and Enhancements**:
+    *   **Multi-IDP Support**: Addressing UX and technical challenges for displaying multiple IDPs and accounts in the selection UI, potentially allowing multiple providers in a single `get` call.
+    *   **IDP Registration API (`Navigator.credentials.registerIdP`)**: Allows IDPs to register with the browser after user interaction. This enables RPs to discover and accept any IDP without prior configuration, moving closer to dynamic discovery similar to OpenID 2.0. Requires defining protocol specifics.
+    *   **Button Mode**: A new API to provide a graceful sign-in experience when no active IDP session exists, presenting a modal dialog for initial sign-in.
+    *   **Continuation API**: Provides a programmatic way to interrupt the FedCM flow to prompt the user for additional actions (e.g., re-authentication, consent) and return them to the flow.
+    *   **Storage Access Grant**: Potential for automatically granting storage access to the IDP when a user successfully goes through FedCM.
+    *   **Passing Parameters to Assertion Endpoint**: Discussion (Issue 556) about adding a `params` object to pass RP-specific key-value pairs to the assertion endpoint for contextual information or authorization parameters.
+    *   **Multilateral Federation**: Early discussions on how FedCM could support large-scale federations, potentially integrating with concepts like OpenID Connect Federation.
+    *   **Intersection with Passkeys and Digital Credentials**: Exploring how FedCM could complement Passkeys and Verifiable Credentials, for example, by using FedCM for initial claims acquisition to then create a Passkey-enabled local account, or for choosing identity proof sources (IDP claims vs. government-issued digital credentials).
+
+*   **Impact on OAUTH and OpenID Connect Specifications**:
+    *   The `token` returned by the assertion endpoint is currently an opaque string, lacking specific semantics.
+    *   **Need for an OpenID Connect Binding/Profile for FedCM**: To define how OIDC operates over this API, specifying which parameters are no longer needed (e.g., redirect-related) and clarifying token semantics (e.g., if it's an ID Token, how it's structured).
+    *   Current FedCM does not directly handle access token or refresh token acquisition for OAUTH authorization.
+    *   Open question: What OAUTH authorization use cases are not covered by FedCM, and where might additional web platform assistance be needed? The goal is to identify what is unlocked by FedCM sign-in vs. what requires further web platform support.
+    *   Concerns were raised regarding the implicit flow and tokens through the user agent, which OAUTH for Browser-Based Apps (BFF patterns) aims to deprecate.
+    *   Discussion around trust establishment and privacy risks, especially concerning exposure of personal data through the user agent, drawing parallels with certified wallet mechanisms in regulations like eIDAS. This suggests a need for certified entities to handle certain aspects of trust and data presentation outside the direct user agent responsibility.
+
+## Decisions and Action Items
+
+No formal decisions were made in this session. The discussion was an informational update and a call for engagement.
+
+**Action Items:**
+
+*   **Participants** are encouraged to review the FedCM draft specification within the W3C Community Group (CG) and the upcoming W3C Working Group.
+*   **Community Engagement**: Provide feedback and participate in discussions, particularly on issues such as passing parameters to the assertion endpoint (W3C Issue 556).
+*   **OAUTH WG Collaboration**: Initiate discussions within the OAUTH Working Group regarding the implications of FedCM for OAUTH and OpenID Connect specifications. This includes exploring the necessity for an OpenID Connect profile for FedCM and identifying specific OAUTH use cases where the web platform might need to provide further assistance.
+*   **Future Discussion**: Continue these discussions at the upcoming IETF meeting in Vancouver.
+
+## Next Steps
+
+The primary next steps involve continued collaboration between the W3C FedCM efforts and the IETF OAUTH/OpenID Connect community. This includes:
+*   Defining a clear OpenID Connect profile or binding for FedCM to standardize how OIDC flows operate over this new browser API.
+*   Analyzing the gaps between FedCM's current and planned capabilities and the broader OAUTH authorization use cases (e.g., access/refresh token acquisition).
+*   Exploring the potential for the web platform to provide further assistance for OAUTH-specific requirements while maintaining privacy and security.
+*   Addressing concerns related to token semantics, privacy, and trust establishment for sensitive data flows.

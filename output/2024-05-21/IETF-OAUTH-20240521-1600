@@ -1,0 +1,69 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This interim meeting of the OAUTH Working Group focused on the "Attestation-Based Client Authentication" draft. Key discussions included the proposed shift from body-based client assertions to a header-based syntax for attestation, the ongoing debate regarding the draft's naming to better reflect its purpose, and the implications of optional DPoP integration with attested keys. A strong consensus was reached to move forward with the header-based syntax. The DPoP integration and overall draft naming require further discussion.
+
+## Key Discussion Points
+
+### 1. Introduction to Attestation-Based Client Authentication
+
+*   **Motivation:** The draft addresses privacy concerns in verifiable credential ecosystems (e.g., OpenID for VCI) where traditional OAuth models might expose all credentials to an authentication provider. It enables a front-end authentication flow where a client instance directly communicates with an issuer.
+*   **Context:** Leverages platform and key attestations common in native apps (Android, iOS) to provide a technologically neutral attestation to the Authorization Server (AS). It aims to support high-assurance credential issuance, like for national ID card equivalents (PID), by proving wallet authenticity and key assurance levels.
+*   **Model Overview:**
+    *   Distinguishes between a "client" (overall wallet solution) and a "client instance" (specific app installation).
+    *   The client instance generates a client instance key on its device.
+    *   This key, along with platform/key attestations, is sent to a "client backend" (typically a server operated by the client provider).
+    *   The client backend verifies the information and generates a signed "client attestation" (a JSON Web Token - JWT).
+    *   The client instance then uses this signed client attestation and a Proof-of-Possession (PoP) with its client instance key to authenticate to the AS.
+*   **Scope:**
+    *   **Defined by draft:** The structure of the client attestation JWT, the client attestation PoP, and the communication flow to the AS.
+    *   **Out of scope:** The specific mechanisms for a client instance to authenticate to its client backend (e.g., which platform/key attestations are used) and how the AS trusts the client backend's public keys (e.g., OpenID Federation, trust lists).
+*   **Technical Aspects:**
+    *   Intends to use hardware-bound or protected keys (e.g., TPM, secure element).
+    *   Current state uses the framework from RFC 7521 for client authentication.
+    *   Can be used with DPoP to provide better assurances for the DPoP key.
+    *   **Client Attestation JWT:** Contains `iss` (client backend), `sub` (client ID), validity claims, and a `cnf` claim containing the client instance's public key. Additional domain-specific claims can be included for assurance profiles (e.g., OpenID High Assurance Interop Profile).
+    *   **Communication:** Initially proposed to be sent in the token request using `client_assertion_type` and `client_assertion` (two JOTs concatenated by a tilde).
+
+### 2. Discussion Point 1: Moving to Header-Based Syntax
+
+*   **Motivation:** Feedback from IETF 118 and the OAUTH Security Workshop in Rome suggested that the mechanism could be useful for other endpoints (e.g., Resource Servers) and integrate better with other client authentication mechanisms like DCR. Moving it out of the RFC 7521 client assertion framework was seen as beneficial.
+*   **Proposal (Open PR):** Define two new HTTP headers: `OAuth-Client-Attestation` and `OAuth-Client-Attestation-PoP`. This removes the reliance on the RFC 7521 assertion framework. The abstract would be modified to reflect extension to the OAuth protocol for client instances to include an attestation in interactions with AS or Resource Server.
+*   **Discussion:** Strong support was expressed for this change, particularly by Justin, who favored separating attestation from core client authentication.
+*   **Concern:** A potential implementation consideration was raised regarding HTTP header size limitations if the `OAuth-Client-Attestation` header contains a very long x5c certificate chain.
+*   **Consensus:** The group agreed that the benefits of the header-based approach outweigh this consideration, which will be noted as an implementation detail.
+
+### 3. Discussion Point 2: Naming of the Draft
+
+*   **Problem:** The term "attestation" is overloaded and can cause confusion, particularly when comparing with RATS vocabulary or other IETF contexts (e.g., IDAs). There is a need for clearer terminology.
+*   **Thorson's Proposal (Issue #71):** Rename the draft to "Key-Bound JWT Client Authentication."
+*   **Peter's Feedback:** Strongly supported the proposed name change. He emphasized the distinction between an "attestation key" (used by the client backend to attest properties of the client instance and its key) and an "authentication key" (the client instance key used to prove possession to the AS). He argued that "Key-Bound JWT Client Authentication" is less confusing, more precise about the purpose, and helps prevent potential misuse of keys. While the client backend *attests*, the interaction between the client instance and the AS is primarily *authentication*.
+*   **Consensus:** No formal decision was made, but there was strong support from those present for the proposed name change. Tobias's feedback from the mailing list is sought.
+
+### 4. Discussion Point 3: Optional DPoP Integration
+
+*   **Motivation:** Many high-assurance use cases where this draft would be applied are also likely to use DPoP. There is potential to improve DPoP security by making statements in the client attestation JWT about the DPoP key. Reusing the same key for both could avoid having two separate Proof-of-Possession operations.
+*   **Proposal (Issue #69):** Optionally allow the `DPoP` header to be used in place of the `OAuth-Client-Attestation-PoP` header when DPoP is also in use, effectively allowing a single key and PoP for both.
+*   **Peter's Concern:** Strongly cautioned against reusing the same key for different purposes. He argued that it turns a valuable key into a "signing oracle," increasing the risk of attacks and future security incidents. He suggested that if a high-assurance key is desired for DPoP, a second key could be attested by the client backend specifically for that purpose. The risk is magnified if the attestation key, via DPoP, interacts with Resource Servers in addition to the AS.
+*   **Brian's Counter-Argument:** Argued that it's effectively using the same key for the same purpose (proof of possession to the AS), and DPoP nonces are server-provided. He saw it as an optimization to reduce payload and signing activity, especially if hardware key operations are costly.
+*   **Consensus:** No decision was reached due to divided opinions and time constraints. This point will require further discussion.
+
+### 5. Discussion Point 4: Nonce Fetching
+
+*   **Problem:** The draft currently recommends using nonces (or JTIs) for replay protection but does not specify a mechanism for clients to fetch these nonces.
+*   **Next Steps:** This remains an open discussion point for future work.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group reached strong consensus to proceed with the header-based syntax for client attestation, moving away from the RFC 7521 client assertion framework.
+*   **Action Item:** The PR for implementing the header-based syntax should be merged in the coming days.
+*   **Action Item:** Seek further feedback from Tobias and the wider working group on the mailing list regarding the proposed name change to "Key-Bound JWT Client Authentication" (Issue #71).
+*   **Action Item:** The discussion on optional DPoP integration (Issue #69) will continue at the next meeting.
+*   **Action Item:** A mechanism for nonce fetching needs to be defined in the draft.
+
+## Next Steps
+
+*   Continue discussions on optional DPoP integration and defining a nonce fetching mechanism.
+*   The working group will reconvene on June 4th for the PICA draft discussion. (Note: No meeting next week due to Identity.com week).
+*   Further discussions on the draft, particularly on DPoP integration and nonce fetching, are anticipated at the upcoming IETF meeting in Vancouver.

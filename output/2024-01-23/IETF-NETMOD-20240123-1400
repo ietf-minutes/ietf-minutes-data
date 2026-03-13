@@ -1,0 +1,55 @@
+# [NETMOD](../wg/netmod.html)
+
+## Summary
+
+The NETMOD Working Group held its first interim meeting of 2024 to discuss key open issues related to the system configuration draft. The primary topics were the origin of system-defined nodes when copied into the running configuration, the handling of server upgrades and data migration, and the fundamental question of whether the running configuration must always be valid in isolation. Decisions were made regarding the origin of copied system data and the scope of server upgrade considerations for this draft. The more fundamental question of running configuration's standalone validity was deferred for future work in Yang next.
+
+## Key Discussion Points
+
+*   **Meeting Logistics**: The chairs opened the meeting, reminded participants of the IETF Notwell and Code of Conduct, and noted that the session was being recorded. The agenda was presented, and it was announced that a second interim is planned for February 6th.
+*   **System Configuration Draft Recap**:
+    *   The draft defines how a management client and server handle YANG module configuration data provided by the server itself, termed "system configuration."
+    *   It introduces a `system` data store (config true, read-only).
+    *   Clients can reference and override system configuration, as well as configure descendant nodes.
+    *   This is conceptually achieved by merging `system` and `intended` data stores into `running`, with `running` taking precedence after configuration transformations (template expansion, inactive config removal as per RFC 8342).
+    *   Two methods exist to satisfy referential integrity in `running`: client explicitly copies nodes or uses `resolve-system` parameter for server auto-copy.
+*   **Origin Issue for System Nodes Copied into Running**:
+    *   The discussion focused on whether system nodes copied from the `system` data store into `running` should report their origin as `system` or `intended`.
+    *   It was noted that nodes originating from `system` and *not* overridden or copied by the client (i.e., conceptually flowing through `intended` unchanged) should report `system` origin. Client-configured data (not from `system`) should report `intended` origin.
+    *   The consensus was that if a client explicitly copies a system node into `running` (even if it's an immutable value or auto-copied via `resolve-system`), its origin should be reported as `intended`. This is because the client has made an explicit choice to include it in their intended configuration.
+    *   Analogy was drawn to `default` values: if a default value is explicitly set by the client, its origin is `intended`, not `default`.
+    *   This interpretation aligns with RFC 8342, where different origins (e.g., `default`, `intended`) can flow through the `intended` data store.
+*   **Server Upgrade and Configuration Migration**:
+    *   The question was raised regarding what happens if `system` configuration updates (e.g., due to software upgrade) and an outdated copy remains in `running`.
+    *   Concerns included `running` potentially becoming invalid if underlying schema or values change (e.g., a mandatory leaf changes, or an allowed value in a leaf-list is removed).
+    *   Different approaches were discussed: automatic migration of `running`, flagging `running` as invalid, or refusing the upgrade. It was highlighted that modifying `running` automatically could surprise controllers.
+    *   It was noted that this issue is not unique to system configuration but a broader problem of non-backward compatible (NBC) changes and data migration during software upgrades, which is also relevant to ongoing versioning work.
+    *   **Decision**: This issue is complex and highly context-dependent (e.g., impact on security, operator expectations, controller behavior). It was decided to leave the specific handling of `running` configuration migration during server upgrades out of scope for the current system configuration draft. The draft should, however, document the *risks* of such scenarios, potentially with a couple of illustrative examples in an appendix, but without providing normative recommendations.
+*   **Validity of Running Alone**:
+    *   The core question: Does `running` configuration data store always need to be referentially complete and valid *on its own*, or can its validity rely on merging with `system` to form `intended`?
+    *   RFC 7950 and RFC 8342 state that `running` configuration *must* always be valid, and `intended` is subject to validation. There was discussion about potential ambiguities or different interpretations of these statements, especially in the context of `intended`'s role.
+    *   The concepts of "online validation" (server validating operations) and "offline validation" (client/tools validating fetched configuration) were clarified.
+    *   It was recognized that server-side features like template expansion and inactive configuration make it challenging for `running` alone to be fully valid without server-specific transformations. Clients would find it difficult to replicate these transformations for offline validation.
+    *   Several options for the draft were considered:
+        1.  Do not require `running` alone to be offline valid (implying server transformations are needed for full validity). This could break some legacy clients/tools.
+        2.  Require `running` alone to be offline valid (implying all necessary system nodes, including keys, mandatory elements, and those satisfying `must`/'when' statements, must be copied into `running`). This could add complexity and lead to changes in data model design.
+        3.  Simply state that `running` must always be valid, relying on existing RFC interpretations.
+        4.  Say nothing explicitly in this draft, relying on existing RFCs (7950, 8342) and deferring deeper clarification to future "Yang next" work.
+    *   The preference for Option 4 (saying nothing in this draft) emerged as the most pragmatic approach, deferring this complex and fundamental issue to future Yang evolution (e.g., Yang next, Netconf next, Restconf next).
+    *   It was acknowledged that operators who require offline validity of `running` would need to ensure they explicitly copy all necessary system nodes and avoid server-side templates/inactive configuration features.
+    *   Separately, it was noted that RFC 8342 could benefit from clarification regarding the interplay of `running` and `intended` validity, but this is a broader task not specific to the system configuration draft.
+
+## Decisions and Action Items
+
+*   **Origin of Copied System Nodes**: For system-defined nodes copied by a client into the `running` data store (either explicitly or using `resolve-system`), their origin in the operational data store should be reported as `intended`. System nodes that flow through `intended` but are not explicitly handled by the client should retain `system` origin.
+    *   **Action**: Authors to update the draft to clarify the origin handling, explicitly updating RFC 8342 where necessary regarding the `system` origin and `intended` origin values for copied data.
+*   **Server Upgrade/Configuration Migration**: The issue of `running` configuration validity and data migration during server upgrades (especially with NBC changes or value changes in system data) is out of scope for this draft.
+    *   **Action**: Authors to add text in the draft (e.g., in a non-normative section or appendix) acknowledging the risks associated with server upgrades affecting `running` configuration based on system data, possibly with a few illustrative examples, but without prescribing specific solutions.
+*   **Validity of Running Alone**: No specific normative statement will be made in this draft regarding whether the `running` data store must be referentially valid in isolation (i.e., without implied system data or transformations). This fundamental question is deferred to future Yang/Netconf evolution work (e.g., Yang next).
+    *   **Action**: No change needed in the normative text of this draft on this point, but authors may acknowledge the ongoing discussion as future work.
+
+## Next Steps
+
+1.  Authors to update the system configuration draft according to the decisions and action items outlined above.
+2.  The updated draft will then be prepared for Working Group Last Call.
+3.  The broader discussion on the validity of `running` configuration and clarifications to RFC 8342 are separate tasks for future IETF work.

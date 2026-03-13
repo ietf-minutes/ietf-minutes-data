@@ -1,0 +1,57 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This was the last CORE Working Group interim meeting before IETF 120, primarily focused on progressing the "Corrections and Clarifications" (CorCon) document by reviewing open GitHub issues and Pull Requests (PRs). Discussions covered trailing slashes in URIs, definition of "Request URI," and the complex topic of how CoAP observe relationships persist across changes in underlying transport and security contexts, particularly with DTLS and OSCore. Several PRs were merged, and action items were identified for further text refinement and example additions.
+
+## Key Discussion Points
+
+*   **Meeting Logistics and IETF Policies**: The meeting was called to order by the chairs, Marco Manetsch, Carsten Bormann, and Hannes Tschofenig. The IETF Note Well and Code of Conduct were reviewed. The main agenda item was work on the CorCon document, driven by GitHub issues and PRs.
+
+*   **Issue 7: Trailing Slashes in URIs (PR 32)**
+    *   **Discussion**: This issue concerns the meaning of trailing slashes in URIs and how they are defined. PR 32, which provides formal clarifying text and examples, has been merged after some discussion.
+    *   **Further Clarification Needed**: Participants discussed the sufficiency of existing examples.
+        *   A suggestion was made to add examples including query strings and fragment identifiers.
+        *   Another suggestion was to swap the order of examples for `/authority/foo/` and `/authority//` as the former is a more common use case, and to potentially clarify that servers are not strictly required to handle multiple slashes.
+
+*   **Issue 8: Clarifying Request URI (PR 31)**
+    *   **Resolution**: This issue was largely resolved via an IANA Errata report that updated the registry text. PR 31 points to this Errata.
+    *   **Decision**: It was agreed not to copy the additional notes from the Errata report directly into the CorCon document unless a specific need arises for better exposure or editorial work. The issue is considered largely closed.
+
+*   **Issue 10: Defining "Request URI" (PR 33)**
+    *   **Discussion**: The term "Request URI" is not formally defined in RFC 7252. PR 33, providing a formal addition of text, has been merged.
+    *   **Relation to other URI terms**: Further work is needed to clarify the relationship between "Request URI", "Target URI" (HTTP's current term in RFC 9110), and "Base URI" (used in RFC 7252 Section 8 for multicast requests).
+    *   **Challenges**: HTTP specifications have evolved their terminology, which CoAP did not anticipate. CoAP's multicast capabilities (unlike HTTP) require specific handling of "Base URI" for responses. Direct emulation of HTTP may not be fully possible.
+
+*   **Issue 9: "Match Boxing" / Observe Relationships Persistence (PR 36)**
+    *   **Core Problem**: How CoAP observe relationships (and underlying state) survive changes in transport and security contexts, particularly with DTLS and IP address changes. RFC 7252's current state for DTLS 1.2 is well-defined but undesirable as it causes state loss unnecessarily.
+    *   **Approaches to Persistence**:
+        *   Address opportunities in new documents (e.g., Kudos).
+        *   Define how existing extensions (like DTLS Connection Identifiers, RFC 9146) can be used to maintain state across DTLS epochs (DTLS 1.2 and 1.3).
+        *   Negotiation might be required for changes that alter current behavior (e.g., surviving IP address changes).
+    *   **PR 36 Discussion (OSCore, Kudos, Group OSCore)**:
+        *   PR 36 addresses match boxing for OSCore, especially with Kudos (for key material updates) and Group OSCore. It aims to clarify the handling of observations when security contexts change.
+        *   **Terminology "No Impact"**: Concerns were raised about the phrase "has no impact" regarding tokens and message IDs. It was noted that this implies a well-defined existing state, which might not be sufficiently clear. More explicit text is needed.
+        *   **OSCore and Transport Independence**:
+            *   Tokens and Message IDs are primarily for message coupling and matching, but are *not* directly part of OSCore's cryptographic processing or the External AAD structure.
+            *   OSCore can operate securely across proxies, where tokens/MsgIDs may change without affecting end-to-end security context.
+            *   OSCore itself generally does not use the 5-tuple (source/destination IP, port, protocol) for security context lookup. It relies on the Key ID (KID) option.
+            *   The underlying CoAP layer must still deliver the message for OSCore to process it.
+            *   A server receiving an OSCore request relies on hints (like KID) to identify the security context for decryption. Clients use the context from the corresponding request.
+            *   Security and privacy considerations from the OSCore Capable Proxies document (e.g., server-side checks to prevent information leakage) were referenced.
+        *   **Negotiation**: Kudos uses peer-to-peer negotiation for preserving observations; Group OSCore uses unilateral negotiation dictated by the group manager.
+    *   **Structure**: A suggestion was made to restructure the "match boxing" section into a general introduction, followed by subsections for DTLS and OSCore. CB over TCP and Multipath TCP were also mentioned as having similar issues regarding address changes.
+
+## Decisions and Action Items
+
+*   **Issue 8 (Request URI Errata)**: Do not copy additional notes from the IANA Errata report into the CorCon document.
+*   **Issue 7 (Trailing Slashes)**: Christian to review existing examples and add more, specifically for cases with query strings and fragment identifiers. Consider reordering examples for better clarity.
+*   **Issue 9 (PR 36)**: Marco and Karin to refine the text in PR 36, particularly clarifying the "no impact" terminology and elaborating on how OSCore handles tokens, message IDs, and transport address changes. Section restructuring (general, DTLS, OSCore) will be considered after initial text refinement.
+
+## Next Steps
+
+*   Continue working on open GitHub issues and PRs for the CorCon document.
+*   Christian to prepare a PR with additional URI examples for Issue 7.
+*   Marco and Karin to update PR 36 with clarifications regarding OSCore's interaction with transport and security context changes for Issue 9.
+*   Further work is needed to clarify the relationship between "Request URI", "Target URI", and "Base URI" for Issue 10.
+*   The next working group meeting is scheduled for IETF 120 (Wednesday, 24 July, European late afternoon/evening slot).

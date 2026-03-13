@@ -1,0 +1,94 @@
+# [TLS](../wg/tls.html)
+
+## Summary
+
+This interim session of the TLS Working Group was dedicated to a focused discussion on the "trust tussle" problem statement, defined as the challenge of enabling servers to reliably and efficiently support clients with diverse trust anchor lists in large PKIs, where existing mechanisms are insufficient. The session aimed to establish a common understanding of the problem itself, rather than delving into specific solutions.
+
+Presentations were given outlining the problem from the perspective of proponents who believe it warrants a solution, and from a perspective questioning the urgency or scope of the problem. A robust discussion followed, with participants sharing diverse operational experiences and technical perspectives.
+
+The session concluded with two polls:
+1.  **Do you understand the problem we are discussing?** The participants overwhelmingly indicated "Yes".
+2.  **Do you think we should work on this problem?** A strong majority indicated "Yes".
+
+The chairs noted that the results indicate a clear interest in the working group addressing this problem, with next steps to be determined.
+
+## Key Discussion Points
+
+### Introduction and Problem Statement Overview (Chris Wood)
+
+*   The session's primary goal was to describe a general problem statement, colloquially termed the "trust tussle," without bias towards specific solutions.
+*   **Core TLS Server Authentication**: Clients authenticate servers via certificates issued by trusted Certificate Authorities (CAs). The system aims for both **availability** (servers serve all clients regardless of CA trust) and **security** (clients trust only legitimately issued certificates).
+*   **Trust Store Divergence**: Clients often have different trust stores (sets of trusted CAs). Ideally, all clients would have identical trust stores, simplifying server certificate provisioning. However, trust stores diverge due to:
+    *   Independent decisions by client implementations/root programs.
+    *   Different requirements for CA inclusion (e.g., CT logging).
+    *   More restrictive trust decisions (e.g., pinning by mobile apps).
+    *   Varying rates of trust store updates.
+*   **The "Tussle"**: How to avoid client trust conflicts by enabling servers to reliably and efficiently support clients with diverse trust anchor lists in large PKIs, where existing mechanisms like CA extensions are too unwieldy (e.g., for the web PKI).
+*   **Considerations**: The extent and duration of divergence, whether the current "operational pain" is acceptable, the relationship to a Post-Quantum (PQ) PKI transition, and potential downstream effects of any solution.
+*   **Scope**: Primarily oriented around large PKIs like the web PKI, but the problem's scope doesn't necessarily need to be restricted to it.
+
+### Arguments for Addressing the Problem (David Benjamin, Devon O'Brien, Bob Blakley, Kyle Suter)
+
+*   **Growing Pain**: Trust store divergence causes widespread pain that is increasing over time. Servers face a growing long tail of 10-15 year old clients (TVs, printers, IoT devices) that use differing, often unupdated, trust stores.
+*   **PKI Goals Conflict**: The PKI bridges application names to cryptographic keys. It must ensure clients accept correct keys (availability) while rejecting incorrect ones (security). Diversity forces servers to sacrifice either security (clients trusting untrustworthy CAs) or availability (breaking niche clients).
+*   **Motivating Examples**:
+    *   **2017 Symantec Distrust**: Required prompt distrust due to widespread failures, but coordination across browsers and OS introduced months-long delays, exposing users. Many major sites were forced to re-architect services as no single CA could issue certificates trusted by all supported clients (some had no overlap in trusted CAs).
+    *   **Certificate Transparency (CT) Policy**: Initial CT enforcement policies (e.g., Chrome requiring a Google-operated log) led to ecosystem embrittlement and centralization pressures. Subsequent clients were forced to adopt less strict policies. Issues like differing log lists and update timelines highlight the problem.
+    *   **CT Shared Fate Problem**: Google was unable to deprecate old CT logs due to legacy Apple operating system clients that hardcoded trust in specific logs. An unknown widely deployed mobile networking library (hardcoded log list) broke applications, including McDonald's online ordering, after a schema change to Chrome's log list.
+    *   **Recent Divergence (2022-2023)**: A major root program ceased accepting new CA operators, centralizing power and potentially stifling CA modernization. The Chrome Root Program launched, leading to distrust of CAs not meeting its new, stricter inclusion bar. CA incident response expectations have also begun to diverge.
+    *   **Post-Quantum (PQ) PKI Transition**: The PQ PKI will be functionally disparate from the classical PKI. Clients will adopt new PQ CAs at different rates, creating a de facto diversity that servers must accommodate. Different clients may demand different trade-offs (e.g., varying CT requirements for PQ certificates). Negotiation is needed for different certificate types (e.g., x509 vs. Merkel Tree CAs).
+*   **Benefits of a Solution (Solution-Agnostic)**:
+    *   Constrained trust stores would not impede security decisions for agile clients.
+    *   Clients could implement CT policies best serving their users.
+    *   New root programs could lower barriers to entry by accepting only CAs meeting their bar, without initial compatibility compromises.
+    *   Servers could support an increasingly diverse client base without relying on heuristics or fingerprinting.
+*   **Adam Langley's Operational Pain**: Managing Google's TLS serving, he reported:
+    *   Repeatedly breaking over a million unupdated devices, some turning into DDoS networks.
+    *   Months for device updates to propagate, even for critical fixes.
+    *   Breaking numerous integrations (e.g., in-car navigation).
+    *   Paying CAs to exploit bugs to issue certificates for broken clients.
+    *   Binary patching client firmware due to lost source code.
+    *   Shutting down entire Google services due to partner device compatibility issues.
+    *   Having to inform IoT companies their businesses were bankrupt due to root expiration timelines.
+    *   All these issues stem from the inability to determine client trust stores before attempting a connection.
+*   **Andrew Ayer's Experience**: From a company serving a long tail of unupdated browser clients, the need for ubiquitous CAs is critical. Impending CA expirations will exacerbate the problem, making a mechanism to identify client trust increasingly important.
+*   **Meta's Experience**: Similarly undergoing root chain changes, Meta confirmed encountering comparable and significant operational challenges as those described by Adam Langley.
+
+### Arguments Against the Problem Being New or Unsolvable (Dennis Jackson)
+
+*   **Existing Divergence Factors**: While clients make independent decisions, they largely apply the same criteria. There is significant overlap in shared root certificates (e.g., 107 common roots among Apple, Chrome, Mozilla, Microsoft). CT log trust is currently unified.
+*   **Coordination Mechanisms**: The common CA database (Linux Foundation) and the CA/Browser Forum provide shared infrastructure and a consensus-based mechanism for rule-making and improvements, albeit sometimes slowly.
+*   **Adding CAs**: The community generally prefers to make adding new CAs harder, not easier. Marginal CAs are often niche (e.g., government CAs) or non-compliant. Universal trust is an economic fitness function; cross-signing (e.g., Let's Encrypt) allows faster ubiquity.
+*   **Removing CAs**: Removal is a painful process due to significant social and business pressures (calls to CEOs, legal threats, lobbying), not technical barriers.
+*   **Historical Context**: The web PKI has changed dramatically in the past 5-10 years (shorter certificate lifetimes, ACME automation), which mitigates some historical pain points (e.g., the Symantec distrust occurred when 5-year certificates were common).
+*   **Temporal Root Store Divergence**: This is the main remaining problem. Most platforms (Apple, Windows, browsers, Linux distros) have automatic root store updates. Android was a significant outlier until Android 14 (October 2023) fixed the inability to update root stores without firmware updates. Cross-signing can still support older Android devices.
+*   **Beyond Root Stores**: The real challenge for agility lies not in root stores, but in the layers above:
+    *   TLS libraries (bugs, tolerance for large certs/chains, specific algorithm support).
+    *   Certificate validation layer (a "black spot" for standardization, varied implementations).
+    *   Application layer (can do its own validation and restrictions).
+    *   This diversity makes defining a "compatibility label" for negotiation extremely difficult and likely implementation-defined.
+*   **User Agent Analogy**: Implementation-defined labels for TLS policy would be akin to "user agent strings," which historically lead to incentives to lie for compatibility, ultimately negotiating "nothing" in practice.
+*   **Negative Externalities**: While agility might benefit browsers, it could lead to stagnation for the long tail of other clients, shifting the burden of compatibility onto server operators.
+*   **Alternative**: "Continue to suffer" and improve existing standards; just labeling the problem won't solve it.
+*   **PQ PKI**: This is the most compelling problem, but requires aligning on a long-term vision and strategy, not primarily a negotiation mechanism. TLS 1.3 already has a well-oiled negotiation mechanism (extensions). Classical cross-signing of PQ chains does not compromise PQ security for PQ-capable clients and provides classical compatibility.
+*   **Conclusion**: Divergence is small and narrowing, convergence forces dominate. Operational pain is from business/social issues, not the TLS handshake. PQ PKI is a thinking stage, not negotiation. Agility for servers is a mixed bag.
+
+### Open Discussion
+
+*   **PQ Cross-Signs**: Clarification that classical cross-signing of a PQ chain does not reduce PQ security for PQ-aware clients; it adds a layer of classical compatibility for legacy clients.
+*   **Negotiation Effectiveness**: There was discussion on what types of negotiation work well (e.g., cipher suites with precise mathematical definitions) versus those that are harder (e.g., x509 validation, which is more implementation-defined).
+*   **Scope of Problem**: The "tussle" is likely broader than just root certificates, potentially extending to how trust is assigned to DNS entities, CT policies, and other certificate properties.
+*   **Policy System Dynamics**: The current unified CA set acts as a barrier to government mandates for sovereign certificates. A technical solution allowing greater divergence could make it easier for governments to mandate trust in specific, potentially untrustworthy, certificates.
+*   **Partial Solution**: Some suggested that even allowing clients to simply signal which roots they recognize would significantly alleviate much of the current operational pain for server operators.
+*   **Existing Technical Solutions**: A question was raised about whether existing technical solutions are impractical due to political or unstated technical reasons, leading to conflict over whether a new solution is truly needed.
+
+## Decisions and Action Items
+
+*   **Decision**: Participants in the session overwhelmingly understand the problem statement as presented by Chris Wood and elaborated upon by subsequent speakers.
+*   **Decision**: A strong majority of participants believe the TLS Working Group should actively work on this problem.
+*   **Action Item**: The chairs will regroup to determine the specific next steps for the working group, considering the expressed interest and the diverse aspects of the problem discussed.
+
+## Next Steps
+
+*   The chairs will deliberate on how to proceed, potentially exploring further focused discussions, identifying specific technical aspects suitable for standardization within the TLS WG, and considering any necessary coordination with other IETF bodies (e.g., IAB) or external forums.
+*   Any future work will likely emphasize experimentation, running code, and refining solutions, aligning with the TLS WG's established practice.

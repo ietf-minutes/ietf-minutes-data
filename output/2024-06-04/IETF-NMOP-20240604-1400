@@ -1,0 +1,65 @@
+# [NMOP](../wg/nmop.html)
+
+## Summary
+
+This was a joint meeting between the Network Management Operations (NMOP) Working Group and the Traffic Engineering Architecture and Signaling (TEAS) Working Group. The primary objective was to evaluate the suitability of RFC 8795 (Yang data models for traffic engineering topologies) as a potential basis for NMOP's digital map modeling efforts. The session included a review of NMOP's ongoing work, analysis of RFC 8345 gaps, a proposal for multi-point structure enhancements, and an introduction to TEAS's RFC 8795 model and its profiling capabilities. Discussions centered on model consistency, reusability, and addressing common requirements across different network layers and technologies.
+
+## Key Discussion Points
+
+*   **Meeting Context and Goals**:
+    *   The meeting aimed to explore whether RFC 8795, developed by TEAS, could serve as a good foundation for the NMOP digital map work, given its existing topology capabilities.
+    *   The Note-Well was presented.
+*   **NMOP Work Focus and Approach**:
+    *   The NMOP part of the agenda summarized action points from the previous IETF meeting, presented analysis of RFC 8345 gaps, and outlined plans for hackathons and experiments.
+    *   Emphasis was placed on running experiments and welcoming competing approaches and new use cases from operators and vendors.
+*   **Problem Space and Digital Map Goals (Oscar)**:
+    *   The goal of the digital map is to represent real carrier networks (including abstractions), support capacity planning, "what-if" analysis, and serve as a basis for a digital twin.
+    *   Initial work focused on modeling simple ISIS and OSPF combined networks, with two drafts submitted as tiny additions to existing models.
+    *   A challenge noted is the widespread nature of topology models and augmentations, making it difficult to select the appropriate components. The concept of "domain" is abstract and can vary significantly depending on the use case (e.g., IGP vs. BGP). Multiple views of the same network are possible using `ietf-network` instances.
+*   **RFC 8345 Gap Analysis (Olga)**:
+    *   The core question is whether RFC 8345 is the right starting point for digital map modeling, especially for understanding layered topologies. The original goal of RFC 8345 was to provide a generic topology model that applications could use without needing to understand technology-specific details, while allowing augmentations for specific attributes. This implies augmenting without changing the core topological structure (nodes, links, TPs).
+    *   Analysis of modules augmenting RFC 8345:
+        *   A Google Sheet/GitHub repository was created to categorize augmentations by purpose (functional, technology, linking to other modules) and type (adding attributes, adding new topological entities/relations, or semantics).
+        *   Out of 106 relevant modules, 55 are active (after filtering deprecated/expired). Initial analysis of 41 completed.
+        *   Findings: 8 modules add new topological entities and 10 add new topological relations. This is seen as inconsistent with RFC 8345's generic principles, making it difficult for applications to draw a multi-layer digital map without understanding specific augmentations (e.g., TE topology's T-nodes/T-links/T-TPs, or fabric networks introducing device-nodes/links/ports).
+    *   **Discussion on "Link" Definition (Nigel)**: Nigel highlighted the ambiguity of the term "link" in RFC 8345, distinguishing between a "topology of potential" (what RFC 8345 primarily focuses on) and a "topology of use" (enabled flows). This ambiguity impacts how one interprets whether different entities should be used for these perspectives.
+*   **Plans for NMOP Drafts and RFC 8345bis**:
+    *   Oscar's `draft-ogagar-nmop-digital-map-gaps` and `draft-ogagar-nmop-digital-map-isis-ospf` are being implemented, and feedback is sought. JSON examples will be added.
+    *   The plan for IETF 120 is to begin working on an `RFC 8345bis` draft to include proposed changes for `ietf-network` and `ietf-network-topology` modules, aiming for simple, backward-compatible solutions. Initial content will be shared on GitHub for discussion rather than direct submission.
+*   **Hackathon Plans**: The NMOP hackathon will focus on implementing changes from Oscar's drafts and exploring connections with `ietf-isis` and `ietf-ospf`.
+*   **Enhancements for Multi-Point Structures (Nigel)**:
+    *   Nigel presented a proposal to enhance RFC 8345 to better support multi-point, bi-directional structures. Current modeling often uses pseudo-nodes with collections of unidirectional point-to-point links.
+    *   The proposal is to consolidate this into a single entity, a `multi-point-link`, with optional `points` (alternative to point-to-point pairs), `roles`, and `direction`.
+    *   A refinement suggested was to integrate `direction` as a `point-role` to allow for efficient representation of asymmetries. `Link-type` and `roles` would ideally reference machine-interpretable specifications.
+*   **TEAS Introduction to TE Topology (RFC 8795) (Italo)**:
+    *   Italo introduced RFC 8795 (`ietf-te-topology`), describing it as a generic model for TE topologies, capable of supporting specific technologies (e.g., optical, SRv6).
+    *   Key features include support for native, customized, and abstracted topologies; underlay/overlay relationships; multi-layer navigation; inter-domain modeling; generic attributes; connectivity matrices (for intra-node constraints); and information sources (e.g., OSPF, ISIS, BGP) with credibility.
+    *   Multi-layer support in RFC 8795 uses TE Termination Points (TTPs) for interlayer adaptation, representing tunnels in a server layer as support for a client layer link. There was an interactive discussion with Olga and Nigel about the distinction between RFC 8345's generic TPs and RFC 8795's TTPs, and whether `ietf-network` links specifically represent "potential" forwarding. Italo reiterated that TTPs and LTPs (Link Termination Points) have different characteristics and were modeled distinctly.
+    *   RFC 8795 supports abstraction (e.g., representing a multi-node network as a single node) and hierarchical relationships where a client layer link can be supported by a server layer path.
+    *   **Scope of TE**: Italo argued that some attributes, like SRLG, while originating in TE, are broadly applicable for "what-if" analysis even in non-TE networks, blurring the boundary between "TE" and "non-TE" requirements.
+    *   **RFC 8345 Compatibility and Gaps**:
+        *   **Bi-directional links**: RFC 8345 models these as two unidirectional links. RFC 8795 provides TE properties for each, allowing for asymmetry. Italo stated no efficiency issue for point-to-point; Nigel contended there's an efficiency gain for symmetric cases and lifecycle management.
+        *   **Multi-point connectivity**: RFC 8345 uses pseudo-nodes. RFC 8795 uses a `connectivity-matrix` to define specific TP connectivity and characteristics within a pseudo-node.
+    *   **TEAS Conclusions**: Italo expressed the view that reusing RFC 8795 would provide smooth integration for mixed TE/non-TE layers in the digital map, avoid reconciliation problems, and most digital map requirements are already met. They are open to RFC 8795 extensions or `bis` work.
+*   **TEAS Topology Model Profiling Draft (Italo)**:
+    *   RFC 8795 can appear complex due to its comprehensive features. This draft clarifies that a profile (subset) of the model can be implemented based on specific use cases (e.g., administrative/operational state, multi-layer navigation, switching limitations).
+    *   It outlined different augmentation options: augmenting `ietf-te-topology` directly (e.g., microwave topology), or augmenting `ietf-network-topology` with technology-specific elements and then using multi-inheritance to instantiate a profile of `ietf-te-topology` attributes.
+    *   **Open issues**: How a server reports its implemented profile to a client (needs a formal language, possibly work in NETMOD or OPS area). Clarifying the distinction between RFC 8345's `supporting-link/node` and RFC 8795's `overlay/underlay` (proposed: overlay/underlay for multi-layer, supporting-node for abstract node relationships).
+    *   Italo confirmed that existing RFC 8795 implementations and PoCs typically implement a profile rather than the full model.
+
+## Decisions and Action Items
+
+*   **Decision**: The joint meeting format was productive and will continue to facilitate discussion between NMOP and TEAS regarding digital map modeling.
+*   **Action Item (Olga)**: Extract the core digital map use cases and requirements from `draft-ogagar-nmop-digital-map-gaps` and share them on both the NMOP and TEAS mailing lists for common understanding.
+*   **Action Item (Italo)**: Based on the shared digital map use cases, perform an assessment of RFC 8795's capabilities to address these use cases, identifying any limitations, side effects, or complications. Share this assessment on both mailing lists.
+*   **Action Item (Nigel)**: Share the list of candidate refinements for existing topology models (e.g., multi-point structures, direction) on both mailing lists. Please separate each candidate refinement into individual discussion topics to facilitate focused discussions.
+*   **Action Item (Oscar)**: Initiate a discussion on the mailing list to explain the rationale behind `draft-ogagar-nmop-digital-map-isis-ospf` and clarify whether current topology modeling sufficiently addresses ISIS/OSPF topologies or if specific extensions are required.
+*   **Action Item (Olga)**: Add an "Author Validated" column to the GitHub Excel spreadsheet for the augmentation analysis to track feedback from module authors.
+*   **General Action**: All participants are encouraged to contribute to discussions on both the NMOP and TEAS mailing lists to ensure synchronized progress.
+
+## Next Steps
+
+*   Continue the technical discussions on the NMOP and TEAS mailing lists based on the identified action items.
+*   The chairs will coordinate internally and consider whether a face-to-face side meeting at the next IETF would be beneficial for deeper discussions.
+*   NMOP: Finalize the analysis of RFC 8345 augmentations, make initial `RFC 8345bis` content available on GitHub for review, and proceed with the planned hackathon activities for Oscar's drafts.
+*   TEAS: Address comments on the profiling draft for RFC 8795, and further consider whether to incorporate digital map use cases into the profiling draft or a separate document.

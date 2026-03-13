@@ -1,0 +1,112 @@
+# [WIMSE](../wg/wimse.html)
+
+## Summary
+
+This was the first WIMSE interim meeting, primarily focused on updates from the two active design teams: the Service-to-Service Token Design Team and the Token Exchange Design Team. Both teams presented their progress, discussing initial design goals, proposed approaches, identified use cases, and open technical issues. The chairs encouraged continued work, the production of initial drafts, and clear recommendations for the upcoming IETF 120 meeting.
+
+## Key Discussion Points
+
+### Working Group Status and Announcements
+
+*   The meeting adhered to the IETF Note Well.
+*   The working group has set up a GitHub organization.
+*   The Architecture draft has been ported to GitHub.
+*   A repository for the Projected Token BCP has been set up, and editors are encouraged to contribute content.
+*   Individual Drafts are encouraged as input to the working group discussion.
+
+### Service-to-Service Token Design Team Update
+
+The design team outlined its goals, assumptions, proposed approaches, and open issues for service-to-service authentication.
+
+**Design Goals:**
+*   Keep designs as simple as possible to enable rapid adoption given the fast-evolving identity space.
+*   Focus on an application-level mechanism over transport-specific ones for flexibility.
+*   Establish application identity, not user identity.
+*   Improve security, preventing token replay and impersonation.
+
+**Assumptions and Design Choices:**
+*   Identity credential provisioning (e.g., Spire, Kubernetes projected service account tokens) is out of scope.
+*   Use a minimal JOT-based credential for service-to-service client authentication.
+*   Identity is an opaque string, defined elsewhere (e.g., spiffy identifiers).
+*   Credentials should be securely reusable across different services, bound to a cryptographic proof-of-possession key.
+*   The JOT token will explicitly reference or include the public part of the proof-of-possession key.
+*   Initial focus is on asymmetric cryptography, with symmetric crypto considered for later.
+*   A notion of "freshness" for signatures per request is desired.
+*   TLS interaction is expected, likely requiring server authentication; mTLS is an option.
+*   One-shot authentication is preferred, with challenge-response as a fallback for freshness.
+*   Multiple-chain identity tokens (multi-hop) are out of scope for the initial simplest scenario.
+
+**General Approaches for Binding/Proof Mechanism:**
+The team identified a common service identity token (a JOT with `iss` and `cnf` claims) that would then be presented using one of two binding mechanisms:
+
+1.  **DePPish Approach**:
+    *   Based on the DePOP RFC, sending a signed JOT.
+    *   The JOT includes an `iss` claim (e.g., `whimy/trust-domain/workload-id`) and a `cnf` claim for verifying the token against a key ID.
+    *   Functions as a bearer token that can be attached to a transaction (e.g., using transaction tokens).
+    *   Currently focuses on one-shot authentication, without DePOP's nonce exchange for challenge-response.
+
+2.  **HTTP Message Signatures Approach**:
+    *   Based on HTTP Message Signatures standard.
+    *   Allows signing selected fields of the HTTP request, binding the signature to that specific request.
+    *   This approach helps prevent replay or tampering by middleboxes (e.g., load balancers) with access to unencrypted data.
+
+**Open Issues:**
+*   **Cross-domain**: How to handle identities across different trust domains.
+*   **Identity Chaining**: Goals and integration with external work are unclear.
+*   **Symmetric Cryptography**: Performance benefits for per-request signing; requires understanding key establishment complexities.
+*   **Additional Claims**: Whether to extend the Whimsy token with more claims or bind other tokens with additional claims to it.
+*   **Security Analysis**: Deeper analysis needed on freshness guarantees, replay/theft protection, and trust models with intermediaries.
+*   **Policy Enforcement**: Where and how policy enforcement (especially for authorization) should be defined within scope.
+*   **Issuance Mechanisms**: Remains largely out of scope, though future work might define or reference mechanisms.
+
+**Discussion:**
+*   Max Ding presented an individual draft that shares significant similarities with the DePPish approach (Option 1) and expressed willingness to contribute to the design team's work. The chairs clarified that design teams are closed for new members, but welcome contributions to the broader WG discussion and the use of content from individual drafts.
+*   Brian and Joe clarified that the initial slide's JOT-based service identity token is common to both proposed binding approaches (DePPish and HTTP Message Signatures), and is not itself a bearer token as it's bound to a key via the `cnf` claim.
+
+### Token Exchange Design Team Update
+
+The team presented its framework for understanding token exchange, focusing on use cases and initial security considerations.
+
+**Token Exchange Use Cases (8 identified atomic technical use cases):**
+The team aims to distill hundreds of application scenarios into these core technical use cases, allowing combinations to cover real-life applications and reason about security.
+
+1.  **Format Change**: Exchange a token in one format for a token in another format (e.g., JOT to X.509 certificate, or domain-specific tokens).
+2.  **Content Encoding Change**: Alter encoding within the same token format.
+3.  **Cryptographic Transformation**: Change cryptographic schemes, ciphers, digital signatures, or encryption techniques (e.g., for post-quantum crypto requirements).
+4.  **Embedding**: Embed one token within another (e.g., for identity chaining).
+5.  **Context Change**: Add, remove, or modify context (e.g., claims) within a token.
+6.  **Validity Constraints Change**: Modify time constraints (e.g., long-lived to short-lived for replay protection) or audience.
+7.  **Subject Change**: Change or add subjects within the token, supporting cross-domain communication by hiding internal topology details.
+8.  **Adding Sender Constraint**: Incorporate an additional sender constraint into a token.
+
+**Security Considerations (work in progress):**
+*   **Replay Attacks**: A primary concern, especially with bearer tokens.
+*   **Access Control**: Securing the token exchange procedure itself.
+*   **Privilege Elevation**: Preventing inadequate privilege increases when exchanging tokens.
+*   **Abuse Prevention**: Protecting against DoS or other abuses of the exchange process.
+*   **Privacy**: Generalizing cross-domain communication, not disclosing internal infrastructure details, and encrypting sensitive identity information.
+*   **Multi-tenancy**: Ensuring secure operation in shared service environments.
+*   **Auditability**: Maintaining an audit trail for security-sensitive token exchange processes.
+
+**Discussion:**
+*   Watson noted a slide error (referring to "same token" when "token B" was intended) which was acknowledged and will be corrected. He also questioned the separation of use cases, suggesting they are all "transformations" with similar security implications. The team clarified that the goal is to categorize and abstract application scenarios for systematic security analysis.
+*   Evan inquired about assumptions regarding the resulting token format. The team confirmed they are not dictating a single format (e.g., JOT or X.509) but acknowledge that format differences impact the ability to embed context or constraints.
+*   Ibrahima asked about cross-domain use cases, particularly involving different token formats like JSON to ProtoBuffers. The team affirmed that cross-domain is a key application, and format changes (or lack thereof) within or across domains are covered by the defined use cases.
+*   George clarified that the focus is on "token transformations" to understand what kinds of changes happen during an exchange process.
+
+## Decisions and Action Items
+
+*   **Chairs (Justin & Peter)**: Reach out to the editors of the adopted Architecture and Projected Token BCP documents to encourage updates and offer support.
+*   **Service-to-Service Design Team**: Continue work, start producing one or more drafts reflecting current proposals and discussions.
+*   **Token Exchange Design Team**: Continue work, start producing one or more drafts to cover the identified use cases and security considerations.
+*   **Both Design Teams**: Prepare clear recommendations to the working group for IETF 120, including preferences between design options (e.g., DePPish vs. HTTP Message Signatures).
+*   **Max Ding**: Continue participation on the WIMSE mailing list. The design team output will become input to wider working group discussion. Feel free to offer content from the individual draft for design team consideration.
+*   **Editors of Architecture and Projected Token BCP Drafts**: Provide updates to the working group; contact chairs if assistance is needed.
+
+## Next Steps
+
+*   Design teams will finalize their initial work and produce drafts ahead of IETF 120.
+*   These drafts, along with recommendations, will be presented to the full working group.
+*   New drafts proposed by design teams will be considered for adoption.
+*   Updates on the adopted Architecture and Projected Token BCP documents are expected.
+*   Further discussion will occur on the WIMSE mailing list and at IETF 120 in Vancouver.

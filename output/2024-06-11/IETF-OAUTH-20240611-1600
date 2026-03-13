@@ -1,0 +1,65 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This interim meeting featured presentations and discussions on three key drafts: the OAUTH Token Status List, OAUTH Status Assertion, and Global Token Revocation. Discussions covered technical mechanisms, proposed changes, comparisons to existing standards, and the specific use cases each draft aims to address. A recurring theme was the increasing number of revocation methods and the need to understand their respective tradeoffs and applicability. All three topics are slated for further discussion at IETF 120 in Vancouver.
+
+## Key Discussion Points
+
+### 1. OAUTH Token Status List (formerly JCSL)
+-   **Purpose:** Provide a mechanism for a verifier to check the status of a token (e.g., a reference token within a wallet presentation).
+-   **Mechanism Overview:** A reference token includes a `status` claim with a `URI` and an `index`. The verifier fetches a status list token from the status provider (which can be the issuer), then uses the `index` to check a specific bit representing the token's status. The status provider is responsible for maintaining and updating this list.
+-   **Key Change:** The `status` claim now employs a CNF-like structure, allowing for a registry of different status mechanisms. `status_list` is registered for this specific mechanism, containing the `URI` and `index`. This design enables the co-existence of multiple status specifications.
+-   **New Features/Discussions:**
+    -   **Status List URI Aggregation:** Explored a mechanism for aggregating status list URIs to support offline or caching scenarios, such as for mobile driving licenses, where immediate online access may not be guaranteed.
+    -   **CRL-like Mechanism:** Discussed the need for a separate, simpler draft akin to Certificate Revocation Lists (CRLs). This alternative would be for use cases requiring specific identifiers with statuses and the ability to include metadata like when a status change occurred, as the current status list is optimized for simply conveying the current status.
+-   **Open Point: Unsigned Option Removal:** The authors are strongly considering removing the unsigned (e.g., COSE/JWT) option for status lists, citing a lack of implementer uptake and the added complexity it introduces to the specification.
+    -   **Feedback:** Chia-Po suggested retaining both signed and unsigned options to accommodate various trust frameworks and non-repudiation requirements, drawing a parallel to signed and unsigned JWTs.
+-   **Comparisons:**
+    -   **OAUTH Status Assertion:** Acknowledged as similar to OCSP stapling but addresses different requirements, necessitating separate mechanisms.
+    -   **Global Token Revocation (GTR):** GTR was framed as an input that could trigger a status update within the OAUTH Token Status List mechanism.
+-   **Pending Work / To-Dos:** Detail validation rules and key resolution for status list tokens, finalize the N-lock example, consider support for point-in-time status, and develop a comparison of various status mechanisms (potentially an informational RFC) to guide implementers.
+
+### 2. OAUTH Status Assertion (formerly OAUTH Status Attestation)
+-   **Purpose:** A signed artifact (JWT/CWT) issued by a digital credential issuer to demonstrate the non-revocation status of a digital credential, which the holder obtains and presents alongside the credential to a Relying Party (RP).
+-   **Key Benefits:**
+    -   **Reduced Burden:** Allows the use of credentials issued with low-high assurance levels without requiring frequent re-issuance (e.g., avoiding refresh tokens for high-assurance credentials).
+    -   **RP Autonomy & Offline Use:** RPs are not forced to contact the issuer or status provider for revocation checks, which enables offline use cases.
+    -   **Privacy Preservation:** Prevents RPs from continuously monitoring the status of a credential over time, addressing legal and privacy concerns in specific use cases (e.g., social benefits).
+-   **Mechanism:** A digital credential's `status` JSON object can include `status_assertion` alongside `status_list`. A holder requests multiple status assertions in a single HTTP request, providing proof of possession of the credential. The assertion is then presented to the RP, typically within a VP Token.
+-   **Discussion Points:**
+    -   **Trust Model Concerns (Christina):** Raised concerns about the wallet fetching status on behalf of the verifier, questioning the implications for trust between the verifier and wallet, and the necessity of issuer signatures in such a model.
+    -   **Proof of Possession (Paul):** Discussed the current reliance on a key embedded in the reference token (CNF claim) for proof of possession. Paul suggested decoupling this, proposing keys provided during issuance, to accommodate opaque tokens (e.g., access tokens) that may not contain a public key.
+    -   **Comparison to Short-Lived Credentials (Christian, Paul):** A significant point of discussion centered on the specific use cases where status assertions offer advantages over simply issuing short-lived credentials, particularly for low-high assurance credentials where frequent re-issuance or refresh tokens are undesirable from a user experience or security standpoint. This comparison was identified as crucial for the draft's adoption.
+
+### 3. Global Token Revocation
+-   **Problem Addressed:** Provides a mechanism for an external tool or Identity Provider (IdP) to explicitly command an Authorization Server (AS) to revoke tokens (access and refresh) it has issued to a client application, particularly in Federated login scenarios.
+-   **Mechanism:** A new endpoint on the AS where revocation requests are sent. The payload uses Subject Identifiers for Security Event Tokens (SET) to identify the user (e.g., email, opaque ID, issuer+subject). Authentication for this endpoint is required; the method is out of scope (an implementation uses an OpenID Private Key JWT client authentication-like method).
+-   **Expectations of the AS:**
+    -   Refresh tokens *must* be revoked.
+    -   Access tokens *should* be revoked if feasible (acknowledging that some deployments make access tokens non-revocable).
+    -   The user *must* be reauthenticated before issuing any new access tokens.
+-   **Comparison to Existing Mechanisms:**
+    -   **RFC 709 (Token Revocation), Front Channel Logout:** Not suitable as they are client-initiated and use the token itself as input, rather than a user identifier.
+    -   **OpenID Connect Back Channel Logout:** Closest, but this draft explicitly requires *all* refresh tokens to be revoked, contrary to OIDC's guidance, and focuses on sessions rather than tokens directly.
+    -   **OpenID Shared Signals Framework:** Differs fundamentally as GTR is a *command* with a defined action (revocation), while SSF provides *signals* which the receiver may or may not act upon, and involves more infrastructure setup.
+-   **Relationship to Other Drafts:** The author clarified that Global Token Revocation is primarily for *OAuth tokens* and should be seen as an *input* to other revocation mechanisms. For instance, a GTR event could trigger an update in a Status List or stop the issuance of Status Assertions for affected tokens.
+-   **AS to Resource Server Communication (Peter):** Discussion on how the AS communicates revocation to Resource Servers (RS). It was noted that this is often out of OAuth's scope. If AS and RS are separate, coordination is needed (e.g., through token introspection or dedicated mechanisms for JATs). Revoking refresh tokens is a mandatory step for the AS, as it prevents future token issuance, while revoking access tokens is often deployment-dependent.
+
+### General Discussion on Multiple Revocation Mechanisms:
+A cross-cutting discussion across all presentations addressed the increasing number of different revocation methods.
+-   **Necessity:** Participants debated whether a single revocation model is sufficient or if multiple models are inevitable given diverse use cases and varying requirements (e.g., privacy vs. scalability), especially in the absence of scalable, secure cryptographic accumulators.
+-   **Learning from PKI:** The group reflected on the "pain" experienced in the PKI world with various CRL/OCSP mechanisms and the difficulty in choosing between them.
+-   **Guidance for Developers:** A call was made for clearer criteria or "decision trees" to help developers understand when to use which revocation mechanism to avoid future confusion.
+
+## Decisions and Action Items
+
+-   **Unsigned Option for OAUTH Token Status List:** The authors are strongly considering removing the unsigned option. Implementers interested in retaining this feature should reach out to the working group to provide their use cases.
+-   **IETF 120 Presentations:** All three drafts presented (OAUTH Token Status List, OAUTH Status Assertion, and Global Token Revocation) are slated for further discussion and potentially longer presentations at IETF 120 in Vancouver.
+
+## Next Steps
+
+-   **Continued Draft Development:** Authors of all three drafts will continue to refine their specifications based on the feedback received during this interim meeting.
+-   **IETF 120 Engagement:** Participants are encouraged to attend IETF 120 in Vancouver for deeper technical discussions on these and other OAUTH topics.
+-   **Working Group Input:** The working group invites further comments and issues on the individual drafts, particularly on the implications of multiple revocation mechanisms and the specific use cases for each.
+-   **Comparison of Mechanisms:** Further work is planned to compare and document the tradeoffs of different revocation and status checking mechanisms, possibly leading to an informational RFC.

@@ -1,0 +1,70 @@
+# [PPM](../wg/ppm.html)
+
+## Summary
+
+The PPM Working Group met to discuss the future of Heavy Hitters support within the Distributed Aggregation Protocol (DAP) specification and to receive an update on the Private Inexpensive Norm Enforcement (Pine) VAF. A primary outcome was a preliminary agreement, subject to a formal call for consensus on the mailing list, to simplify the core DAP draft by removing explicit multi-round aggregation and Heavy Hitters support. Instead, Heavy Hitters will be pursued in separate, specialized drafts within PPM. The Pine VAF, designed for Federated Machine Learning, was presented as a promising new use case for DAP, but its adoption will require further discussion with the IETF's CFRG Working Group and Area Director concerning charter alignment. A brief discussion also took place regarding a proposed PPM logo.
+
+## Key Discussion Points
+
+*   **Agenda Bashing**: Tim Cappalli clarified that the discussion should encompass not only whether DAP should support Heavy Hitters but also how the PPM working group might approach Heavy Hitters in documents outside the core DAP specification.
+
+*   **Heavy Hitters Problem Presentation (Chris Patton)**:
+    *   **Problem Definition**: Identify bit strings submitted by clients that meet or exceed a specified threshold `T`. Common applications include popular URL detection.
+    *   **Popular One VDF**: This VDF, based on a 2021 paper, leverages an Incremental Distributed Point Function (IDPF) to perform "prefix counting" via a tree traversal process, identifying Heavy Hitters.
+    *   **Illustration**: An example demonstrated how prefix counts at each level of a binary tree guide the discovery of Heavy Hitters.
+    *   **Information Leakage and Attacks**:
+        *   **Inherent Leakage**: The tree traversal inherently reveals more information than just the final Heavy Hitters.
+        *   **Steering Attacks**: A malicious Collector, in collusion with one malicious Aggregator, can manipulate the traversal path to learn specific prefix counts.
+        *   **Additive Attacks**: A malicious Collector can inject fraudulent values into aggregate shares to artificially inflate counts, leading to the discovery of "light hitters" (values below the true threshold).
+    *   **Mitigation Strategies**:
+        *   **Differential Privacy (DP)**: Essential for security, DP adds noise to prefix counts, introducing uncertainty and bounding the success probability of an attacker. A formal DP specification is required.
+        *   **Bolt-on Cryptography**: General-purpose Multi-Party Computation (MPC) could check thresholds without revealing counts, but is likely too expensive for the typical two-party DAP setting. More efficient sampling of DP noise shares is also a consideration.
+        *   **Other Approaches**: STAR and POP-STAR offer alternative cryptographic constructions but have faced concerns regarding Denial-of-Service attacks and practical deployability.
+    *   **Current Status**: Heavy Hitters is still considered an active research area, definitively requiring differential privacy, for which a concrete specification is yet to be established.
+
+*   **Proposals for Heavy Hitters Support in DAP (Tim Cappalli)**:
+    *   **Comparison to Prio**: Heavy Hitters is recognized as less mature compared to prio-based VAFs, which have a clearer understanding of security properties and deployment.
+    *   **Core Question**: Should DAP directly support Heavy Hitters? A parallel document within PPM is an alternative for addressing Heavy Hitters.
+    *   **Current DAP suitability**: DAP is currently well-suited for VAFs like Prio3, mastic (for attribute-based metrics), and pine (for ML model training).
+    *   **Proposal 0: DAP will not include Heavy Hitters**: This option would simplify and specialize the core DAP specification for VAFs requiring only a single collection of reports per batch.
+    *   **Proposal 1: Collector-Driven Traversal**: (If DAP were to support HH) The Collector would manage the tree traversal across multiple batch collections. This requires aggregators to retain reports for successive collections and specific validation rule adjustments. It is considered less intrusive to the DAP specification.
+    *   **Proposal 2: Aggregator-Driven Traversal**: (If DAP were to support HH) Aggregators would independently drive the tree traversal, revealing prefix counts to each other, with the Collector only receiving the final set of Heavy Hitters. This approach requires a new collection mode and commitment schemes between aggregators, making DAP less generic by introducing Heavy Hitter-specific semantics. It potentially offers lower latency by reducing Collector-aggregator interactions during traversal.
+    *   **Mitigations for Steering Attacks**: Proposed mitigations include enforcing consistent tree traversal, aggregators revealing prefix counts to each other for verification (within DP bounds), aggregators committing to shares, and applying Differential Privacy for additive attacks.
+    *   **Trade-offs**: Proposal 1 offers less spec intrusion and more generality, but the Collector learns the entire prefix tree. Proposal 2 is more intrusive and less generic but conceals prefix counts from the Collector and could be faster. Level skipping (application-specific traversal) is simpler in Proposal 1 as the Collector maintains control.
+
+*   **Working Group Discussion on Heavy Hitters Direction**:
+    *   **Proposed Consensus**: A strong sense among the participants, particularly Tim Cappalli and Chris Patton, supported **Proposal 0 (removing Heavy Hitters support from the core DAP draft)**. This decision aims to simplify the core DAP specification.
+        *   Arguments for this direction included the greater maturity of prio-based VAFs, the ongoing research nature of Heavy Hitters (especially regarding DP), and the benefits of developing specialized protocols for specific problems.
+    *   **Future of Heavy Hitters in PPM**: The group generally agreed that PPM should continue to address Heavy Hitters, likely in separate, specialized drafts. For such separate work, there was a lean towards **Proposal 2 (Aggregator-driven traversal)** due to its superior information leakage properties, recognizing that it would be a distinct protocol.
+    *   **Standards vs. Research**: The discussion highlighted the IETF's focus on standardizing deployable solutions rather than early-stage research. Chris Patton, Tim Cappalli, and Shan Wing expressed continued interest in Heavy Hitters but emphasized the need for further prototyping and real-world deployment experience before standardization. A key dependency noted was a common understanding of applying differential privacy.
+
+*   **Pine VAF Update (Junwei H)**:
+    *   **Use Case**: Pine (Private Inexpensive Norm Enforcement) is a new VAF designed for Federated Machine Learning (FML), enabling the private and robust aggregation of client-side model gradients.
+    *   **Problem Addressed**: Prio3-based VAFs can suffer from field modulus overflows when computing L2 Norms for gradients, leading to incorrect acceptance of invalid client contributions.
+    *   **Pine's Solution**: Pine uses a novel technique involving random vector dot products to probabilistically detect these wraparound effects, significantly improving robustness. This approach necessitates independent derivation of random vectors by clients and aggregators, making it incompatible with Prio3.
+    *   **Performance**: Pine significantly reduces communication costs (e.g., 15x smaller for 100K dimension gradients) compared to Prio3-based alternatives for FML.
+    *   **Next Steps**: Complete the draft text, finalize parameters for communication cost optimization and desired robustness, and incorporate implementer feedback.
+    *   **CFRG Reception**: Pine faced challenges in CFRG due to unfamiliarity with VAFs and FML, and general reluctance for new MPC work.
+    *   **WG Discussion on Pine**:
+        *   Significant interest and support for Pine's work were expressed within PPM (Tim Cappalli, Chris Patton, Armando). It was seen as fitting neatly into the DAP framework and addressing a compelling, privacy-sensitive FML use case.
+        *   **Limitations**: Pine is specialized for L2 Norm verification. Its scalability is bounded by dimension, making it unsuitable for extremely large models (e.g., LLMs with billions of parameters).
+        *   **IETF Grouping**: Benjamin asked if an MPC-focused IRTF group might be a better home for such work. Tim and Chris argued against this, noting that current experts are already active in PPM and that creating a new group might be premature and incur unnecessary overhead.
+        *   **Charter Alignment**: Sam noted a potential charter conflict, as PPM's charter states that "PPM protocols will use cryptographic algorithms defined by CFRG." This would require CFRG involvement or a re-chartering discussion before Pine's adoption.
+
+*   **PPM Logo Discussion**: Martin Thompson proposed a logo depicting a plus sign split in two, symbolizing aggregation and the two-aggregator model. Chairs noted that logo adoption does not require working group consensus and will consult further.
+
+## Decisions and Action Items
+
+**Decision (Proposed - Subject to Mailing List Consensus Call):**
+*   Heavy Hitters support, particularly the multi-round aggregation mechanism, will be removed from the core DAP draft to simplify the protocol.
+
+**Action Items:**
+1.  **Tim Cappalli & Chris Patton**: Draft a proposal for the PPM mailing list summarizing the discussion regarding Heavy Hitters. This proposal will detail the proposed simplification of the core DAP draft (by removing multi-round and Heavy Hitter support) and outline the approach for pursuing Heavy Hitters in separate, specialized drafts (likely based on Proposal 2).
+2.  **Chairs (Sam and Benjamin)**: Initiate a discussion with the Area Director (Deb) regarding the PPM working group's interest in adopting the Pine VAF and how its cryptographic aspects align with the current charter's stipulation for CFRG to define cryptographic algorithms.
+3.  **Junwei H**: Engage with the PPM mailing list to gather interest and feedback on the Pine VAF, considering the ongoing discussion about charter alignment.
+
+## Next Steps
+
+*   The chairs will issue a formal call for consensus on the mailing list concerning the proposed simplification of the core DAP draft and the strategy for Heavy Hitters.
+*   Individuals interested in Heavy Hitters will continue prototyping and developing solutions, potentially through individual drafts, with a focus on real-world deployability.
+*   The chairs will consult on the proposed PPM logo.

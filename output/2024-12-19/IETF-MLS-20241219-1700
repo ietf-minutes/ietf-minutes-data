@@ -1,0 +1,55 @@
+# [MLS](../wg/mls.html)
+
+## Summary
+The MLS Working Group held an interim meeting to discuss proposals for clarifying the definition and use of "extensions" within the MLS protocol, particularly in distinguishing between elements that modify the core protocol and those that facilitate application-level functionality. The discussion centered on a proposal to introduce clearer application-facing APIs and mechanisms, potentially simplifying the existing "extensions" document and related concepts like GC Diff. There was a general sense of agreement on the proposed high-level direction to separate application complexity from the MLS core.
+
+## Key Discussion Points
+
+*   **Administrative Items:**
+    *   The meeting was an official IETF interim, and the Note Well was presented.
+    *   Brendan was thanked for volunteering as scribe.
+    *   The agenda focused on extension documents, particularly Richard's proposal.
+
+*   **BR's Combiners Document:**
+    *   BR provided a brief update, noting that the "combiners" document has been accepted as a working group item.
+    *   Work is ongoing to expand the security considerations section and add a table.
+
+*   **Richard's Proposal: Rethinking MLS Extensions and Application-Specific Data**
+    *   **Problem Statement:** Richard highlighted a "loose use" of the term "extension," leading to application-specific complexity "infecting" MLS internals, even when it doesn't modify MLS behavior.
+    *   **Proposed Solution:**
+        *   **Stricter Terminology:** "Extensions" should be reserved for elements that change the behavior of the MLS protocol itself. Application-level functionality should be handled separately.
+        *   **Safe Application API:** The current "safe extensions" section from the existing extensions document should be reframed as a "Safe Application API." This API would expose MLS information (e.g., signature keys, HPK keys) to applications safely, without needing MLS extension IDs.
+        *   **Application API Document Structure:** A new document is proposed to fill gaps for advanced application needs, including:
+            *   Domain separation for application data.
+            *   Mechanisms for groups to agree on application data or its state at a given commit.
+            *   Ways to piggyback data onto MLS messages confidentially.
+        *   **Application Components:** The concept of "components" (or "application components") was introduced, analogous to different parts of an application (e.g., participant lists, room titles) that manage state separately. These components would use `component_ID`s for separation.
+        *   **New Application-Focused Mechanisms:**
+            *   **Application Data Proposal:** A new proposal type specifically for application-defined data that doesn't affect MLS group state or require an update path. It can be signed, not encrypted, and goes into the transcript, ensuring synchronization across commits.
+            *   **Application Data Extension (Field):** A single, generic extension field type defined for carrying arbitrary application data within `group_context`, `group_info`, `leaf_node`, and `key_package`. This aims to consolidate disparate application data uses of extension fields.
+            *   **Application Data Update Proposal:** A mechanism to send *patches* or *diffs* to application state stored in the `group_context` Application Data Extension field. This is particularly useful for large application states (e.g., participant lists) to avoid resending the entire data.
+        *   **Design Question: Diff vs. Replacement:** A key point of discussion was whether the `ApplicationDataUpdateProposal` should mandate diffs or allow for wholesale replacement.
+            *   Rowan argued for allowing choice, noting that some application components might benefit from diffs, while others might prefer wholesale replacement. An application callback mechanism is needed regardless to validate combinations of updates.
+            *   Richard noted that either approach still requires application involvement for validation and for initializing joiners.
+        *   **Implications for GC Diff:** The proposal raises questions about the future of the "GC Diff" proposal, as application data diffing would be handled by the new `ApplicationDataUpdateProposal`. The group discussed whether a general GC Diff is still needed for non-application data, or if diffs should only apply to whole extensions. `external_senders` was suggested as a test case for potentially large, non-application data.
+        *   **Implications for the Existing "MLS Extensions" Document:** It was suggested that many items in the current "MLS Extensions" document might be re-categorized under the new application API framework. Examples like `self_remove` and `targeted_messages` were identified as potentially "true" MLS protocol extensions. Rafael suggested renaming the document if most content moves out.
+
+*   **General Discussion and Feedback:**
+    *   There was a general sense of support for the high-level idea of separating application-level concerns from the MLS protocol to reduce complexity.
+    *   Rafael emphasized the need for clearer definitions of "what it means to change the protocol" and ensuring no necessary functionality is lost from the existing extensions document during reorganization. He welcomed the general direction but needed to examine the detailed mechanisms more closely.
+    *   BR asked about the impact on metadata.
+    *   Rowan stressed the importance of quickly getting consensus on the `Application Data Proposal`, `Application Data Update Proposal`, and the `Application Data Extension` container, as these are critical for ongoing MIMI implementation work.
+    *   The use of "application component" instead of "extension" for application-level concerns was welcomed for reducing confusion.
+
+## Decisions and Action Items
+
+*   **High-Level Direction:** There was a general sense of agreement on the proposed high-level approach: to reframe "extensions" to clearly distinguish between MLS protocol modifications and application-level functionality, and to create a more explicit application API.
+*   **Action Item: Draft Consolidation:** Richard, Rowan, and editors/authors of the existing `mls-extensions` draft (Conrad, Rafael) will collaborate to refine the comprehensive proposal, covering both the new application API mechanisms and a re-evaluation of the existing extensions document's content.
+*   **Action Item: Interim Meeting:** Sean will send out a Doodle poll to schedule another interim meeting in mid-January 2024. The purpose of this meeting will be to present the consolidated proposal, discuss terminology and document naming, and gather further feedback, particularly from those actively working on MLS extensions.
+
+## Next Steps
+
+*   Collaborate on updating and consolidating the relevant drafts based on the discussions.
+*   Review the specific proposal types (`ApplicationDataProposal`, `ApplicationDataUpdateProposal`) and the `ApplicationDataExtension` container, providing detailed technical feedback.
+*   Discuss and propose clearer terminology for "extensions," "extending fields," and "application components."
+*   Actively participate in the mid-January interim meeting to drive these discussions towards concrete decisions before the next IETF in Bangkok.

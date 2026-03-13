@@ -1,0 +1,95 @@
+# [RADEXT](../wg/radext.html)
+
+## Summary
+
+The RADEXT Working Group held a meeting to discuss open issues for the Radius DTLS BCP draft. The discussion covered several key areas including connection handling (load balancing, parallel connections, timeouts, NAT issues), TLS-related topics (certificate validation, trust anchors), and various editorial and protocol-specific to-dos. While some issues reached rough consensus for specific textual changes or omissions from the draft, others were deemed too complex for immediate resolution and deferred for further discussion or separate documents. The meeting was productive, identifying several concrete action items for the document editor and reviewers.
+
+## Key Discussion Points
+
+*   **Administrative Tasks**: Valeriy Smirnoff (co-chair) opened the meeting, reminded participants of the IETF Notewell and Code of Conduct. Fabian (surname not given, but likely Klauss) volunteered to be the note taker.
+*   **Agenda**: The sole agenda item was to discuss open issues with the Radius DTLS BCP draft.
+*   **Editor's Update (Jan-Fred Olsson)**: Thanked contributors for reviews and pull requests on GitHub. Acknowledged an early review from Russ Housley, with most editorial feedback already incorporated. Apologized for slow progress due to Master's thesis work.
+*   **Issue Categories Overview**: Jan-Fred presented issues grouped into Connection Handling, IP Address Considerations, Proxying/Load Balancing, TLS-related, Editorial, and existing To-Dos in the document.
+
+### Detailed Discussion and Decisions
+
+1.  **Connection Handling: Parallel Connections and Load Balancing**
+    *   **Discussion**: Margaret, Alan, and Fabian expressed that detailed guidance on load balancing, distributing packets, and reconnection mechanisms is generally out of scope for this document, being operational or implementation-specific. Alan noted Radius-specific EAP issues when load balancing across servers. Valeriy agreed, noting load balancing issues are common across protocols.
+    *   **Consensus**: The working group indicated rough consensus to keep detailed load balancing discussions out of scope for this document.
+    *   **Decision**: A concise sentence will be added to the document to caution implementers about complexities and "here be dragons" regarding load balancing, without providing detailed solutions.
+    *   **Action Item**: Alex (Klass) volunteered to draft the specific wording for the load balancing caution.
+
+2.  **Connection Handling: "Same Server" Definition and SNI**
+    *   **Discussion**: The document currently has text from RFC 6613 (Radius TCP) about not marking a server down until *all* connections to it are down. Questions arose on how to define "same server" (e.g., via configuration, dynamic discovery, or Server Name Indication (SNI)). SNI (mandated by TLS 1.3) was highlighted for its relevance in multi-trust environments (e.g., Eduroam/Open Roaming). Margaret, Alan, and Alex suggested this topic is complex and belongs more in operational considerations or an "implementation considerations" section.
+    *   **Consensus**: The working group concluded that a detailed definition of "same server" or how to manage parallel connections to it is out of scope.
+    *   **Decision**: The specific paragraph about detecting live servers and marking a server down will be removed. The broader issue of identifying "same server" in complex scenarios (like with SNI or multiple connections) will not be extensively covered.
+    *   **Action Item**: Jan-Fred Olsson to review section 3.3 and remove the specified paragraph. A general note on the complexities might be added to an "implementation considerations" section, if one is created.
+
+3.  **TLS: RFC 9525 Service Identity & Certificate Validation (PR #4)**
+    *   **Discussion**: Fabian's Pull Request #4 proposes updated text for certificate validation, aligning with RFC 9525. Key changes include disallowing the Common Name (CN) for identity, adding specific guidance for wildcard certificates (leftmost label only), and unifying text for explicit configuration and Dynamic Discovery. Concerns were raised about backward compatibility due to the CN change. The discussion also touched on "loopback" or "selfie" attacks, where a client might accept its own certificate if acting as a server, and how SNI might help mitigate this.
+    *   **Consensus**: Rough consensus to use PR #4 as the foundation for certificate validation text.
+    *   **Decision**: Pull Request #4 will be accepted as the base for certificate validation. The document's security considerations will include text about mitigating loopback/selfie attacks, such as ensuring different identities for different roles or not accepting one's own certificate.
+    *   **Action Item**: Jan-Fred Olsson to merge PR #4 and draft text for the security considerations section addressing loopback attacks.
+
+4.  **TLS: Trust List Considerations (PR #15)**
+    *   **Discussion**: Pull Request #15 suggests that Radius DTLS clients *should not* come preconfigured with trust anchors, instead relying on administrators to configure them. Margaret and Alan questioned the strictness of "must not," noting practical challenges for clients to acquire trust anchors. They emphasized avoiding the use of general web PKI for security reasons. Alex suggested allowing pre-configuration if disabled by default or for specific purposes (e.g., Open Roaming, first-use enrollment).
+    *   **Consensus**: Rough consensus was reached on the intent to encourage conscious administrative decisions for trust anchors.
+    *   **Decision**: The document will include text encouraging administrators to make an informed, conscious decision about their trust anchors, rather than relying on vendor-supplied defaults they might not know about. This will be framed as a "should not" for pre-configured trust anchors, allowing for specific justified exceptions.
+    *   **Action Item**: Jan-Fred Olsson to rephrase the text in PR #15 to reflect this consensus.
+
+5.  **Connection Handling: Timeouts (PR #5, #11)**
+    *   **Discussion**: The document currently has disparate timeout specifications for TLS and DTLS. PR #5 proposes a new, unified section in general connection handling, removing the `should` for closing sessions and making timeouts configurable, allowing complete disablement. PR #11 specifically suggests a configurable DTLS idle timeout (1-10 minutes). The concept of reverse COA requiring connections to be kept open was mentioned as a reason for configurable idle timeouts.
+    *   **Consensus**: The working group indicated rough consensus to unify timeout specifications.
+    *   **Decision**: Pull Request #5 will be accepted to unify timeout specifications under a new general connection handling section. Idle timeouts will be configurable, and disabling them will be allowed. The mention of reverse COA as a context for keeping connections open is acceptable for now.
+    *   **Action Item**: Jan-Fred Olsson to merge PR #5 and ensure all timeout-related text in the document aligns with the new unified specification, reviewing the specific wording around reverse COA for clarity.
+
+6.  **Connection Handling: Duplicate IP Addresses / NAT / Wildcard Clients (PR #16, #17)**
+    *   **Discussion**: PR #16 describes a scenario where two clients behind a NAT, one using Radius UDP and another using Radius DTLS, could appear to a server with the same source IP and port, potentially leading to misidentification or a downgrade attack. PR #17 suggests adding security considerations for clients without specific IP restrictions. Michael confirmed that NATS can indeed reuse source ports for different protocols with UDP. Alan emphasized the downgrade attack as the primary concern. Margaret noted that the destination port is also part of the connection tuple. Discussion highlighted the need for clients to never fall back to UDP if TLS/DTLS is configured. The topic was deemed complex for quick resolution.
+    *   **Consensus**: No immediate consensus on the specific wording or resolution due to the complexity.
+    *   **Decision**: Detailed resolution of these issues is deferred for further investigation and discussion at the next meeting.
+    *   **Action Item**: Jan-Fred Olsson to further investigate these issues and prepare a more detailed proposal for the November meeting, possibly including broader warnings about cross-protocol proxying.
+
+7.  **Implementation Guidelines: Connected Sockets (PR #14)**
+    *   **Discussion**: Pull Request #14 proposes a new "implementation guidelines" section, recommending connected sockets on the client side but not the server side. Fabian and Alan disagreed with the server-side recommendation, stating that connected sockets are beneficial for DTLS on both client and server (unlike UDP). Some existing text on client subsystems in section 7.6 was noted as overlapping.
+    *   **Consensus**: The group agreed that connected sockets are generally recommended for DTLS on both client and server.
+    *   **Decision**: Text recommending the use of connected sockets for DTLS on both client and server will be integrated into the document. The need for a dedicated "implementation guidelines" section will be re-evaluated, potentially moving the text to existing normative or a designated "implementation considerations" section.
+    *   **Action Item**: Jan-Fred Olsson to integrate the connected sockets text, ensuring it reflects the consensus, and confirm with Ethan Thompson (the PR author) that their concerns are addressed. This will be reviewed at the November meeting if concerns arise.
+
+8.  **Editorial: Crypto Agility Reference (PR #18)**
+    *   **Discussion**: PR #18 suggests referencing RFC 6421 (Radius Crypto Agility). The current proposed text is considered brief.
+    *   **Decision**: More eyes are needed on the text to ensure adequate coverage.
+    *   **Action Item**: Alex (Klass) volunteered to review and comment on Pull Request #18 on GitHub regarding the reference to RFC 6421.
+
+9.  **Editorial: TLS Response Cache Invalidation (PR #6)**
+    *   **Discussion**: Pull Request #6 proposes moving text related to TLS response cache invalidation to a common section, as it applies to both TLS and DTLS. This was seen as a straightforward editorial change.
+    *   **Decision**: This is considered a straightforward editorial change.
+    *   **Action Item**: Alan volunteered to review and comment on Pull Request #6 on GitHub.
+
+10. **To-Do: Protocol Error Packet (Unwanted Accounting Request)**
+    *   **Discussion**: The document's to-do list includes a discussion on handling unwanted accounting requests. RFC 6614 specifies responding with an accounting response containing an error cause. Alan suggested sending a "protocol error packet" instead (a connection-level error). Margaret questioned if this would effectively stop floods and if it would consume more resources. She, Fabian, and Valeriy also questioned if this should be a DTLS-specific solution, arguing it's a general RADIUS issue. Jan-Fred pointed out that DTLS uses a single port for auth and accounting, unlike UDP, making it more specific in this context. The discussion highlighted potential backward compatibility breaks.
+    *   **Consensus**: No immediate consensus was reached, and the issue was deemed complex and potentially broad.
+    *   **Decision**: Detailed resolution of the "protocol error packet" for unwanted accounting requests is deferred.
+    *   **Action Item**: Jan-Fred Olsson to prepare this topic for more in-depth discussion at the November meeting, considering its broader implications for RADIUS.
+
+## Decisions and Action Items
+
+*   **Decision**: A concise sentence will be added to the document to caution implementers about complexities and "here be dragons" regarding load balancing, without providing detailed solutions.
+    *   **Action Item**: Alex (Klass) to draft the specific wording for the load balancing caution.
+*   **Decision**: The specific paragraph in section 3.3 about detecting live servers and marking a server down will be removed. The broader issue of identifying "same server" in complex scenarios (like with SNI or multiple connections) will not be extensively covered.
+    *   **Action Item**: Jan-Fred Olsson to review section 3.3 and remove the specified paragraph.
+*   **Decision**: Pull Request #4 (certificate validation text) will be accepted as the base for certificate validation. The document's security considerations will include text about mitigating loopback/selfie attacks.
+    *   **Action Item**: Jan-Fred Olsson to merge PR #4 and draft text for the security considerations section addressing loopback attacks.
+*   **Decision**: The document will include text stating that Radius DTLS clients *should not* come preconfigured with trust anchors, encouraging administrators to make conscious decisions about trust.
+    *   **Action Item**: Jan-Fred Olsson to rephrase the text in PR #15 to reflect this consensus.
+*   **Decision**: Pull Request #5 will be accepted to unify timeout specifications under a new general connection handling section. Idle timeouts will be configurable, and disabling them will be allowed.
+    *   **Action Item**: Jan-Fred Olsson to merge PR #5 and ensure all timeout-related text in the document aligns with the new unified specification, reviewing the specific wording around reverse COA for clarity.
+*   **Decision**: Connected sockets for DTLS are generally recommended for both client and server. Text reflecting this will be integrated.
+    *   **Action Item**: Jan-Fred Olsson to integrate the connected sockets text (from PR #14), ensuring it reflects the consensus, and confirm with Ethan Thompson that their concerns are addressed.
+*   **Action Item**: Alex (Klass) volunteered to review and comment on Pull Request #18 on GitHub (Radius Crypto Agility reference).
+*   **Action Item**: Alan volunteered to review and comment on Pull Request #6 on GitHub (TLS response cache invalidation).
+
+## Next Steps
+
+*   The deferred discussions (Duplicate IP Addresses/NAT, Protocol Error Packet for Unwanted Accounting Requests) will be revisited at the next IETF meeting in Dublin.
+*   Jan-Fred Olsson will continue to process pull requests and integrate agreed-upon changes, coordinating with authors as needed.
+*   Reviewers will provide feedback on assigned Pull Requests via GitHub.

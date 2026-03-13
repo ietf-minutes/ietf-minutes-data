@@ -1,0 +1,95 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+This MIMI WG interim meeting covered three main technical topics: further development of room policy capabilities, a detailed presentation on pseudonymity mechanisms within MLS groups for MIMI, and a discussion on message franking requirements for abuse reporting. Key discussions revolved around the enforcement of policies, the technical flows for maintaining pseudonymity, and the challenge of distributing shared keys for franking while preserving privacy. The meeting concluded with a call for feedback on existing drafts and planning for future discussions.
+
+## Key Discussion Points
+
+### Room Policy Capabilities (Rowan)
+
+*   Rowan presented an updated list of role-based access control (RBAC) capabilities, categorizing them into:
+    *   **Membership Capabilities**: `can_add_participant`, `can_remove_participant`, `can_add_client`, `can_remove_self`, `can_add_self`, `can_create_join_link`, `can_use_join_link`.
+    *   **Moderation Capabilities**: `can_ban`, `can_unban`, `can_kick`, `can_revoke_voice`, `can_grant_voice`, `can_answer_knock`.
+    *   **Message Capabilities**: `can_send_message`, `can_receive_message`, `can_report_abuse`, `can_react_to_message`, `can_edit_reaction`, `can_delete_reaction`, `can_edit_own_message`, `can_start_topic`.
+    *   **Asset Capabilities**: `can_upload_images`, `can_download_images`, `can_upload_videos`, `can_download_videos`, `can_upload_attachments`, `can_download_attachments`, `can_send_links`, `can_send_link_previews`, `can_follow_links`.
+    *   **Real-time Media Capabilities**: `can_start_call`, `can_join_call`, `can_end_call`, `can_send_audio`, `can_send_video`, `can_receive_audio`, `can_receive_video`, `can_screen_share`.
+*   **Enforcement**: It was noted that certain capabilities (e.g., `can_send_message`, `can_report_abuse`) can be enforced by the Hub, while others, particularly those concerning end-to-end encrypted content (e.g., `reacting_to_message`, `editing_message`), must be enforced by other members of the MLS group (clients).
+*   **Initial Implementation**: Richard suggested focusing on the core framework first, and then adding policy knobs as new functionality is introduced. Rowan agreed, stating the exhaustive list serves as an existence proof of what's possible.
+*   **Clarifications**:
+    *   Raphael asked how to distinguish between videos, images, and other files with end-to-end encryption; Rowan reiterated this would require client enforcement.
+    *   Raphael asked the difference between a direct message and a targeted message; Rowan clarified DM is one-to-one, targeted could be a subset of users.
+*   **Role Definitions and Constraints**: Rowan presented examples of different room types (Strict Administrator, Cooperative, Moderated) showing how roles (e.g., "Guest", "Ordinary User", "Group Admin") could inherit or combine capabilities.
+    *   Roles are identified by a unique string per room, chosen by the room admin, potentially with defaults from the Hub.
+    *   The concept of "role constraints" was introduced, such as minimum/maximum number of users in a role (e.g., a minimum of one group admin to prevent being "screwed" if all admins leave).
+*   **Dual Control**: Tim asked about policies requiring multiple approvals for an operation (e.g., two people to approve a new user). Rowan confirmed this is not currently supported by the proposal and would be complex due to statefulness.
+*   **`can_receive_message` Enforcement**: A question from the chat (Teo) regarding `can_receive_message` enforcement: The Hub would not fan out the message, and a well-behaved client would ignore it if received. However, it's also noted that this capability might not be universally adopted, and the `can_send_message` capability is considered more critical.
+*   **Cryptographic Commitment of Roles**: Bruno asked if roles are cryptographically committed. Rowan confirmed that roles are part of the `app_sync` updated participation list, which is in the group context and cryptographically bound to the group.
+
+### Pseudonymity in MLS Groups (Conrad)
+
+*   Conrad provided details on the proposed pseudonymity scheme, emphasizing the need for a notion of "connection" between parties for identity linking.
+*   **Connection Keys**: Parties (e.g., Alice and Bob) must exchange `connection_key`s, possibly via a MIMI-defined connection establishment process (a 2-flow scheme described in the draft). This exchange is out-of-band with respect to MIMI's main message flow and is not facilitated by the Hub to preserve pseudonymity.
+*   **Pseudonym Life Cycle**:
+    *   Alice creates a `pseudonymous_credential_TBS` (to-be-signed) for her client, including a client pseudonym, user pseudonym (shared among a batch of key packages), and a signature public key. This is unique per key package.
+    *   She creates an `identity_link_TBE` (to-be-encrypted) containing a signature over the `pseudonymous_credential_TBS` by her actual credential (real identity).
+    *   Alice derives an `identity_link_key` from her `connection_key` (shared with Bob). This key is unique per key package.
+    *   She encrypts the `identity_link_TBE` with the `identity_link_key` to form a ciphertext.
+    *   The `pseudonymous_credential_TBS` and the ciphertext combine to form the `pseudonymous_credential` used in MLS groups.
+*   **Group Creation**:
+    *   Alice creates a group, samples a fresh `identity_link_wrapper_key` (static for now, future use of tree-wrap envisioned).
+    *   She encrypts her own `identity_link_key` (corresponding to the key package bootstrapping the group) under the `identity_link_wrapper_key`.
+    *   This ciphertext is included in the group's `app_sync` state on the Hub. The Hub does not know the `identity_link_wrapper_key` and cannot decrypt it.
+*   **Add Flow (Alice adds Bob)**:
+    *   Alice fetches Bob's key package and derives Bob's `identity_link_key`.
+    *   She creates an `app_sync` proposal containing Bob's encrypted `identity_link_key` (encrypted under the group's `identity_link_wrapper_key`) and includes it in the MIMI add message.
+    *   Alice sends a welcome message to Bob, including the `identity_link_wrapper_key` in an encrypted `group_info` extension.
+    *   Bob receives the welcome, decrypts the `identity_link_wrapper_key`, and can then decrypt either Alice's or Bob's own `identity_link_key` ciphertexts from the `app_sync` state, verifying credentials.
+*   **Add Flow (Bob adds Charlie)**:
+    *   Demonstrates that Alice does not need a direct connection with Charlie. Bob, being connected to Charlie, can fetch Charlie's key package, derive Charlie's `identity_link_key`, encrypt it, and add it to the `app_sync` state.
+    *   Alice, as an existing group member, can use the `identity_link_wrapper_key` (which she already possesses) to decrypt Charlie's `identity_link_key` ciphertext and verify Charlie's pseudonymous credential.
+*   **Join Flow (Dave joins)**:
+    *   Dave, joining externally, needs to acquire the group's `identity_link_wrapper_key` out-of-band (e.g., via a join link or from an existing client).
+    *   Dave creates an external commit, including an `app_sync` proposal that wraps his own `identity_link_key` under the `identity_link_wrapper_key`. This requires MLS `app_sync` proposals to be legal in external commits.
+    *   Recipients decrypt Dave's `identity_link_key` and verify his credential before accepting the commit.
+*   **Summary of Pseudonymity**:
+    *   Pseudonyms are exposed to the Hub, but real identities are hidden in encrypted sections of the credential.
+    *   Keys for de-anonymization (`identity_link_wrapper_key`) are disclosed only to other group members, not the Hub or other followers.
+    *   Requires a notion of "connection" (two parties have exchanged keys for identity linking).
+    *   External joins require out-of-band distribution of the `identity_link_wrapper_key`.
+    *   User-level pseudonymity (true anonymity) is possible by not including an `identity_link_key` or ciphertext.
+*   **Concerns on Connection Key Distribution**: Tim expressed concern about `connection_key` distribution. Relying on Hubs would defeat pseudonymity. The current scheme envisions a form of "trust on first use" via a discovery system where a public key is authenticated by a credential from the peer's provider, not directly from the Hub. This requires a robust authentication service.
+
+### Message Franking for Abuse Reporting (Rowan)
+
+*   Rowan discussed requirements for abuse reporting using message franking:
+    *   Hub does not see message content unless reported.
+    *   Receiver cannot falsely attribute a message.
+    *   Sender cannot deny a message they sent.
+    *   Follower servers cannot learn content or sender.
+    *   No indefinite storage of ciphertexts by clients/hubs.
+*   **Mechanism**: The proposed mechanism is based on the Facebook scheme, where a hash of the message context (room ID, recipient, timestamp) is included with the message.
+*   **Problem**: Follower servers, having all other information, could brute-force guess the sender of the original message from the context hash.
+*   **Proposed Solution**: To prevent follower servers from brute-forcing, a key shared *only* between group members and the Hub is needed to hash the context.
+*   **MLS Integration**: This would require a "semi-standard" (generic) mechanism in MLS for distributing such a shared key securely between group members and the Hub, rather than a Mimi-specific solution.
+*   **Hub in MLS**: Melissa asked how the notion of a Hub translates to MLS. Rowan suggested it could be treated like a "semi-private message" directed to a particular external receiver (the Hub) or a list of external receivers, in addition to the group members. This would allow key distribution on a per-epoch basis.
+
+### Open Discussion
+
+*   **Hub Server Recovery**: Teo (via chat) asked about recovering a room if the Hub server breaks. It was noted that this assumes high availability is handled by the messaging provider, similar to commercial services. The early idea of moving the Hub server within the room was deferred.
+*   **Early Attachments Draft**: Raphael reminded participants about the early attachments draft and requested feedback, suggesting time for discussion at an upcoming interim.
+
+## Decisions and Action Items
+
+*   **Rowan**: Continue refining `draft-ietf-mimi-room-policy`. Aim to discuss a more polished version in Dublin.
+*   **Conrad**: Push a new version of the main MIMI document (including current pseudonymity details) within the next few days.
+*   **Rowan**: Engage in discussions before IETF Dublin to explore a standardized mechanism in MLS for distributing a shared key for message franking, addressing the follower server brute-force concern.
+*   **Raphael**: Post to the MIMI mailing list (again) to remind people about the early attachments draft and solicit feedback.
+*   **Chairs/Raphael**: Potentially reserve agenda time for discussion of the early attachments draft at the October 16th interim meeting.
+
+## Next Steps
+
+*   Further development and review of the room policy and pseudonymity drafts.
+*   Investigation into a generic MLS mechanism for distributing shared keys for franking.
+*   Feedback collection and discussion on the early attachments draft.
+*   The next MIMI interim meeting is scheduled for October 16th.

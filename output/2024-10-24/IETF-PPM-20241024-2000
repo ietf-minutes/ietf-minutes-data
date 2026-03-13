@@ -1,0 +1,109 @@
+# [PPM](../wg/ppm.html)
+
+## Summary
+
+This interim meeting focused on reviewing the progress of the DAP and VAF drafts, discussing several open issues related to aggregation skew recovery, extensibility, and task configuration. Key decisions were made regarding the handling of unsupported extensions, the structure of task configurations, and the intent to adopt a new L1-bound histogram VAF for advertising use cases. The working group also addressed several minor breaking changes and clarifications in the existing drafts.
+
+## Key Discussion Points
+
+*   **Agenda Bashing:**
+    *   Martin Thomson requested to drop the `binomial DP` agenda item as the related work is not as mature as previously thought and requires further development.
+    *   Sam volunteered to take minutes for the session.
+    *   The IETF Note Well was presented.
+
+*   **VAF Draft Status (Draft 12/13):**
+    *   The `vaf` document (CFRG document specifying DAP protocols, PR3, Poplar) has seen significant improvements in functionality, security, and security considerations.
+    *   Draft 12 introduced an `application context string` API change for defense-in-depth against cross-protocol attacks.
+    *   Draft 13 is largely editorial, incorporating feedback on the aggregation API from Ben Schwarz.
+    *   The document is nearing CFRG last call, with a potential crypto review panel.
+    *   Martin Thomson raised editorial concerns, finding parts of the `pr3` description hard to follow and containing excessive code examples.
+
+*   **DAP Draft Status (Draft 12/13):**
+    *   The `PR` allowing asynchronous helper aggregation, discussed at IETF 120, has been merged. This was considered the least invasive solution to the problem.
+    *   The DAP draft has adopted `vf12`, a significant breaking change.
+    *   Editorial improvements and refinement of considerations are ongoing.
+
+*   **Task Provisioning (Task-Proov/Task-Bind) Document:**
+    *   A new report extension document, `task-proov` (also known as `task-bind`), has been adopted. It specifies how to derive a task ID by hashing the task configuration, ensuring protocol participants agree on the configuration.
+    *   Work is ongoing towards compatibility with DAP Draft 12, including minor bug fixes and addressing considerations.
+
+*   **Aggregation Skew Recovery:**
+    *   DAP's aggregation involves a serial sequence of HTTP requests. Network failures can cause state skew between the leader and helper.
+    *   The current solution involves the leader retrying the previous step (idempotent request handling).
+    *   Alternatives allowing the leader to rewind to any previous step or the beginning were discussed but found contentious due to increased helper state or wasted work for multi-step VAFs.
+    *   A new concern, "Rewind then Fork" attacks, was identified for multi-step VAFs, where an attacker could rerun VAF preparation with altered messages, potentially compromising privacy. This attack vector primarily affects multi-step VAFs, not the single-step VAFs (like PR3) commonly in use.
+    *   The consensus was that the existing idempotent retry mechanism is sufficient for current use cases, and further changes would introduce complexity for a hypothetical multi-step VAF attack without a clear, concrete attack in hand.
+
+*   **Extensibility (Report Extensions):**
+    *   DAP currently supports *private extensions* (intended for one aggregator, not both), which are mandatory to implement.
+    *   Martin Thomson proposed adding *public extensions* (in metadata, applying to both aggregators) and questioned the continued need for private extensions.
+    *   Tim suggested that private extensions are essential for certain authentication modes (e.g., OAuth2 tokens) to prevent one aggregator from impersonating the client to the other.
+    *   Concerns were raised about communication costs, especially for bulk submissions, where public extensions could offer better compression.
+    *   The general sentiment was to add public extensions while carefully re-evaluating the necessity and implementation complexity of private extensions.
+
+*   **Advertising/Probing Extensions:**
+    *   There is no mechanism for aggregators to advertise their supported report extensions, nor for clients to probe the helper for its capabilities.
+    *   Tim suggested extending the leader's error messages to explicitly list rejected extension code points, allowing clients to retry without those extensions. This doesn't directly solve the helper probing issue but assumes task authors configure leader and helper with compatible capabilities.
+    *   It was agreed that task provisioning is the appropriate out-of-band mechanism for clients to understand expected extensions. Incremental deployment means requiring all clients to support a homogeneous set of extensions is impractical.
+
+*   **Extending Task Configuration (Task-Proov):**
+    *   The `task-proov` draft needs a mechanism to extend the `task-config` structure itself for new parameters (e.g., binding reports to website identity for DP guarantees) beyond specific VAFs, batch modes, or DP mechanisms.
+    *   The suggestion was to add a generic list of extensions to the `task-config`, similar to how report extensions work.
+
+*   **Minor Wire Breaking Changes (Batch Modes):**
+    *   A proposal was made to add a length prefix to structures extended by batch modes in aggregation/collection jobs, enabling decoding of unrecognized variants. This would be a wire-breaking change. It was ultimately deemed not strictly necessary given that the batch mode is determined by the task config, which must be understood.
+
+*   **VAF Aggregation API Streaming:**
+    *   The `vaf` draft's aggregation API was updated to support streaming, allowing initialization with an empty aggregate share and incremental updates. This formalized existing implementation practices (e.g., the concept of "buckets" for spreading aggregate shares) without being a breaking change.
+
+*   **Task Start Time:**
+    *   A proposal to add a `start_time` to tasks (in addition to `expiration_date`) was discussed, allowing rejection of reports submitted before a task is active.
+    *   Tim suggested defining this as `start_time` and `duration` rather than `start_time` and `end_time` to prevent the encoding of invalid time intervals. This would be a breaking change to task config serialization.
+
+*   **DP Mechanism Variant Size:**
+    *   A proposal to change the `DP mechanism variant` encoding from 1 byte to 4 bytes in `task-proov` was discussed for consistency with VAF (which uses 4 bytes) and to allow more variants.
+    *   Concerns about unnecessary byte increases for frequently sent messages were raised.
+
+*   **L1-Bound Histogram VAF Draft:**
+    *   Martin Thomson presented a new draft for an L1-bound histogram VAF. This is driven by advertising use cases requiring:
+        *   Submission of "zero histograms" without negatively impacting differential privacy sensitivity.
+        *   Support for variable total values (e.g., expressing conversion value instead of just 1 per bucket).
+    *   There was strong consensus that this work is within the scope of PPM and highly useful.
+
+## Decisions and Action Items
+
+*   **Aggregation Skew Recovery:**
+    *   **Decision:** Close the issue on aggregation skew recovery. The current idempotent retry mechanism is considered sufficient for existing VAFs. The "Rewind then Fork" attack is complex, relies on multi-step VAFs (not currently prevalent), and further changes introduce more complexity. Implementation experience will guide future decisions.
+    *   **Action Item:** Chris Wood to formally close the aggregation skew recovery issue.
+
+*   **Extensibility (Public/Private Extensions):**
+    *   **Decision:** Add public extensions to DAP messages. Private extensions will be retained for now, but their necessity and implementation complexity will be re-evaluated based on the upcoming PR.
+    *   **Action Item:** Chris Wood to create a PR for adding public extensions to DAP messages and to facilitate further discussion on private extensions.
+
+*   **Advertising/Probing Extensions:**
+    *   **Decision:** The leader's error message for unsupported extensions will be extended to programmatically indicate which extensions were rejected (new error type, optional enumeration of code points in problem details).
+    *   **Action Item:** Brandon to draft a PR for extending error messages.
+
+*   **Extending Task Configuration:**
+    *   **Decision:** A generic list of extensions will be added to the `task-config` structure in `task-proov`, similar to report extensions, to allow for arbitrary extensions beyond specific VAFs, batch modes, or DP mechanisms.
+    *   **Action Item:** Chris Wood to create a PR for adding a generic extensions list to the `task-config` structure.
+
+*   **Batch Mode Wire Breaking Change:**
+    *   **Decision:** Chris Wood will add a length prefix to structures extended by batch modes in aggregation/collection jobs.
+
+*   **Task Start Time:**
+    *   **Decision:** A `start_time` parameter will be added to tasks, defined as a `start_time` plus a `duration` (rather than `start_time` and `end_time`) to prevent invalid time intervals. This will be a breaking change to task config serialization.
+
+*   **DP Mechanism Variant Size:**
+    *   **Decision:** The encoding of the DP mechanism variant in `task-proov` will be changed from 1 byte to 2 bytes (instead of 4) to allow more variants while conserving message size.
+    *   **Action Item:** Jun (PR author) to update the PR accordingly.
+
+*   **L1-Bound Histogram VAF Draft:**
+    *   **Decision:** There is strong consensus that the work on an L1-bound histogram VAF is in scope for the PPM working group.
+    *   **Action Item:** The chairs will follow up on the mailing list to initiate a formal adoption call for Martin Thomson's L1-bound histogram VAF draft.
+
+## Next Steps
+
+*   Chris Wood, Brandon, and Jun to draft and present PRs for the decided changes to DAP, VAF, and Task-Proov documents.
+*   The chairs will initiate a formal adoption call for the L1-bound histogram VAF draft on the PPM mailing list.
+*   Martin Thomson will provide more concrete editorial feedback on the VAF draft.

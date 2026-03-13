@@ -1,0 +1,29 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI working group met for an interim session with an open agenda. The primary discussion focused on advancing metadata privacy for MLS private messages, specifically a pull request (PR #80) proposing encryption of MLS individual message keys and nonces to the Hub. The discussion expanded to include the broader threat model for metadata privacy, particularly regarding the obfuscation of group and epoch IDs, and the feasibility of a holistic approach to protect all sensitive metadata from non-Hub providers.
+
+## Key Discussion Points
+
+*   **PR #80: Semi-Private Handshake**: Rohan presented PR #80, which proposes encrypting the MLS individual message key and nonce (used in private messages) with the Hub's public key (using HPKE seal) and sending this alongside the private message. The goal is to prevent non-Hub providers (followers) from inferring group membership from public message headers. The local provider not seeing the plaintext message is a side effect.
+*   **Threat Model and Consensus**: Discussion revisited Richard Barnes's email categorizing metadata privacy levels. There was interest in achieving level 'D' (Hub sees pseudonymous membership; followers see nothing), which moves beyond MIMI's current position (between 'C' and 'D').
+    *   An alternative using Oblivious HTTP (OHTTP) was discussed but deemed unsuitable for the provider-to-provider protocol due to authentication challenges between local providers and the Hub.
+*   **Implementation Considerations**: Conrad noted that PR #80 would require MLS implementations to "spit out" internal key and nonce values, which could be an unfortunate layering violation but conceptually elegant.
+*   **Salamander Attack Concern**: A potential "salamander" or "invisible salamander" attack was raised, where an attacker might generate a false encryption key/nonce to alter private message content. Key-committing encryption was suggested as a potential countermeasure.
+*   **Limitations of Current Proposal**: Rafael highlighted that PR #80 does not address the leakage of the group ID and epoch ID in private message headers.
+    *   It was noted that group ID leakage allows correlation of clients into groups, especially if an attacker controls a follower server. Epoch ID leakage reveals group activity patterns.
+*   **Holistic Approach for Metadata Privacy**: Brendan, Rafael, and Tim suggested considering a comprehensive, "holistic approach" to encrypt all sensitive metadata, including group ID, epoch ID, and message keys/nonces.
+    *   This would involve a multi-layered encryption scheme, potentially with different keys/protections for different metadata elements.
+    *   Challenges include integration with MLS (possibly an "unsafe" extension) and the practicalities of decryption at various network layers (e.g., load balancers needing to know the group ID before handing off).
+
+## Decisions and Action Items
+
+*   A sense of those present indicated strong interest in pursuing a holistic approach to metadata privacy that addresses not only the key and nonce for private messages but also the group ID and epoch ID.
+*   **ACTION**: Rohan (and potentially others) to draft a comprehensive proposal for metadata privacy that encompasses encryption of MLS individual message keys and nonces, as well as obfuscation/encryption of group IDs and epoch IDs.
+
+## Next Steps
+
+*   Further discussion on the mailing list regarding the comprehensive metadata privacy proposal.
+*   The topic will likely be revisited at IETF 120.
+*   Conrad's previously posted overview of functional requirements for MIMI and their relation to privacy approaches remains available for discussion.

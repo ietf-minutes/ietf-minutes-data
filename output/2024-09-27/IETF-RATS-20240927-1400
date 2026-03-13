@@ -1,0 +1,64 @@
+# [RATS](../wg/rats.html)
+
+## Summary
+
+The RATS Working Group meeting discussed three drafts. The first focused on proposing extensions to RFC 9334 to support "attester groups" for scalable attestation of homogeneous devices, drawing parallels and distinctions with existing concepts. The second presented an architecture extension for handling "multiple verifiers" to enhance resilience and scalability, which sparked discussion regarding its scope within the RATS charter and implications for networking. The third presentation explored how the RATS architecture could aid in the formal security analysis of attestation frameworks, particularly for closed-source and underspecified confidential computing environments, highlighting challenges in areas like evidence generation and appraisal.
+
+## Key Discussion Points
+
+*   **Administrative Items**
+    *   Note takers: Thomas and Usama volunteered.
+    *   Agenda: Approved without changes.
+    *   Slide issues: Muhammad's slides (title: "Can RATS architecture help in security analysis of attestation Frameworks?") were delayed in approval but eventually displayed. Michael Richardson's slides were also in the queue, but due to his temporary disconnection, his presentation was deferred.
+
+*   **Attester Groups for Remote Attestation** (Presenter: June)
+    *   **Motivation**: To reduce computation and communication overhead in scenarios with a high number of homogeneous devices (e.g., millions of aircraft, thousands of vehicles), enabling collective evidence appraisal.
+    *   **Current RFC 9334 context**: The draft contrasted attester groups with the "delayed attest mode" (independent, non-hierarchical entities) and "composite device" (single leader attester, evidence composition). The authors argued that the composite device model does not fit the attester group concept due to differences in leadership, identification (group ID vs. leader attester), and evidence composition (none in attester groups due to similar architectures).
+    *   **Proposal**: Extend RFC 9334 Section 3 by adding a new subsection 3.4 titled "Attest Group." Propose adding "group ID" as an entity type in the "Attesting Results for Security Interaction" draft. An attester group is defined as a dynamic entity where attesters can join or leave, requiring a new mechanism not based on composition.
+    *   **Discussion**: A participant noted similarities with "attestation sets" / "posture assessment" drafts, which also aim for scale but use different approaches (local assessment of policy sets vs. consolidation of full evidence). It was suggested that authors of these drafts should sync to potentially unify or establish a clear relationship between the approaches.
+
+*   **Handling Multiple Verifiers in RATS Architecture** (Presenter: June)
+    *   **Motivation**: Address the single point of failure presented by a single verifier, improve scalability and robustness, and handle potential inconsistent behavior among verifiers.
+    *   **Problems with single verifier**:
+        *   *Passport Mode*: Relying Party (RP) may not trust a Verifier, or the Attester may selectively send results.
+        *   *Background Check Mode*: A trusted Verifier might be compromised or unavailable, or multiple Verifiers could generate conflicting results.
+    *   **Proposal**: Extend the Background Check Mode. The Relying Party initiates the attestation flow, generates a nonce, receives evidence from the Attester, and forwards it to a list of *recommended* verifiers. The RP then aggregates the attesting results from these verifiers to make its decision. A "Verifier Manager" entity is introduced to assist the RP in configuring a flexible list of verifiers based on a "seed anchor verify list."
+    *   **Use Cases**: Node attestation for trusted routing, attestation in data centers (e.g., CPU, GPU, DPU appraisal).
+    *   **Discussion**:
+        *   The RP would send evidence in parallel to multiple verifiers. The decision on how many verifier responses to wait for (e.g., majority, minimum count) is left to the RP's local policy.
+        *   Questions arose regarding "simplifying policy," as each verifier may still require a distinct appraisal policy. The author clarified that the Verifier Manager recommends verifiers that align with the RP's policy preferences, grouping them by their shared standards.
+        *   The evidence sent to multiple verifiers is the same, but the attestation results could differ, potentially due to compromise or differing reference value updates.
+        *   **WG Suitability**: Kathleen and Nancy raised concerns about the draft's focus on network/routing implications (e.g., forwarding, availability of services), suggesting it might be better suited for a broader audience or a different working group (e.g., NASEM), with RATS experts contributing the attestation piece. They also commented that aspects felt implementation-specific rather than architectural.
+        *   **Verifier Relationship**: Hannes asked if verifiers are microservice instances of the same functionality or from different administrative domains. The author clarified they are considered different administrative domains for resilience, with the Verifier Manager aligning policies.
+        *   **Freshness and Trust Anchors**: Freshness is guaranteed by the RP-generated nonce. The Verifier Manager handles policy alignment, reference values, and trust anchors by recommending verifiers with compatible policies.
+        *   **Action**: The author acknowledged that the document needs to provide a more consistent and detailed explanation of these points.
+
+*   **Can RATS Architecture Help in Security Analysis of Attestation Frameworks?** (Presenter: Usama)
+    *   **Focus**: Explore the role of RATS architecture in the formal security analysis of attestation frameworks, particularly for closed-source, underspecified implementations in confidential computing (e.g., Trusted Execution Environments).
+    *   **Example**: SCONE, mapping its entities (Workload, Secret Broker, Verifier/CAS) to RATS roles (Attester, Relying Party, Verifier). The *bootstrapping process* of these systems is a key area of interest, as it's often unspecified.
+    *   **Technical Challenges**:
+        *   **Closed-source/Undefined Components**: SCONE uses Intel DCAP/EPID and its own "SCONE coating enclave." The functionality and quote structure of the SCONE coating enclave are undefined.
+        *   **Combined Measurements**: Applications and the SCONE runtime are often in a single enclave, resulting in a combined measurement. This means the workload owner cannot get a measurement solely of their own application code, raising security concerns.
+        *   **Unspecified Bootstrapping**: The process of ensuring the CAS (Configuration and Attestation Service) is trusted during bootstrapping is generally underspecified.
+        *   **Evidence Generation (`report data`)**: Developers of SCONE claim attestation of properties like "state at rest," but the `report data` fields (which are hashed and signed) do not appear to contain corresponding fields for such properties, leading to questions about the justification of these claims.
+        *   **Appraisal (Reference Value Providers)**: The SCONE runtime, not the application owner, acts as the reference value provider for application measurements due to the combined enclave structure. This means the application owner may not directly control the reference values for their own application.
+    *   **Request for Feedback**: The presenter solicited feedback from the working group on how the RATS architecture could be useful for formally or informally reasoning about the security of such complex, underspecified attestation frameworks.
+
+## Decisions and Action Items
+
+*   **Attester Groups for Remote Attestation**:
+    *   **Action Item**: Authors to coordinate and sync with authors of the "posture assessment" draft to explore potential merging or a clear relationship between the two approaches.
+    *   **Decision**: The WG will need to provide feedback on the preferred approach for addressing scale (local assessment vs. evidence consolidation).
+*   **Handling Multiple Verifiers in RATS Architecture**:
+    *   **Action Item**: The authors committed to updating the draft to provide a more consistent and detailed explanation of how it addresses policy, freshness, reference values, and the role of the Verifier Manager, based on discussion feedback.
+    *   **Decision**: The WG needs to consider whether the draft, particularly its networking implications, falls within the current RATS charter scope or if a broader or different WG would be more appropriate for its direct development.
+*   **Can RATS Architecture Help in Security Analysis of Attestation Frameworks?**:
+    *   **Action Item**: Authors welcome continued feedback from the WG on the challenges presented and potential ways the RATS architecture can aid in formal or informal security analysis of complex attestation frameworks.
+
+## Next Steps
+
+*   The authors of the "Attester Groups" draft should engage with the "posture assessment" draft authors.
+*   The authors of the "Multiple Verifiers" draft should revise the document to address the points raised during the discussion.
+*   The RATS WG chairs and participants will further consider the scope and suitability of the "Multiple Verifiers" draft.
+*   The "Security Analysis" presentation highlighted ongoing research and invites continued discussion and feedback from the WG.
+*   No other topics were discussed in the Open Mic session, and the meeting was adjourned.

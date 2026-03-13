@@ -1,0 +1,57 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group held an interim meeting to discuss the status of active documents. The `more-control` draft is progressing through ISG evaluation. For `edn-literals`, the working group discussed a proposed approach for handling ABNF definitions for application-oriented literals, agreeing to proceed with a second Working Group Last Call after implementer feedback. A significant portion of the meeting was dedicated to the proposed early allocations for `copack`, where concerns were raised regarding the extensive use of tag ranges and potential constraints on future compression mechanisms. No immediate decision was made on `copack` early allocations, with a call for more concrete examples and wider review.
+
+## Key Discussion Points
+
+*   **`more-control` Document Status:**
+    *   The document is currently in ISG evaluation, with an ISG Telechat date set for January 9th.
+    *   JARD and SEIA directory reviews are positive.
+    *   The ARTART review is still outstanding.
+    *   No further comments or issues were raised by the working group.
+
+*   **`edn-literals` Discussion:**
+    *   The draft extends CBOR diagnostic notation to include application-specific literals (e.g., datetime, IP addresses, IRIs) using a generalized syntax (`app-prefix` followed by a single-quoted string).
+    *   The design uses ABNF snippets for the internal syntax of these literals (e.g., IRI definition uses RFC 3987 for string content), similar to how existing hex and Base64 literals are defined.
+    *   A concern was raised by implementers about the complexity of integrating multiple ABNF snippets into a single-level grammar, with a risk of inconsistencies.
+    *   **Proposed Solution:** Carsten Bormann proposed to maintain the ABNF snippet approach in the document for stability and isolation, while providing a tool (`ABN-Frob`) that can generate an integrated, single-level ABNF grammar for implementers who prefer that. This allows for future-proofing and easier integration of new literal syntaxes.
+    *   **Feedback:** Joe Touch and Rowan shared their intent to review and implement the tool's output within the next week or two. Carsten offered to refine the tool for more concise output based on feedback.
+    *   **Procedural Note:** The document is in a state where a second Working Group Last Call (WGLC) is appropriate.
+
+*   **`copack` Early Allocations Discussion:**
+    *   **Background:** CBOR Packed (`copack`) aims for data compression by leveraging data model redundancy and sharing, allowing programs to work with packed data directly. Version `d13` is stable and has passed a prior WGLC.
+    *   `copack` defines a "Reference Set" (tags and simple values) and "Table Building Set". The Reference Set uses a pattern of allocating large tag ranges where information is encoded directly into the tag number, rather than using a separate data item.
+    *   **Proposed Allocation:** Early allocation of simple values and tags was proposed, involving approximately 353 million tags (mostly inexpensive, but also 41 tags in the more "precious" 1+1 byte space). This is justified by Carsten Bormann as saving approximately 1.2 bytes per reference.
+    *   **Concerns Raised (Joe Touch):**
+        *   The use of large tag ranges (especially in the 1+0 and 1+1 byte spaces) was described as a "bad idiom" and profligate use of limited resources, potentially setting a poor precedent.
+        *   Concern that this approach might preclude future, potentially more efficient, compression mechanisms.
+    *   **Responses (Carsten Bormann):**
+        *   While requiring more implementer effort than a simple dictionary lookup, this tag range idiom is increasingly common in the CBOR ecosystem (six existing registered ranges).
+        *   `copack` is a foundational part of CBOR, and this approach yields significant byte savings compared to alternatives.
+        *   The document's abstract "table" concept allows for extensibility, meaning future compression mechanisms could interpret these tags in a different context if they establish their own table setup algorithm.
+    *   **Area Director's Input (Ori Pomerantz):**
+        *   Questioned if large tag range allocations are a pattern the WG wants to continue, and asked for clear criteria.
+        *   Asked whether the requested range size might bound data model complexity, and if a smaller allocation would reduce objections.
+        *   Questioned why these allocations must be `copack`-specific rather than using a shared private-use range, drawing parallels to JSON-LD's contextual semantics.
+        *   Emphasized the need for concrete examples demonstrating the value proposition, byte savings, and wider review from dependent groups (e.g., COSE) to justify the investment.
+    *   **Discussion on CBOR 2.0:** A brief discussion about a hypothetical CBOR 2.0 structure (e.g., `tag_number`, `extra_info`, `content`) was noted as a potential way to solve recurrent "two-item" tag problems, but was immediately discarded for `copack` due to backward compatibility concerns.
+
+## Decisions and Action Items
+
+*   **`more-control`:** No further working group action is required; awaiting ISG process completion.
+*   **`edn-literals`:**
+    *   The working group agreed to proceed with the ABNF snippet + tool approach.
+    *   A second Working Group Last Call will be initiated after Joe Touch and Rowan's feedback on the `ABN-Frob` tool's output is received and addressed (expected around end of year/early new year).
+
+## Next Steps
+
+*   **`edn-literals`:**
+    *   Joe Touch and Rowan will review the `ABN-Frob` tool's output and provide feedback to Carsten Bormann.
+    *   Carsten Bormann will consider refinements to the tool's output based on feedback.
+    *   The chairs will initiate a second Working Group Last Call on the mailing list once the updated draft incorporating this approach, and feedback on the tool, is deemed ready.
+*   **`copack` Early Allocations:**
+    *   Carsten Bormann is requested to provide concrete examples of data models benefiting from `copack`, illustrating the syntax and quantifying byte savings.
+    *   Further discussion on the mailing list is needed to address concerns about tag range proliferation, future extensibility, and to gather wider input from dependent working groups.
+    *   The group will explore whether a "10-line sketch" of the most exotic, non-`copack` compression mechanism that could still operate within the proposed table framework would address concerns about future innovation.

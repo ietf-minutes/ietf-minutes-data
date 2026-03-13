@@ -1,0 +1,45 @@
+# [OHAI](../wg/ohai.html)
+
+## Summary
+
+This interim meeting of the OHAI Working Group discussed the "Chunked Oblivious HTTP" proposal, which aims to extend OHTTP to support streaming and incremental processing of requests and responses. The discussion focused on the necessity of this functionality, its use cases, and how it aligns with or diverges from the core OHTTP design principles and other privacy-enhancing proxies like MASQUE. A poll was taken regarding adoption, with a positive sentiment towards moving forward with the work, despite noted technical concerns.
+
+## Key Discussion Points
+
+*   **Introduction to Chunked OHTTP**: Tommy presented the draft, co-authored with Martin Thompson, proposing chunked support for OHTTP. The core question for the working group was whether OHTTP is "done" or if this functionality represents a critical gap to fill.
+    *   **Motivation**: OHTTP currently requires complete request/response messages. This limits its ability to fully leverage binary HTTP's indeterminate message mode and HPAK's multiple message support, particularly for HTTP informational responses (e.g., 100-continue).
+    *   **Functionality**: Allows encrypting and decrypting request/response messages in separate chunks, enabling incremental processing without altering the single HTTP request/response transaction.
+
+*   **Use Cases for Chunked OHTTP**:
+    *   **Large Database Queries/Lookups**: For responses that can be very large, processed incrementally, and where the client doesn't know the final size in advance.
+    *   **Generative Content**: Servers generating content on the fly (e.g., AI chatbots) can stream partial responses, allowing clients to display progress or process data incrementally.
+    *   **Large Client Uploads**: Allows servers to validate initial request headers/chunks before committing to buffering an entire (potentially very large and invalid) message. This mitigates risks of resource exhaustion and allows early rejection.
+    *   **HTTP 100-Continue Informational Responses**: Enables clients to send initial request parts, await a 100-continue, and then send the rest. This is a specific back-and-forth interaction that impacts server observability of client latency.
+
+*   **OHAI vs. Other Proxying Mechanisms (Sidebar)**:
+    *   **OHTTP (with/without chunking)**: Requires a cooperating/modified OHTTP Gateway. Deals with single HTTP transactions, enabling per-request decoupling and connection reuse between relays/gateways, leading to efficient, scalable proxying. Server cannot measure client latency (with a caveat for 100-continue). Lacks inherent replay protection and PFS without key rotation.
+    *   **MASQUE/TLS Proxying**: Can talk to any arbitrary server. Better for web browsing and multiple correlated requests over a long-lived session. Allows servers to measure latency due to back-and-forth data. Offers inherent replay protection and PFS via TLS.
+    *   **Conclusion**: Chunking is an "extra modulation" on OHTTP, not a replacement for MASQUE. OHTTP's benefits (decoupling, latency privacy, scalability for many small requests) remain for suitable use cases.
+
+*   **Technical Details of Chunked OHTTP**:
+    *   Builds on the existing OHTTP format, adding a varint length before each body section and a different AAD for the final chunk.
+    *   Utilizes a specific HPAK `info` string to denote chunked requests.
+    *   Preserves chunk ordering and number of chunks.
+
+*   **Discussion on Adoption and Concerns**:
+    *   **Watson Lad** supported adoption, seeing it as a logical extension of HTTP capabilities that doesn't overly overlap with MASQUE.
+    *   **Ekr** expressed fundamental disagreement, arguing that OHTTP's strength lies in single-shot, low-latency applications where the overhead of a TLS handshake (as with MASQUE) is significant. For long-running or large-data cases (like generative content), TLS handshake latency is negligible, and MASQUE is a more appropriate solution due to its superior security and flexibility. He characterized chunking as "mission creep" that risks turning OHTTP into a less secure, less flexible version of MASQUE. He also questioned the security benefits for large uploads, arguing that an attacker could still send mostly valid data with a bad final byte, and that incremental decryption is already possible.
+    *   **Martin Thompson** agreed that long end-to-end latency use cases are less compelling but saw value for uncertain latency or slightly larger responses, and for informational (1xx) responses. He emphasized careful consideration of applicability.
+    *   **Jana Iyengar** highlighted the significant difference in implementation and deployment complexity/cost between OHTTP and MASQUE stacks. She argued that forcing a pivot to MASQUE based solely on message size or incremental delivery would be a severe limitation for applications already using OHTTP, as OHTTP relays are substantially cheaper to build and support. She suggested clarifying applicability statements in the document rather than rejecting the work outright.
+    *   **Tommy** countered Ekr's points, arguing that requiring new TLS connections for every HTTP request (as MASQUE implies for decoupled transactions) negatively impacts proxy scalability and increases correlation, which OHTTP was designed to prevent. He maintained that OHTTP's benefits for decoupling are valuable even for incrementally delivered data, allowing clients to get early feedback.
+
+*   **Poll on Adoption**: A show of hands was taken to gauge interest in adopting the work. The sentiment among those present was positive, with Ekr explicitly noting his disagreement.
+
+## Decisions and Action Items
+
+*   **Decision**: The Working Group expresses a positive sentiment towards adopting the "Chunked Oblivious HTTP" draft for further work within the OHAI WG. This will be confirmed on the mailing list.
+*   **Action Item**: Co-chairs to discuss with Tommy and Martin regarding potentially scheduling a session on this topic at IETF 119.
+
+## Next Steps
+
+The co-chairs will confirm adoption on the mailing list, and the document authors will coordinate with the chairs regarding potential scheduling and agenda items for a future IETF session. The document is expected to be shaped to include clearer applicability guidance, particularly in comparison to MASQUE, and to address privacy and security considerations related to chunking.

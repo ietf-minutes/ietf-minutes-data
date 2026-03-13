@@ -1,0 +1,64 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group met to discuss two key drafts: "OAuth Identity and Authorization Chaining Across Domains" and "Transaction Tokens for Microservices". For Identity Chaining, the primary focus was on the challenges of central constraining tokens in proxy scenarios and the need for delegated key binding. For Transaction Tokens, discussions revolved around clarifying its relationship with Rich Authorization Requests (RAR) and determining the scope for batch processing and streaming use cases.
+
+## Key Discussion Points
+
+### OAuth Identity and Authorization Chaining Across Domains
+
+*   **Recap**: The draft aims to preserve identity and authorization context across different trust domains, leveraging RFC 8693 (Token Exchange) and P223 (Authentication and Authorization Grants). Authorization Servers (ASes) can transcribe, augment, or redact claims based on policy.
+*   **Use Cases**:
+    *   **Use Case 1 (Resource Server as Client)**: A resource server acts as a client, interacting directly with ASes in different domains. Existing mechanisms like mTLS or DPoP can be used for token constraining.
+    *   **Use Case 2 (Authorization Server as Client/Proxy)**: A client (Fu) cannot directly communicate with the authorization server in Domain B. Authorization Server A acts as a proxy, obtaining an access token on behalf of Fu.
+*   **Central Constraining Tokens Challenge**: In Use Case 2 (proxy scenario), mTLS and DPoP are not directly applicable because the proxy is in the middle, and the token needs to be bound to the *actual* client (Fu) that will present it to the resource server in Domain B, not the proxy.
+*   **Proposed Solution: Delegated Key Binding**:
+    *   The client requests an access token through the proxy.
+    *   The proxy (AuthZ Server A) requests an access token from the target AS (AuthZ Server B) and explicitly asks for the client's (Fu's) `cnf` (confirmation) claim to be included in the returned token.
+    *   This requires a trusted relationship between the proxy and AuthZ Server B.
+    *   From the client's perspective, the proxy and AuthZ Server B appear as a single entity.
+*   **Discussion on Specification of Proxy Interaction**:
+    *   A question was raised whether the interaction inside the "oval" (between AuthZ Server A and AuthZ Server B) should be specified or left as an implementation detail.
+    *   **Sense of those present**: This interaction **must** be specified, given the inter-domain nature and the likelihood of different operators. It cannot be left entirely to implementers.
+*   **Emerging Use Cases**: Similar patterns of platform proxies delegating credentialing/key binding are appearing (e.g., Istio ambient mode), highlighting the relevance of this work.
+*   **Working Group Questions**:
+    *   Should the draft support all identified use cases, or be limited?
+    *   Should central constraining tokens be entirely out of scope for this draft?
+    *   Should delegated key binding be an implementation detail (answered: no)?
+    *   Should delegated key binding be in *this* draft or a separate one?
+*   **Next Steps for Identity Chaining**: The authors will rethink how to describe the delegated key binding, considering the feedback received, and propose a path forward for the next meeting.
+
+### Transaction Tokens for Microservices
+
+*   **Background**: Transaction tokens are short-lived tokens designed for backend microservice interactions within a transaction, enhancing security by preserving context, enabling parameter immutability, and downscoping. They have a unique ID for flow tracking.
+*   **Relationship with Rich Authorization Requests (RAR)**:
+    *   The initial draft used "authorization details" as a JSON claim name, which conflicts with the RAR specification (RFC 9396).
+    *   **Decision**: The claim name for the transaction token's context will be changed to `tctx` to avoid collision and confusion.
+    *   Discussion on whether to non-normatively reference RAR: No strong opinion from the group.
+*   **Batch Processing and Streaming Use Cases**:
+    *   **Challenge**: The current short-lived nature of transaction tokens (e.g., 1 minute) is insufficient for long-running asynchronous processes (e.g., account deletion that takes days) or continuous streaming.
+    *   **Proposed Solution**: Define a mechanism where a receiving service can request a new short-lived transaction token with predefined constraints, possibly via another artifact that grants the *right* to request such a token. This is similar to a refresh token mechanism but for transaction tokens in an event-driven architecture.
+    *   **Discussion on Scope**:
+        *   Concerns were raised about conflating transaction token definition with mechanisms for obtaining them, especially when extending to batch/streaming.
+        *   **Sense of those present**: The batch processing and streaming use cases for transaction tokens should be moved **out of scope** for the core specification.
+        *   This could be addressed in a separate document or profile that focuses on event-driven backend architectures.
+
+## Decisions and Action Items
+
+*   **Identity Chaining**:
+    *   **Decision**: The specification of the interaction between Authorization Server A (proxy) and Authorization Server B for delegated key binding must be included in the documentation, not left as an implementation detail.
+    *   **Action Item**: Peter Castelan and Kelly Cooper will refine the proposal for delegated key binding, considering whether it should be normative or non-normative, and whether it belongs in this draft or a separate one, and present it at the next meeting (Bangkok).
+*   **Transaction Tokens**:
+    *   **Decision**: The claim name for the transaction token's context will be changed from "authorization details" to `tctx`.
+    *   **Decision**: Batch processing and streaming use cases will be explicitly moved out of scope for the current Transaction Tokens core specification.
+    *   **Action Item**: George Fletcher and co-authors will implement the changes for the `tctx` claim name and update the scope of the draft to exclude batch/streaming processing.
+    *   **Action Item**: The working group will consider creating a separate document or profile to address batch processing and streaming use cases for transaction tokens in the future.
+
+## Next Steps
+
+*   The OAUTH WG will take a two-week break for the holidays.
+*   The next virtual meeting is scheduled for January 6th.
+*   Authors of the Identity Chaining draft will continue work on the delegated key binding proposal for presentation at a future meeting (potentially IETF 122 in Bangkok).
+*   Authors of the Transaction Tokens draft will implement the decided changes and potentially begin discussions for a separate document for batch/streaming use cases.
+*   Participants are encouraged to review the drafts and provide feedback on the mailing list, especially concerning the Identity Chaining questions. (Note: discussions at external workshops like OAS Security Workshop should be channeled back to the WG mailing list for official record and consensus building).

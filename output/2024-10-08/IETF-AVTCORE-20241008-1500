@@ -1,0 +1,89 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE virtual interim meeting covered updates on several drafts, including those in the RFC editor queue and others undergoing Working Group Last Call (WGLC). Key discussions focused on the RTP payload format for JPEG 2000, updates to the H.265 profile for WebRTC regarding SDP parameters, NAL unit aggregation, and level asymmetry. The volumetric media RTP payload draft also received attention regarding offer/answer mechanisms and a proposed second WGLC. Significant technical discussions occurred on RTP over QUIC, particularly concerning RTCP queuing, overhead calculation, and interoperability issues like stream resets. A new draft on Point Cloud Prioritization was introduced as an informational update. Finally, an update on the Absolute Capture Timestamp draft led to a call for working group comments.
+
+## Key Discussion Points
+
+*   **Administrative Items**
+    *   **IPR Policy**: Standard IETF IPR policy reminder for participants and presenters.
+    *   **Note-taker & Scribe**: Spencer volunteered as note-taker, and another individual volunteered as Zulip scribe. Spencer later volunteered for notes and requested review assistance.
+    *   **Draft Status Updates**:
+        *   Three documents (likely related to RTP over DTLS, BUNDLE, etc.) are in the RFC editor queue. Authors were asked to respond to RFC editor queries.
+        *   RTP Payload Registry document completed IETF Last Call.
+        *   JPEG 2000 (j2k) document completed Working Group Last Call.
+        *   Green Metadata document is in Working Group Last Call, ending October 22nd.
+        *   Volumetric Media ROI document was recently adopted.
+        *   SF-Frame draft is expired and needs to be revived.
+    *   **GitHub Setup**: Encouragement for newly adopted drafts to be moved to the AVTCORE GitHub repository.
+
+*   **RTP Format for JPEG 2000 (j2k-streaming)**
+    *   Pierre Anthony reported that the Working Group Last Call (WGLC) received positive support, and minor typos have been corrected in a revised draft.
+    *   The primary outstanding item is securing a document shepherd. Pierre Anthony expressed interest in learning the shepherding process for future documents.
+
+*   **H.265 Profile for WebRTC**
+    *   **TX-mode Parameter**: Discussion regarding the `TX-mode` parameter in SDP. The current draft states implementations "should not" include it, but Chrome implementations do. It was argued that including it reduces interoperability issues by explicitly stating supported transport modes.
+        *   **Decision**: The working group agreed to change "should not" to "should" regarding including the `TX-mode` parameter in SDP.
+    *   **TID Values in NAL Units**: Discussion on packetization constraints, specifically the aggregation of non-VCL (Video Coding Layer) NAL units (e.g., SPS, PPS, VPS) with VCL NAL units having different Temporal ID (TID) values. Concern was raised about misrouting if a higher-layer VCL NAL unit is aggregated with a lower-TID non-VCL NAL unit.
+        *   A proposal, citing RFC 7798, section 4.4.2, suggests that a VCL NAL unit must not be aggregated with a non-VCL NAL unit with a lower TID value. Such non-VCL NAL units should be packetized separately.
+        *   Jian pointed out that non-VCL NAL units being sent to a lower layer is generally acceptable.
+    *   **Receive-Only Codecs**: Review of WebRTC Working Group's decision to conform to RFC 3264 section 5.1 for offer/answer, meaning send-receive, sendonly, and receiveonly m-lines will include formats (codec + fmtp parameters) that can be both sent/received, sent, or received, respectively.
+        *   **Level Asymmetry**: The discussion focused on the implications for H.265 regarding level asymmetry (different encoding/decoding levels) in the offer/answer exchange. The proposal is to assume level asymmetry and only advertise the highest supported level ID for each profile/tier.
+        *   Examples were discussed for symmetric and asymmetric encode/decode capabilities across send/receive, sendonly, and receiveonly m-lines, where the offer and answer would indicate the maximum level they can decode/encode for the respective direction.
+        *   **Decision**: The working group agreed to allow level asymmetry in H.265 offer/answer, with the offer and answer indicating their respective highest supported levels for encoding or decoding based on the m-line direction.
+
+*   **Volumetric Media RTP Payload (v3c-streaming)**
+    *   Lori presented an update on the draft, specifically addressing questions about offer/answer mechanisms for partially or fully ignorant v3c receivers.
+    *   The resolution is to leave the handling of such scenarios to the implementation's flexibility, allowing receivers to attempt playback of partial content. This approach provides more flexibility than strictly requiring full compliance.
+    *   A second WGLC was proposed due to some "fairly significant changes" made to the specification text after the initial WGLC.
+    *   The draft needs to be moved to the AVTCORE GitHub repository.
+
+*   **RTP over QUIC**
+    *   Matthias presented updates and open issues regarding RTCP in RTP over QUIC.
+    *   **RTCP Queuing**: Challenges arise from internal queuing within QUIC stacks, which can lead to inaccurate RTT measurements for RTCP compared to QUIC's own RTT.
+    *   **RTCP Overhead Calculation**: Deterministic calculation of RTCP bandwidth overhead is difficult due to varying sizes of QUIC packet/frame headers, coalescing of RTP/RTCP packets, fragmentation, retransmissions, and flow IDs. Example calculations showed wide ranges for overhead (e.g., 33-90 bytes for IPv4 streams). The draft aims to explain these complexities rather than provide exact values.
+    *   **Queuing and Priorities**: The order and timing of RTP/RTCP packets cannot be controlled by the application in the same way as over UDP due to QUIC's internal queuing and prioritization mechanisms (e.g., stream priorities, retransmissions). Concerns were raised about RTCP packets skipping ahead of referenced RTP packets, causing confusion for statistics.
+    *   **Interoperability**: Interop testing between Matthias's implementation and BBC's showed progress, with one remaining issue: `RESET_STREAM` vs. `FIN`. Some QUIC implementations reset streams instead of closing with `FIN`, which can prevent the receiver from reading all data if the reset arrives prematurely. Matthias suggested documenting this issue.
+
+*   **Point Cloud Prioritization**
+    *   Matthias introduced a new draft for prioritizing specific regions or attributes of point clouds in real-time streaming.
+    *   Motivation stems from the large bandwidth requirements of point clouds and the varying importance of different points or attributes.
+    *   The draft proposes RTCP messages and an RTP header extension to allow receivers to request specific attributes/regions/priorities, or for senders to inform receivers of current attributes/priorities.
+    *   An octree-based encoding is used to index regions in 3D space.
+    *   RTCP messages include flags, octree encoding referencing leaf nodes, and parameters for priority, attributes (using a bitmask with external signaling for semantics), and future level of detail.
+    *   Signaling for RTCP feedback parameters and RTP header extensions are also defined. The draft is currently informational, with ongoing implementation and experimentation.
+
+*   **Absolute Capture Timestamp**
+    *   Harold presented an update on the draft.
+    *   **Problem**: Determining the age of audio/video data and the exact capture time, which is crucial for synchronization and glass-to-glass delay measurement, especially in complex systems with relays.
+    *   **Solution**: The draft proposes carrying two 64-bit timestamps: the absolute capture timestamp (from the capture clock) and an offset indicating how far off that clock was from the sender's RTP timestamp clock.
+    *   **Use Cases**: Identified uses include audio/video synchronization (e.g., in a mixer, aligning multiple sources from different clocks), and room echo cancellation.
+    *   The draft is now published. Harold requested working group feedback on the draft via GitHub issues (questions, ideas, usefulness) to determine whether it should be adopted as a working group draft.
+
+## Decisions and Action Items
+
+**Decisions:**
+
+*   **H.265 WebRTC - TX-mode Parameter**: The H.265 profile for WebRTC draft will be updated to state that implementations *should* include the `TX-mode` parameter in SDP, reflecting current practice and improving interoperability.
+*   **H.265 WebRTC - NAL Unit Aggregation**: The H.265 profile for WebRTC draft will incorporate guidance that a VCL NAL unit must not be aggregated with a non-VCL NAL unit having a lower Temporal ID (TID) value. Non-VCL NAL units with lower TID values should be packetized separately.
+*   **H.265 WebRTC - Level Asymmetry**: The H.265 profile for WebRTC draft will allow for level asymmetry in offer/answer exchanges, where the offer and answer indicate the highest level ID they can decode/encode for the respective m-line direction.
+*   **Volumetric Media - Receiver Flexibility**: The volumetric media RTP payload draft (v3c-streaming) will maintain its approach of allowing implementation flexibility for partially or fully ignorant v3c receivers, rather than mandating full content understanding for streaming.
+
+**Action Items:**
+
+*   **Chairs**: Continue to solicit a document shepherd for the `j2k-streaming` draft.
+*   **Spencer**: (Self-assigned and completed during the meeting) Take notes for the AVTCORE interim meeting.
+*   **Chairs**: Start a second Working Group Last Call (WGLC) for the `v3c-streaming` draft before IETF 121.
+*   **Chairs & Lori**: Work together to move the `v3c-streaming` draft into the AVTCORE GitHub organization.
+*   **Matthias (RTP over QUIC authors)**: Update the RTP over QUIC draft to explain the complexities and potential issues regarding RTCP queuing and overhead calculation, covering likely deployment scenarios, rather than providing prescriptive numerical guidance.
+*   **Matthias (RTP over QUIC authors)**: Document the `RESET_STREAM` vs. `FIN` issue observed in QUIC stream interoperability.
+*   **Working Group Members**: Review and provide comments on the `absolute-capture-timestamp` draft in GitHub by IETF 121, indicating whether the draft is useful.
+
+## Next Steps
+
+*   **RTP Format for JPEG 2000**: Recruit a document shepherd to advance the draft.
+*   **H.265 Profile for WebRTC**: Incorporate agreed-upon changes regarding `TX-mode` parameter, NAL unit aggregation, and level asymmetry into the draft.
+*   **Volumetric Media RTP Payload**: Complete the second Working Group Last Call and finalize GitHub migration.
+*   **RTP over QUIC**: Continue interop testing, especially for multiplexing different flows and RTCP. Further develop the `sdp-rtp-quic` draft.
+*   **Absolute Capture Timestamp**: Gather working group feedback on the draft, with a potential call for adoption to be discussed at IETF 121.

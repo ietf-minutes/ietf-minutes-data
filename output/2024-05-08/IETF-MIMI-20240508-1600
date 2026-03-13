@@ -1,0 +1,111 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI interim meeting focused on two main technical discussions: a proposal for a privacy-preserving delivery service (PPDS) and a comparison of concrete syntaxes for the MIMI content format (TLS Presentation Language vs. CBOR). While no formal decisions were reached on these major topics, due to the informal nature of interims and attendee numbers, key issues, trade-offs, and next steps were identified. Several open GitHub issues were also reviewed, leading to the closure of some stale or duplicate items.
+
+## Key Discussion Points
+
+### Privacy Preserving Delivery Service (Brendan)
+
+Brendan presented a proposal for a privacy-preserving delivery service (PPDS) aimed at addressing limitations in the current MIMI protocol's approach to access control, spam filtering, and membership privacy.
+
+*   **Problem Statement:**
+    *   The current MIMI protocol relies on the delivery service (DS) inspecting MLS commits to manage group membership.
+    *   This leads to issues like the DS being unable to verify commit validity, a lack of membership privacy (DS knows all group members, even from federated providers), and the potential for providers to gain insights into other providers' social graphs.
+    *   Pseudonyms offer a partial solution but introduce implementation complexity and don't fully resolve commit validity issues.
+*   **Proposed Solution ("Box" Model):**
+    *   MLS epochs are conceptualized as "boxes," each with a unique ID, forming a Directed Acyclic Graph (DAG) rather than a linear chain.
+    *   Clients process messages linearly within a box. Valid commits derive new box IDs, leading to the next box.
+    *   Invalid or malicious commits create forks (new boxes). However, "honest" clients would ignore these invalid forks and continue along a path established by valid commits. This mechanism allows clients to collectively determine the "correct" path without a central arbiter.
+    *   **Access Control:** Box IDs are derived from the MLS key schedule, acting as a secret known only to current group members, thus restricting message submission to authorized participants.
+    *   **Spam/Abuse Control:** Once a spammer is removed from a group, they cannot derive the next Box ID, effectively preventing them from sending messages to the active group path. Forked boxes (resulting from invalid commits) can be garbage-collected by the DS if no clients pursue them.
+    *   **Membership Privacy:** A hub provider would only observe its own users' participation and which remote service providers (not individual users) are interacting with a group, thereby limiting social graph leakage. Tasks like removing compromised users from federated providers would be delegated to the user's local service provider.
+*   **Discussion and Concerns:**
+    *   Rowan expressed concern about the robustness of clients disagreeing on commit validity in a decentralized model, especially without a central arbiter, citing it as a "classic hard problem." Brendan argued that a shared policy for commit acceptance, agreed upon by all clients, effectively serves as the arbiter, isolating malicious or buggy clients.
+    *   Eric raised concerns about an attacker's ability to induce partitions where different sets of users end up in different forks, which Brendan acknowledged as a serious issue, explaining how MLS mechanisms aim to prevent this.
+    *   Rowan also noted the potential for an "explosion of different combinations" (forks) and the lack of a single recourse to bring everyone back to the same track, particularly in the event of bugs. Brendan suggested this model allows for graceful failure and background resolution, unlike the current spec which could block entire groups.
+    *   Alyssa (via chat) asked about handling inter-provider user blocking or reputation-based actions. Brendan proposed that the hub provider would report malicious traffic to the remote service provider, which would then be responsible for managing its own users. Persistent abuse from a provider could lead to cessation of federation.
+    *   Rowan highlighted implications:
+        *   Frequent epochs/forks could hinder the efficiency of proactively pushing "pallets" (series of boxes) to clients. Brendan suggested an HTTP/2 push-like dynamic, balancing proactive delivery with avoiding waste.
+        *   The hub provider wouldn't be able to remove deleted users if it doesn't know their leaf index in MLS. Brendan suggested a new proposal type signed by the user's local service provider.
+        *   External commits become more complex if multiple forks exist, as it's unclear which fork a joining user should target.
+
+### MIMI Content Format Syntax (Rowan)
+
+Rowan presented a comparison between TLS Presentation Language (TPL) and CBOR as concrete syntaxes for the MIMI content format, following up on a previous IETF discussion where opinion was split.
+
+*   **TLS Presentation Language (TPL):**
+    *   Originally designed for TLS, not a general-purpose tool.
+    *   Lacks formal schema/data model language; relies on explicit struct definitions.
+    *   Extensibility primarily through type/enum fields dictating subsequent content.
+    *   Limited standard tooling for decoding/debugging; custom tooling often needed.
+    *   Used in MLS, offering consistency for MLS-layer interactions.
+    *   Variable-length vectors (e.g., for `octets`) require bit-shifting for parsing, which can be less natural in some languages (e.g., JavaScript).
+    *   Vector lengths are given in octets, not number of items.
+    *   Eric noted a "sharp edge" with TPL: without explicit length fields for unknown types, it's difficult to skip over unrecognized data.
+*   **CBOR (Concise Binary Object Representation):**
+    *   General-purpose binary data format, compact and efficient, suitable for constrained environments (e.g., IoT).
+    *   Used in COSE and can be paired with JSON.
+    *   Has a formal data definition language, CDDL, providing comparable functionality to JSON schema.
+    *   Good tooling available for schema validation, document structure validation, and instance validation against schemas.
+    *   Supports conversion to readable formats like JSON (lossy) and Extended Diagnostic Notation (EDN).
+    *   Deterministic CBOR profiles ensure a single, canonical representation for cryptographic uses.
+    *   Parsing involves bit-masking or jump tables for small length items; lengths are typically in units.
+    *   Rowan's side-by-side examples demonstrated CBOR's EDN as more readable and CDDL offering more expressive type definitions and extensibility patterns (e.g., for `unknown disposition`).
+*   **Discussion:**
+    *   Tim acknowledged both syntaxes could work. He leaned towards CBOR for better tooling and developer experience but noted the strong precedent and desire for consistency with MLS, which uses TPL. He clarified that deterministic CBOR addresses MLS's need for unique cryptographic representations.
+    *   Richard argued for CBOR throughout MIMI, suggesting a clean demarcation between the MLS layer (which might internalize TPL) and the MIMI layer, where developer experience benefits of CBOR (tooling, readability) could be significant. He drew an analogy to HTTP/TLS/QUIC, which use different encodings across layers.
+    *   Eric reiterated a preference for TPL for consistency with MLS, suggesting custom debugging tools are often developed anyway, diminishing the tooling argument for CBOR.
+    *   Rowan indicated his own preference shifted further towards CBOR after performing the comparison exercise, but stated he would implement either.
+
+### Bug Scrub (GitHub Issues)
+
+The meeting briefly reviewed several open GitHub issues and pull requests across the MIMI architecture, protocol, and content format documents.
+
+*   **MIMI Content Issue #15: Stronger hash for in-reply-to / external content hash / message ID?**
+    *   Rowan raised the question of whether SHA-256 (currently default) should be upgraded to SHA-384, citing discussions around NSA CNSA 2.0.
+    *   Richard clarified that CNSA 2.0 still recommends SHA-256 for certain applications and that the security implications (e.g., collision probability with Grover's algorithm) might not be critical for these specific MIMI uses.
+    *   Tim expressed concern about compatibility with widespread SHA-256 use and potential performance costs of SHA-3.
+    *   **Decision:** The group decided to leave this issue open but dormant, deferring further consideration until input from post-quantum (PQ) messaging experts might be available.
+*   **MIMI Content PR #6: Add README.md**
+    *   **Decision:** Rowan will explain on the PR that static READMEs are prone to becoming stale and that he plans to update it when GitHub Pages for the document are set up. The PR will then be closed without merging.
+*   **MIMI Protocol PR #7: Downloaded message/attachment**
+    *   Rowan presented this PR as an "existence proof" for a functionality required by DMA (Digital Markets Act) and other instant messaging systems, illustrating how it might work across provider boundaries.
+    *   Richard and Tim suggested that if this functionality is generally desired for MIMI, it might be beneficial to merge it as an initial understanding, acknowledging that it can be revisited and changed later.
+    *   **Decision:** The PR will remain open, and document reviewers are encouraged to review the proposed changes and discuss their inclusion.
+*   **MIMI Protocol Issue #18: Prepare document for IETF118**
+    *   **Decision:** Closed as stale (IETF118 has passed).
+*   **MIMI Protocol Issue #16: Fix missing AAD**
+    *   **Decision:** Closed as fixed by a merged PR.
+*   **MIMI Protocol Issue #12: Tracking arbitrary state (room name, etc.)**
+    *   **Decision:** Skipped, as the issue author (Travis) was not present.
+*   **MIMI Protocol Issue #1: XMPP compatibility**
+    *   **Decision:** Skipped due to time constraints.
+*   **MIMI Protocol Issue #9: Versioning**
+    *   Tim shared experience from DAP, where explicit in-band version negotiation was avoided in favor of exposing different APIs or using implicit version checks via AAD.
+    *   Eric highlighted the complexity for MIMI due to multiple entities and potential version diversity (e.g., across providers, within conversations), emphasizing the need to consider migration strategies.
+    *   **Decision:** The issue will remain open as it represents an important, complex question for future discussion.
+*   **MIMI Protocol Issue #2: Placeholder artwork**
+    *   **Decision:** Will remain open as a placeholder for later "make-work" to sync artwork with converging message/interaction designs.
+*   **MIMI Protocol Issue #14: Align with architecture document re: metadata leakage**
+    *   **Decision:** Closed in favor of the corresponding issue on the architecture document, which addresses the same concern more broadly.
+
+## Decisions and Action Items
+
+*   **Note-taker:** Richard Barnes volunteered and took notes.
+*   **MIMI Content PR #6 (Add README.md):** Richard will close this PR. Rowan will add a comment explaining that static READMEs are not desired, and that dynamic content will be generated once GitHub Pages are set up for the document.
+*   **MIMI Protocol Issue #18 (Prepare document for IETF118):** Closed as stale.
+*   **MIMI Protocol Issue #16 (Fix missing AAD):** Closed as resolved by a merged PR.
+*   **MIMI Protocol Issue #14 (Align with architecture document re: metadata leakage):** Closed in favor of the corresponding issue in the architecture document.
+
+## Next Steps
+
+*   **Privacy Preserving Delivery Service (PPDS):**
+    *   Brendan and Rowan are encouraged to continue developing and refining the PPDS ideas on the MIMI mailing list, including a concise description of the trade-offs involved. This may lead to a new draft or Pull Requests against existing MIMI documents.
+    *   The Chairs will discuss the appropriate forum (e.g., a formal consensus call on the mailing list or discussion at a future plenary) for making decisions regarding these new requirements and proposed solutions.
+*   **Content Format Syntax (CBOR vs. TLS Presentation Language):**
+    *   The Chairs will discuss the appropriate forum (e.g., a consensus call on the mailing list or discussion at the next plenary) for making a definitive decision on the concrete syntax. No immediate implementation is blocked by this decision.
+*   **MIMI Protocol PR #7 (Downloaded message/attachment):** Document reviewers are encouraged to review this Pull Request and engage in discussion regarding its potential incorporation into the protocol document.
+*   **MIMI Content Issue #15 (Stronger hash for in-reply-to / external content hash / message ID?):** This issue will remain open but dormant. Rowan will update the issue with the discussion notes, and it will be revisited if post-quantum (PQ) messaging experts raise specific concerns relevant to MIMI's context.
+*   **Next Interim Meeting:** The next MIMI interim is scheduled for May 23rd, with a focus on Discovery topics. Attendees are advised to check the IETF Datatracker for the most accurate and up-to-date information.

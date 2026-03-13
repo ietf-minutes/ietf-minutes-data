@@ -1,0 +1,50 @@
+# [KEYTRANS](../wg/keytrans.html)
+
+## Summary
+
+This interim meeting of KEYTRANS covered significant updates to the key transparency protocol document, a critical discussion on formal verification methods for transparency systems, and the introduction of a "witness" actor to enhance auditing capabilities. Key updates to the protocol include a change in terminology, the introduction of batching capabilities, and refined secure search and monitoring mechanisms. The chairs indicated their intent to adopt the protocol draft and document, requesting feedback from the working group.
+
+## Key Discussion Points
+
+*   **Key Transparency Protocol Updates (Brendan):**
+    *   **Terminology Refinement:** The term "keys" for lookup identifiers has been changed to "labels" to avoid confusion with the public keys being looked up in the transparency log.
+    *   **Core Components:** The protocol utilizes a **Log Tree** (a left-balanced hash tree for chronological history and consistency proofs) and **Prefix Trees** (Tries for committing to label-value pairs and providing search proofs). These are combined into a **Combined Tree** where the Log Tree tracks versions of the Prefix Tree.
+    *   **Batching Capability:** A significant change since IETF 120, the protocol now explicitly supports batching multiple label-value updates in any epoch. This enables efficient pre-loading of data (real or fake, to hide user base size) and is beneficial for constrained environments (e.g., Post-Quantum secure signatures, reducing signature count).
+    *   **Search Mechanisms:**
+        *   **Simple Search:** Directly queries the most recent prefix tree. This relies on external auditors for correctness and non-collusion.
+        *   **Secure Search:** Relies solely on the tree structure. This involves two sub-tools:
+            *   **Binary Ladder:** Efficiently finds the most recent *version* of a specific label within a single prefix tree, crucial for privacy-preserving versioning.
+            *   **Binary Search in Log Tree:** Verifies consistency across multiple prefix tree versions, ensuring a label version doesn't exist before its first insertion point and its value remains consistent afterward.
+    *   **Monitoring:** Ensures search paths do not change unexpectedly as the log grows, detecting misbehavior by the log operator.
+    *   **Planned Future Work:**
+        *   Replacing the probabilistically balanced prefix tree (reliant on VRF output randomness) with a **self-balancing binary tree** (e.g., Left-Leaning Red-Black tree) for non-privacy-sensitive applications, to prevent malicious actors from creating long search paths.
+        *   Explicit support for **Proxy Mode**, where clients query their own keys to obtain credentials for anonymous communication, preventing the log from tracking interactions.
+        *   Stronger enforcement of time, switching to CBOR/Cozy for structure definition, and discussing recovery from user state loss and log misbehavior.
+
+*   **Verifying Transparency Systems (Felix):**
+    *   **Critique of Current Approaches:** Felix argued that traditional symbolic model protocol verification tools (like ProVerif) are unsuitable for transparency systems due to their inability to model relations on terms (e.g., hash comparisons) or tree constructions. Existing type system approaches (like Andrew Miller et al.'s DSL) also fall short by not considering time-based guarantees or inter-algorithm interactions.
+    *   **Proposed Approach:** Use a high-level, verification-aware programming language (e.g., Dafny, Viper, Isabelle) to build a reference implementation. Security properties would then be formally proven on this implementation, assuming hash functions are bijections (a simplification for this effort).
+    *   **Focus:** The approach prioritizes the algorithms' logic and security guarantees over specific message exchange formats, aiming to ensure consistent results for clients regardless of server-provided proofs. Future work includes extending proofs to cover time-based guarantees and the interplay of different algorithms (e.g., auditor reducing client load).
+
+*   **Witness Ecosystem (Thibault):**
+    *   **Problem Statement:** Existing key transparency deployments face the "split view" attack, where a log might present different views to different clients. Monitoring and auditing are necessary to counter this.
+    *   **Current Draft vs. Deployment Needs:** While the draft proposes out-of-band communication or a third-party auditor, deployment with WhatsApp highlighted a distinction: the need to quickly guarantee global consistency of epochs versus the more costly, asynchronous validation of individual batch updates.
+    *   **Introducing the "Witness" Actor:** Inspired by the Certificate Transparency ecosystem, a "witness" is proposed as a new third-party actor.
+        *   **Role:** Provides various guarantees (e.g., timestamping, incremental epoch validation, data backup, log auditing) through a digitally signed message format (timestamp + hash of tree head).
+        *   **Protocol Independence:** The witness's *signature format* is protocol-independent, allowing it to work across different log protocols. The *actions* performed by the witness before signing (e.g., auditing) can be specific to a given log protocol.
+        *   **Benefits:** Allows for spreading trust, supports multiple log protocols, and enables later auditing of the witness itself due to embedded timestamps.
+        *   **Distinction from Auditor:** A witness can provide a more flexible set of guarantees than a comprehensive auditor, allowing for faster synchronous checks (e.g., global consistency) while more intensive checks (e.g., full batch validity) can be done asynchronously.
+
+## Decisions and Action Items
+
+*   **Decision:** The chairs plan to adopt the protocol draft and document as a working group item.
+*   **Action Item:** All participants are requested to provide feedback on the current protocol draft to the mailing list to facilitate the adoption process.
+*   **Action Item:** Felix and Cory will begin work on the proposed verification approach for transparency systems.
+*   **Action Item:** Felix invites further input on his verification proposal via mail or Slack.
+
+## Next Steps
+
+*   Continued discussion and feedback on the protocol draft via the mailing list and Slack channel.
+*   Progress on the formal adoption of the protocol draft.
+*   Further development and exploration of the proposed verification framework for transparency systems.
+*   Further development and discussion of the Witness ecosystem and its integration into key transparency.

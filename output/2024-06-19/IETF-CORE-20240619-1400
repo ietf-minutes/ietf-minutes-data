@@ -1,0 +1,76 @@
+# [CORE](../wg/core.html)
+
+## Summary
+The CORE WG held an interim meeting to address several open Pull Requests (PRs) related to the `core-clarifications` document. The primary focus was on clarifying aspects of CoAP, including Content-Format registry updates, URI path encoding, Request-URI terminology, and the complex interactions of message matching ("matchboxing") and re-keying across different security and transport layers (DTLS, OSCORE, KudOS, Group OSCORE, TCP). Key action items were identified for elaborating on these topics within the clarifications document and related drafts.
+
+## Key Discussion Points
+
+*   **Administrative Announcements**:
+    *   The CoRP document is now in RFC editor queue 48; authors are addressing remaining questions.
+    *   Updates to SeCore related to RFC 8610 grammar were made, addressing ISG comments.
+*   **`core-clarifications` Document - General Approach**:
+    *   The meeting focused on live discussions of PRs and issues for `core-clarifications`, with an aim to tackle four PRs in this meeting (PRs 7, 8, 9, 10).
+    *   The document aims for clarification and potential work adoption.
+
+*   **PR 8: Content-Format Registry Update Clarifications**:
+    *   This issue (and corresponding PR) is largely resolved as the necessary registry changes were completed in January 2023.
+    *   The clarifications document will point to the errata report for RFC 7252 (B2) which contains useful examples of valid/invalid Content-Format registrations.
+    *   No further direct changes to the document for this PR, primarily an educational point.
+
+*   **PR 7: URI Path Encoding of Trailing Slash**:
+    *   This PR aims to clarify existing behavior rather than fixing a bug, as people often misunderstand URI path encoding.
+    *   Discussion included specific corner cases in Sections 6.4 and 6.5 of RFC 7252:
+        *   Section 6.4 (URI-Path option to URI Path Segments) cannot produce a single URI path option with an empty value.
+        *   Section 6.5 (URI path options to URI) produces an empty path component if no URI-Path options are present (by appending a '/' to the authority component).
+        *   If a request contains a single empty URI-Path option (which 6.4 cannot produce, but a server might receive), Section 6.5 produces a URI with a path component consisting of a single empty segment.
+    *   It was noted that in CRI (CoAP Resource Identifier) space, a single empty slash is equivalent to an absent path due to URI resolution rules, similar to HTTP.
+    *   Action: Add examples to the `core-clarifications` document (related to issue 7) to illustrate these corner cases and their implications, possibly researching RFC 9110 for HTTP comparison.
+
+*   **PR 10: Term "Request-URI"**:
+    *   This was identified as a definite bug in existing terminology.
+    *   A proposed definition for "Request-URI" was provided, which looked good and consistent with its usage in sections like forward proxies.
+    *   An implementation experience caveat was raised: there's a distinction between the URI requested and the base URI for resolving anything in the response (especially with multicast).
+    *   Action: Define "Request-URI" and consider introducing a new term like "base for resolving responses" (potentially in CoRE-Resp) to clarify this distinction. The text should refer to "response for option" rather than "request for header."
+
+*   **PR 9: Matchboxing and Re-keying**:
+    *   This is the most complex PR, addressing challenges with state loss across re-keying events.
+    *   **OSCORE**:
+        *   OSCORE itself does not inherently have an inconsistency problem with message IDs or tokens; it relies on matched "matchboxes" (token/message ID scopes).
+        *   Losing state on re-keying is problematic. OSCORE without an explicit re-keying mechanism (like KudOS) does not typically match requests/responses across security contexts, and observations are assumed to terminate.
+        *   KudOS (RFC 9203) addresses some issues, including preserving observations across key updates and fixing a security issue related to partial IVs in responses across key updates (Section 3 of KudOS is proposed as a general fix that applies beyond KudOS itself, including to OSCORE RFC).
+        *   Appendix B.2 of OSCORE was discussed; while it allows protecting a response with a different context, its specific design (intermediate contexts) makes it not suffer from the same security problems as a naive application of the KudOS Section 3 problem. It's largely superseded by KudOS.
+        *   Action: Add explicit text on OSCORE's stance on token/message ID scope in relation to key updates, clarifying that without mechanisms like KudOS, scopes are terminated.
+    *   **DTLS**:
+        *   DTLS (as per RFC 7252 Section 9.1.1) mandates strict matching, with re-keying creating a new Epoch where no state can be carried over. This is consistent but unsatisfactory.
+        *   To go beyond this, a secure way of linking "matchboxes" (token/message ID scopes) across Epochs is needed. This would require defining how Epoch chaining works and potentially signaling capabilities (e.g., via options or signaling messages).
+        *   DTLS 1.3 session resumption introduces new factors that are not currently addressed in CoAP documents.
+        *   Action: Elaborate on how to improve DTLS re-keying beyond the current strict model, considering DTLS 1.3 interactions.
+    *   **TCP for Constraint Nodes (RFC 9060)**:
+        *   Short-lived TCP connections also face similar state loss issues upon reconnection. Implications need to be considered.
+    *   **Blockwise**:
+        *   The implications of re-keying on blockwise transfers and the token space need to be addressed. If the lower layer switches, the token space may not be directly usable.
+    *   **Group OSCORE**:
+        *   Group OSCORE handles re-keying differently, with the group manager orchestrating updates. It has mechanisms to preserve observations across key updates and uses partial IVs similarly to KudOS (Section 3).
+        *   Discussion touched on the crash resistance of group managers and the distributed system implications.
+        *   Action: Add text to `core-clarifications` detailing how Group OSCORE handles these aspects.
+    *   **General Goal**: Define secure ways to link "matchboxes" (token/message ID scopes) across re-keying/context changes for different security/transport layers (DTLS, OSCORE, TCP). This may involve signaling messages or options.
+
+*   **Issue 35 (Christian's new issue)**:
+    *   This meta-issue is about generalizing features and avoiding re-inventing the wheel across different transports, ensuring CoAP can use capabilities like BIRD everywhere and consolidating practices for implementers. This will be tackled as part of future clarifications.
+
+## Decisions and Action Items
+
+*   **PR 7 (URI Path Encoding)**: Add examples to the `core-clarifications` document to clarify corner cases related to empty URI path options/segments and their equivalence in CRI space.
+*   **PR 10 (Request-URI)**: Update the terminology definition for "Request-URI" in `core-clarifications`. Explore adding a definition for "base for resolving responses," potentially within the `CoRE-Resp` document, to distinguish from the requested URI. Ensure accurate references (e.g., "response for option").
+*   **PR 9 (Matchboxing and Re-keying)**:
+    *   Review KudOS for completeness regarding handling non-observation pending requests across re-keying.
+    *   Participants (Christian, Carsten) to draft text for the `core-clarifications` document:
+        *   Clarifying OSCORE's implied default behavior regarding token/message ID scope termination upon re-keying and how KudOS (and Section 3) addresses related security issues (partial IVs).
+        *   Detailing how Group OSCORE preserves observations and handles partial IVs across key updates.
+    *   Further research and discussion needed on securely linking "matchboxes" across re-keying events for DTLS (especially considering DTLS 1.3 session resumption) and TCP connections, and the implications for blockwise transfers. This will likely involve defining chaining mechanisms and signaling capabilities.
+
+## Next Steps
+
+*   The next interim meeting is scheduled for two weeks from today (before IETF 120).
+*   The group plans to resume meetings at the end of August (tentatively August 28th), alternating with SeCore.
+*   Participants are encouraged to contribute the outlined text and PRs to the `core-clarifications` document as discussed. Any contributions made within the next two weeks can still be submitted before the draft deadline.

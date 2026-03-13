@@ -1,0 +1,43 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR WG interim meeting focused on modularizing the Flowspec V2 specification to create a more implementable "Basic IP Flowspec V2" specification. Key discussions revolved around the challenges of action handling, particularly failure modes and ordering within extended communities, and potential solutions like Action Chain Ordering (ACO). The meeting also reviewed ongoing work on non-IP filtering for MPLS, L2VPN, and tunnels, and considered how these capabilities might be integrated into the broader Flowspec V2 framework. The overarching goal is to define a manageable core specification that can achieve multiple implementations for progression to standard track.
+
+## Key Discussion Points
+
+*   **Flowspec V2 Modularization:**
+    *   The original Flowspec V2 specification, while complete and consistent, was deemed "a lot to chew on" for implementers. The working group aims to break it into "manageable chunks."
+    *   The immediate focus is on a "Basic IP Flowspec V2" encompassing current V4/V6 filters from Flowspec V1, current actions from extended communities, and user ordering. This basic model is seen as better suited for DoS attack mitigation.
+    *   Future additions would include more IP filters, more advanced/ordered actions, and non-IP filters (MPLS, SFC).
+    *   Flowspec V2 utilizes a new NLRI format with TLVs, an order identifier, and filter types. It supports deterministic user ordering of rules.
+
+*   **Action Handling and Ordering:**
+    *   **Failure Modes:** A significant concern is what happens when an action fails (e.g., DSCP marking fails, rate limit fails). The concept of "Action Chain Ordering" (ACO) was introduced to address this.
+    *   **Implementer Feedback:** Current implementations tend to "fail open" (continue processing, install a pass for the failed action) rather than "fail closed." They typically support only simple combinations of actions and avoid complex arbitrary mixing or chaining.
+    *   **Controller Awareness:** It was highlighted that controllers need to know device capabilities regarding action support *before* emitting Flowspec routes to prevent nonsensical programming. ACO helps with behavior upon receipt, but not with initial capability discovery.
+    *   **Nan's Contribution:** For security analysis, a "sample action" should ideally still be conducted even if elimination actions fail, suggesting a "conditional stop on failure" model.
+    *   **Extended Community Limitations:** While many actions can be encoded in extended communities, the primary challenge is achieving consistent ordering semantics, as extended communities are severable. Default ordering (e.g., by type number) could be established, but implementations would likely require configuration knobs.
+    *   **Path Attributes for Ordering:** The use of a Community Path Attribute (from the Wide Community draft) was explored to allow for more complex user-defined ordering and dependency chains for actions. However, feedback from implementers suggests it might be difficult to support.
+    *   **Action Application Timing:** Nat's DSCP modification example illustrated the critical difference between applying actions immediately after a match versus accumulating all actions and applying them at the end. Different timing leads to different packet states and subsequent rule matching.
+    *   **Atomicity Concerns:** Jeff emphasized that Flowspec, being distributed via BGP, lacks the atomic rule set commitment typical of traditional firewalls, which could lead to inconsistent states if dependent rules are not present or installed simultaneously. The "go-to" action further complicates this by allowing jumps, which G pointed out changes the fundamental ANDing logic of current filters.
+    *   More use cases are needed to understand complex action interactions and dependencies.
+
+*   **Non-IP Filtering (MPLS, L2VPN, Tunnels):**
+    *   **MPLS:** Flowspec V2 supports MPLS label matching and experimental bit matching filters. SFC currently lacks specific match filters.
+    *   **L2VPN Flowspec (Donald's draft):** This draft extends SAFI 133 and 134 to allow matching on Layer 2 headers (Ethernet, VLANs, MACs) and optional Layer 3 headers within VPNs or non-VPN contexts. It defines 13 new match components and two extended community actions: VLAN action (for push, swap, pop operations on VLAN tags) and TPID action (for changing VLAN Ethertypes). This draft has passed Working Group Last Call.
+    *   **Tunnel Flowspec (Donald's draft):** This draft (SAFI 77) covers various tunnel types (e.g., GRE, VXLAN, NSH, IP-in-IP, GENEVE) and allows matching on tunnel header fields and inner headers. It defines a new registry for tunnel header components. This draft has also passed Working Group Last Call.
+    *   **Integration with Flowspec V2:** Donald acknowledged that while his drafts are proceeding, their capabilities (match components, actions, nested flowspecs) would likely be incorporated into the broader Flowspec V2 framework, potentially with updated formatting, especially if implementations of the current drafts do not emerge soon. He expressed openness to adapting them to a new Flowspec V2 format.
+
+## Decisions and Action Items
+
+*   **Decision:** The concept of an Action Chain Ordering (ACO) extended community will be explored further and is provisionally included in the basic draft.
+*   **Action Item:** The chair will send out queries to the mailing list for feedback on the ACO extended community, specifically seeking clarification on "stop and roll back" semantics.
+*   **Action Item:** Participants are requested to provide more detailed use cases for action ordering and dependencies to help refine the specification.
+*   **Decision:** The capabilities defined in the L2VPN Flowspec and Tunnel Flowspec drafts are intended to be integrated into the Flowspec V2 framework, potentially undergoing format adaptation to align with the new Flowspec V2 NLRI, particularly if current implementations are not developed for the existing drafts.
+
+## Next Steps
+
+*   The IDR WG will continue interim meetings on June 3rd, running for three consecutive weeks.
+*   The primary focus for these upcoming meetings will be to address remaining issues and gather feedback on the design of basic IP actions and ordering within Flowspec V2, aiming to resolve problems encountered with Flowspec V1 interactions.
+*   The goal is to move towards a Working Group adoption call for the "Basic IP Flowspec V2" draft.

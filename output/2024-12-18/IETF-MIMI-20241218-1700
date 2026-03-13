@@ -1,0 +1,89 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI interim meeting focused primarily on reviewing several open Pull Requests (PRs) for both the MIMI Content and MIMI Protocol drafts, discussing their proposed changes and reaching decisions where possible. Key discussions included the extensibility of message expiration, guidance on GitHub Flavored Markdown, authorization for message edits/deletes by non-senders, and simplifications to message ID and franking mechanisms. The meeting also included a preview of the MLS Appsyc and App Components drafts, highlighting their implications for MIMI's application data management and authorization models. Several PRs were approved for merging with minor adjustments, while others were flagged for further review due to the upcoming holiday season.
+
+## Key Discussion Points
+
+### General Housekeeping
+*   The chair welcomed attendees to the December 18th MIMI interim.
+*   A programming note was made: no interim is scheduled for the holiday "dead zone" in two weeks; the next meeting will be in a full month.
+*   Attendees were reminded of the IETF Notewell, intellectual property policies, and code of conduct.
+
+### MIMI Content Draft (PRs)
+
+#### PR #35: Large PR with various content changes (Rowan)
+*   **Removing Tags from URIs**: Based on Cbor working group feedback, if a semantic is always a URI, a tag is not needed. This change was accepted as straightforward.
+*   **Support for Relative Expiration Times**: Changed expiration to support both relative (from time of receiver read) and absolute times.
+    *   **Extensibility of Expiration**: Teimo suggested a more extensible mechanism (e.g., enum) beyond simple absolute/relative times, offering examples like "delete when read" or "delete when replied to."
+        *   **Discussion**: Some favored simplicity (KISS principle), while others saw value in future extensibility. Rowan proposed keeping the current straightforward approach and creating a new issue for broader extensibility discussions.
+        *   **Decision**: The current changes in PR #35 related to absolute/relative times will be merged. A new issue (#39: "Should expiration types be extensible beyond absolute and relative?") will be created for further discussion on broader extensibility.
+*   **Additional Guidance on GitHub Flavored Markdown (GFM)**: Proposed GFM as the mandatory-to-implement format beyond plain text.
+    *   **Discussion**: Concern raised by Teimo about specific GFM features (e.g., numbered lists always increment by one) not being ideal for instant messaging. Tim asked for precedent for IETF documents referencing GFM. Rowan clarified that RFC 7763 already references various Markdown types.
+    *   **Proposal**: Define a new variant `gfm-no-html` (GitHub Flavored Markdown with all HTML tags and processing instructions forbidden) and register it.
+    *   **Decision**: The proposed `gfm-no-html` variant will be included in the PR and merged, with an acknowledgement of the GFM numbered list issue as a minor drawback given the lack of a better stable reference.
+*   **Allow Users Other Than the Sender to Edit and Delete Messages (Moderator/Admin)**: Introduced language allowing special policies or permissions for specific types of edits or deletes (e.g., a moderator editing a topic).
+    *   **Decision**: The text will be updated to state "MUST NOT allow parties unless there is a specific concrete authorization policy which allows it," as suggested by a comment.
+*   **Manipulating Topic IDs**: Related to the above, a specific capability to edit only the `topic_id` of an existing message was introduced.
+*   **Removing `part-index` or Making it Optional**: The explicit `part-index` field was removed, making it an implicit field calculated by walking the message.
+    *   **Discussion**: Private feedback suggested keeping `part-index` explicit for signing individual parts.
+    *   **Decision**: Remove `part-index` for now. If a compelling use case or worked example for explicit inclusion (e.g., specific signature schemes) arises, it can be re-added later.
+*   **RFC 2392 URI (Content-ID URI)**: Clarified legitimate use of `Content-ID` URIs within container parts (e.g., HTML) to reference other parts inside the same Mimi message.
+*   **IANA Registry for MIMI Content Extension Map Keys**: Proposed a pattern for a registry (integer/text key, name, Cbor type, recommended status, reference), borrowing from MLS Cipher Suites.
+*   **Overall Decision for PR #35**: Merge after the meeting with specific changes: define `gfm-no-html`, change edit/delete authorization to "MUST NOT unless authorized," fix typos. Issue #30 (complicated nesting) to remain open for further discussion.
+
+#### PR #36: Change Message ID Construction (Rowan)
+*   Proposed a new algorithm for message IDs: mandatory salt, hash of the Mimi content (first 31 octets), prefixed with the hash function used (e.g., SHA-256). This provides hash agility and allows validation of original message content when replying.
+*   **Discussion**: Neither Conrad nor Rafael had reviewed it.
+*   **Status**: Pending review. Review is unlikely before the new year.
+
+#### PR #37: Removal of Last Seen (Rowan)
+*   **Rationale**: `last_seen` was added before `hub_accepted_time`. `last_seen` is a partial solution for reordering attacks and cannot distinguish between a malicious client/honest hub and an honest client/malicious hub.
+*   **Discussion**: Teimo suggested a client-added timestamp with a warning for discrepancies. Rowan argued that IETF is wary of solutions requiring synchronized clocks due to past issues, and typical leeway allows attacks.
+*   **Proposed Alternatives**: Mimi message delivery confirmation, message franking mechanism (hub commits to a specific time with integrity check), or App State (e.g., hash transcript of messages).
+*   **Decision**: A sense of those present indicated support for removing `last_seen` from the draft. The broader problem of detecting hub-initiated reordering will continue to be discussed in issue #27.
+
+### MIMI Protocol Draft (PRs)
+
+#### PR #94: Search Identifiers (Rowan)
+*   **Changes**: Allows multiple query elements with an AND semantic for identifier searches (e.g., first and last name). Also, clarifies the semantics of existing search identifier type enum values.
+*   **Status**: Pending review. Anticipated review in January.
+
+#### PR #96: Franking Mechanism Simplification (Rowan)
+*   **Changes**: Combines the `franking_context_hash` and `frank_integrity_check` into a single `franking_integrity_check`.
+*   **Discussion**: Rowan indicated this is the version he would want to send to CFRG for review. Rafael suggested merging it to allow CFRG to review the editor's copy.
+*   **Decision**: Merge PR #96 into the protocol draft.
+
+### MLS Appsync and App Components Drafts (Rowan & Richard Barnes)
+*   **Context**: `draft-barnes-mls-appsync-00` is a significant reframing, replacing the "appsync proposal type" and parts of the MLS extensions framework. It aims to be a safe API for MLS applications.
+*   **Core Concept**: Application data is managed via a `GroupContextExtension` (storing component data, sorted by ID) and `ApplicationDataUpdate` proposals (adding, updating, or removing components). MLS is explicitly out of the business of knowing about diffs or application data structure.
+*   **App Components Draft (Examples from `draft-wilde-mimi-app-components-00`)**:
+    *   **Room Metadata**: Defines components like room name, subject, avatar. Updates are typically wholesale replacements.
+    *   **Role-Based Access Control (RBAC)**: Defines roles with an index, name, description, and a list of capabilities. Also includes constraints (min/max participants per role). Updates are wholesale replacements.
+        *   **MIMI Policy Relation**: Rowan noted that these components could eventually merge into the MIMI room policy or protocol drafts, but are standalone for focused discussion now.
+    *   **Participant List**: A list of users with assigned roles (using `role_index`). Updates use a patch format (add, remove, update roles). The full participant list is stored in the group context for authorization.
+    *   **Pre-Authorized Participants**: Allows joining based on a set of claims (e.g., employee of a company, resident of a country) to automatically receive a specific role. This aims to simplify authorization for dynamic groups without enumerating every potential member.
+        *   **Discussion**: Rafael raised concerns about added complexity compared to existing external senders in MLS. Rowan clarified that this covers authorization for external commits, allowing asynchronous joining with pre-defined roles (e.g., automatically becoming a moderator).
+*   **Document Path**: This draft serves as a discussion tool to contextualize and justify the MLS Appsyc work. As that work materializes in MLS (adoption, RFC), MIMI will reflect it with changes to its policy or protocol documents.
+
+## Decisions and Action Items
+
+*   **Decision**: PR #35 (MIMI Content) will be merged with the following adjustments:
+    *   Define `gfm-no-html` as the specified Markdown variant.
+    *   Change the wording for non-sender edits/deletes to "MUST NOT allow parties unless there is a specific concrete authorization policy which allows it."
+    *   Fix identified typos.
+*   **Action Item**: Rowan will make the specified changes to PR #35 and merge it.
+*   **Decision**: Issue #39 ("Should expiration types be extensible beyond absolute and relative?") will be created and discussed on the mailing list.
+*   **Decision**: `part-index` will be removed from the MIMI Content draft (part of PR #35 merge).
+*   **Decision**: PR #37 (Removal of Last Seen) will be merged.
+*   **Action Item**: Further discussion on detecting hub-initiated message reordering will continue in issue #27.
+*   **Decision**: PR #96 (MIMI Protocol Franking Simplification) will be merged.
+*   **Action Item**: Rowan (or chairs) will reach out to CFRG to solicit feedback on the simplified franking mechanism (PR #96).
+*   **Action Item**: Conrad and Rafael will review PR #36 (Message ID Construction) and PR #94 (Search Identifiers) in January.
+
+## Next Steps
+
+*   **Next MIMI Interim**: Scheduled for January 15th (same time zone). Attendees are encouraged to contact the chairs with agenda items.
+*   **MLS Interim**: An MLS interim is scheduled for tomorrow (December 19th) at the same time, where Richard Barnes will present on the MLS Appsyc draft.
+*   **Discovery Requirements Draft**: All participants are urged to read the new version of the discovery requirements individual draft (published late November) in anticipation of a potential adoption call. Feedback can be provided privately or on the mailing list.

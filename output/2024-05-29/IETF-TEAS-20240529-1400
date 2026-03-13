@@ -1,0 +1,62 @@
+# [TEAS](../wg/teas.html)
+
+## Summary
+
+This interim session of the TEAS Working Group focused on clarifying the concept of the Network Resource Partition (NRP) selector, particularly its influence on data plane extensions. The session aimed to facilitate discussion on open items regarding NRP selector options and provide guidance to other working groups on terminology, scale, and scope. Discussions covered various options for carrying the NRP selector in packets, including overloading existing fields and using dedicated identifiers, along with their scalability and management implications. The distinction between NRP ID and NRP selector was revisited, and current modeling efforts for NRP selectors were presented.
+
+## Key Discussion Points
+
+*   **Session Focus**: The interim meeting was dedicated to NRP selector specific aspects that influence data plane extensions, aiming to provide guidance to other working groups (e.g., 6man, LSR) to inform decisions on relevant documents.
+*   **Terminology (from RFC 9543 and WG drafts)**:
+    *   **Network Resource Partition (NRP)**: A subset of buffer, queueing, and scheduling resources and associated policies on network links.
+    *   **Connectivity Construct**: Defines how traffic flows between service demarcation points. One or more connectivity constructs can map to an NRP.
+    *   **NRP Policy**: A policy construct used to instantiate NRPs on topological elements, containing an **NRP ID**.
+    *   **NRP ID**: A globally unique 32-bit opaque identifier within an NRP domain, used in the control or management plane to distinguish specific NRPs.
+    *   **NRP Selector**: One or more fields (markings) in packet headers used to map traffic streams to an NRP for applying specific forwarding treatment. A single NRP may have multiple NRP selectors depending on traffic types (e.g., MPLS, IPv6).
+*   **NRP Selector vs. NRP ID**:
+    *   The NRP ID is a management/control plane identifier.
+    *   The NRP selector is a data plane identifier.
+    *   The NRP ID need not be the same as the dedicated NRP selector ID, and their bit-widths may differ, though a user might choose to embed the NRP ID in the packet if it fits.
+*   **Options for Carrying the NRP Selector**:
+    *   **Overloading existing fields**:
+        *   Assigning unique forwarding labels/addresses (e.g., VPN labels, distinct IPv6 source/destination addresses per NRP/FEC).
+        *   Implications: Requires distribution of forwarding information (control/management plane) and significant additional forwarding state in data plane (M NRPs * N destinations).
+        *   Discussion on distributing per-NRP information via control plane (IGP/BGP) saw a rough consensus in the working group against this approach, as it could impact scaling and stability of routing protocols. Management plane (e.g., Yang models) was considered a more suitable alternative.
+    *   **Dedicated identifier**:
+        *   **Piggybacking on existing fields**: Utilizing parts of existing fields (e.g., SRv6 SIDs, IPv6 Flow Label, MPLS Entropy Label).
+        *   **Completely new field**: Introducing a new field in the packet (e.g., MPLS Network Actions Framework, IPv6 Routing Extension Header like Hop-by-Hop options header).
+        *   Implications: Does not affect forwarding state or extend routing protocols. Requires hardware support to parse and extract the new field.
+*   **Open Questions Discussed**:
+    *   **Number of NRP Selector Options**: Should the working group allow multiple options for NRP selectors, or converge on a single approach?
+        *   A sense of those present indicated a desire for flexibility in the short to medium term to utilize existing fields, while moving towards a dedicated field for the long term, especially as hardware upgrades occur and NRP requirements scale. The concept of an NRP selector as a "classifier" was raised.
+    *   **Number of NRPs in a Domain**: What is a reasonable range for the number of NRPs expected in a specific domain? This dictates the required bit-width for NRP selector IDs.
+        *   Operator feedback suggested small numbers (tens to hundreds at most), drawing parallels to RSVP-TE-based VPNs for strict resource reservation. It was noted that this depends on device capabilities (e.g., queueing resources, edge vs. core routers) and specific use cases. More operator input is needed.
+    *   **Bit-width Flexibility**: Should there be flexibility in the number of bits allowed for the NRP selector ID (e.g., narrow and wide variants)?
+    *   **Multiple Encoding Options per Data Plane**: Should different data plane encapsulations (e.g., IPv6, MPLS) have different encoding options for the NRP selector, or should a consistent approach be sought?
+*   **NRP Selector Modeling (Yang)**:
+    *   The `ietf-teas-network-resource-partition` Yang module (adopted in TEAS) is based on RFC 9543, NRP in IPM/MPLS, and NRP scalability drafts.
+    *   NRP policy includes `nrp-id` (uint32, unique) and `nrp-selector` components.
+    *   NRP selector modeling currently defines options for IPv6 Hop-by-Hop extension header, and overloading mechanisms (IPv4/IPv6 destination/state-based), with MPLS as a placeholder.
+    *   Discussion arose regarding renaming `NRP ID` to `NRP Policy ID` to disambiguate from data plane identifiers.
+*   **NRP ID/Information Encapsulation in IPv6 Extension Header (6man Draft)**:
+    *   A draft proposes carrying NRP information in an IPv6 Hop-by-Hop Extension Header.
+    *   The encoding includes an `NRP ID`, `Context Type` (for generalization and future use cases beyond NRP), and an `S` flag (indicating behavior for unprovisioned NRPs).
+    *   Discussion on the `S` flag: Its behavior (e.g., drop, best-effort) needs to be consistent across data planes and should be captured as a requirement in TEAS documents.
+    *   Discussion on generalizing the Hop-by-Hop option: There's a desire in 6man to conserve HBH options by making the proposed option a general distinguisher, not strictly tied to NRP. TEAS input on the required size (bit-width) of the NRP selector for IPv6 is crucial.
+    *   It was suggested that different data plane encapsulations might have different ID sizes due to protocol limitations or use cases, but a minimum supported bit-width should be defined.
+
+## Decisions and Action Items
+
+*   **Decision (prior discussion)**: A rough consensus in the working group indicated that routing protocols (IGP/BGP) should not be overloaded with NRP information due to scalability and stability concerns. Distribution via the management plane (e.g., Yang) is preferred. (Note: A recent change in a document (revision 4 of the scalability document) may contradict this, requiring clarification.)
+*   **Action Item**: Chairs to start new threads on the TEAS mailing list to continue discussion on:
+    *   The various NRP selector options: convergence towards a single solution vs. allowing multiple, and the short-term/long-term strategy.
+    *   The expected number of NRPs in a domain and its implication on NRP selector bit-width. Specific outreach to operators for more input on use cases and scale.
+    *   Clarification of terminology: NRP ID vs. NRP Policy ID vs. Data Plane ID.
+    *   Behavior of the "S" flag for unprovisioned NRPs and consistency across data planes.
+    *   The generalization of the IPv6 Hop-by-Hop option for NRPs and input on the required bit-width for the selector.
+
+## Next Steps
+
+*   All open discussion points will be extended to the TEAS mailing list.
+*   The chairs will synthesize the feedback to draw conclusions and provide guidance to other working groups.
+*   A joint NMoP/TEAS interim session is scheduled for next week, focusing on the applicability of the TE topology model for digital mapping. Details will be sent to the list.

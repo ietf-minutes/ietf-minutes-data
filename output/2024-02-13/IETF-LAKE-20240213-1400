@@ -1,0 +1,109 @@
+# [LAKE](../wg/lake.html)
+
+## Summary
+
+The LAKE Working Group held an interim meeting to discuss the status of adopted drafts, individual submissions, and related technical topics. Key updates included progress on the LAKE-HS authorization protocol, an integrity fix and update for the AD HOC protocol and traces, and a draft on AD HOC implementation considerations which is now ready for a Working Group adoption call. Significant discussion took place regarding new academic research on symmetric key ratchet security and its implications for AD HOC key update, leading to a decision to add security considerations without delaying publication. An individual submission proposing remote attestation using AD HOC was also presented. The chairs announced an upcoming hackathon in Paris.
+
+## Key Discussion Points
+
+*   **Welcome and Logistics**
+    *   The chairs (Malisha and Stephen) opened the meeting.
+    *   Notetakers: Jovan and Christian.
+    *   The IETF Note Well applies.
+    *   The agenda was adopted without objection.
+    *   **Announcement**: A hackathon relevant to LAKE WG topics (AD HOC extensions, CoRE, ACE) will be held on May 21-22, 2024, at Inria Paris. Information is available at paris.hackathon.lakewg.org.
+
+*   **LAKE-HS Draft: Lightweight Authorization using AD HOC** (Presented by Jovan Fesi)
+    *   **Protocol Recap**: LAKE-HS leverages AD HOC's extension for external authorization data. It involves a device (U), a domain authenticator (V), and an enrollment server (W). U sends a voucher request to V, which is forwarded to W; W responds with a voucher if allowed, relayed back to U.
+    *   **Implementation Updates**:
+        *   The `ad-hoc-rest` library was renamed to `LAKERS` (Lake in Rust), supporting AD HOC for microcontrollers.
+        *   Version 0.5.0 is released on crates.io and includes the recent AD HOC integrity fix.
+        *   LAKE-HS (U, V, W entities) is fully implemented, with ongoing demo development.
+        *   Implementations are available in C and Python.
+    *   **Draft Updates**:
+        *   **Addition of Opaque Info**: Identified a need for U and W to exchange more context-specific information not directly part of the core protocol.
+            *   Proposed adding an `opaque-info` field (type bytes/byte string) protected between U and W.
+            *   Examples: U sends context (e.g., detected gateways) to W; W sends scope or actionable error information to U.
+            *   **Discussion**: Carsten Bormann questioned how the recipient would know the meaning of the `opaque-info`. Jovan clarified that for error cases, an implied registry for `reject-type` exists, but for general opaque info, it's still under consideration whether it will be application-defined or standardized with a registry.
+        *   **Error Handling**: Proposed a new AD HOC error code: `access-denied`.
+            *   Defined as a generic AD HOC error with a `reject-type` and optional `reject-info` (e.g., `opaque-info` to help recovery).
+        *   **Enrollment Hints**: To address scenarios where a device (U) is repeatedly denied by multiple gateways (V) when trying to enroll with W, consuming time and energy.
+            *   Proposal: U could send hints (e.g., SSIDs, MAC addresses) about discovered gateways to W via `opaque-info` in EAD1.
+            *   Alternatively, W could send hints to U about suitable gateways via `opaque-info` in an error response.
+            *   These hints would be optional and aim to speed up enrollment.
+            *   **Discussion**: Christian Amsüss raised a concern that for V to forward messages to W, V would need to permit the un-enrolled device (U) to communicate, even if it's ultimately denied by W. Jovan clarified that V merely forwards the encrypted messages between U and W, and V's forwarding is predicated on V and W being authenticated and trusting each other, not on U's enrollment status.
+    *   **Summary**: Implementation follows draft, identified needs for U/W info sharing, new error code proposed. Input from the WG is welcome.
+
+*   **AD HOC and Traces Update** (Presented by Yoran Wronka)
+    *   **Background**: An update was made based on a comment from L. Ferreira regarding the Connection Identifier (CR) in Mac 2.
+    *   **Change**: CR was moved from plain text to under encryption within Message 2 (specifically, within `plaintext_2`).
+    *   **Consequence**: This change meant CR was no longer covered by `Mac 2` integrity verification. While not a major security flaw (CR mainly for state retrieval), it's undesirable for applications to act on unverified CR.
+    *   **Fix**: CR was added to `context_2` (which feeds into the `expand` function for `Mac 2`), ensuring its integrity verification in Message 2.
+    *   **Status**: The updated draft is back in the RFC editor queue.
+
+*   **AD HOC Implementation Considerations Draft** (Presented by Marco Tiloca)
+    *   **Motivation**: To consolidate implementation-related aspects of AD HOC that were intentionally kept out of the main protocol specification but are useful for implementers.
+    *   **Status**: Version 1 posted, incorporating feedback (especially diagrams) since the November IETF meeting.
+    *   **Main Topics**:
+        *   **Handling AD HOC Sessions and Credentials**: Discusses three cases for when an AD HOC session or derived application keys become invalid (e.g., due to expired credentials or access rights). Solutions include tearing down the session, running dedicated key update protocols (like OSCORE KUDOS), or re-running AD HOC.
+        *   **Trust Models for Learning New Credentials**: Simplified from three to two policies:
+            *   "No Learning Policy": New credentials must always be pre-stored.
+            *   "Learning Policy": New credentials can be learned on-the-fly, provided they are successfully validated.
+        *   **Side Processing for Incoming Messages**: Details the application-defined processing required around the core AD HOC message handling, particularly for Message 2 and 3. This includes retrieval, validation, and processing of credentials, and processing of EAD items at appropriate points (before/after signature/Mac verification).
+    *   **Future Additions**: Possibility of adding considerations for CoAP blockwise and combined requests (AD HOC + OSCORE) as appendices.
+    *   **Conclusion**: Marco believes the draft is ready for a Working Group adoption call.
+
+*   **Key Update Security Implications** (Presented by John Preach)
+    *   **Topic**: Presentation on two recent academic papers investigating the security of symmetric key ratchets used in protocols like TLS, Signal, MLS, OSCORE KUDOS, and AD HOC key update.
+    *   **Findings**:
+        *   Papers model ratchets as stream ciphers, enabling application of time-memory trade-off attacks.
+        *   Raw chains (used in TLS) have weaknesses: weak keys, repetitive cycles, high collision probability, predictable shrinking key spaces, and subset properties exploitable by new time-memory trade-off attacks.
+        *   Omega chains (used in OSCORE KUDOS) perform best.
+        *   Academic recommendation: Frequent use of ephemeral Diffie-Hellman provides better security; symmetric key ratcheting (especially raw chains) should be deprecated or used with caution, particularly for IoT devices where physical attacks are relevant.
+    *   **John's Recommendation (as AD HOC Author)**:
+        *   Do not delay AD HOC publication. The attacks are theoretical and currently out of reach for practical exploitation.
+        *   The issues primarily affect the AD HOC key update mechanism, which is already an optional appendix and not widely used (KUDOS is preferred).
+        *   Suggests adding some small security considerations to the AD HOC RFC 48 or its key update appendix.
+    *   **Discussion**:
+        *   Malisha queried if the WG should write a separate document or update RFC 48.
+        *   John noted the key update is in an optional appendix and not broadly used. He suggested either removing the appendix or clarifying security considerations within it.
+        *   Yoran suggested clarifying existing options in the appendix (e.g., using random numbers or counters) to align with best practices and the new research, rather than removing it completely which might delay publication.
+        *   Stephen, as chair, preferred not to make changes that would delay publication unless absolutely necessary. He asked about the feasibility of these attacks and whether the IETF should first assess their impact on TLS.
+        *   John indicated he would inform the TLS, MLS, Quick, and CoRE WGs about the research. He reiterated that the findings are currently in preprint, but simulations confirm the theoretical attacks.
+        *   A sense of those present indicated that a minimal security consideration could be added to RFC 48 (or its appendix) without delaying publication, possibly observing how other WGs react to the research.
+
+*   **Remote Attestation using AD HOC (Individual Submission)** (Presented by Yanan Song)
+    *   **Use Case**: Remote attestation for low-power constrained devices (e.g., swarm robotics like "dobots") where TLS might be too resource-intensive. Goal: Verify latest firmware version.
+    *   **Architecture**: Uses the Remote Attestation Procedures (RATS) WG architecture.
+        *   Initial focus on the Background Check model: AD HOC initiator acts as the Attester, the AD HOC responder (Gateway) acts as the Reliant Party, and an external web server (e.g., device manufacturer) acts as the Verifier.
+    *   **Proposal**: Leverage the AD HOC EAD field for attestation.
+        *   **Message Flow**:
+            *   EAD1 (Initiator to Responder): Contains an attestation proposal, listing types of evidence the initiator can generate.
+            *   Responder (Reliant Party) forwards this to the Verifier.
+            *   Verifier decides which evidence type it supports and returns an attestation request.
+            *   EAD2 (Responder to Initiator): Carries the attestation request from the Verifier.
+            *   Initiator generates the requested evidence (by calling an attestation service).
+            *   EAD3 (Initiator to Responder): Carries the generated evidence.
+            *   Responder forwards evidence to Verifier; Verifier evaluates and returns results.
+    *   **Status**: A draft repository has been created with an introduction and problem description. The goal is to publish the draft before the IETF cutoff.
+    *   **Discussion**:
+        *   Michael asked for an estimate of the additional byte size for evidence in Message 3. Yanan stated this is not yet decided but will involve an attestation token binding identity and platform state.
+        *   Freshness is provided by a nonce generated by the verifier in Message 2.
+
+*   **Any Other Business**
+    *   Zang briefly attempted to discuss "multipass" and "soft-defined networks" but was asked by the chairs to bring this up on the mailing list or contact them directly via email for better context.
+    *   A reminder about the Paris hackathon was reiterated.
+
+## Decisions and Action Items
+
+*   **AD HOC Implementation Considerations Draft**: Chairs to launch a Working Group adoption call on the mailing list. (Action: Stephen, Malisha)
+*   **AD HOC Key Update Security**:
+    *   John Preach to email the TLS, MLS, Quick, and CoRE Working Groups about the academic papers' findings on symmetric key ratchets. (Action: John Preach)
+    *   Add minimal security considerations regarding the AD HOC key update mechanism to RFC 48 (likely its appendix) without delaying publication, possibly after observing reactions from other WGs. (Action: Document editor/WG)
+*   **Zang's Proposal**: Zang to send an email to the chairs and the working group mailing list with details of his proposal on "multipass" and "soft-defined networks". (Action: Zang)
+
+## Next Steps
+
+*   Chairs will initiate the call for adoption for the "AD HOC Implementation Considerations" draft.
+*   The Working Group will monitor the discussions in other IETF WGs (TLS, MLS, Quick, CoRE) regarding the implications of the key update security research for potential further refinements to AD HOC security considerations.
+*   The next LAKE WG session is planned for IETF 119 in Brisbane (hybrid meeting).

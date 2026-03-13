@@ -1,0 +1,75 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+The OPENPGP working group met to discuss the status of the Crypto Refresh draft, progress on the Post-Quantum Cryptography (PQC) draft, and to continue adoption calls for the Replacement Keys and Persistence Metric H drafts. The Crypto Refresh draft has entered IESG's O48 state, requiring prompt review from all authors. Discussions on the PQC draft included clarifying language for mixed key types, validating security level choices, and an extensive debate on allowing PQC encryption with V4 keys, which will continue at the upcoming OpenPGP Summit. The Replacement Keys draft prompted a deep dive into trust models and scope, leading to a renewed call for adoption. Similarly, the Persistence Metric H draft presented new symmetric key mechanisms, and its adoption call was reiterated with an emphasis on interoperability for stored artifacts.
+
+## Key Discussion Points
+
+*   **Crypto Refresh (RFC 9580):**
+    *   The draft is in IESG's O48 state.
+    *   A significant review (64 questions) requires responses from all listed authors.
+    *   Authors are urged to review the O48 feedback for clarity and accuracy.
+*   **Post-Quantum Cryptography (PQC) Draft:**
+    *   **Changes (v2 to v3):**
+        *   NIST and Brainpool curves were removed from the main draft; a separate draft for these is planned.
+        *   SLH-DSA was unparameterized, retaining SHAKE versions (128s and 256s). Algorithm numbers 105-108 were assigned, with full SLH-DSA implementation/test vector pending for final assignment.
+        *   Key Derivation Function (KDF) updated: domain separation moved to fixed information, now uses SHA3-256 instead of KMAC for simpler implementation while maintaining security.
+        *   Forbade symmetrically encrypted data tag 9 with PQC keys.
+        *   Forbade insecure hashes (SHA-1, MD5) with V4 keys containing PQC components.
+    *   **Issue: Mixed PQ/Traditional Keys for Same Recipient:**
+        *   Concern was raised regarding a normative "must not" for encrypting to both a post-quantum and a traditional public key encryption key for the same recipient.
+        *   Discussion focused on the ambiguity of "recipient" in the OpenPGP context (subkeys, multiple certificates, human users) and the difficulty of enforcement at a library level.
+        *   The sense of those present was to make this guidance non-normative.
+    *   **Issue: Security Level Mismatch (ML-KEM 768 (Level 3) vs. SLH-DSA (Level 1)):**
+        *   The choice to use ML-KEM 768 (a higher security level than strictly matched with SLH-DSA L1) was discussed.
+        *   Overprovisioning for ML-KEM was deemed prudent due to ongoing discussions in the cryptographic community regarding the exact security strength of lattice-based schemes. Raising SLH-DSA to a higher level would significantly impact size and computation time.
+        *   The group indicated comfort with the current security level choices, prioritizing a security margin for ML-KEM.
+    *   **Issue: PQC Encryption with V4 vs. V6 Keys:**
+        *   A significant discussion centered on whether PQC encryption subkeys should be allowed with V4 primary keys or strictly bound to V6 keys.
+        *   Arguments for V6-only: simplify combinatorics, reduce testing, encourage V6 adoption (making PQC a "killer app" for modernization).
+        *   Arguments for V4 allowance: "lend a hand" to current V4 users for easier PQC adoption, critical for OpenPGP's competitiveness with other protocols (e.g., SSH, TOFU, Zoom) and other PGP implementations (e.g., LibrePGP V5). It was noted that V4 PQC would still lack signatures, requiring V6 for full stack PQC.
+        *   No consensus was reached, and further discussion is deferred to the OpenPGP Summit.
+    *   **Composite Signatures (ML-DSA + EdDSA):**
+        *   An existing outstanding argument regarding the necessity of defining ML-DSA + EdDSA composite signatures was briefly revisited.
+        *   Despite one dissenting view, the sense of the working group was to proceed with defining these composite signatures.
+*   **Replacement Keys Draft:**
+    *   This draft proposes a new signature subpacket to provide a hint or indirection to a replacement key for a user (e.g., transitioning from an old RSA key to a new PQC V6 key).
+    *   The subpacket identifies the new key by fingerprint and establishes a preference order.
+    *   A major discussion point was the challenge of trust delegation with this mechanism, as the subpacket itself does not convey cryptographic trust.
+    *   Options for establishing trust in the new key were explored:
+        *   Web of Trust: Re-certifying the new key by existing certifiers.
+        *   Trusted Channels: Distributing both keys via channels like Autocrypt or WKD (noting WKD's current single-key limitation).
+        *   Novel Mechanism: Defining a new type of certification or overloading an existing one to explicitly transfer trust from the old key to the new key without third-party involvement. This would require careful consideration of cryptographic strength vs. privacy implications.
+    *   The importance of addressing trust within the scope of this document was emphasized.
+*   **Persistence Metric H Draft:**
+    *   This draft aims to allow users to encrypt messages and files with a long-term symmetric key (password-encrypted) and to create attestations (e.g., recording signature verification results) using symmetric keys.
+    *   It proposes reusing the semantics of PKESK and Signature packets, renaming the registry to "Persistent Key Algorithms."
+    *   Two new persistent key algorithms are proposed: Authenticated Encryption with Associated Data (AEAD) and HMAC.
+    *   Recent proposed changes include placing the AEAD algorithm in the public key for better key binding, using a fingerprint seed for key material binding, and proposing specific algorithm IDs (e.g., 128/129) where the first bit indicates symmetric usage.
+    *   The chair highlighted the importance of interoperability for stored artifacts using these mechanisms, urging implementers to consider adopting this draft.
+
+## Decisions and Action Items
+
+**Decisions:**
+
+*   For the Post-Quantum Cryptography draft, the language regarding encrypting to both PQ and non-PQ keys for the same recipient will be made non-normative, with an emphasis on application-layer guidance where the concept of a "recipient" is known.
+*   The Post-Quantum Cryptography draft will retain its current security level choices (ML-KEM 768 and SLH-DSA L1), with the rationale for ML-KEM's higher security margin documented.
+*   The Post-Quantum Cryptography draft will continue to define ML-DSA + EdDSA composite signatures.
+
+**Action Items:**
+
+*   **All Crypto Refresh Authors:** Review and respond to the O48 comments for RFC 9580 to facilitate its publication.
+*   **Aaron Whistler (PQC Author):** Will update the Post-Quantum Cryptography draft after the OpenPGP Summit, likely in 3-4 weeks.
+*   **Chairs:**
+    *   Renew the call for adoption for the Replacement Keys draft on the mailing list, pointing to this meeting recording and presentation, and allow 1-2 additional weeks for feedback.
+    *   Renew the call for adoption for the Persistence Metric H draft on the mailing list, pointing to this meeting recording and presentation, and specifically solicit feedback from implementers regarding interest in interoperable support for stored data.
+    *   Request a session for the OPENPGP WG at the upcoming Vancouver IETF meeting.
+    *   **DKG (Chair):** Report back from the OpenPGP Summit discussions to the mailing list.
+
+## Next Steps
+
+*   Continued discussion and feedback on the Post-Quantum Cryptography draft, especially concerning V4 key compatibility, will take place at the OpenPGP Summit.
+*   The working group will be actively gathering feedback for the adoption of the Replacement Keys and Persistence Metric H drafts on the mailing list.
+*   Authors of the Crypto Refresh draft must complete their review of O48 comments for the document to progress to RFC publication.
+*   A new version of the Post-Quantum Cryptography draft is expected approximately 3-4 weeks after the OpenPGP Summit.

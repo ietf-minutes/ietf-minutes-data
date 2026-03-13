@@ -1,0 +1,52 @@
+# [WEBTRANS](../wg/webtrans.html)
+
+## Summary
+
+The WEBTRANS working group session focused on two issues raised by W3C for which IETF input was requested, and a significant portion of the meeting was dedicated to discussing proposals for adding flow control mechanisms to WebTransport. Following a detailed review of four proposals, the working group's sense leaned towards adopting a WebTransport-layer flow control mechanism (Proposal D) that is mandatory only when connection pooling is utilized.
+
+## Key Discussion Points
+
+*   **W3C Update: TLS Keying Material Exporter (Issue 411/116)**
+    *   W3C requests exposure of a TLS key exporter from RFC 5705 or a derived value unique to the TLS session.
+    *   This is intended to enable binding the TLS session to a noise handshake, useful for protocols like libP2P.
+    *   Discussion highlighted the need for clarity on the exact function and label, noting that similar exporters exist in other working groups (e.g., EMU).
+    *   **Action Item**: Participants are encouraged to comment on the GitHub issue/proposed design. Victor to prepare a Pull Request for discussion at IETF 119 in Brisbane.
+
+*   **W3C Update: Stream Data Received State (Issue 580/103)**
+    *   A line related to the "data received" state, crucial for "partial reliable sending" (aborting already sent data), could not be removed from the WebTransport spec without losing functionality.
+    *   The proposal is to rename this state to "all data committed", meaning "data received" for HTTP/3 and "FIN sent onto TCP" for HTTP/2.
+    *   Discussion centered on the distinction between HTTP/2 and HTTP/3 regarding data commitment and retransmissions, and ensuring the mechanism is framed locally, not dependent on acknowledgments.
+    *   **Action Item**: More work is needed. Victor to open a new GitHub issue to continue this discussion.
+
+*   **WebTransport Flow Control Proposals**
+    *   **Problem Statement**: WebTransport sessions operate over a single QUIC connection, sharing global resources (stream limits, data limits). A single WebTransport session can exhaust these resources, starving other WebTransport sessions or co-existing HTTP traffic on the same connection. This presents a robustness challenge, especially for browser tabs or multi-service backends, and complicates proxying between HTTP/2 and HTTP/3.
+    *   **Proposal A: Do Nothing**: Acknowledge the counterpoints but choose not to implement any specific flow control. (Little to no support for this option).
+    *   **Proposal B: Sender-Enforced Hints**: The receiver provides hints (e.g., via HTTP settings) to the sender about resource limits (e.g., `Max Streams per session`). The sender (e.g., browser) then enforces these limits.
+        *   *Pros*: Conceptually simple, easy to implement for the sender.
+        *   *Cons*: Relies on fixed/equal allocation assumptions, requires buffering for limit mismatches, advisory (sender might not enforce), and requires receivers to handle worst-case resource exhaustion.
+    *   **Proposal C: QUIC Layer Flow Control**: Extend QUIC to be aware of "stream groups" or "namespaces" and handle flow control at the transport layer.
+        *   *Pros*: Applicable to other QUIC applications, offloads flow control logic from WebTransport.
+        *   *Cons*: Requires new work in the QUIC working group, significant design discussion ("bike-shedding"), would delay WebTransport progress, and could create a circular dependency where WebTransport drives QUIC API changes solely for its own implementation.
+    *   **Proposal D: WebTransport Layer Flow Control**: Implement QUIC-like flow control directly within WebTransport by reusing existing HTTP/2 capsules for `Max Streams` and `Max Data` (and their `Blocked` variants) and applying them to HTTP/3 WebTransport. HTTP/3 already provides stream-level flow control; this would add session-level limits.
+        *   *Pros*: Reuses familiar QUIC/HTTP/2 logic, provides concrete bidirectional limits, consistent across WebTransport versions, simplifies handling initial requests.
+        *   *Complexity*: While flow control is inherently complex, the argument was made that this approach leverages existing, well-understood mechanisms and the additional complexity for server implementers is manageable and often hidden from web platform developers.
+    *   **Discussion on Mandatory vs. Mandatory for Pooling**:
+        *   **Option 1: Make WebTransport flow control mandatory for all connections.**
+        *   **Option 2: Make WebTransport flow control mandatory only for connections where pooling (sharing with other HTTP traffic or multiple WebTransport sessions) is enabled.**
+        *   Concerns were raised about the implications of "do nothing" even for non-pooling (a single WebTransport session on a dedicated connection), as the underlying QUIC flow control still applies. However, making it mandatory for *all* cases might add perceived unnecessary complexity for simpler deployments.
+        *   The ability for a server to effectively disable pooling by setting `Max Sessions` to `1` was discussed.
+        *   A key point was made that interoperable implementations of pooling and its associated flow control mechanisms are crucial before a Working Group Last Call.
+
+## Decisions and Action Items
+
+*   **Tentative Direction for Flow Control**: The working group's sense is to proceed with **Proposal D (WebTransport Layer Flow Control)**, making it **mandatory only for connections where pooling is enabled** (Option 2).
+*   **Mailing List Confirmation**: The chairs will issue a consensus call on the mailing list to confirm this direction.
+*   **W3C Related Actions**:
+    *   **TLS Exporter**: Participants to comment on the GitHub issue/proposed design. Victor to prepare a PR for IETF 119.
+    *   **Stream State**: Victor to open a new GitHub issue for continued discussion on the "all data committed" state.
+
+## Next Steps
+
+*   **Mailing List Consensus**: Confirm the decision on WebTransport flow control (Proposal D, mandatory for pooling) via the working group mailing list.
+*   **Specification Work**: Update the WebTransport specification to incorporate the chosen flow control mechanisms.
+*   **Implementation & Interoperability**: Encourage and pursue interoperable implementations of WebTransport with pooling and the new flow control features before proceeding to Working Group Last Call.
