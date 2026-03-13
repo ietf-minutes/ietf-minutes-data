@@ -1,0 +1,89 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE Working Group held a virtual interim meeting to review the status of several drafts, discuss feedback from Working Group Last Calls and IETF Last Calls, and address new technical considerations. Key topics included updates for Cryptex, Frame Marking, and the RTP Payload Format for Skip. Significant discussion focused on RFC 7983 bis (QUIC Multiplexing) and its incompatibility with QUIC bit greasing. Presentations and discussions were also held on congestion control for RTP over QUIC, a liaison request from the W3C WebTransport group regarding low-latency media over QUIC, and the RTP Payload Format for V3C.
+
+## Key Discussion Points
+
+*   **Administrative**
+    *   Will Law volunteered to take meeting notes.
+    *   A poll was taken to gauge in-person attendance plans for IETF 114 to assist with room planning.
+    *   Reminder of IETF policies regarding Notewell and professional conduct.
+*   **Cryptex Frameworking (draft-ietf-avtcore-rtp-cryptex)**
+    *   The draft has completed IETF Last Call.
+    *   An IPR declaration from Qualcomm was submitted. No objections to proceeding with publication were raised on the list or in the meeting.
+    *   Feedback from SEC and Gen-ART directorates was discussed, with tracking issues opened on GitHub.
+    *   Clarification was requested for the SDP declaration of `a=cryptex`, specifically why it takes no value. Two proposals were presented to define it as a property attribute, clarifying its syntax.
+    *   The term "encrypted region" was replaced with "encrypted portion" for consistency with RTP RFCs.
+    *   Wording around the "mandatory to implement" concept for senders/receivers was discussed, aiming for clearer recommendations in implementation.
+*   **Frame Marking (draft-ietf-avtcore-frame-marking)**
+    *   The draft received mostly editorial and meta-level feedback during its Working Group Last Call.
+    *   The "experimental" status of the draft was questioned, with a suggestion to clarify its scope, timeline, and goals. There was a sense in the room that "experimental" is often used when a draft isn't considered proposed standard, and informational might be more appropriate, but rewriting the document for "informational" was not desired.
+    *   An editorial comment on SDP referencing and security considerations (header integrity protection, privacy, traffic analysis) were noted.
+    *   A substantive comment from Martin Thomson regarding the statement that "header extension values must match the RTP payload" was discussed. While generally true for correct operation, the "unenforceable" nature was raised. It was suggested to clarify this as a sender-side responsibility, with a caveat for cases where the sender lacks sufficient information.
+    *   A suggestion was made to add "Video" to the title ("Video Frame Marking") for clarity, as it's not applicable to other media types.
+*   **RTP Payload Format for Skip (draft-ietf-avtcore-rtp-skip)**
+    *   The draft has completed Working Group Last Call.
+    *   Discussion focused on comments regarding "end-to-end security," clarifying that in a multi-point scenario with a trusted MCU, the MCU acts as an endpoint.
+    *   The term "bit integrity" was questioned, with a suggestion to rephrase it as "no transcoding and no lossy compression techniques shall not be performed on the Skip payload."
+    *   Compatibility with audio/video multiplexing, the bundle RFC (9143), and RTP/RTCP multiplexing was discussed. It was clarified that Skip does not inherently prohibit these mechanisms; they can be negotiated independently.
+    *   The question of whether H.264 is the *only* video codec used within Skip was raised. It was clarified that other codecs could be used in the future, and feedback messages would apply to the underlying negotiated video codec.
+    *   A comment was raised regarding an "orchestrated campaign" of support emails during the WGLC, which was deemed unnecessary and annoying for subsequent stages of the process.
+*   **RFC 7983 bis (QUIC Multiplexing) (draft-ietf-avtcore-rfc7983bis)**
+    *   The draft updates RFC 7983 by adding QUIC to the protocols that can be multiplexed with RTP/RTCP, STUN, and DTLS.
+    *   It is compatible with QUICv2.
+    *   A major issue discussed was the incompatibility with the QUIC bit greasing draft. If bit greasing is negotiated, the first octet of QUIC packets can overlap with RTP/RTCP or STUN/DTLS, making multiplexing infeasible.
+    *   The draft proposes that if multiplexing as described is desired, QUIC bit greasing should *not* be negotiated.
+    *   There was a sense in the room that bit greasing is unlikely to be widely adopted or enforced, similar to the "forbidden bit" in MPEG.
+*   **QUIC Congestion Control**
+    *   David Piel presented findings from reproducing experiments on Scream over QUIC with NewReno.
+    *   A bug was identified in the Scream implementation where the RTP queue (rtpQ) was being prematurely cleared when the link capacity decreased, leading to zero transmitted bitrate.
+    *   After fixing the bug, Scream's behavior over NewReno was observed to be very similar to Scream running alone, as NewReno was always application-limited.
+    *   York Schaer presented an update on the draft for RTP over QUIC streams/datagrams (draft-schaer-avtcore-rtp-over-quic).
+        *   The draft now includes encapsulation for RTP over QUIC streams, where one stream is used for one Application Data Unit (e.g., a video frame).
+        *   Guidelines were provided for mapping common RTCP packet types to QUIC, inferring statistics from the QUIC connection to reduce RTCP overhead.
+        *   Congestion control options include performing it only at the QUIC layer (preferably using a low-latency, delay-based CC and exposing bandwidth estimates to the application) or at the application layer (e.g., Scream or GCC).
+        *   SDP signaling considerations were presented, including connection setup, flow ID mapping, and the implications of 0-RTT connection setup.
+        *   Open questions remain on signaling for choosing between streams/datagrams, indicating capability to use QUIC statistics, and negotiating congestion control mechanisms.
+*   **W3C WebTransport Liaison**
+    *   Will Law presented a liaison request from the W3C WebTransport group regarding low-latency audio/video over QUIC, specifically if RTP over QUIC can satisfy this use case and what measurements need to be made available to JavaScript clients.
+    *   Current WebTransport APIs provide aggregate stats (bytes/packets sent/lost, RTT variants) but lack explicit congestion notification, ack info, latest RTT, and packet arrival/departure times.
+    *   Discussion centered on the feasibility of JavaScript applications implementing their own congestion control or cooperating with the browser's quick connection.
+    *   It was suggested that exposing packet departure and arrival information (or one-way delays, sums of squares for statistical analysis, or an array of recent inter-packet arrival delays) would be crucial for application-level congestion control.
+    *   The challenge of conflicting congestion control between the application and the browser's underlying QUIC stack was highlighted. It was suggested that the application needs to know what parameters the underlying CC enforces.
+    *   The idea of a "circuit breaker" congestion control mode (gets out of the way unless things go haywire) was discussed but met with skepticism due to potential abuse vectors.
+    *   The W3C group explicitly requested the IETF community to perform experiments using WebTransport to provide feedback on the necessary minimum information to expose to JavaScript for low-latency media.
+*   **SDP for RTP over QUIC (draft-ietf-avtcore-rtp-over-quic-sdp-o1)**
+    *   Spencer Dawkins presented an individual draft defining SDP for RTP over QUIC, focusing on a minimal specification.
+    *   Challenges include ambiguity in secure AVP profiles regarding double encryption when QUIC is used.
+    *   The draft proposes including both stream and datagram options in SDP, as no convergence on a single transport mechanism has been observed.
+    *   For congestion control, the current stance is that signaling explicit quick-level congestion control differences is not required in practice, but further testing might inform this.
+*   **RTP Payload Format for V3C (draft-ietf-avtcore-rtp-v3c)**
+    *   Lauri Rosendahl presented updates on the RTP Payload Format for V3C, which compresses video scenes into bitstreams including atlas metadata.
+    *   The draft defines an RTP payload specification for atlas data units, specific payload format parameters, and a grouping mechanism for video and atlas streams.
+    *   Updates include aligning more with VVC RTP payload format (removing multi-time update aggregation packets), cleaning up payload parameters, and clarifying SDP examples.
+    *   Feedback was incorporated regarding missing acronyms.
+    *   Discussions are ongoing in 3GPP, but no formal decisions have been made there yet.
+
+## Decisions and Action Items
+
+*   **Notetaker**: Will Law volunteered to take notes for this meeting.
+*   **Cryptex**: Sergio to merge pending pull requests, review and clarify the "mandatory to implement" text, and then create and publish a new draft.
+*   **Frame Marking**: Mo to propose text for clarifying the "experimental" status on the mailing list to address Gen-ART feedback.
+*   **Skip**: Mike Fowler and Dan Hanson to update the draft based on Working Group Last Call comments and submit a new revision. Co-chairs to then initiate directorate reviews and the publication request process.
+*   **RFC 7983 bis**: Bernard to initiate a Working Group Last Call for the draft. The chairs will forward the draft to the QUIC Working Group for review, specifically for input on the bit greasing issue.
+*   **RTP over QUIC (York's draft)**: York Schaer to submit an updated draft including security considerations and IANA registrations. Co-chairs to then run a Call for Adoption for the draft.
+*   **W3C WebTransport Liaison**: The W3C WebTransport group requests IETF community members with research access and expertise to experiment with WebTransport and RTP over QUIC to identify the minimum necessary information (e.g., packet arrival/departure times, RTT) to expose to JavaScript applications for effective low-latency media congestion control.
+*   **Meeting Minutes**: Jonathan and the note-taker will cut and paste the chat log into the bottom of the minutes for archival purposes.
+
+## Next Steps
+
+*   **Cryptex**: Finalize and publish the new draft for further processing.
+*   **Frame Marking**: Circulate proposed text for "experimental" status, update the draft, and submit version 14.
+*   **Skip**: Submit the revised draft, proceed with directorate reviews, and move towards publication request.
+*   **RFC 7983 bis**: Initiate Working Group Last Call and solicit feedback from the QUIC WG.
+*   **RTP over QUIC (York's draft)**: Complete remaining updates (security considerations, IANA registrations), submit new version, and await Call for Adoption.
+*   **W3C WebTransport Liaison**: Members of the IETF community are encouraged to engage with the W3C WebTransport group on their request for experimentation.
+*   **V3C**: Continue to update the draft based on feedback, seek additional authors/contributors, and engage RTP payload format experts.
+*   **General**: The chairs will update the action item list and distribute the minutes to the mailing list. The next full meeting will be at IETF 114.

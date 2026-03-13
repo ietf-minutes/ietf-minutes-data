@@ -1,0 +1,92 @@
+# [JSONPATH](../wg/jsonpath.html)
+
+## Summary
+
+This interim meeting focused on several key technical aspects of the JSONPath specification, particularly regarding structured comparisons, handling of duplicate keys, and the design of extension points (functors). Consensus was reached to support equality and inequality for structured values. A significant portion of the discussion revolved around the complexities of defining extension points, leading to a decision to focus initially on the `length` functor within filter expressions. The group also reviewed outstanding issues concerning `iregx` Last Call, existence expressions, selector grammar, and descendant selector ordering, assigning concrete action items for resolution. The aim is to move towards a Working Group Last Call by IETF 115 (November).
+
+## Key Discussion Points
+
+*   **PR Review Period:** Discussion around a proposed 24-hour review period for Pull Requests (PRs). Kirsten highlighted concerns that such a rigid rule could hinder editors' ability to make sequential changes or rapid progress, especially for minor fixes. Greg noted JSON Schema uses a two-week period and still moves fast. Tim (Co-Chair) emphasized respecting editors' need for flexible work schedules, often involving bursts of intensive activity. It was agreed that editors should use judgment, not rushing substantive changes.
+*   **`iregx` Document Status:** The working group confirmed that the `iregx` document is ready for Working Group Last Call. James confirmed he has time to act as the document shepherd, with Tim offering assistance.
+    *   **Decision:** Proceed with Working Group Last Call for `iregx`.
+    *   **Action Item:** James to complete the document shepherd write-up for `iregx`. (Tim offered to help).
+*   **Equality and Inequality of Structured Types:** The group discussed supporting `equal` and `not equal` operators for complex JSON objects and arrays.
+    *   Tim expressed slight reservation but not strong opposition.
+    *   Kirsten advocated for inclusion, stating it aligns with the "principle of least surprise" and is harder to add later.
+    *   Greg supported it, citing well-defined JSON equality for structures (same keys/values for objects, same index values for arrays) and demand from other communities (e.g., .NET).
+    *   Stefan, initially against, now favors it for consistency.
+    *   The discussion also touched upon *ordering* (less than/greater than) for structured types. Kirsten suggested a lexicographical definition for arrays (prefix-based, similar to string comparison), which is common in languages like JavaScript. Stefan and Tim expressed skepticism about array ordering due to potential for non-comparable elements and the difficulty for objects.
+    *   **Sense of the room:** Rough consensus to support `equal` and `not equal` operators for structured types.
+    *   **Decision:** Object ordering (less than/greater than) will *not* be defined. Array ordering (less than/greater than) will be explored further.
+    *   **Action Item:** Glenn to prepare a PR defining array ordering, including how to handle non-comparable elements, and to provide use case analysis.
+*   **Duplicate Keys in Objects:** The pervasive issue of duplicate keys in JSON objects was discussed.
+    *   It was generally agreed that duplicate keys are problematic and their behavior is not universally defined across JSON parsers (e.g., throwing exceptions, selecting one key, non-deterministic behavior).
+    *   Kirsten argued it's fundamentally a JSON *text* (parsing) issue, not a JSON *value* issue for the JSONPath spec.
+    *   Tim noted streaming parsers could expose duplicate keys.
+    *   Glenn's PR proposed making comparison behavior "implementation dependent but must be true or false" for objects with duplicate keys.
+    *   Stefan suggested referencing i-JSON, which forbids duplicate keys, but Tim noted its lack of widespread parser support.
+    *   **Sense of the room:** Rather than defining specific behavior at every point, a high-level statement in the spec should declare that the behavior of JSONPath in the presence of duplicate keys is implementation-dependent and unpredictable, leaving it to the JSON parser's handling.
+    *   **Action Item:** Update the spec with a general statement on unpredictable behavior for duplicate keys at a high level.
+*   **Logical Consistency of Comparisons (`<` vs. `! (>=)`):** The group debated the logical equivalence of `<` and `!(>=)`. Kirsten pointed out that for type mismatches (e.g., comparing a string to a number), both `<` and `>=` might return `false`, which can be "uncomfortable" for users expecting strict inverse relationships. Greg and Tim acknowledged this discomfort but noted it could be logically sound if type mismatches consistently yield `false`.
+    *   **Action Item:** Glenn to work on defining logical consistency for comparisons, specifically addressing the type mismatch scenario.
+*   **Extension Points (Functors):** Kirsten presented a proposal for a functor-based extension point mechanism, using a `functorName(arg1, ...)` syntax. `length()` was proposed as an initial "built-in" extension to ensure the mechanism is implemented.
+    *   Key challenges identified:
+        *   **Syntactic Location:** Where in the JSONPath grammar can a functor appear (e.g., as a singular path, a comparable, a boolean expression)?
+        *   **Argument Interpretation:** How are arguments interpreted (e.g., literal value, path result, JSON value)?
+        *   **Type System Interaction:** How do functors interact with JSONPath's type system and handle `absent` values or type mismatches?
+    *   Greg raised questions about argument evaluation order. Kirsten clarified functional purity but acknowledged typing issues.
+    *   Glenn and Greg suggested that functors should accept JSON types or `absent` as arguments and return JSON types or `absent`, with the functor itself responsible for handling these inputs.
+    *   Stefan requested examples from other specifications.
+    *   **Sense of the room:** The design of extension points is complex, but worth pursuing.
+    *   **Decision:** The initial scope for extension points will be limited to *filter expressions* to simplify the problem space.
+    *   **Action Item:** Kirsten to prepare a detailed specification of the `length` functor, focusing on its behavior within filter expressions and its interaction with various JSON types and `absent` values.
+    *   **Action Item:** All participants are encouraged to submit examples of desired extension points from other JSONPath-like query languages to the relevant issue.
+    *   **Action Item:** Tim (Co-Chair) will monitor the complexity of this work; if it becomes excessively time-consuming, the group may reconsider the cost-benefit.
+*   **Interoperability of Extensions:** Greg briefly raised the future challenge of interoperability when different implementations define their own extensions. Kirsten acknowledged this as a standard problem for extensible systems, requiring careful design to avoid "false interoperability."
+*   **Issue 195: Exist Expressions and Singular Paths:** The spec currently requires `exist` expressions to operate on singular paths.
+    *   Tim and Kirsten found this restriction artificial, suggesting `exist` should return true if a path yields any non-empty set of values.
+    *   Concern was raised that allowing non-singular relative paths (e.g., using `@` with non-singular paths) might require significant grammar changes.
+    *   Tim cautioned against allowing non-singular paths to "creep" into other expression types (e.g., comparisons), which could lead to complexity.
+    *   **Action Item:** Glenn to investigate how to extend `exist` to support non-singular paths without introducing "grievous ugliness" or complexity elsewhere in the spec.
+*   **Issue 201: Selector Classes (Grammar Simplification):** Greg proposed simplifying the selector grammar, arguing for less duplication (e.g., consolidating `list selector` with individual index/slice/filter selectors).
+    *   Tim and Glenn noted that some duplication can aid readability for spec consumers.
+    *   Kirsten suggested the core need is a clear term for the individual items within a comma-separated list inside brackets (e.g., `index`, `slice`, `filter expression`).
+    *   **Action Item:** Greg to propose a concrete PR with grammar simplification, addressing the terminology.
+*   **Issue 232/PR 233: Descendant Selector Ordering:** This issue concerns the ordering of results when using the `..` (descendant) selector, where different implementations may produce depth-first or breadth-first ordering. PR 233 aims to specify this.
+    *   Tim withdrew a prior technical objection related to a side point in the PR.
+    *   **Action Item:** Reviewers (including Tim) to re-evaluate PR 233 to achieve consensus on the specified descendant selector ordering.
+
+## Decisions and Action Items
+
+### Decisions:
+
+1.  **PR Review Period:** Editors should exercise judgment in reviewing PRs, especially for substantive changes, but no formal, rigid review period is imposed to allow for efficient editorial work.
+2.  **`iregx` WG Last Call:** The `iregx` document will proceed to Working Group Last Call.
+3.  **Structured Type Equality:** The JSONPath specification will support `equal` and `not equal` operators for arbitrarily complex JSON objects and arrays.
+4.  **Object Ordering:** Ordering (less than/greater than) for JSON objects will *not* be defined.
+5.  **Duplicate Keys:** The JSONPath specification will include a high-level statement indicating that behavior in the presence of duplicate keys is implementation-dependent and unpredictable, as it relies on the underlying JSON parser.
+6.  **Extension Points Scope:** Initial work on extension points (functors) will be limited to their use within *filter expressions*.
+7.  **Object Ordering:** Not defining ordering on objects (re-confirmed consensus).
+
+### Action Items:
+
+*   **James:** Complete the document shepherd write-up for `iregx` (Tim offered to help).
+*   **Glenn:**
+    *   Prepare a PR to define array ordering (less than/greater than), addressing concerns about non-comparable elements and providing use case analysis.
+    *   Investigate extending `exist` expressions to support non-singular paths without introducing "grievous ugliness" or complexity elsewhere in the spec.
+    *   Work on defining logical consistency for comparisons (`<` vs. `!(>=)`), specifically addressing the type mismatch scenario where both sides might return `false`.
+*   **Kirsten:** Prepare a detailed specification of the `length` functor, focusing on its behavior within filter expressions and its interaction with various JSON types and `absent` values.
+*   **All Participants:** Supply examples of desired extension points from other JSONPath-like query languages to the relevant issue on GitHub.
+*   **Greg:** Propose a concrete PR for selector grammar simplification, addressing the terminology for items within bracketed lists.
+*   **Reviewers (including Tim):** Re-evaluate PR 233 for descendant selector ordering. Tim will specifically re-review the wording changes.
+*   **Tim (Co-Chair):**
+    *   Monitor the complexity and time investment required for the extension points work.
+    *   Send out a Doodle poll for the next interim meeting in week 39 (starting September 26th).
+
+## Next Steps
+
+The working group aims to achieve Working Group Last Call for the main JSONPath specification by the end of 2022, ideally closing the Last Call period by IETF 115 in November. To facilitate this, the immediate next steps involve:
+1.  **Completing `iregx` Last Call preparation.**
+2.  **Addressing the pending PRs and issues** related to structured comparisons, duplicate keys, `exist` expressions, and selector grammar, based on the assigned action items.
+3.  **Advancing the extension points proposal**, focusing specifically on defining the `length` functor within filter expressions, with Kirsten leading this effort.
+4.  **Scheduling another interim meeting** for week 39 (starting September 26th) to review progress on these items.

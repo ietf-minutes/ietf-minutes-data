@@ -1,0 +1,48 @@
+# [LAMPS](../wg/lamps.html)
+
+## Summary
+
+The LAMPS working group held a virtual interim meeting to discuss two drafts from IETF 114: `draft-caro-pkcs12-pbmac1` and `draft-youssef-lamps-cms-pq-sigs`. Additionally, a critical "hash-then-sign" issue related to Post-Quantum Cryptography (PQC) signature schemes was brought to the group's attention. Finally, a status update on the CMP RFC updates (`4210bis`, `6712bis`) was provided, highlighting the potential need for KEM key support and associated Proof of Possession mechanisms.
+
+## Key Discussion Points
+
+*   **Use of PB MAC 1 in PKCS#12 (`draft-caro-pkcs12-pbmac1`)**
+    *   **Problem Statement:** The current PKCS#12 MAC generation uses PBKDF1, which is not FIPS-compliant and does not support modern Key Derivation Functions (KDFs) like Argon2 or scrypt. This prevents the creation of FIPS-approved MAC-protected PKCS#12 files.
+    *   **Proposal:** The draft proposes to preserve the existing high-level PKCS#12 structure, but permit the use of the `id-PB-MAC1` Object Identifier (OID) as a valid type for the digest algorithm. PB MAC 1 parameters would be stored in the parameter field, and the existing `macSalt` and `iteration` values in the PKCS#12 structure would be ignored.
+    *   **Benefits:** This approach enables FIPS compliance, supports modern KDFs, is easy to implement using existing bulk encryption cipher plumbing, and allows for partial backward compatibility (old implementations can extract data by skipping MAC verification).
+    *   **Alternative Discussion:** An alternative suggested on the mailing list, using AES-CCM for integrity protection, was discussed and largely dismissed due to a lack of existing implementations in widely deployed libraries, the complexity of introducing the first AAD cipher into PKCS#12, and difficulties in combining it with or replacing existing HMACs.
+    *   **Consensus:** There was a strong sense of agreement among those present that the proposed use of PB MAC 1 was the preferred approach.
+
+*   **CMS Post-Quantum Signatures (`draft-youssef-lamps-cms-pq-sigs`)**
+    *   **Purpose:** The draft defines a mechanism within CMS to communicate a symmetric key, individually encrypted to several recipients, using a combination of a Key Encapsulation Mechanism (KEM), a Key Derivation Function (KDF), and a wrapping algorithm.
+    *   **Mechanism:** A KEM generates a ciphertext and a shared secret. The shared secret is then processed by a KDF to derive a Key Encryption Key (KEK), which is finally used by a symmetric wrapping algorithm to encrypt the content key.
+    *   **CMS Integration:** The mechanism proposes using `keyTransRecipientInfo` with a new `id-keyTrans` OID (representing the KEM Trans mechanism) and `genericHybridParameters` for specifying algorithm parameters.
+    *   **Updates:** Clarifications were made regarding the KDF, allowing it to be an identity algorithm if the KEM output directly provides a suitable key size. The proposal was also aligned with RFC 9018 (Hybrid Key Encapsulation).
+    *   **Open Questions:** Discussion centered on the method for communicating information (current use of `keyTransRecipientInfo` vs. alternatives to avoid RFC updates), handling of certificates (dependent on PQC IX work), and algorithmic limitations.
+    *   **Discussion on Algorithm Specificity:** Participants discussed whether to specify OIDs for triples of KEM/KDF/Wrap, or individual components. The author argued for individual components to avoid a combinatorial explosion of OIDs. There was a suggestion to initially focus on NIST-selected KEMs (e.g., Kyber) and update the specification as new ones emerge, to avoid getting "ahead of the skis." The role of the KDF (e.g., for key size mismatch, or as a conservative measure for non-NIST KEMs) and the wrapping algorithm (to ensure the same fixed key is sent to multiple recipients) were also clarified.
+
+*   **Hash-then-Sign Issue with Post-Quantum Signatures**
+    *   **Problem:** A common and deeply embedded pattern in many applications (e.g., `x509`, `TLS`, `golang`'s `ecdsa` interface) is to pre-hash a message (often for efficiency or to support small crypto modules) and then pass the short digest to a signing module. This pattern is problematic for NIST PQC signature schemes like Dilithium, Falcon, and SPHINX+, which internally perform a message digest step that is prefixed with a nonce (random or derived from the public key). External pre-hashing "clobbers" this internal mechanism and can break security properties.
+    *   **Impact:** This issue affects any system relying on sending short message digests to crypto modules (e.g., smart cards, hardware security modules). It's not limited to PKCS#11, but also affects CMS.
+    *   **Potential Solution:** If pre-hashing is required, an "envelope layer" would need to be defined at the protocol level (e.g., at the PKCS layer) to encapsulate the digest and nonce correctly, ensuring its security properties.
+    *   **Discussion:** Attendees recognized this as a significant concern that needs to be addressed carefully on a per-algorithm basis in relevant drafts.
+
+*   **CMP Update Status (RFC 4210bis, 6712bis)**
+    *   **Progress:** The `00` (original RFC text) and `01` (merged CMP updates) versions of `draft-ietf-lamps-cmp-updates-4210bis` and `draft-ietf-lamps-cmp-updates-6712bis` have been prepared, reviewed, and further editorial changes applied. An action item remains for a closer review of Appendix C.
+    *   **KEM Key Support:** A key question raised was whether to add support for KEM keys in `4210bis`. If KEM algorithms are supported in CMS envelope data via `keyTrans`, then the mechanism for transferring centrally generated keys would already be covered.
+    *   **Proof of Possession (PoP) for KEM Keys:** There was an earlier agreement that a Proof of Possession mechanism for KEM keys would be needed. This would apply to CMP and potentially CRMF. The consensus was that this work should be prioritized and aligned with the current CMP updates to avoid a subsequent update to `4210bis`.
+
+## Decisions and Action Items
+
+*   **Decision:** There was a strong sense among those present for Working Group adoption of `draft-caro-pkcs12-pbmac1`.
+*   **Decision:** There was a strong sense among those present for Working Group adoption of `draft-youssef-lamps-cms-pq-sigs`.
+
+*   **Action Item (Chairs):** Issue calls for adoption for `draft-caro-pkcs12-pbmac1` and `draft-youssef-lamps-cms-pq-sigs` (to be added to the list of documents for adoption calls from IETF 114).
+*   **Action Item (Sean & Panos):** Develop a draft for Proof of Possession (PoP) for KEM keys, to align with the CMP updates and other PQC work (e.g., PKCS#10, CRMF). Prioritize this work.
+*   **Action Item (Authors of CMS PQC drafts - Massimo, Jake, Panos, Sean):** Address the hash-then-sign issue in the respective drafts for Dilithium, SPHINX+, and Falcon.
+
+## Next Steps
+
+*   Further discussion on the mailing list regarding the "hash-then-sign" issue and its implications for PQC signature schemes.
+*   Development of the KEM key Proof of Possession draft.
+*   Continued work on CMP updates, including the review of Appendix C and potential integration of KEM key support once PoP mechanisms are defined.

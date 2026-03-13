@@ -1,0 +1,77 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+This interim meeting focused on the `cbor-time-tag` document, specifically addressing coordination with the C-DDS (formerly C-DATE) working group and preparing for Working Group Last Call (WGLC). Updates related to IANA considerations, durations, and map key policies were discussed. An "Any Other Business" (AOB) item raised concerns about key representation decisions in the COSE working group.
+
+## Key Discussion Points
+
+*   **Coordination with C-DDS (C-DATE) and `cbor-time-tag` document**
+    *   The CBOR working group has been waiting for the C-DDS working group to finalize its extended date-time format, which defines new "hints" (e.g., time zone hints, extension suffixes).
+    *   The `cbor-time-tag` document (previous version) already included map keys -10 and -11 to accommodate these C-DDS hints.
+    *   C-DDS now considers its work done, prompting CBOR to update `draft-ietf-cbor-time-tag-02`.
+    *   Updates in `draft-ietf-cbor-time-tag-02` include:
+        *   Filling in IANA Considerations.
+        *   Clarifications regarding durations.
+        *   Incorporating ABNF changes from the C-DDS specification.
+    *   The C-DDS group is also alerting a wider audience (art@ietf.org, CBOR WG) about updates to RFC3339, which may have ripple effects on documents that rely on it.
+
+*   **IANA Considerations for `cbor-time-tag`**
+    *   **Time Scales Registry**: Currently only TAI and UTC are defined.
+        *   Additional time scales (e.g., GPS, NGP) with well-defined, constant offsets from TAI/UTC (like GPS being 19 seconds from TAI) should not be registered, as conversion is trivial and direct registration would add unnecessary complexity for interchange.
+        *   The registration policy is Expert Review + RFC Required.
+        *   A suggestion to add UT1 (the smooth version of UTC, important for astronomers) was discussed. It was noted that this might be better addressed in a future, specialized document (e.g., "CBOR in Space") with relevant experts, allowing for later registration without blocking the current document.
+    *   **Map Key Registry**: Pre-filled with keys defined in the `time-tag` draft.
+        *   The policy for additional registrations will be Specification Required (which includes Expert Review by definition).
+        *   Expert reviewers are requested to curate code points to ensure efficient use of the compact CBOR integer range.
+
+*   **Issue #4: Floating Time**
+    *   Floating times (e.g., "8 AM tomorrow") are bound to local context.
+    *   The NTP working group is also looking into floating times, and a compatible approach is desired.
+    *   **Decision**: This will not be fixed in the current version of the document. It will be added later, after the NTP WG's work converges (estimated 1-1.5 years), to ensure compatibility.
+
+*   **Issue #8: Critical vs. Ignorable Map Keys**
+    *   The current document has an inconsistency: negative map keys are ignorable, non-negative are critical. The original assumption was that only the base time key could be critical.
+    *   With the addition of critical C-DDS keys (-10, -11) which are *not* base time keys, this restriction needs clarification.
+    *   **Decision**: The proposed fix is to limit the "only one key" restriction specifically to *base time keys*. The specification for any critical key can then indicate whether it delivers base time or additional critical information.
+
+*   **Feature Request: Planned vs. Actual Times**
+    *   Derived from IEEE 1588 (PTP) models, this distinction is important because time scales are not entirely predictable (e.g., future leap seconds make UTC unpredictable relative to TAI).
+    *   A "planned time" (e.g., a future UTC event) might move relative to TAI, while an "actual time" (an event that has already occurred) can be reliably translated between time scales.
+    *   This is primarily of interest for high-accuracy applications (down to a second or less) and some security applications.
+    *   Concern was raised by Ira about the risks of incorrect flag setting, potentially making the flag more dangerous than useful if not implemented carefully.
+    *   **Decision**: This will not be fixed in the current version of the document. It is recommended to wait and consult with more time experts to determine if additional information beyond a simple "planned/actual" flag is needed before adding this feature. Strong guidance would be needed for implementers to only use this flag if they "know what they're doing."
+
+*   **Status and Next Steps for `cbor-time-tag`**
+    *   The document will be subject to broader discussion on multiple mailing lists (art, C-DDS, ntp, ticktock, cbor) over the next two weeks.
+    *   The goal is to have `draft-ietf-cbor-time-tag-03` ready for Working Group Last Call (WGLC) before IETF 115 (October 24).
+    *   The working group aims to process WGLC comments during IETF 115.
+
+*   **AOB: COSE/HPKE Key Representation**
+    *   Karsten raised a concern about a discussion in the COSE working group regarding key representation for the new HPKE key exchange.
+    *   COSE's original intent was to define compact, easy-to-process key representations for constrained devices, moving away from legacy formats.
+    *   The discussion in COSE appears to have concluded against using COSE's own key representation in favor of an "HPKE way," which is reportedly not fully defined or standardized and may treat keys as opaque.
+    *   Russ confirmed this characterization and indicated he has withdrawn as an author from the document in question due to this decision. He noted that the desire to use HPKE libraries without modification (i.e., without converting their internal encoding to COSE) seems to have prevailed.
+    *   Karsten expressed concern that this direction runs counter to COSE's design principles and the IETF's goal of standardization.
+    *   Ira noted that NSA has expressed reservations regarding certain aspects of hybrid public key implementations, specifically HPKE as defined in RFC 9180.
+    *   **Decision**: This issue primarily concerns the COSE working group and needs to be discussed further in that environment.
+
+*   **CDDL 2.0**
+    *   Karsten confirmed that drafts for CDDL 2.0 have been published.
+    *   **Action Item**: The working group chairs will ensure that CDDL 2.0 is included on the agenda for IETF 115 to discuss its progress and encourage engagement from the wider IETF and out-of-IETF communities due to its significant perceived need.
+
+## Decisions and Action Items
+
+*   **Decision**: `draft-ietf-cbor-time-tag-02` will proceed with updates based on C-DDS finalization and discussed IANA considerations.
+*   **Decision**: Floating time (Issue #4) will *not* be addressed in the current version of `cbor-time-tag` but deferred until NTP WG's work converges.
+*   **Decision**: Planned vs. Actual Times will *not* be added in the current version of `cbor-time-tag`; further expert consultation is required.
+*   **Decision**: The "only one critical key" restriction in `cbor-time-tag` will be limited to *base time keys*.
+*   **Action Item**: Karsten to prepare `draft-ietf-cbor-time-tag-03` for Working Group Last Call (WGLC) before IETF 115.
+*   **Action Item**: Working Group Chairs (Marco, Christian) to include CDDL 2.0 on the IETF 115 agenda.
+*   **Action Item**: The issue of COSE/HPKE key representation will need further discussion within the COSE working group.
+
+## Next Steps
+
+*   Complete `cbor-time-tag` updates for version 03 and initiate Working Group Last Call prior to IETF 115.
+*   Process Working Group Last Call comments for `cbor-time-tag` at IETF 115.
+*   Discuss CDDL 2.0 at IETF 115.

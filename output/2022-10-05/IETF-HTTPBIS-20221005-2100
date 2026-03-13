@@ -1,0 +1,69 @@
+# [HTTPBIS](../wg/httpbis.html)
+
+## Summary
+
+This meeting served as preparatory work for the upcoming London meeting, focusing on status updates and identifying any blockers for several active drafts. Key discussions revolved around fundamental design choices for resumable uploads, the appropriate level of security review for HTTP message signatures, and finalizing existing work on cookies, query, client certificates, and HTTP/3 origin frames. A significant amount of time was dedicated to exploring options for defining a new date type, with a preliminary sense indicating a preference for revising the Structured Fields specification.
+
+## Key Discussion Points
+
+### Resumable Uploads
+*   **Upload Identifier Strategy:**
+    *   The current draft proposes client-generated tokens (`Upload-Token` header), offering benefits like no extra round-trips and immediate resumption. Concerns were raised regarding server control over uniqueness and breaking HTTP's URI-centric identification model.
+    *   A server-generated URI approach (e.g., via `Location` header after an initial creation request) offers server control and fits HTTP patterns, but introduces an additional round-trip and complexity for smaller files.
+    *   A sense of those present indicates that defining both patterns to cater to different use cases (e.g., small vs. large files) is worth considering.
+*   **Feature Detection and Transparent Upgrades:**
+    *   Interest exists in enabling HTTP client libraries (including browsers) to transparently upgrade file uploads to resumable if the server supports it, potentially using a 1xx intermediate response from the server.
+    *   **Browser Compatibility:** Relying on 1xx responses presents challenges for current browser Fetch API implementations, which do not expose such information to JavaScript. This would require new Fetch API definitions and browser vendor commitment. Participants discussed whether to aim for a bespoke 1xx handler in Fetch or to focus on internal browser handling rather than exposing full machinery to developers.
+    *   The optionality of feature detection in the draft was highlighted as crucial for supporting both transparent browser-like upgrades and explicit adoption by existing services.
+*   **Other Issues:** Less urgent issues include prioritization of concurrent uploads and concerns regarding the `Uploading-Complete` header.
+*   The `Idempotency-Key` draft from the HTTPAPI working group was noted as relevant for authors to consider.
+
+### HTTP Message Signatures
+*   The draft is currently in Working Group Last Call (WGLC).
+*   **Security Review:** A significant discussion point was the appropriate level of security review for this complex document, particularly in comparison to protocols like TLS 1.3. Participants expressed a desire for formal analysis from academic or security researchers, beyond standard security directorate review. This raised a broader question about the general threshold for security analysis in IETF drafts.
+*   **`Digest` Alignment:** There was a brief discussion about the interaction with the `Digest` header draft, noting that `Digest` is used to cover message content under the signature, with non-normative examples in the signatures draft.
+
+### Cookies (`6265bis`)
+*   The draft has undergone several updates since IETF 114, including standardizing `Max-Age`, updating third-party cookie considerations, and addressing security concerns related to nameless cookies and case-insensitivity in prefixes.
+*   **Open Issues:** Key outstanding issues include how same-site cookies handle redirects (especially for `Lax-by-default` behavior with post-exceptions) and inconsistencies with nameless cookies. More metrics are being gathered to understand redirect-related breakage.
+*   **Future Work:** On the horizon are CHIPS (Cookies Having Independent Partitioned State) for partitioned cookies and a potential layering/splitting of the cookie specification into multiple, more focused documents.
+
+### Query
+*   The `Query` draft has six remaining open issues.
+*   Previously, a miniature design team was suggested to push forward on these issues, but it has not yet materialized.
+
+### Client Certificates
+*   The draft has been updated to reference RFC 9110.
+*   **Error Mechanism:** Discussion continued on the lack of a defined TLS-layer error mechanism for an origin server to signal that a client certificate is unacceptable. The document will clarify that such access control decisions should be conveyed via appropriate response content or a 403 HTTP status code, acknowledging that proxies cannot reliably infer TLS-layer signals from such HTTP responses.
+*   **Certificate Chain Conveyance:** The draft addresses how to convey the certificate chain. Discussion centered on ensuring the text allows for ambiguity regarding whether the proxy passes the exact TLS handshake chain or a chain it has assembled, while suggesting a default order consistent with TLS unless configured otherwise.
+*   Concerns were noted regarding implementation status and interest, as this is an informational document documenting existing practices.
+
+### Origin in HTTP/3
+*   The draft has resolved its last outstanding editorial issue and a new version has been pushed.
+*   Participants recognized this as a "bookkeeping" document, aligning HTTP/3 with the existing HTTP/2 Origin frame.
+*   A strong sense of those present indicated that the draft is in a good state and ready to proceed.
+
+### Retrofit Date (`2225`)
+*   Discussion on where to define a new `Date` type currently included in the `Retrofit` draft. Three options were considered: leaving it in `Retrofit`, splitting it into a separate draft, or revising `Structured Fields` (RFC 8941).
+*   While some hesitation existed due to RFC 8941 being relatively new, there was a philosophical preference for defining the new date type in a revision of `Structured Fields` to keep all related specifications in one place.
+
+## Decisions and Action Items
+
+*   **HTTP Message Signatures:**
+    *   **Action:** Chairs (Mark and Tommy) to coordinate with Justin and security area ADs (Murray) to ensure an appropriate level of security review for the draft, balancing thoroughness with timely progression. This will also inform a broader discussion on defining security review thresholds for future IETF drafts.
+    *   **Action:** Lucas to review the HTTP Message Signatures draft for any further alignment opportunities with the `Digest` header draft.
+*   **Origin in HTTP/3:**
+    *   **Decision:** Proceed with Working Group Last Call.
+    *   **Action:** Mark Nottingham will initiate the Working Group Last Call.
+*   **Retrofit Date:**
+    *   **Action:** Mark Nottingham will explore submitting a 00 draft as a proposal for a revision to the `Structured Fields` specification to include the new date type, with a call for adoption, potentially during the London timeframe. This effort will be tightly scoped.
+
+## Next Steps
+
+*   **Resumable Uploads:** Authors will continue to work through the fundamental design questions regarding upload identifier strategy, feature detection, and browser compatibility, taking into account the feedback received. Authors will also review the `Idempotency-Key` draft and consider collecting 1xx support information on the wiki.
+*   **HTTP Message Signatures:** Await feedback from the coordinated security review efforts and address any issues arising from the Working Group Last Call.
+*   **Cookies:** Resolve the remaining open issues, particularly concerning same-site cookies and redirects, before proceeding to Working Group Last Call. Discussions on the future structure and layering of cookie specifications will continue within the community.
+*   **Query:** Participants interested in contributing to solving the open issues for the `Query` draft are encouraged to contact Julian. Efforts will be made to form a design team or otherwise focus on resolving these issues.
+*   **Client Certificates:** Brian Campbell will incorporate suggestions from the discussion into outstanding Pull Requests. After merging, the working group will assess readiness for Working Group Last Call, engaging implementers and customers as needed to gauge interest.
+*   **Retrofit Date:** If the `Structured Fields` revision proposal is adopted, efforts will focus on a tightly scoped revision to add the new date type.
+*   The Chairs will convene additional discussions, particularly in London, regarding the broad topic of appropriate security review levels for IETF documents.

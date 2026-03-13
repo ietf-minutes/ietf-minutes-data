@@ -1,0 +1,98 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR Working Group meeting focused primarily on the CBOR Packed draft, discussing various aspects including deterministic encoding, handling sequences, midfix compression, type widening, extension points, and a proposal to merge prefix and suffix tables. A significant portion of the meeting resulted in a leaning towards merging the prefix and suffix tables. The meeting also addressed an extension to Tag 38 for language direction in Problem Details, including the need for an "auto" value and overall tag evolvability, with a preference for the current draft's approach. The "file magic" document was not discussed due to time constraints.
+
+## Key Discussion Points
+
+### CBOR Packed (carsten.bormann)
+
+*   **Post-WG Last Call Feedback**: The draft is in good shape, but several ideas for improvement emerged.
+*   **Deterministic Encoding**:
+    *   A question was raised about deterministic encoding in the context of CBOR Packed.
+    *   Discussion points included whether this refers to deterministic packing (the packer producing predictable output) or packing of deterministic encodings (the unpacker retaining deterministic properties).
+    *   **Conclusion**: These use cases may not be compatible with generic packed CBOR. Application-specific packed formats (e.g., SUIT) might define deterministic packing at specific points. This issue depends heavily on the application and may not need to be solved in the generic specification now.
+*   **Handling Sequences / Unwrapped Splicing**:
+    *   The idea of a "tag" for unwrapped splicing was introduced, allowing an array within a sequence to be expanded into individual elements.
+    *   This would allow packing across elements of a sequence by stashing the sequence in an array, packing it, and then unwrapping.
+    *   **Discussion**: Such a mechanism would be an implementation challenge as the sequence size would appear incorrect until unwrapped. A sense of those present indicated this might be useful but is not a critical requirement for the initial Packed specification and could be defined separately later. It could also potentially work independently of packing.
+*   **Midfix Compression / String Concatenation**:
+    *   The current Packed specification handles common prefixes and suffixes but not common "midfixes" (constant parts within variable strings).
+    *   A proposal was made for a tag that could concatenate multiple strings or other data items. This would be especially useful for static dictionaries.
+    *   Brendan Moran indicated that SUIT might benefit from such a "midfix" compression.
+    *   **Conclusion**: This is an extensibility point and could be addressed by defining a new tag for concatenation, potentially later within the context of specific applications.
+*   **Type Widening / Mixed-Type Affix Packing**:
+    *   Current affix packing is defined for string+string, array+array, and map+map, but not for mixed types (e.g., array+map, string+map).
+    *   This would involve extending the behavior of existing prefix/suffix referencing tags rather than defining new tags.
+    *   Carsten Bormann suggested possibilities like automatically widening a single data item to an array, or drawing inspiration from "join" operations. Chris Zipp's record types might offer ideas for combining arrays and maps.
+    *   **Discussion**: This is complex and might be type-specific. It was suggested that if composition becomes a property of the table item itself (rather than the referencing tag), it could offer more flexibility. This is a difficult area to define now without concrete application needs.
+*   **Extension Points in General**:
+    *   The document already provides extension points for new table setup tags (e.g., for static dictionaries) and new reference tags (e.g., for midfix, circumfix).
+    *   The discussion touched on attaching composition rules/semantics to table entries, rather than the referencing tag, to offer greater flexibility.
+*   **Merging Prefix and Suffix Tables**:
+    *   **Proposal**: Combine the separate prefix and suffix tables into a single table.
+    *   **Arguments for**:
+        *   Saves a byte in the table setup tag (one less array for table definitions).
+        *   Makes it easier to reuse the same data item as both a prefix and a suffix.
+    *   **Arguments against**:
+        *   Prefix tags are currently more efficient (e.g., 32 direct references vs. 8 for suffixes). Merging might lose this byte efficiency for common suffix cases.
+    *   **Discussion**: While there might be some loss of efficiency in specific cases, the overall simplicity and ability to share affixes could be a net gain. It was suggested that a functional associated with a table entry could receive a boolean argument indicating whether it's used in prefix or postfix mode.
+    *   **Sense of those present**: Leaned towards merging the prefix and suffix tables for simplicity and better affix sharing.
+*   **Editorial Comments**:
+    *   Need to define terms like "current table."
+    *   Better describe the "overflow implementation scheme."
+    *   Require pseudo-code for an unpacker (Carsten Bormann volunteered to provide this, even if in Ruby).
+*   **Interoperability Profiles**:
+    *   Discussion around defining profiles: "sharing only" (for constrained devices), "sharing + affixes" (full implementation), or even "strings only" vs. full implementation (including arrays/maps).
+    *   Consideration for specific tags for these profiles.
+    *   **Decision**: This topic requires further discussion on the mailing list.
+*   **Status of Draft**: Confirmed to be Standards Track, not Informational. The data tracker has been updated.
+*   **Relationship to Chris Zipp's Record Tags**: Chris Zipp's work on record tags is a separate document and won't be incorporated into CBOR Packed directly, though new ideas on functionals in tables might be relevant for future discussions.
+
+### Tag 38 Extension (problem-details language direction) (carsten.bormann)
+
+*   **Context**: The `problem-details` document proposes an extension to Tag 38 to include language direction (left-to-right, right-to-left) alongside the language tag. This addresses an internationalization community concern that language tags alone are insufficient to determine writing direction, especially with mixed-direction text.
+*   **"Auto" Direction**:
+    *   The need for a third direction value, "auto" (as seen in W3C documents), was raised. This would allow resetting the context to a default if an inherited direction is present.
+*   **Tag Evolutions**:
+    *   This change to Tag 38 alters the structure of its content, which is a new precedent for tag evolution in CBOR.
+    *   **Discussion**: Concerns were raised about the complexity of internationalization and the need for explicit direction.
+    *   **Alternative Approaches Considered**:
+        *   Wait for BCP-47 to include direction: W3C recommends against this, and it would take too long.
+        *   Separate tags for direction only, wrapping Tag 38: A clean solution, but internationalization experts prefer direction and language to be together.
+        *   Define multiple "Tag 38 analogs" (new tag numbers for each direction): Not preferred.
+    *   **Sense of those present**: The current draft's approach (extending Tag 38 with an optional direction element) is preferred. This allows implementations that don't process directionality to easily ignore the new element and still use the language tag.
+
+### File Magic
+
+*   This topic was not discussed due to time constraints.
+
+### Evolution of Types/Tags
+
+*   This was briefly touched upon in the context of Tag 38 extensibility, but a dedicated discussion on how to evolve CBOR types and tags more generally was deferred due to time.
+
+## Decisions and Action Items
+
+### Decisions
+
+*   **CBOR Packed Status**: The `cbor-packed` document is confirmed to be on the Standards Track.
+*   **CBOR Packed - Merge Prefix/Suffix Tables**: A sense of those present indicated a preference for merging the prefix and suffix tables into a single table to simplify the specification and facilitate sharing of affixes. A functional could be used to receive a boolean argument indicating prefix or postfix mode.
+*   **Tag 38 Extension (Problem Details)**: A sense of those present indicated a preference for the current draft's approach of extending Tag 38 with an optional language direction element. This approach simplifies processing for implementations that may not utilize directionality information.
+
+### Action Items
+
+*   **Carsten Bormann**:
+    *   Generate a pull request to incorporate the merging of prefix and suffix tables in the CBOR Packed draft.
+    *   Update his CBOR Packed implementation to reflect the merged tables.
+    *   Prepare pseudo-code for the CBOR Packed unpacker (potentially in Ruby if no volunteers come forward for other languages).
+*   **Marco (Chair)**: Follow up on the status of the "file magic" document.
+*   **Working Group Participants**: Provide further feedback on the mailing list regarding CBOR Packed (interoperability profiles) and the Tag 38 extension (evolvability).
+
+## Next Steps
+
+*   Continued discussion on the CBOR Packed mailing list regarding interoperability profiles.
+*   Continued discussion on the Tag 38 extension, particularly on tag evolvability, on the mailing list.
+*   Progress on the action items for Carsten Bormann regarding CBOR Packed updates.
+*   The "file magic" document will be checked offline.
+*   These topics may be revisited in future meetings.

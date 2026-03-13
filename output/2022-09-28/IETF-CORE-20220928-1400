@@ -1,0 +1,85 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group held an interim meeting to discuss several active drafts. Key topics included updates to the OSCORE Kudos draft, a follow-up on the OSCORE-ACE mail thread, progress on the OSCORE Capable Proxies document, and a presentation on CoAP over GATT. Discussions on Kudos focused on OSCORE flag bit allocation, simplifying key material update methods, and the necessity of negotiation for Forward Secrecy mode. A significant discussion revolved around splitting out content from the Kudos draft, leading to a decision to separate the Key Usage Limits. The OSCORE Capable Proxies document saw updates including new use cases, terminology revisions, and a refined message processing flow. Finally, the CoAP over GATT draft presented a transport-optimized approach for CoAP communication over Bluetooth Low Energy.
+
+## Key Discussion Points
+
+*   **OSCORE Kudos Draft Updates (Presenter: Marco Tiloca)**
+    *   **Recap:** The draft proposes a lightweight procedure for renewing OSCORE Master Secrets and Salts ("Kudos") and defines AAD key usage limits for OSCORE.
+    *   **OSCORE Flag Bits:**
+        *   The 'D' bit (indicating a Kudos message and nonce) has been registered.
+        *   The current draft proposes using Bit 1 to signal a second flag byte.
+        *   An alternative was proposed: use Bit 0 for signaling a second flag byte, leaving Bit 1 unassigned. This offers a consistent extension pattern (Bit 0, Bit 8, Bit 16, etc.) and Bit 0 is currently unused.
+        *   Yoran expressed support for using Bit 0, suggesting not to pre-allocate extension bits beyond the immediate need (Bits 0 and 8). Carsten Mormon agreed.
+        *   **Decision:** There was general agreement to adopt the alternative approach: define Bit 0 for signaling a second flag byte and keep Bit 1 unassigned.
+    *   **Single Method for Updating Key Material:**
+        *   The `update_CTX` function currently has two paths: one using ADOC Key Update (if context established via ADOC) and another using HKDF-Extract-and-Expand.
+        *   The proposal was to simplify and use only the HKDF-Extract-and-Expand method. This method has no identified security drawbacks compared to the ADOC-specific update and simplifies construction of the `X` parameter.
+        *   Carsten asked about security implications. Yoran and Marco noted that this approach mirrors TLS key updates and both methods ultimately derive new master secrets/salts. Yoran pointed out this would lock the method to HKDF, though OSCORE defaults use HKDF.
+        *   **Decision:** A sense of those present indicated agreement to simplify the `update_CTX` function to solely use the HKDF-Extract-and-Expand method, removing the ADOC Key Update path.
+    *   **Negotiation for Forward Secrecy (FS) Mode:**
+        *   Kudos supports both Forward Secrecy (FS) and No-FS modes, signaled by a 'P' bit. Currently, a negotiation mechanism allows an initiator to attempt FS and, if the responder cannot support it (e.g., a constrained device), to retry with No-FS.
+        *   Christian Amsüss had raised an issue suggesting requiring devices to know FS support ahead of time, potentially removing the negotiation step.
+        *   Marco argued that requiring pre-knowledge might limit usability, especially if OSCORE-ACE profiles do not convey this information, potentially necessitating extensions to those profiles.
+        *   Yoran and Carsten preferred the current flexible trial-and-error approach, citing reduced pre-configuration and better deployability. Christian acknowledged that removing negotiation could reduce code complexity.
+        *   **Conclusion:** The WG generally leaned towards retaining the current flexible negotiation mechanism rather than mandating pre-knowledge of FS capabilities.
+    *   **Splitting Out OSCORE ID Update Content:**
+        *   The draft includes a procedure for updating OSCORE sender/recipient IDs (for privacy, to prevent tracking). This procedure can run standalone or integrated with Kudos.
+        *   A previous suggestion (from ITF114) was to split this into a separate draft for better focus.
+        *   Carsten was neutral, noting that while the content (approx. 6 pages) is substantial enough for a separate draft, it might not be reviewed by a significantly different audience.
+        *   **Conclusion:** No strong consensus was reached for an immediate split, and it was suggested to keep this content within the Kudos draft for now.
+    *   **Splitting Out Key Usage Limits Content:**
+        *   The Kudos draft currently contains three main parts: Kudos, Key Usage Limits, and OSCORE ID Update.
+        *   Several options for splitting were discussed: keeping all in one, splitting into two, or splitting into three separate drafts.
+        *   Yoran advocated for splitting into three distinct drafts. Carsten strongly supported separating the Key Usage Limits content, noting it's a different type of document (specific algorithms, not crypto-agile) and relies on the as-yet-unfinalized CFRG draft, making independent updates beneficial.
+        *   **Decision:** There was general agreement to split out the "Key Usage Limits" content into a separate document.
+    *   **ADOC EAD Items for Signaling Kudos Support:**
+        *   A proposal suggested registering an ADOC EAD (Extended AAD) item to signal Kudos support and modes during ADOC execution. This would allow peers to learn capabilities upfront, avoiding mismatches.
+        *   Christian had previously commented that this is "moot" as Kudos already has an opt-in/negotiation mode. Marco and Norco further clarified that an EAD item isn't sufficient to signal dynamic ADOC session validity, which was the primary driver for simplifying the `update_CTX` function. It remains a "nice-to-have" for early capability learning.
+        *   **Conclusion:** No specific decision was made; it was generally acknowledged as potentially beneficial but not strictly necessary for Kudos functionality.
+*   **OSCORE-ACE Mail Thread (Discussion led by Michael C. and Christian A.)**
+    *   This item was a follow-up to a prolonged mailing list discussion between the CORE and ANIMA WGs regarding OSCORE-ACE.
+    *   Christian indicated he was still processing recent inputs and wanted to ensure CORE was not holding up the ANIMA document. He suggested a dedicated design team meeting if the mailing list discussion didn't resolve the issues.
+    *   Michael C. agreed that a design team meeting could be beneficial.
+    *   **Action Item:** Michael C. (chair) will follow up on the mailing list to work towards a concrete proposal, potentially limiting initial recipients to CORE to consolidate the "CORE opinion" before broadening the discussion again.
+*   **OSCORE Capable Proxies Document Update (Presenter: Norco Stamerra)**
+    *   **Recap:** This document considers scenarios where OSCORE-protected messages traverse proxies, enabling security associations between clients and proxies. It explicitly addresses and provides mechanisms for multiple OSCORE protections on a single message, a scenario forbidden by RFC 8613.
+    *   **New Use Case:** A new, relevant use case was added: LwM2M Gateway acting as a reverse proxy, proposed by David Navarro.
+    *   **Terminology and Options:** Terminology for proxy-related options was revised, including the addition of `Ur-I/Pat` options for reverse proxying. The definition of CoAP options that need protection even if originally class U or I (e.g., OSCORE option itself, ADOC option, or options for proxies) was refined.
+    *   **Message Processing:** The message processing flow for incoming requests was simplified and presented as a three-step process: identify proxying, consume application, or decrypt/repeat. An ASCII-based art figure will be added.
+    *   Carsten suggested adding an explicit check for sender authorization to be proxied before forwarding, as this authorization typically stems from the decrypted context. Norco agreed to incorporate this.
+    *   **Appendices:** New message exchange examples were added, illustrating OSCORE protection both end-to-end and client-to-proxy, including dynamic context establishment via ADOC. A section on cacheability of responses, leveraging the existing `cachable-oscore` document, was also included.
+    *   **OSCORE Protected Onion Routing (Appendix B):** A preliminary appendix outlines how OSCORE building blocks could be used to create a Thor-like Onion Routing mechanism. Christian clarified this is an exploration of "onion routing for free" using nested OSCORE/proxies, leveraging their inherent properties for privacy and reachability, and is a new, experimental area.
+    *   **Conclusion:** The core mechanics of the document are considered stable for review, with further work planned for next steps.
+*   **CoAP over GATT (Presenter: Christian Amsüss)**
+    *   **Motivation:** CoAP over GATT (Bluetooth Low Energy) serves as an "escape hatch" for applications on cell phones or web browsers to communicate directly with BLE-enabled CoAP devices, especially when full IP-over-BLE (IPSP) networking is unavailable or impractical.
+    *   **Transport Differences (UDP vs. GATT):**
+        *   CoAP over UDP requires mechanisms (Version, Type, Message ID, Token) due to UDP's unordered, unreliable, and stateless nature.
+        *   CoAP over GATT benefits from GATT's strictly ordered, non-repeating, connected, and unidirectionally reliable transport, where the protocol is clear from context.
+    *   **Draft-01 Simplification:** The initial draft (dash-01) simplified the CoAP header, removing tokens and message IDs, leveraging GATT's transport properties.
+    *   **Limitation:** This simplification fails for use cases like a multicast proxy (e.g., a cell phone connecting to one device via GATT to send a multicast request to a network of devices).
+    *   **Draft-02 (Work in Progress):** Reintroduces tokens and minimal (1-bit, client-acknowledged) message IDs, using an unused nibble in the header. This approach aims to make better use of GATT's properties without forcing UDP-like behavior.
+    *   Yoran inquired about learning from Marek's related deployments. Christian noted that while interested, he hasn't seen their precise implementations yet.
+    *   **Action Item:** Christian will update the draft; the next version should be `draft-amsuss-core-coap-over-gatt-03`.
+
+## Decisions and Action Items
+
+*   **OSCORE Kudos Draft:**
+    *   **Decision:** The WG decided to switch to an alternative approach for OSCORE flag bits, defining Bit 0 for signaling a second flag byte and keeping Bit 1 unassigned.
+    *   **Decision:** The `update_CTX` function in the Kudos draft will be simplified to use only the HKDF-Extract-and-Expand method, removing the ADOC Key Update path.
+    *   **Decision:** The "Key Usage Limits" content will be split out from the Kudos draft into a separate document. The "OSCORE ID Update" content will remain with Kudos for now.
+*   **OSCORE-ACE Mail Thread:**
+    *   **Action Item:** Michael C. (chair) to follow up on the mailing list to drive towards a concrete proposal regarding the OSCORE-ACE discussion, potentially focusing initially on CORE WG members to consolidate a common view.
+*   **OSCORE Capable Proxies:**
+    *   **Action Item:** Norco Stamerra will explicitly add a check for sender authorization to be proxied before forwarding, based on decrypted context, into the document's message processing.
+*   **CoAP over GATT:**
+    *   **Action Item:** Christian Amsüss will update the draft to version 03, incorporating the reintroduction of tokens and minimal message IDs.
+
+## Next Steps
+
+*   **OSCORE Kudos Draft:** Continue refining the remaining content and incorporating the agreed-upon changes (flag bits, single key update method, splitting out limits). Further discussions on remaining open points will continue on the mailing list.
+*   **OSCORE-ACE Mail Thread:** Follow up on the mailing list, and potentially schedule a dedicated design team meeting if required, to resolve the outstanding issues between CORE and ANIMA.
+*   **OSCORE Capable Proxies:** Further work on corner cases, guidelines for context establishment, extending handling of incoming responses based on Group OSCORE proposals, adding more examples (ADOC optimized workflow, reverse proxy), and investigating SCHC compression framework compatibility.
+*   **CoAP over GATT:** Christian will revise the draft to version 03, incorporating the new design for tokens and message IDs, and seek further feedback from the group.

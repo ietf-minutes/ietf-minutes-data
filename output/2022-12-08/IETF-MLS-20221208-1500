@@ -1,0 +1,60 @@
+# [MLS](../wg/mls.html)
+
+## Summary
+
+The MLS Working Group held an interim meeting to review the current status of the MLS Protocol and Architecture documents, with a focus on addressing outstanding Pull Requests (PRs) and Area Director (AD) comments in preparation for IETF Last Call. Several PRs for the Protocol document were discussed, leading to decisions on merging, closing, or refining the proposed changes. Key technical discussions revolved around metadata in leaves, welcome message flexibility, credential validation, epoch 0 state, and the sizing of protocol enums. The Architecture document PRs were briefly touched upon, with a call for working group review and a plan for further discussion in an upcoming interim meeting.
+
+## Key Discussion Points
+
+*   **Process Update and Timeline (00:06:40):** The chairs provided an overview of the IETF document publication process. The MLS Protocol document is currently after Working Group review and before AD review comments. The Architecture document has received AD comments. The goal is to address all comments and outstanding PRs promptly to initiate IETF Last Call in early January.
+*   **Protocol Document PRs Review:**
+    *   **PR 751 (Add epoch to leaf) and PR 752 (Remove unmerged leaves):** These PRs proposed adding the epoch in which a leaf was changed and computing unmerged leaves based on epochs.
+        *   **Discussion:** Raised concerns about implementation complexity and potential information leakage to the Delivery Service (DS). It was noted that this functionality could be cleanly implemented as an extension, particularly for decentralized MLS use cases.
+        *   **Decision:** Close PRs 751 and 752 for the base specification. The functionality will be explored in an extensions document.
+    *   **PR 754 (Allow multiple welcome messages):** This PR allows group creators to send multiple welcome messages to new joiners, rather than a single consolidated message.
+        *   **Discussion:** The motivation was improved performance for large groups with thousands of members, even without including the full tree in the welcome message (e.g., due to large post-quantum public keys). No security or technical objections were raised.
+        *   **Decision:** Merge PR 754.
+    *   **PR 755 (Remove public key material from basic credentials) and PR 756 (Update 'basic credential' phrasing):** These PRs aimed to clarify the nature of "basic credentials" since they no longer contain keys.
+        *   **Discussion:** There was confusion regarding the validation process for basic credentials by the Authentication Service (AS) if no key material is directly included. The discussion highlighted the need for clarification on how the AS validates the binding between a signature key (from the KeyPackage) and other identity information in a credential.
+        *   **Decision:** Close PR 755 and merge PR 756. A new issue will be filed to address the clarification of credential validation, particularly how the AS handles the binding of keys and identity in the absence of explicit key material within the credential structure.
+    *   **PR 757 (First epoch transcript hash):** This PR addressed ambiguity in computing the interim/confirmed transcript hash and confirmation tag in the first epoch, especially for external joiners.
+        *   **Discussion:** The challenge arises because Epoch 0 lacks previous confirmation tags or confirmed transcript hashes. Different interpretations of initializing these values exist. It was clarified that the protocol requires a commit immediately after group creation, preventing a completely empty Epoch 0.
+        *   **Decision:** Marta will refine PR 757 to specify that the Epoch 0 group info has an empty confirmation tag, and the initial interim transcript hash must be the hash of an empty confirmed transcript hash and an empty confirmation tag. A separate issue will be filed to clarify that the protocol allows for the creation of one-member groups in Section 12. Richard will review the refined PR.
+    *   **PR 822 (Increase IANA enum space):** This PR proposed increasing the IANA registry space for certain enums from 8 bits to 12 bits.
+        *   **Discussion:** No objections were raised.
+        *   **Decision:** Merge PR 822.
+    *   **PR 823 (Editorial fixes):** This PR contained minor editorial clarifications and fixes, including updating a reference to describe uncompressed curve points using TLS specification 8446 instead of the non-IETF SECG specification.
+        *   **Decision:** Merge PR 823.
+    *   **PR 824 (Credential Validity and Expiration):** This PR adds guidance on handling credential validity (expiration/revocation) at the application layer.
+        *   **Discussion:** A key concern was how to handle credential validation when a client is "catching up" on old messages, where a credential might have been valid when the message was sent but has since expired. This could conflict with normative "must validate" requirements. The potential for the DS to provide timestamps or application-specific policies were discussed. It was agreed that the application layer is responsible for defining "valid" in specific contexts. The scope of "allow" in the text should be restricted to timing-related invalidity.
+        *   **Decision:** Merge PR 824. Follow-up work will clarify text to distinguish between time-invalid (e.g., expired or revoked) and generally invalid credentials, and to recommend how applications should handle backlogged messages with time-invalid credentials.
+    *   **PR 825 (Expand Protocol Version and Wire Format Enums):** This PR proposed expanding the protocol version and content type enums.
+        *   **Discussion:** The proposal aimed to provide more room for derived protocols and to prevent ossification. It was noted that other IANA-registered elements are already two bytes. It was suggested that wire format should also be expanded and registered with IANA, while content types could be handled by extensions once a wire format is known.
+        *   **Decision:** Update PR 825 to make the `protocol_version` and `wire_format` fields two bytes. An IANA registry will be defined for `wire_format`. Other enums will remain as is.
+*   **Architecture Document PRs Review:**
+    *   **General Discussion (01:31:00):** Working group members were asked to review the open PRs for the Architecture document, as some have been pending for a long time and need to be addressed before moving to ISG review. Specific mention was made of PR 117.
+    *   **PR 117 (Policy on Cipher Suites and Extensions):** This PR discusses policy considerations for cipher suites and extensions.
+        *   **Discussion:** The purpose of this section is to enumerate operational policy considerations beyond strict protocol interoperability, similar to how TLS implementations allow servers to configure allowed cipher suites even if more are supported. This allows for flexibility (e.g., FIPS compliance, proprietary networks) without a separate protocol mechanism for conveying the policy. It was clarified that clients generating key packages would need to be aware of such policies.
+        *   **Decision:** The discussion concluded with agreement on the need for such a policy section, with potential refinement of examples and wording.
+    *   **PR 118 (Basic Credential Usage):** This PR contains text about using basic credentials securely.
+        *   **Discussion:** A question was raised about whether "basic credentials" should be explicitly marked as for testing only, or if there are legitimate niche production use cases (e.g., private networks with out-of-band identity verification, similar to Signal protocol setups). There was no consensus on moving it to an extension document or adding a strong "warning" label.
+        *   **Decision:** Postpone further discussion on PR 118 to the next interim meeting.
+
+## Decisions and Action Items
+
+*   **Closed:** PR 751, PR 752, PR 755.
+*   **Merged:** PR 754, PR 756, PR 822, PR 823, PR 824 (with follow-up work).
+*   **Richard:** Close PRs 751, 752, 755. Merge PRs 754, 756, 822, 823.
+*   **Richard:** File a new issue to clarify credential validation in the protocol document, especially regarding the binding of keys and identity for "basic" type credentials.
+*   **Marta:** Refine PR 757 to specify that Epoch 0 group info has an empty confirmation tag, and the initial interim transcript hash must be the hash of an empty confirmed transcript hash and an empty confirmation tag.
+*   **Richard:** Review Marta's updated PR 757.
+*   **Richard:** File an issue to clarify section 12 of the protocol document regarding the creation of one-member groups.
+*   **Richard:** Merge PR 824. Take a first pass at updating the text in PR 824 to distinguish between time-invalid (e.g., expired/revoked) and generally invalid credentials, and to provide guidance on how applications should handle backlogged messages with time-invalid credentials.
+*   **Richard:** Update PR 825 to make `protocol_version` and `wire_format` fields two bytes.
+*   **Richard:** File a new issue to define an IANA registry for `wire_format`.
+
+## Next Steps
+
+*   **Sean (Chair):** Schedule an additional interim meeting for next Friday (Eastern Time 10:00-12:00) to continue discussions, especially on the Architecture document PRs and outstanding issues. Will reach out to Benjamin to ensure availability.
+*   **Working Group Members:** Review the open Pull Requests on the Architecture document, particularly PR 117, in preparation for the next interim meeting.
+*   **Working Group:** Continue the discussion on the usage and appropriate warnings/guidance for "basic credentials" (PR 118) in the next interim meeting.

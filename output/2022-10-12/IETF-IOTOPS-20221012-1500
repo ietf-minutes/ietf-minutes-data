@@ -1,0 +1,57 @@
+# [IOTOPS](../wg/iotops.html)
+
+## Summary
+
+The IOTOPS virtual interim meeting focused on two main technical discussions. First, the working group discussed the discovery mechanism for the "Constraint Join Proxy" within the Anima IoT onboarding architecture, exploring alternatives to a proposed custom scheme by leveraging existing Co-ap extended token mechanisms and aligning with OpenThread practices. Second, there was a detailed presentation and discussion on `draft-brnton-iotops-iot-security-baseline-recommendations`, with significant interest in adopting it to provide IETF-specific guidance on IoT security. Key outcomes include action items for both discussions, aiming for further refinement and wider community engagement.
+
+## Key Discussion Points
+
+### Constraint Join Proxy Discovery Mechanism
+
+*   **Background:** Michael presented on the Anima constraint IoT onboarding process. A new device (pledge) discovers a join proxy (JP), which then facilitates communication with a registrar (R) or JRC. The challenge is the JP's discovery of the R, especially in a stateless DTLS over Co-ap scenario, where standard Co-ap resource discovery is complicated.
+*   **Existing Discovery Options:** GRASP (RFC 8990), mDNS, and Co-ap Resource Discovery are available. Stateful JPs use typical Co-ap well-known core discovery.
+*   **Stateless DTLS Specifics:** RFC 9031 uses OSCORE, allowing Co-ap extended tokens to carry state. However, in a DTLS connection from P to R, the DTLS layer encrypts the Co-ap payload, preventing the JP from inspecting extended tokens.
+*   **Previous Proposal (Pre-July):** An earlier proposal to return `coap-s` with a custom port and an `rjp` resource type was deemed problematic by an expert reviewer.
+*   **Proposed New Scheme (`coap-jpy`):** A new scheme was proposed, but it was noted this represents a tunnel encapsulation rather than a pure Co-ap resource, raising questions about its "kosherness" in a Co-ap discovery context.
+*   **Alternative: Co-ap with Extended Tokens (Carsten):** Carsten suggested encapsulating the DTLS layer within an outer Co-ap layer, leveraging Co-ap extended tokens for state.
+    *   **Benefits:** This approach would reuse mechanisms described in RFC 9031, potentially allowing for very short Co-ap headers (e.g., 4-5 bytes). It would also allow the JP to act as a Co-ap proxy and enable it to handle various protocols (Thread, 6tisch, constrained voucher) simultaneously with minimal code differences.
+    *   **Considerations:** This would require defining how to distinguish between OSCORE and DTLS within the outer Co-ap layer.
+*   **OpenThread Alignment (Esco):** Esco mentioned that OpenThread uses a similar pattern: a Co-ap protocol as an "outer layer" that transports DTLS data within its payload. This is not strictly Co-ap proxying but Co-ap encapsulation.
+*   **Discovery Refinement:** The consensus leaned towards using an outer Co-ap layer with potentially an empty URI path (not sent) for discovery, allowing the host to select a non-conflicting dedicated Co-ap port.
+*   **Pledge-to-JP Interaction:** The pledge would send raw DTLS records over UDP to a specific port on the JP. The JP then encapsulates this DTLS into a Co-ap message to the R. The R, aware of being behind a stateless forwarder, would need to advertise its resources in a relative fashion.
+*   **Decision:** The discussion indicated a preference for aligning with existing Co-ap mechanisms and considering the OpenThread approach.
+
+### IoT Security Baseline Recommendations Draft (`draft-brnton-iotops-iot-security-baseline-recommendations`)
+
+*   **Draft Overview:** Brendan presented the `iot-security-baseline-recommendations` draft (new name). It is intended as an informational document for OEMs and operators, not for implementers, to guide them on IETF technologies for IoT security and aid in compliance checking.
+*   **IETF Gap:** The presenter highlighted a gap in IETF, as there isn't a dedicated baseline security recommendations document. Existing industry recommendations (e.g., Anisa's 2017 document) are considered dated, lacking coverage for modern threats like remote attestation and confidential computing.
+*   **Proposed Content:**
+    *   A "fuzzy" IoT architecture and terminology.
+    *   A survey of common assets, risks, and threats in IoT systems.
+    *   A crucial mapping of IETF protocols and technologies to mitigate these identified risks and threats.
+    *   Inclusion of real-world attack examples and legislative drivers (e.g., US National Security Memorandum, UK cyber security initiatives).
+    *   Guidance for moving beyond baseline security.
+*   **"Living Document" Concept:** Michael and Elliot emphasized that such a document should be "semi-living" or "living" to adapt to evolving IETF technologies (e.g., new SCIM capabilities for onboarding).
+*   **Readability & Taxonomy:** Feedback indicated that the current taxonomy in the draft's titles could be improved for readability. Brendan agreed to revisit this, possibly by separating taxonomy from titles or identifying it distinctly.
+*   **Scope & Structure:** A discussion ensued on whether the draft should include a generic threat model or primarily focus on mapping IETF building blocks. Brendan expressed flexibility, prioritizing the IETF-specific mapping and gap identification.
+*   **Interest in Adoption:** A non-binding poll of those present (approximately 12 in favor, 2 against) indicated strong support for pursuing this work within IOTOPS. The perceived value lies in providing an IETF-specific, up-to-date, and actionable mapping of security recommendations.
+
+## Decisions and Action Items
+
+*   **Constraint Join Proxy Discovery:**
+    *   **ACTION:** Michael to draft text detailing the refined Join Proxy discovery mechanism, incorporating the Co-ap encapsulation of DTLS and considering alignment with OpenThread's approach.
+    *   **ACTION:** Esco to review Michael's drafted text.
+    *   **ACTION:** Michael to present this refined approach to the Anima and CoRE working groups for further discussion.
+*   **IoT Security Baseline Recommendations Draft:**
+    *   **ACTION:** Brendan to post a concise message to the IOTOPS mailing list summarizing the proposed direction for the draft (focusing on IETF-specific baseline recommendations, mapping IETF technologies to threats/use cases, and identifying gaps) to gather further community input and interest.
+    *   **ACTION:** Brendan to revise `draft-brnton-iotops-iot-security-baseline-recommendations` to better reflect the discussed goals and improve readability, aiming for completion before the October 24th I-D submission cutoff date.
+    *   **ACTION:** Chairs to encourage wider community contribution to the revised draft, exploring potential co-authorship.
+    *   **ACTION:** Chairs to investigate the creation of an official IOTOPS GitHub organization to facilitate collaborative development of working group documents.
+*   **IOTOPS IESG Report:**
+    *   **ACTION:** Chairs to prepare a summary report of IOTOPS's current activities and future direction for the IESG, aiming to be transparent and responsive to any organizational queries, potentially by the October 24th cutoff date.
+
+## Next Steps
+
+*   Continue the discussion on the IoT Security Baseline Recommendations draft on the IOTOPS mailing list.
+*   Following the submission of the revised draft before the October 24th cutoff, the chairs will consider initiating an adoption call on the mailing list.
+*   The outcome of the Constraint Join Proxy discussion will be advanced to the Anima and CoRE working groups.

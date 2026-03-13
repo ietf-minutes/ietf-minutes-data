@@ -1,0 +1,71 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting of the CORE Working Group focused on two main topics: a new draft proposing a Parameterized Content Format for CoAP, and the finalization of the Problem Details document. For the Parameterized Content Format, an initial proposal was presented, generating significant discussion around use cases, parameter encoding, and interaction with existing CoAP options and IANA registries. The chairs requested a call for specific use cases from the community. For the Problem Details document, rough consensus was noted on the latest version, including a clarifying paragraph in the appendix and no further blocking issues from IESG review. The document is cleared for submission.
+
+## Key Discussion Points
+
+### Parameterized Content Format for CoAP (draft-ietf-core-pcf-00)
+
+*   **Introduction and Rationale**: Thomas introduced the `Parameterized Content Format` (PCF) draft, aiming to extend CoAP content formats to support media types with parameters. The current CoAP content format design, which aggressively compresses media types into integer aliases, creates rigidity when dealing with parameterized media types (e.g., those emerging in RATS).
+*   **Proposal Overview**: The PCF proposes extending the standard `uint16_t` content format identifier with a list of key-value pairs to carry *extra* media type parameters.
+    *   **CDDL Structure**: The format is defined as a CBOR array, with the first element being the standard `uint16_t` content format and subsequent elements being zero or more key-value pairs for parameters. Parameter keys can be textual (as registered with the media type) or numeric aliases (requiring a new registry).
+    *   **RFC 6838 Context**: `RFC 6838` (Media Type Specifications) indicates that parameter names are case-insensitive, order is not important, duplicates are errors, and there is no defined syntax for parameter values; registrations must specify their syntax.
+*   **Application in Content Negotiation**:
+    *   New CoAP options, `P-Content-Format` and `P-Accept`, were proposed.
+    *   `P-Content-Format` would carry a CBOR encoding of the PCF.
+    *   `P-Accept` would be multi-valued and its critical bit asserted. It could express one or more parameterized content formats.
+*   **Comparison to Prior Art**:
+    *   **CoAP Content-Format Spec (RFC 8763)**: PCF can be seen as a binary version of the string representation in RFC 8763. PCF is more compact but requires an IANA-registered content format integer.
+    *   **OCF Content-Format Version**: OCF handles versioning for a fixed media type using dedicated CoAP options. PCF generalizes this by embedding parameters directly, potentially using one less CoAP option, but with a slight increase in byte count for that specific use case.
+*   **Discussion and Questions (Carsten)**:
+    *   **Missing Functionality**: Is the current lack of parameterized content formats a bug or a feature? Needs clarification.
+    *   **Use Cases**: Strong need for concrete use cases to guide the design and ensure the feature is truly useful. Thomas mentioned RATS profiles as examples, which generate multiple profiles from a single vendor, indicating a potential need to avoid constant IANA registration round trips.
+    *   **CBOR "any" for Parameter Values**: How should the textual nature of media type parameters be translated into a CBOR "any" type? Explicit rules are needed for parameter value encoding (e.g., decimal numbers can be encoded as numbers).
+    *   **Parameter Registry**: A new IANA registry for numeric aliases of parameter names would be required.
+    *   **Mutual Exclusion vs. Override**: Should PCF parameters override or mutually exclude parameters already implied by the base content format?
+    *   **Option Combination**: Could PCF options combine with existing `Content-Format` or `Accept` options? This might be problematic for `P-Accept` due to its multi-value nature.
+    *   **Content Coding**: The current proposal focuses only on media type parameters. Should it also consider parameterized content coding?
+*   **Comments on Option Definition (Marco)**:
+    *   For `P-Content-Format`, if no additional parameters are present, the original `Content-Format` option should be used for efficiency.
+    *   For `P-Accept`, the data model might need adjustment to allow signalling support for multiple original content formats (without parameters) more directly, perhaps by allowing integers directly in the outer array. Again, the normal `Accept` option should be used for simple cases.
+*   **Use Cases from Chat (Christian)**: Mentioned "Japanese languages core profile" as a potential use case.
+
+### Problem Details Document (draft-ietf-core-problem-details-07)
+
+*   **Consensus on Structure**: Rough consensus was noted for keeping the appendix (which defines CBOR tags) and the main body of the document together.
+*   **Clarifying Paragraph**: An additional clarifying paragraph was added at the beginning of the appendix regarding possible future updates and the applicability of the defined tag.
+*   **Discussion on CBOR Tags**:
+    *   **Tag 35 (Deprecated)**: Discussion arose about `CBOR` tag `35` being deprecated and pointing to an obsolete document. A suggestion was made to add notes to the "Notable Tags" document about deprecated/obsolete tags and their context.
+    *   **Tag 38 (Multi-dimensional Array)**: There was a discussion about the applicability and scope of tag `38` (defined in this document's appendix). The notable tags document aims to provide guidance on its use cases and limitations (i.e., it's not a "solve-all" tag).
+    *   **IANA Registry and Notable Tags**: The need for the IANA `CBOR` Tag registry to link to the "Notable Tags" document was emphasized to provide context and guidance for implementers, especially for tags whose applicability is specific.
+    *   **Tag Evolution**: A broader discussion about `CBOR` tag evolution and whether new tags are needed for extensions versus reusing existing ones was acknowledged as a topic for the `CBOR` working group.
+*   **IESG Review**: The `IESG` evaluation of the document, including recent updates, has concluded with no additional blocking comments.
+*   **Final Paragraph**: The added text for the appendix states: "When updating this appendix, keep in mind that applications beyond concise problem details may adopt the tag defined here." This was agreed upon.
+
+### CORE SID Document
+
+*   Francesca noted that the `CORE SID` document is still awaiting updates and is in IESG evaluation with one blocking discuss.
+*   Carsten expressed optimism about meeting the internet draft deadline for updates.
+*   Eric Thienker was suggested as the most informed individual to shepherd the `CORE SID` draft forward, especially concerning the `YANG` catalog agreement.
+
+## Decisions and Action Items
+
+*   **Parameterized Content Format**:
+    *   **ACTION**: CORE WG Chairs and Thomas to issue a call for concrete use cases for the Parameterized Content Format on the mailing list to guide further development.
+*   **Problem Details Document**:
+    *   **DECISION**: The current pull request for `draft-ietf-core-problem-details` (including the clarifying paragraph in the appendix) will be merged.
+    *   **ACTION**: Carsten to submit `draft-ietf-core-problem-details-08` to IANA.
+    *   **ACTION**: Francesca to send a conclusion email to the mailing list summarizing the consensus and `IESG` status, and then move the document forward through the IETF publication process after submission.
+*   **CORE SID Document**:
+    *   **ACTION**: Francesca to contact Eric Thienker to ask if he can take over shepherding the `CORE SID` draft through its remaining `IESG` evaluation and any necessary updates (e.g., related to the YANG catalog agreement).
+*   **Notable Tags Document**:
+    *   **ACTION**: Carsten and relevant contributors to continue work on the "Notable Tags" document, aiming for its adoption by the `CBOR` WG and eventual referencing from the `IANA CBOR` Tag registry.
+
+## Next Steps
+
+*   **Parameterized Content Format**: Collect use cases to refine the design of the Parameterized Content Format.
+*   **Problem Details Document**: Submit `v8` and progress to publication.
+*   **CORE SID Document**: Transition shepherding responsibility to Eric Thienker.
+*   **IETF 114 Agenda**: Chairs to discuss the agenda for the upcoming `IETF 114` meeting.

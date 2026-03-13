@@ -1,0 +1,71 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting of the CORE Working Group covered status updates on `coap-conf` documents under IESG review, recent progress on `coap-href`, and key discussion points for `coap-coral`, `group-combis`, and `group-oscore`. Discussions included the nuanced topic of schema identifier (SID) evolution in `coap-conf`, the implications of making `coap-href` scheme-agnostic, security model considerations for `coap-coral`, practical examples for application group discovery in `group-combis`, and significant architectural decisions for `group-oscore` regarding credential storage and group ID recycling. Several decisions were made to clarify and improve the `group-oscore` document based on recent reviews.
+
+## Key Discussion Points
+
+*   **`coap-conf` Document Status**:
+    *   `ietf-core-yang-cbor`: Discusses cleared, pending author comments processing.
+    *   `ietf-core-oscore-yang`: One remaining IESG Discuss from Rob Wilton regarding the evolution of Schema Identifiers (SIDs) for YANG modules.
+    *   **SID Mapping Discussion**: The document currently attaches SIDs to the *semantics* of a schema item (a new SID if CBOR encoding implies semantic change). An alternative proposed by Rob Wilton is to attach SIDs to the *item name*.
+        *   Attaching SIDs to semantics insulates implementations from name changes, but if semantics change, a new SID makes it explicit.
+        *   Attaching SIDs to names avoids potential issues for clients needing to handle multiple SIDs for the same logical item across module revisions.
+        *   A significant concern raised was the impact on middleboxes translating between SIDs and names; making the SID-to-name mapping dependent on module revision information complicates such proxies.
+        *   The trade-off between implementation isolation and proxy complexity was highlighted.
+*   **`coap-href` Progress**:
+    *   The latest draft (dash-09) introduced CTDL features and clarified percent-encoded text as byte strings.
+    *   A key change makes `coap-href` more scheme-agnostic by removing a rule that implicitly removed lone empty path segments (e.g., `coap://foo/` is now structurally distinct from `coap://foo` at the CRI level). Scheme-specific equivalences (like in CoAP or HTTP) should be handled at the CoAP options generation layer.
+    *   An appendix for "weird examples" was added.
+*   **`coap-coral` Open Issues**:
+    *   **Open vs. Closed World Systems**: Discussion on whether tools for `coap-coral` forms should assume an open world (where unspecified properties are unknown but potentially present) or a closed world (where only explicitly stated properties exist). A proposed resolution is to allow both but guide towards open-world for better tooling, with examples showing how to explicitly state limitations within the form itself.
+    *   **Security Model**: Considering how security for hypermedia actions (forms and links) in `coap-coral` should be defined. Unlike the web, an application-driven context is assumed, requiring definitions of authorization boundaries and authenticity assurances from the server. An anecdote illustrated the dangers of following hypermedia links without proper security context.
+*   **`group-combis` Updates**:
+    *   Working towards version 6, addressing two open issues related to examples for encoding application group names in CoAP requests for discovery.
+    *   **Pull Request #32** introduces new examples for:
+        *   Encoding application group names within the Group URI (path, query, authority, host, port components) and as add-ons (e.g., `Uri-Host` option, custom CoAP options, or implicitly). A point of discussion involved the "misuse" of `Uri-Host` if the UDP destination is directly an IP multicast address.
+        *   Concrete group discovery scenarios, including discovering application groups within a known CoAP group and discovering CoAP groups/resources given an application group name.
+    *   Appendix A now includes lengthy examples of message exchanges (multicast, observe, blockwise).
+*   **`group-oscore` Reviews and Discussion**:
+    *   Version 13 received good reviews, mostly from Eskil. Focus areas for version 14:
+    *   **Terminology**: The document currently uses "public key" to refer to both the actual key and the broader "authentication credential." A clarification in terminology is needed.
+    *   **Storage of Authentication Credentials**:
+        *   **Concern**: Storing entire credentials (which can be 0.5-1KB for X.509 certs, vs. <200 bytes for a public key subset) leads to storage overhead, particularly for constrained devices in large groups.
+        *   **Justification for whole storage**: Ensures all endpoints use the exact bytes issued by the original issuer for pairwise key derivation and AAD binding, avoiding complexity of defining and canonically encoding "relevant subsets" for various credential types.
+        *   **Outcome**: The overall approach of storing whole credentials is to be kept, but the document will be improved to better explain the trade-offs and clarify details. The choice of credential type remains with the group administrator.
+    *   **Birth Group ID (Birth GID) and Group ID Recycling**:
+        *   **Mechanism**: A Birth GID is assigned when an endpoint joins. If a group manager later rekeys and assigns a new Group ID (GID) that matches a Birth GID of an existing member, that member is evicted, effectively terminating its observations and enabling safe GID recycling for long-lived groups.
+        *   **Concern**: This mechanism was perceived as complex, arbitrary, and potentially for a rare corner case (running out of GIDs).
+        *   **Outcome**: More context will be added. The mechanism is optional for group managers who choose to recycle GIDs to allow observations to continue. The logic resides primarily with the group manager. Consideration will be given to moving detailed explanations to an appendix.
+    *   **"Mandatory to Implement Compliance Requirements" Section Title**:
+        *   **Concern**: The title suggests only normative "MUST"/"SHALL" statements, but the section contains non-normative recommendations.
+        *   **Outcome**: The title will be changed to "Implementation Compliance."
+    *   **Informative References Used Normatively**:
+        *   **`draft-ietf-cfrg-randomness-for-signatures` (John's draft)**: Currently normatively recommends using this draft for reintroducing randomness in deterministic signatures. Since it's a work-in-progress, this is problematic.
+        *   **Outcome**: The text will be rephrased to describe the problem that randomness addresses and state that "technology is being developed" to solve it, referencing the draft informatively as an example without making a normative recommendation for the draft itself.
+        *   **ACE Group Manager draft**: Currently normatively recommended.
+        *   **Outcome**: The reference will become informative, and the text will be relaxed to present it simply as an example of a group manager implementation.
+        *   **CoAP Echo Request Tag**: Currently informative, used in an appendix for challenge-response synchronization. Its importance for solving another issue in the main document has grown.
+        *   **Outcome**: The reference will become normative, and the content will be promoted from an appendix to a full section in the document body.
+
+## Decisions and Action Items
+
+*   **`coap-conf`**:
+    *   **Action**: Participants are encouraged to send their positions on the SID mapping (semantics vs. name) discussion to the mailing list.
+*   **`group-oscore`**:
+    *   **Decision**: Improve terminology in the document to consistently distinguish between "public key" and "authentication credential."
+    *   **Decision**: Retain the current approach of storing whole authentication credentials but clarify the trade-off between storage overhead and the complexity of defining/encoding relevant subsets.
+    *   **Decision**: Provide more context and explanation for the Birth GID and Group ID recycling mechanism. It will be presented as an optional capability for group managers, and moving the detailed explanation to a dedicated appendix will be considered. The logic for this mechanism rests primarily with the group manager.
+    *   **Decision**: Change the title of Section 10 from "Mandatory to Implement Compliance Requirements" to "Implementation Compliance."
+    *   **Decision**: Rephrase the text recommending randomness in deterministic signatures (referencing `draft-ietf-cfrg-randomness-for-signatures`) to describe the problem it addresses and state that technology is being developed, referencing the draft informatively as an example.
+    *   **Decision**: Change the reference to the ACE Group Manager draft from normative to informative, presenting it as an example of a group manager.
+    *   **Decision**: Change the reference to the CoAP Echo Request Tag document from informative to normative and promote the related appendix content to a regular section within the document body.
+
+## Next Steps
+
+*   **`coap-conf`**: Process remaining author comments on `ietf-core-yang-cbor` and resolve the final IESG Discuss for `ietf-core-oscore-yang`.
+*   **`coap-href`**: Update implementations to align with dash-09 changes, and complete the pull request with test vectors.
+*   **`coap-coral`**: Participants are encouraged to provide input on the "Open vs. Closed World System" and "Security Model" issues by reviewing existing examples and corner cases.
+*   **`group-combis`**: Merge Pull Request #32 and submit `ietf-core-group-combis` as version 6, preparing it for a Working Group Last Call.
+*   **`group-oscore`**: Incorporate all discussed changes and aim to submit `ietf-core-group-oscore` as version 14 before the next IETF meeting. A detailed reply to Eskil's review will be posted to the mailing list for continued discussion.

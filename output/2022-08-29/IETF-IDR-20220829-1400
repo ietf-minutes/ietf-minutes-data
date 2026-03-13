@@ -1,0 +1,70 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR Working Group interim meeting focused on updating the status of current Working Group Last Calls (WGLCs) and adoption calls, discussing progress on new drafts, and diving deep into the status of BGP Routes with Color (CAR/CT) proposals. Key discussions included the use of BGP for SD-WAN edge discovery and 5G edge service metadata, and a new proposal for BGP Colorful Prefix Routing (CPR) for SRv6. A significant portion of the meeting was dedicated to reviewing the status of CAR and CT drafts, which are now Experimental Working Group drafts, and a presentation on proposed interoperability procedures between them, including an exploration of a potential merged solution.
+
+## Key Discussion Points
+
+*   **Working Group Last Call (WGLC) & Adoption Status:**
+    *   `draft-ietf-idr-bfd-subcode` is in WGLC with two implementations (Juniper, Arista).
+    *   `draft-ietf-idr-sr-policy-ifit` and the BGP model are pending WGLC, awaiting implementation data for the former.
+    *   `draft-ietf-idr-5g-edge-service-metadata` (previously `edge-compute-app-metadata`) adoption call was extended; authors emphasize immediate customer need for a BGP solution.
+    *   `draft-ietf-idr-deprecate-8910` adoption call will likely be extended due to low engagement.
+    *   `draft-ietf-idr-ts-flow-spec-srv6-policy` augments flowspec v1 and needs more feedback.
+    *   `draft-wang-idr-vpn-prefix-orf` is undergoing detailed review, with active discussion on the mailing list regarding a "rogue PE" issue.
+    *   `draft-sas-idr-max-prefix-inbound` received no support, though inbound prefixes were suggested as a solution to VPN ORF issues.
+    *   `draft-scudder-bgp-entropy-label-capability-redo` and `draft-idr-bgp-send-holder` are slated for upcoming adoption calls.
+
+*   **SD-WAN Edge Discovery (Linda):**
+    *   Presented an overview of BGP update messages for SD-WAN edge discovery, detailing how CPEs advertise WAN port properties (NAT, encapsulation, IP addresses) and client routes.
+    *   Proposed the use of `Encapsulation Extended Community` (SD-WAN hybrid) and `Color Extended Community` to associate client routes with underlay properties.
+    *   Two mechanisms for IPsec attribute distribution were outlined: full attribute advertisement or pre-established SA ID.
+    *   The draft uses an SD-WAN SAFI for underlay property distribution, including Port ID, Color (site information), and Node ID for IPsec termination.
+    *   The draft has one finished and one underway implementation, with hopes for WGLC.
+
+*   **BGP Update for 5G Edge Service Metadata (Kossak & Linda):**
+    *   The draft title was changed to `draft-ietf-idr-5g-edge-service-metadata`.
+    *   Described a solution for propagating service metadata (capacity, site preference, load index) from edge data centers to ingress routers via BGP.
+    *   This metadata allows ingress routers to make intelligent load balancing decisions for anycast services using a new optional transitive BGP path attribute containing various Sub-TLVs (Capacity, Preference, Load Index).
+    *   Discussion with Ac focused on ensuring routing loop prevention with transitive attributes, clarified by the use of tunnels for traffic forwarding within a single AS (IBGP). Srihari confirmed no best path change, only forwarding adjustments.
+
+*   **Chairs' Review of BGP Routes with Color (CAR/CT) Status (Sue):**
+    *   A detailed review of feedback from Forum 3 and IETF 114 revealed common issues for both CAR (`draft-ietf-idr-car`) and CT (`draft-ietf-idr-classful-transport-planes`) drafts, including description of packing PDUs, compatibility with new NLRIs, SRv6 support, scalability, and clarity on intent.
+    *   Specific issues were identified for each draft, such as anycast scenarios and color mapping for CAR, and SAFI 76 handling and embedded MPLS labels for CT.
+    *   The chairs plan to use GitHub for issue tracking for both drafts, consolidating discussions and ensuring resolution.
+
+*   **BGP Colorful Prefix Routing (CPR) for SRv6-based services (Haibo):**
+    *   Proposed a mechanism to provide end-to-end intent-aware paths for SRv6, building on existing BGP.
+    *   SRv6 SIDs are associated with "colorful locators" to differentiate services based on intent (e.g., low latency, high bandwidth).
+    *   These colorful locators are advertised as BGP IPv6 Unicast routes carrying a `Color Extended Community` for intent.
+    *   The approach supports SRv6 only at PE nodes, allowing transit domains to use MPLS, SR-MPLS, or SRv6 for transport.
+    *   Gee confirmed that SRv6 can already resolve over MPLS tunnels via existing interworking solutions.
+    *   Kali Raj observed similarities to the CT architecture, particularly in resolution schemes, and noted its potential applicability beyond SRv6, which Haibo acknowledged for later discussion.
+
+*   **Proposed Interop Procedures for BGP Routes of Color (Jeff):**
+    *   Presented initial thinking on interoperability between CAR and CT using `draft-idr-bgp-diffract`. This is not a WGLC request.
+    *   Outlined how forwarding behaviors and NLRI keys are defined in each proposal.
+    *   Proposed new machinery for mapping: a new `RD Color` route distinguisher type for CT, and two new extended communities (`Classful Transport Original RD` and `CAR Original Intent Color`) to preserve intent during inter-domain transformations.
+    *   The core purpose is to maintain consistent NLRI forms across different domains/technologies for route selection.
+    *   Observations suggest that if an `RD Color` format is used, it could potentially unify the NLRI key for both proposals.
+    *   Robert questioned the feasibility of interop within a single AS with mixed CAR/CT routers, which Jeff believes is possible but requires further analysis.
+    *   Kali Raj raised concerns about the complexity of the proposed procedures, the definition of "effective color" in CAR, and whether CAR and CT resolution procedures are truly similar, suggesting that simpler interop options (like "giving up") should also be considered. Jeff clarified the intent behind the proposed mechanisms and the need for issue tracking.
+    *   Robert highlighted the challenge of maintaining interop with incremental functionality and whether a merged solution would negate the need for interop.
+
+## Decisions and Action Items
+
+*   **Decision:** `draft-ietf-idr-classful-transport-planes` (CAR) and `draft-ietf-idr-car` (CT) are accepted as **Experimental** Working Group drafts.
+*   **Action Item (Chairs - Sue):**
+    *   Delay other working group adoption calls for approximately one week to finalize shepherd tasks.
+    *   Produce a consolidated summary of issues and resolutions for the CAR and CT drafts, incorporating feedback from Forum 3 discussions.
+    *   Open and manage GitHub issues for both CAR and CT drafts to track and resolve identified technical points.
+    *   Circulate a question to the working group seeking feedback on the viability and desire for pursuing a single, merged solution for CAR/CT.
+*   **Action Item (Kali Raj):** Send detailed observations and comments on the BGP Colorful Prefix Routing (CPR) for SRv6 draft to the mailing list.
+*   **Action Item (Gee / Kali Raj):** Ensure the `draft-ietf-spring-srv6-mpls-interworking` document reference is shared with the IDR mailing list or directly to interested parties.
+
+## Next Steps
+
+*   **Draft Authors:** Continue to revise their respective drafts, addressing identified issues and incorporating feedback from the working group and mailing lists. CAR and CT editors are particularly encouraged to engage with the new GitHub issue trackers.
+*   **Working Group Participants:** Provide timely feedback on the chairs' proposed CAR/CT issue summaries, the CPR for SRv6 draft, and especially weigh in on the discussion regarding a potential merged solution for CAR/CT.
+*   **Chairs:** Monitor progress on drafts, facilitate discussions, and manage the ongoing WGLC and adoption calls. Another interim may be scheduled as needed.

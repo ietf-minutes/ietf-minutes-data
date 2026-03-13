@@ -1,0 +1,66 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR Working Group held an interim meeting to discuss three key topics: BGP Routes with Color, BGP Autoconfiguration, and BGP Flowspec V2. The goal was to foster focused technical discussion to inform future working group adoption decisions. For BGP Routes with Color, competing proposals (BGPCT and BGP CAR) were presented, leading to a vigorous debate on their design choices, particularly concerning Route Distinguishers (RDs) and the semantics of "color." In BGP Autoconfiguration, two distinct discovery mechanisms (LLDP-based and UDP/multicast-based L3DL) were reviewed, with discussion beginning on criteria for adoption. For BGP Flowspec V2, updates to the draft were presented, highlighting open questions around partial deployments and the problematic concept of tying actions directly to the NLRI. No adoption decisions were made during the meeting for any topic, with further detailed discussion largely deferred to the mailing list.
+
+## Key Discussion Points
+
+*   **BGP Routes with Color:**
+    *   **SPRING Problem Statement Update:** Joel Halpern reported that the SPRING working group's design team is actively working to establish a common problem statement for intent-aware routing but has not yet reached full consensus on all issues.
+    *   **BGPCT Presentation (Kaliyur Rajesh):**
+        *   Presented `BGPCT` (AFI/SAFI 76) as a solution for intent-aware routing by extending BGP to carry transport class information across domains.
+        *   The solution reuses existing L3VPN machinery (Route Distinguishers (RDs) for propagation, Route Targets (RTs) for filtering) at a dedicated transport layer, emphasizing clear layering between service and transport families.
+        *   A "transport class construct" with a 32-bit identifier ("color") organizes tunnels. Mapping communities (color community or RTs) signal intent and fallback behavior.
+        *   Argued advantages include reduced operational complexity, reuse of existing tooling, and support for various transport protocols. An implementation is shipping in Junos 21.1, and adoption as a working group document is sought.
+        *   Contrasted `BGPCT` with `BGP CAR`, highlighting `BGP CAR`'s perceived ambiguity in color location, inability to use Route Target Constraint (RTC), combination of key/non-key fields in NLRI (problematic for Route Reflectors), and less practical scaling methods.
+    *   **BGP CAR Presentation (DJ):**
+        *   Responded to `BGPCT`'s criticisms, stating that some "observations" reflected a lack of understanding of `BGP CAR`. Questioned the complexity of `BGPCT`'s VPN model for the underlay.
+        *   Presented `BGP CAR` as a BGP-LU-like solution that extends the NLRI with a color (derived from SR Policy concepts) to represent intent. The NLRI consists of an IP prefix + color.
+        *   Emphasized benefits such as a simpler data model, efficient processing, fast localized convergence (via BGP PIC), inherent ECMP/backup paths, and consistency with the SR Policy data model.
+        *   Described a modern NLRI design for the new SAFi that includes Route Type, Key Length, and TLVs for non-key data (e.g., label sets, SIDs), enabling support for multiple encapsulations in a single update.
+        *   For inter-domain color mapping where mappings differ, a Local Color Mapping (LCM) extended community is used for remapping, while the core NLRI (Endpoint, Color) remains unchanged end-to-end for visibility.
+        *   Noted two implementations and ongoing interop work, asserting that the base solution is stable and ready for working group adoption.
+    *   **Cross-Proposal Discussion:**
+        *   Intense debate ensued between the `BGPCT` and `BGP CAR` authors and participants.
+        *   Key points of contention included the use of Route Distinguishers (RDs) in `BGPCT` and their impact on multipath and local convergence, with `BGP CAR` arguing RDs complicate these aspects. `BGPCT` defended RDs as essential for unique route propagation across path selection pinch points, with multipath handled post-RD stripping.
+        *   The interpretation of "intent" was a central theme: whether diverse paths across a domain should imply a separate "color" (as suggested by `BGPCT` authors for explicit intent) or be handled by mechanisms like Add Path under a single color (as supported by `BGP CAR`).
+        *   The discussion highlighted differing perceptions of the problem scope and optimal design choices for intent-aware routing.
+*   **BGP Autoconfiguration:**
+    *   **Background:** The working group is seeking a solution to reduce manual BGP configuration, particularly in data center environments, through peer auto-discovery. A design team has refined requirements.
+    *   **draft-minto-idr-l3dl-bgp-auto-discovery (Minto):**
+        *   Presented a UDP-based, link-local multicast protocol for single-hop Layer 3 BGP peering (both link-local and loopback).
+        *   The protocol uses TLVs and layered messages to advertise BGP transport information with a remaining lifetime (soft state), allowing for asymmetric lifetimes for scalability. It focuses purely on service discovery, not liveness.
+        *   Version 1 changes include moving transport preference into an address list TLV (supporting multiple IP addresses/peer groups per interface with preference and loopback flags) and adding MAC address to link address information for non-separated networks.
+    *   **draft-ac-idr-lldp-peer-discovery (AC):**
+        *   Presented a solution based on IEEE 802.1AB LLDP (Link Layer Discovery Protocol).
+        *   Leverages the IETF Organizational Unique Identifier (OUI) to embed BGP discovery TLVs in LLDP PDUs.
+        *   Supports discovery of multiple peering addresses, BGP Group IDs, local AS, and various authentication mechanisms (MD5, TCP-AO, keychain names, GTSM), relying on MACsec for link-layer security.
+        *   The draft satisfies most requirements from the design team document, with the explicit authentication and loopback route addition relying on external mechanisms or client behavior. Noted existing rudimentary implementations by vendors.
+    *   **Cross-Proposal Discussion:**
+        *   Discussion covered the operational implications of message lifetimes (LLDP's session-based vs. L3DL's timer-based soft state) and information withdrawal.
+        *   The "switch-in-the-middle" problem for Layer 2 discovery was mentioned, with the L3DL author noting their solution addresses it with standard MAC solution.
+        *   A chair's comment posed the question of whether the working group desires a single, unifying auto-discovery solution or allows for multiple solutions tailored to specific environments (e.g., L2 vs. L3, data center vs. non-data center).
+*   **BGP Flowspec V2:**
+    *   **Draft Updates (Sue Hares, Donald Eastlake):**
+        *   The latest draft (dash-04) incorporates new filters (TTL, MPLS) and actions, and has undergone significant editorial work to clearly define TLVs for filters and actions, and to support user ordering for integration with firewall engines.
+    *   **Open Questions:**
+        *   **Partial Deployments:** How to handle scenarios where BGP Flowspec V2 peers only implement a subset of the full functionality. Options include simply allowing partial implementation (which might leave gaps) or using capabilities signaling (as explored in earlier drafts).
+        *   **NLRI-Tied Actions ("Die Die Worm"):** A specific proposal to tie actions directly to the NLRI (e.g., matching a worm and a "drop" action in the NLRI) was raised as a significant design concern. The authors noted the difficulty in writing such text and the potential for inconsistent behavior across different domains (e.g., "drop" vs. "stream and block").
+        *   **Action Encoding:** Recalling past issues with `interface-set` and `flowspec v1` where extended communities were clumsy for encoding ordered or conditional actions, the discussion highlighted the need for a more structured approach to encapsulate a set of actions (e.g., wide communities or a new multi-next hop attribute), rather than placing behavior-changing information in the NLRI key field.
+
+## Decisions and Action Items
+
+*   No adoption decisions were made for any of the proposals during this interim meeting.
+*   **All Authors:** Authors of drafts with more than five co-authors were reminded to consider the ISG's guidance to limit the number of authors for RFCs.
+*   **BGP Routes with Color (CT/CAR):** The in-depth technical discussion, particularly on the implications of Route Distinguishers (RDs), multipath, and the definition/encoding of "intent," is to continue on the IDR mailing list.
+*   **BGP Autoconfiguration:** Discussion regarding adoption criteria (e.g., a single solution versus multiple solutions for different domains/layers) will be initiated on the mailing list by the chairs.
+*   **BGP Flowspec V2 (Sue Hares, Donald Eastlake):** The authors committed to likely removing the problematic NLRI-based action from the draft and will consider alternative encodings for actions (e.g., a next-hop attribute) if a specific proposal emerges. Continued discussion on partial deployment and action encoding is required.
+
+## Next Steps
+
+*   The IDR chairs will prepare and circulate the meeting minutes to the mailing list by the end of the week.
+*   Discussions on `BGPCT` and `BGP CAR` are strongly encouraged to continue on the mailing list to clarify differing perceptions and converge on common understanding.
+*   The IDR chairs will send out inquiries to the mailing list to solicit feedback and drive discussion towards adoption of the BGP Autoconfiguration proposals.
+*   BGP Flowspec V2 authors will revise the draft based on the discussion, particularly concerning the removal of NLRI-tied actions and exploring more structured action encoding.
+*   The IDR chairs will consider scheduling another interim meeting in mid-February, potentially to further discuss specific points of the BGP Routes with Color proposals if sufficient convergence occurs on the mailing list.

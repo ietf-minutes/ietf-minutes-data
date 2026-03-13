@@ -1,0 +1,89 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR interim meeting covered a chairs' report on working group document status, including several draft adoptions and ongoing adoption calls. A significant portion of the session was dedicated to a progress report on the Car and CT drafts, outlining issues identified during adoption and the process for resolution using the IDR GitHub. This was followed by a discussion on the Diffract document, focusing on Next Hop interoperability and related challenges, particularly for SRv6. Three specific draft presentations explored Next Hop related topics: the newly merged Router Capabilities Attribute (RCA) for entropy label signaling, a proposal for a Constraint Attribute Announcement to scope optional BGP attributes, and an overview of BGP-based SPF (LSVR) which changes Next Hop processing. The final presentation introduced a Multi Next-Hop (MNH) attribute designed to provide a more extensible and API-like approach to Next Hop signaling in BGP, addressing various forwarding and encapsulation needs.
+
+## Key Discussion Points
+
+*   **Chairs' Report & Administrivia**
+    *   Three drafts have been adopted since the last interim:
+        *   `draft-ietf-idr-ts-flowspec-srv6-policy` (Jang et al.): Chairs to query authors on standards track vs. informational.
+        *   `draft-ietf-idr-bgp-entropy-label` (Scudder et al.): Merged with `draft-ietf-idr-next-hop-capability`.
+        *   `draft-ietf-idr-deprecate-8910` (Spaghetti et al.): Adopted for registry cleanup.
+    *   Drafts in the adoption process:
+        *   `draft-ietf-idr-5g-edge-service-metadata` (Dong et al.): Adoption call awaiting results of related BoF.
+        *   `draft-ietf-idr-no-target-extended-community` (Dong et al.): Adoption call extended due to Golden Week holidays. Concerns raised include withdraw handling, priority between NT/RT/RTC, and PE/RR on the same node.
+        *   `draft-ietf-idr-diffract` (Haas et al.): Working Group Adoption Call initiated.
+    *   The chairs are compiling results for VPN Route Targets and plan to release them soon.
+    *   A Working Group Last Call for `draft-ietf-idr-long-lived-graceful-restart` is expected to start shortly.
+    *   A request from BEST chairs for IDR to provide guidelines on BGP Next Hop changes will be followed up by the IDR chairs.
+
+*   **Car and CT Progress Report**
+    *   A summary of operational issues raised during adoption for both CT and Car drafts has been sent to the working group and posted on the wiki.
+    *   The IDR GitHub will be used to track comments, resolutions, and document changes for these drafts.
+    *   Key issues for CT: Safi scaling, CT & RTC NLRI format.
+    *   Key issues for Car: Appendix A7, BGP Car consensus on resolution, screen handling of LCM, Car routing in non-greenfield domains, NP packing.
+    *   Authors and those who raised issues are requested to collaborate with chairs to provide clear operational descriptions and use cases.
+    *   Discussion arose on the applicability and limits of the SR routing architecture to non-SR deployments.
+
+*   **Diffract Discussion**
+    *   The `draft-ietf-idr-diffract` document aims for interoperability between Car and CT, covering forwarding behaviors (label stacks, SR indexes, SRv6) and NLRI key mapping across multiple domains.
+    *   The SRv6 transposition issue in RFC 9252 (Next Hop gets reset, transposition label mismatch) was highlighted as a Next Hop scoping problem, similar to BGP Open Policy and the original Entropy Label RFC.
+    *   NLRI keys: Car embeds color in NLRI; CT uses an extended community for color. Mapping requires carrying original intent/state (e.g., using extended communities).
+    *   Consistency of route selection across domain remapping is crucial.
+    *   A potential merge solution could involve using a new RD code point to carry color.
+    *   Observations on CT included concerns about mandatory labels for some encodings (SRv6) and the preference for simple, undecorated NLRIs (RFC 7606) for error handling and withdrawal.
+    *   Packing benefits for BGP implementations can be degraded when path attributes prevent sharing.
+    *   The discussion considered future directions: sticking with Car encoding, introducing new Next Hop types, refining Next Hop scoping, or updating the BGP Update packet itself. John Scudder emphasized keeping the NLRI simple.
+    *   Incremental deployment and preventing feature leakage outside its intended scope were noted as important considerations across BGP Next Hop discussions.
+
+*   **Router Capabilities Attribute (RCA) (Scudder et al.)**
+    *   This draft, a merger of `draft-ietf-idr-bgp-entropy-label-capability-v3` and `draft-ietf-idr-next-hop-capability`, defines a new transitive attribute to signal a remote BGP speaker's forwarding capabilities, particularly for processing entropy labels.
+    *   The Next Hop is used as an identifier to scope the attribute's applicability, not to change Next Hop processing itself.
+    *   Strategy for transitivity: The attribute header carries the original IP address inserted into the Next Hop by the route originator. Receivers process TLVs only if this address matches the BGP route's Next Hop, otherwise it's discarded.
+    *   The attribute uses a TLV structure. AFI/SAFI are included in the header for self-description. "Readable label depths" were omitted for syntax/semantics parity with ELCv3, but could be added later using a new TLV.
+    *   Naming: "Router Capabilities Attribute" was chosen, but alternatives like "Next Hop Dependent Capabilities" or "Forwarding Plane Capabilities" were considered. Concerns were raised about the term "capabilities" due to RFC 5492.
+    *   Discussion points included the robustness of the discard mechanism for unknown capabilities, handling of non-LSP tail-end capabilities, and behavior in anycast scenarios with mixed support. If a Route Reflector replaces the Next Hop, it should discard the attribute or the receiver will.
+    *   The authors requested early allocation of a code point for the attribute.
+
+*   **Constraint Attribute Announcement (Kare et al.)**
+    *   This working group document proposes a mechanism to scope the announcement of optional BGP attributes across administrative boundaries (e.g., Confed, AS, multi-AS).
+    *   The solution uses two unused bits in the BGP attribute flags (for optional attributes only).
+    *   Implementations must enforce filtering based on these bits, and operators must ensure consistent deployment to prevent leakage.
+    *   A concern was raised by Jeff Haas regarding previous attempts to use reserved bits, which led to session resets in some implementations. He suggested a "safety bubble" or a capability exchange to mitigate this. Kare agreed this could be explored further.
+    *   Ketan Talwar asked about multi-AS scope; Kare clarified it is policy-defined, not automated by the protocol, for domains under a single administrative control.
+
+*   **BGP-based SPF (LSVR) (Kare et al.)**
+    *   An overview of the LSVR working group's BGP-based SPF work for data center fabrics.
+    *   In contrast to traditional distance-vector BGP, this solution uses Dijkstra's algorithm to compute shortest paths.
+    *   Crucially, Next Hops carried in BGP updates are *ignored* upon receipt because the SPF algorithm recomputes the optimal Next Hop as a natural byproduct.
+    *   The draft is in Working Group Last Call and has multiple implementations.
+
+*   **Multi Next-Hop (MNH) Attribute (Kali Raj et al.)**
+    *   This draft proposes a new optional non-transitive attribute to address limitations in current BGP Next Hop signaling.
+    *   Problems identified: difficulty in expressing forwarding actions and relationships between multiple Next Hops (e.g., active/backup, ECMP/UCMP ratios), inconsistent encapsulation signaling across AFIs, inability to signal multiple labels or downstream label semantics, and lack of domain-wide local preference control in Option C domains.
+    *   The MNH attribute is negotiated via a BGP capability and uses a flexible TLV format.
+    *   It includes a Propagation Scope Checker (PSC) with flags (iBGP, Confed, eBGP to allowed AS list) to control its propagation within a defined administrative domain, enabling domain local preference.
+    *   MNS TLV types include Primary/Backup Forwarding Path, Downstream Signaled Label Descriptor, and Domain Local Preference.
+    *   Forwarding Instruction TLVs define forwarding actions (forward, push, pop, replicate) and arguments (IPv4/IPv6 address, Context RD, MPLS label), allowing extensibility for new types.
+    *   Proximity check constraints (single-hop, multi-hop) and payload encapsulation info (e.g., MPLS label info, including capabilities like ELC, scoped closer to the Next Hop) can also be carried.
+    *   Endpoint Attributes Advertisement allows signaling properties of a Next Hop (e.g., available bandwidth for UCMP).
+    *   Error handling typically involves attribute discard, ignoring unknown TLVs, and gracefully handling missing arguments.
+    *   Discussion indicated that this attribute could potentially short-circuit BGP-LU for L3VPNs by directly carrying labels with unicast SAFI routes.
+
+## Decisions and Action Items
+
+*   **Decision:** The IDR working group will use GitHub for tracking comments and resolutions for the Car and CT drafts.
+*   **Action Item:** The authors of the Router Capabilities Attribute draft (Scudder et al.) will request early allocation of a code point.
+*   **Action Item:** Chairs to continue research into BEST chairs' request for guidelines on BGP Next Top changes.
+*   **Action Item:** Car and CT editors are to use the IDR GitHub to resolve issues raised during the adoption call.
+*   **Action Item:** Authors/posters who raised issues on Car/CT drafts are encouraged to work with the chairs to provide clear operational descriptions and use cases.
+*   **Action Item:** Participants are encouraged to send known problems or desired improvements for BGP Next Hops directly to the chairs.
+
+## Next Steps
+
+*   Continued discussion on the mailing list for all drafts presented.
+*   Further work on Car and CT drafts will be conducted on the IDR GitHub.
+*   A Working Group Last Call for `draft-ietf-idr-long-lived-graceful-restart` is expected to commence soon.
+*   Further discussion on Next Hop topics is anticipated at IETF 115.

@@ -1,0 +1,89 @@
+# [LSR](../wg/lsr.html)
+
+## Summary
+
+The LSR interim meeting covered seven presentations focusing on various IGP extensions for Segment Routing (SR), SRv6, and DetNet. Key themes included proposals for Flex-Algo enhancements (reverse affinity, adjacency SID scaling, common address approach), SRv6 service SID advertisement for IPv4 islands and fine-grained TE, mechanisms for link exclusion from default SPF, SRv6 SID block optimization for scaling, and SRv6 egress protection. Several drafts faced significant technical concerns regarding data plane changes, backward compatibility with existing standards, scaling, and the appropriate working group for concept definition (especially for DetNet). Strong calls were made to continue discussions on the mailing list, and for the working group to decide on single encoding methods where multiple approaches are proposed.
+
+## Key Discussion Points
+
+*   **Flex-Algo Reverse Affinity (Peter)**
+    *   **Problem**: Existing Flex-Algo affinities are unidirectional. A mechanism is needed to use affinities in the reverse direction of a link for ultra-reliable services, such as avoiding links based on input error rates.
+    *   **Proposal**: Introduce three new sub-TLVs (exclude/include any/include all reverse admin group) to be used in IGP Flex-Algo SPF calculations. This does not define new link attributes but rather a new interpretation of existing affinities.
+    *   **Discussion**: Ac (Cisco Systems) confirmed the proposal reuses existing affinity attributes but applies them in reverse, noting its usefulness for "receive-side degraded" scenarios. Ac also highlighted this approach offers more flexibility and Flex-Algo specificity compared to existing reverse metrics. The concept was generally well-received for its intent.
+    *   **Next Steps**: Continue discussion on the mailing list to gather more feedback.
+
+*   **Flex-Algo Adjacency SID Offset (Louis Chen)**
+    *   **Problem**: Advertising per-Flex-Algo Adjacency SIDs can lead to very large IGP advertisement sizes (e.g., 100KB for a router with 1000 links and 10 Flex-Algros). This needs to be reduced, independent of the number of links.
+    *   **Proposal**: Advertise an offset value for each Flex-Algo Adjacency SID, allowing routers to predict and calculate the full SID. This significantly reduces advertisement size. A similar approach for prefix SIDs was also proposed. Requires local label block allocation.
+    *   **Discussion**:
+        *   Ac (Cisco Systems) noted that this approach implies algorithm 0 must be a superset of all adjacencies.
+        *   Peter (Individual) strongly cautioned against standardizing two different ways to encode the same information, emphasizing the working group needs to select a single method.
+        *   Les (Individual) raised concerns about operational deployment, specifically the need for operators to reserve consecutive label blocks anticipating future Flex-Algo deployments, which could lead to inflexibility.
+        *   Gu (Huawei) pointed out potential inefficiency if not all Flex-Algros utilize all reserved link labels.
+    *   **Next Steps**: Further discussion on the mailing list, focusing on the trade-offs between advertisement size reduction and operational complexity/label space management. The WG needs to converge on a single encoding strategy.
+
+*   **Common Address Flex-Algo (Shibo)**
+    *   **Problem**: Managing and configuring IP SIDs for a growing number of Flex-Algros (especially with network slicing) is complex when different Flex-Algros use distinct SIDs. An interface may belong to multiple Flex-Algros.
+    *   **Proposal**: A generic approach allowing different Flex-Algros to share IP SIDs using a "common address algorithm" sub-TLV and distinguishing them in the data plane (e.g., using VTN ID or Topology ID).
+    *   **Discussion**:
+        *   Peter (Individual) raised strong objections, stating this requires per-hop packet classification (hardware changes), which was tried with Multi-Topology Routing (MTR) and failed. He emphasized that the original Flex-Algo design specifically avoided such data plane changes and questioned the need for this given ample IPv6 addresses.
+        *   Les (Individual) added that Topology ID is protocol-scoped and not a suitable identifier for data plane classification across different protocols.
+        *   Ac (Cisco Systems) echoed concerns about adding data plane complexity to solve a control plane configuration problem and questioned the utility of "hijacking" VTN ID for Flex-Algros.
+    *   **Next Steps**: Significant discussion on the mailing list is needed. The working group should reconsider the fundamental design principles of Flex-Algo and the implications of introducing data plane changes.
+
+*   **ISIS/OSPFv3 Extensions for SRv6 Service SID (Muyao Chen)**
+    *   **Problem**: Interconnecting IPv4 islands across an IPv6 core in IGP-only networks, and achieving fine-grained traffic engineering (TE) where existing shortcut solutions may not provide flow-specific steering.
+    *   **Proposal**: Edge routers advertise IPv4 prefixes along with an SRv6 Service SID in IGP. Ingress routers encapsulate IPv4 payload in an IPv6 header using the Service SID. For TE, prefix advertisement includes a color, enabling head-ends to use SRv6 policies. New ISIS/OSPFv3 sub-TLVs for SRv6 Service SID and Color are proposed.
+    *   **Discussion**:
+        *   Ac (Cisco Systems) questioned the strategy of directly injecting IPv4 prefixes into an IPv6 IGP core and referred to RFC6992 (OSPF for IPv6) which supports address translation rather than direct advertisement of IPv4 addresses.
+        *   Ac also asked if existing IGP advertisement mechanisms could be used for the new SID types, rather than defining entirely new encodings.
+    *   **Next Steps**: Discussion on the mailing list to clarify the need for new IGP encodings versus leveraging existing mechanisms, and the architectural implications of IPv4 prefix injection into an IPv6 IGP core.
+
+*   **Advertising Exclusive Links for Flex-Algo (Lian)**
+    *   **Problem**: Links specifically designated for Flex-Algo (e.g., for network slices) should ideally be excluded from the default (Algo 0) SPF calculation to prevent misdirection of best-effort traffic.
+    *   **Proposal**: The draft presented two solutions:
+        *   **Solution A**: Use the existing maximum link metric mechanism. It works for ISIS (RFC5305), where max metric links are excluded from SPF. However, for OSPF, current RFCs treat max metric links as reachable, making this solution ineffective for OSPF Algo 0.
+        *   **Solution B**: Define a new sub-TLV via protocol extension to explicitly indicate a link should not be used by default SPF, using capability negotiation.
+    *   **Discussion**:
+        *   Les (Individual) strongly argued that no problem exists for Flex-Algo itself, as there are already ways to exclude links or use algo-specific metrics. He contended that the *only* remaining issue is for base Algo 0 in OSPF (due to its max-metric behavior, unlike ISIS), which should be addressed as a separate problem. He suggested abandoning this draft.
+        *   Ac (Cisco Systems) concurred, recommending that ISIS be removed from the scope, as a mechanism already exists there. For OSPF, if a solution is pursued, it should be standalone.
+    *   **Decisions**: There was a strong sense that the problem for Flex-Algo as described in the draft does not genuinely exist. The specific issue concerning excluding links from OSPF's base Algo 0 is a different problem that should be discussed separately, not via this draft.
+    *   **Action Item**: Authors are encouraged to reconsider the scope and intent of the draft or abandon it in favor of a targeted OSPF Algo 0 link exclusion discussion if deemed necessary.
+
+*   **ISIS Extension for SRv6 SID Block (Lian)**
+    *   **Problem**: A large number of SRv6 End.X SIDs, especially when combined with Flex-Algo and multiple sub-interfaces, result in a significant increase in ISIS LSP advertisements (e.g., potentially 48K SIDs for 10 Flex-Algros and 100 links per router), posing a heavy burden on IGP protocols.
+    *   **Proposal**: Introduce the concept of an "SRv6 SID Local Block" and represent SIDs by their 16-bit index within the block rather than a full 128-bit SID. This aims to reduce LSP advertisement size.
+    *   **Discussion**:
+        *   Peter (Individual) again raised concerns about standardizing multiple ways to encode the same information, especially since an SRv6 advertisement draft is already in the RFC editor queue.
+        *   Ac (Cisco Systems) emphasized that any new solution would need to strongly address backward compatibility with existing SRv6 implementations. He questioned if the draft sufficiently highlighted the *criticality* of the scaling problem, as it appears disruptive to existing standardization efforts.
+        *   Gu (China Mobile) affirmed the problem's criticality, citing deployments with over 1000 nodes where the existing SRv6 advertisement load is considered "undeployable." He questioned why this critical issue was not addressed earlier during the development of the SRv6 working group document.
+        *   Peter (Individual) referenced RFC7356 (ISIS Extended LSP) as a potential solution for increasing LSP size limits.
+    *   **Next Steps**: Critical discussion on the mailing list is required to evaluate the severity of the scaling problem, the feasibility of existing solutions (like RFC7356), and the implications of introducing a new encoding mechanism, particularly concerning backward compatibility with SRv6 documents nearing RFC status.
+
+*   **SRv6 Egress Protection (Nemo)**
+    *   **Problem**: How to provide protection for an SRv6 Egress node (PA) using a backup egress node (PB).
+    *   **Proposal**: Configure "mirror SIDs" on PB. PB advertises this mirror SID and the protected PA in IGP. A head-end (PRR) computes a backup path to PB. Upon PA failure, PRR encapsulates traffic with the mirror SID and sends it to PB, which then uses the mirror SID to forward to the original destination.
+    *   **Extensions**: ISIS and OSPF extensions are proposed to advertise the mirror SID and the protected locator node.
+    *   **Discussion**: This work is primarily being conducted in the Routing Working Group and was presented to LSR for exposure and feedback due to its IGP extensions. Louis (Individual) asked about the use of Anycast for similar protection. Ac (Cisco Systems) questioned the necessity of all proposed sub-TLVs, which the author said he is reconsidering.
+
+*   **IS-IS Extensions for Enhanced DetNet (Zhaohui)**
+    *   **Problem**: DetNet applications require very high-quality network transmission, including bounded latency, low packet loss, and bounded out-of-order delivery. This necessitates new IGP attributes beyond existing TE metrics to calculate paths satisfying DetNet requirements.
+    *   **Proposal**: Introduce new Node Attribute TLVs (DetNet Processing Delay sub-TLV) and Link Attribute TLVs (Max DetNet Reservable Bandwidth, DetNet Available Bandwidth, DetNet Time Resources sub-TLV for logical queues or time scheduling).
+    *   **Discussion**:
+        *   The Chair (Chris) stated that the fundamental DetNet concepts, requirements, and modeling for bounded latency, queuing, etc., must first be defined and agreed upon within the DetNet Working Group. LSR's role would then be to define IGP extensions for those *agreed-upon* concepts, not to define new DetNet concepts within LSR.
+        *   Les (Individual) strongly agreed, emphasizing that DetNet currently lacks a clearly defined role for IGPs. He called for a better liaison between DetNet and LSR, facilitated by the chairs and AD, to determine if and how IGPs should contribute to DetNet. He viewed the draft as premature.
+        *   Ac (Cisco Systems) questioned the choice of units and field size for bandwidth attributes (bytes per second in a 3-octet field), noting it's inconsistent with IGPs and too small for modern link speeds.
+    *   **Next Steps**: The authors acknowledged the feedback and will bring this work back to the DetNet Working Group for initial concept agreement. A stronger liaison between DetNet and LSR is encouraged to define the IGP's role in DetNet.
+
+## Decisions and Action Items
+
+*   **Flex-Algo Adjacency SID Offset & SRv6 SID Block**: The working group needs to decide on a single, standardized method for encoding Flex-Algo Adjacency SIDs and SRv6 SIDs where multiple approaches are proposed.
+*   **Exclusive Links for Flex-Algo**: The draft (or its core problem statement) related to Flex-Algo is to be abandoned. Any remaining discussion on excluding links from OSPF's base Algo 0 should be pursued as a separate, focused effort.
+*   **DetNet IGP Extensions**: Authors are to present and agree upon the core DetNet concepts and requirements within the DetNet Working Group before proposing IGP extensions in LSR. A close liaison between DetNet and LSR is required.
+*   **General**: All presenters and interested parties are encouraged to continue detailed technical discussions on the LSR mailing list.
+
+## Next Steps
+
+*   Continue detailed technical discussions on all presented drafts on the LSR mailing list.
+*   Working Group chairs will monitor the mailing list discussions for consensus on the path forward for each draft, particularly concerning backward compatibility, scaling issues, and architectural alignment.
+*   For DetNet-related work, liaison efforts will be initiated between LSR and DetNet to ensure alignment on IGP's role and requirements for DetNet.

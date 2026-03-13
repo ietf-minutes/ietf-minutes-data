@@ -1,0 +1,61 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group met to discuss outstanding administrative items, future directions for C-DDL, and a new design proposal for CBOR Packed. A decision was made regarding an errata report for RFC 8610. The bulk of the session focused on a refined proposal for CBOR Packed, including a merged table for shared data, argument references, and a flexible function tag mechanism for custom processing. Future meeting plans and next steps for the CBOR Packed draft were also outlined.
+
+## Key Discussion Points
+
+### Administrative Issues
+
+*   **Errata Report 6575 on RFC 8610 (C-DDL)**: Carsten Bormann noted this errata, reported a year ago, concerns a missing internal cross-link in RFC 8610 regarding how a specific effect mentioned in Section 2.2.3 is supplied in Section 3.6. A previous mailing list discussion suggested "Hold for Document Update" as the resolution.
+
+### C-DDL Evolution
+
+*   **Syntax for Semantical Definitions**: Carsten Bormann highlighted the limitations of the current `hash 7.25` syntax in C-DDL, particularly when dealing with generics or computed tag numbers. This syntax, which uses additional information rather than the whole argument, has proven problematic in several drafts.
+*   **Wider Applicability of C-DDL**: A point was raised about C-DDL's potential use beyond CBOR and JSON, for example, in defining data models for HTTP Structured Field Values. Currently, C-DDL is approximately 90% suitable for this, but lacks a clear mechanism to base definitions on different generic data models. This suggests a need for C-DDL updates to support broader data model definitions.
+*   This topic is on the agenda for future updates to C-DDL, prompting the working group to consider if C-DDL should explicitly support defining data models for other formats or remain focused on CBOR/JSON applications.
+
+### CBOR Packed (Draft Discussion)
+
+Carsten Bormann presented a refined design for CBOR Packed, incorporating feedback from a previous meeting.
+
+*   **Design Overview**:
+    *   **Single Merged Table**: The design moves away from separate prefix and suffix tables to a single merged table. This allows using the same string for both prefixes and suffixes, using different numerical indices for distinction.
+    *   **Reference Types**:
+        *   **Sharing Reference**: A tag (e.g., Tag 51) that directly points to an item in the shared table, extracting it unchanged.
+        *   **Argument Reference**: A tag that includes both its own data (the argument) and a reference into the merged table. A bit indicates whether it's a prefix or suffix reference.
+    *   **Processing Model**: The accessor-in-place model (also known as pointer tracing) is the primary model for defining meaning during unpacking. The unpacker model can be described in terms of the accessor-in-place model.
+*   **Argument Processing**:
+    *   When both the reference and the "rump" (unpacked content) are strings, string concatenation occurs.
+    *   If both are arrays, array concatenation.
+    *   If both are maps, map merging.
+    *   **Function Process**: For all other cases, particularly when a tag is involved, a "function process" is invoked. This is a new extension mechanism.
+*   **Function Tags as Extension Point**:
+    *   A function tag on either the reference or rump value defines custom processing. A flag (the prefix vs. suffix bit) determines which of the two parameters (reference or rump) contains the function tag.
+    *   This allows defining application-specific processing beyond basic concatenation or merging.
+    *   A generic unpacker can identify unknown function tags and defer processing to the application.
+    *   **Example**: A "midfix" tag was presented, which takes an array, places the first element, then the referenced data, then the last element.
+*   **Extension Points**:
+    *   New table setup tags can be defined.
+    *   New function tags can be defined.
+    *   **Avoid New Reference Tags**: It was proposed that the set of reference tags themselves (e.g., Tag 51) should ideally not be extended to maintain forward compatibility for existing implementations.
+*   **Open Questions/Considerations**:
+    *   **Example Function Tag**: Should the CBOR Packed document include at least one concrete example function tag (like the "midfix" example) to encourage implementation?
+    *   **Error Handling**: Are there extension points needed for error handling?
+    *   **Tag 6 Ambiguity**: Current Tag 6 (major type 6) for sharing/argument references could become ambiguous if an integer argument is supplied to a function tag. A proposal was made to reserve another tag (e.g., Tag 224) as a reference tag to avoid this.
+    *   **Complexity/Profiling**: The need for profiles (e.g., "sharing-only" for pointer tracing vs. "function tag processing") and explicit tags to identify specific profiles was discussed.
+*   A sense of those present indicated no immediate objections to the proposed design, and further feedback was encouraged on the mailing list.
+
+## Decisions and Action Items
+
+*   **Errata 6575 on RFC 8610**: The working group's advice to the ADs is to close errata 6575 as "Hold for Document Update," with notes explaining the missing internal cross-link is resolved by existing content.
+    *   **Action**: Carsten Bormann will send an email to the ADs with this recommendation.
+*   **CBOR Packed Draft**: Carsten Bormann will integrate the discussed design changes into the CBOR Packed draft.
+    *   **Action**: Once a new revision of the CBOR Packed draft is available and internal WG comments are addressed, the chairs will forward it to the ADs for Working Group Last Call.
+
+## Next Steps
+
+*   The CBOR working group plans to hold a one-hour session at IETF 118 in Philadelphia. An agenda for this meeting will be developed over the coming month.
+*   The assumption is that the CBOR Packed document will have a completed reaction to working group last call comments before the I-D deadline for IETF 118, allowing for discussion at that meeting if needed.
+*   Carsten Bormann will post a message to `discus@ietf.org` to suggest improved sorting of Jabber users in the Medico interface.

@@ -1,0 +1,67 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE session covered updates and discussions on several key working group documents. Bernard Aboba presented an experimental sandbox for RTP over QUIC, highlighting observations on performance, latency, and resilience, and identifying several issues. Matthias Koch provided an update on the RTP over QUIC specification, including proposed changes and open issues related to ALPN usage, length fields in QUIC streams, and mixing streams and datagrams. Finally, Young Hwa presented the Green Metadata proposal for RTCP feedback messages, discussing recent revisions and requesting a call for adoption.
+
+## Key Discussion Points
+
+*   **Working Group Status:**
+    *   RFCs published: RFC 9474 (BBI) is in RFC Editor queue; Crypt-X and VVC are downloading.
+    *   Working Group Documents: Frameworking is awaiting revision. V3C call for adoption extended to October 31st. Game Suite over RTP call for adoption had low enthusiasm; an action was taken to follow up with authors.
+
+*   **RTP over QUIC (skip) Document Status (`draft-ietf-avtcore-rtp-over-quic`):**
+    *   Revision 2 was submitted, incorporating comments from Gen Art and Art Art reviews.
+    *   The draft continues to treat "skip" as an opaque standard.
+    *   The security considerations section, using boilerplate from RFC 8088, was deemed adequate by authors, with no changes made in response to reviewer comments.
+    *   Issues with XML version submission tools have been resolved.
+    *   A key issue is the formal process for reviewer sign-off; authors need to explicitly ping reviewers on the mailing list to confirm their comments have been addressed, to facilitate publication requests.
+
+*   **RTP over QUIC Sandbox (Bernard Aboba):**
+    *   **Motivation:** To explore, visualize, and experiment with RTP over QUIC transport behavior, using a modular JavaScript implementation based on Web Streams, Web Codecs, Web Transport, and Media Capture Transform APIs.
+    *   **Functionality:** Allows varying encoding parameters (codec, bitrate, resolution), visual comparison of local vs. remote video, and diagnostic metrics (RTCP stats, RTT vs. frame length).
+    *   **Observations:**
+        *   **Video Quality:** Good quality is possible at ~1Mbps with high-quality cameras on capable devices.
+        *   **CPU Utilization:** Complex codecs (e.g., AV1 at higher resolutions) can lead to 100% CPU utilization on the encode worker, potentially impacting latency.
+        *   **Resilience:** The combination of QUIC's retransmission capabilities and SVC's temporal scalability (partial reliability) provides good resilience, resulting in very low loss in experiments.
+        *   **Latency:** Observed glass-to-glass latency was considerably higher than measured frame RTTs, especially for large I-frames (up to 200KB). P-frames were tightly clustered around RTT min, but I-frames often showed RTTs multiple times higher.
+        *   **Hypothesis for I-frame Latency:** Due to small P-frames not effectively opening the congestion window, the larger I-frames may be sent over multiple RTTs. Probing mechanisms could help.
+        *   **Impact of CPU:** High CPU utilization might be a contributing factor to increased glass-to-glass latency.
+    *   **Filed Issues and Discussions:**
+        *   **Partial Reliability:** Requires forwarder support for `RESET_STREAM` frames. Receivers would benefit from a length field to identify incomplete frames, as 16-bit fields might be insufficient for large I-frames.
+        *   **Multiplexing Data and Media:** Sending signaling and media over the same QUIC connection simplifies association and avoids a "connection explosion."
+        *   **RTP Topologies:** Translators between RTP over QUIC and RTP over UDP would require codec-specific knowledge for packetization, which is difficult for opaque SFrame payloads.
+    *   **Discussion on Datagrams vs. Streams:** Bernard noted that for P-frames, streams seemed to perform well, clustered around RTT min, questioning the necessity of datagrams for all frames. Peter emphasized that congestion control issues are similar for both streams and datagrams. Jonathan raised whether there's a substantive difference between datagrams and <MTU streams.
+
+*   **RTP over QUIC Specification (`draft-ietf-avtcore-rtp-over-quic-04`) (Matthias Koch):**
+    *   **Updates:** Clarified use of unidirectional streams, required immediate stream closure after a packet, clarified flow ID usage for datagram retransmissions, and added a paragraph on exposing bandwidth estimation.
+    *   **Open Pull Requests:** For topology, stream concurrency, and expressing congestion control requirements.
+    *   **Issues for Discussion:**
+        *   **ALPN Usage:** Discussed `RTP-over-QUIC` (RTP/RTCP only) versus `RTP-mux-QUIC` (RTP/RTCP + other protocols). Bernard advocated for `RTP-mux-QUIC` to allow small data exchanges without requiring new QUIC connections, citing Webrtc data channel usage. Jurgen expressed preference for a narrow problem space first to avoid complexity.
+        *   **Length Field in QUIC Streams:** Currently, stream closure indicates packet boundaries. A proposal to add an explicit length field was discussed to aid buffer allocation and handling incomplete frames. A variable-length integer was suggested for the length field to support large frames. Harold cautioned against issues with length fields based on HTTP/0.9 to 1.1 experience.
+        *   **Mixing Streams and Datagrams:** The current draft only allows choosing one or the other. Use cases for mixing (e.g., I-frames on streams, P-frames on datagrams) were presented. While synchronization could be an issue (e.g., I-frame delayed), this is solvable. A general sense of those present indicated support for mixing streams and datagrams.
+
+*   **Green Metadata Proposal (`draft-ietf-avtcore-rtcp-gmd`) (Young Hwa Song):**
+    *   **Purpose:** Specifies a new RTCP payload format for spatial and temporal resolution request and notification messages to reduce decoder/display power consumption, based on an ISO/IEC standard.
+    *   **Changes in Revision 01:** Assigned new FMT values (11 and 12), prohibited zero values for spatial resolution or frame rate, removed redundant text, and corrected typos.
+    *   **Discussion:**
+        *   Interaction with SVC: The requested resolution serves as an input to the encoder, which can then decide how to adapt (e.g., adjust layers, change top resolution).
+        *   Additional messages: Co-authors mentioned potential for future messages beyond the current temporal/spatial resolution.
+        *   Timing for adoption: Given a recent MPEG meeting and potential for further messages, there was discussion on whether to adopt now or wait.
+
+## Decisions and Action Items
+
+*   **Decision:** A call for adoption will be initiated for `draft-ietf-avtcore-rtcp-gmd-01` as it currently stands. Any additional Green Metadata messages should be proposed in a separate draft.
+*   **Action Item (Jonathan):** Follow up with Cullen Jennings regarding the status of Game Suite over RTP.
+*   **Action Item (Dan Wing):** Directly ping Gen Art and Art Art reviewers to confirm their satisfaction with responses to comments on the `draft-ietf-avtcore-rtp-over-quic` document.
+*   **Action Item (Matthias Koch):** Prepare pull requests for the RTP over QUIC specification to incorporate an explicit length field (using a variable-length integer) and to allow mixing of QUIC streams and datagrams within an RTP stream.
+*   **Action Item (Matthias Koch):** Continue discussion on the ALPN usage for RTP over QUIC within the relevant open issue.
+*   **Action Item (Peter Thatcher):** Consider drafting a strawman proposal for a new RTP framing that addresses modern requirements, for discussion in a broader forum (e.g., a BoF or interaction with MUX WG).
+*   **Action Item (Bernard Aboba):** Explore how the current RTP over QUIC design could be made forward-compatible with potential future RTP framing advancements.
+
+## Next Steps
+
+*   The AVTCORE chairs will initiate a call for adoption for `draft-ietf-avtcore-rtcp-gmd-01`.
+*   Continued work and discussion on the RTP over QUIC specification, particularly regarding ALPN usage, the inclusion of a length field, and formalizing the ability to mix streams and datagrams.
+*   Follow-up regarding the Game Suite over RTP draft.
+*   Consideration of a side meeting or BoF at a future IETF to discuss broader, longer-term RTP framing and design, potentially engaging with the recently chartered MUX working group.

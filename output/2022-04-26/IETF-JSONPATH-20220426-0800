@@ -1,0 +1,56 @@
+# [JSONPATH](../wg/jsonpath.html)
+
+## Summary
+
+The JSONPATH Working Group met to discuss the current draft status and outstanding issues, with a focus on preparing for Working Group Last Call (WGLC) and subsequent IETF Last Call. Key discussions included the adoption of i-regex, clarification of comparison behavior, the role of parentheses and boolean literals in filter expressions, refinement of security considerations, and the approach to handling non-standard extensions.
+
+## Key Discussion Points
+
+*   **Draft Status and WGLC Timeline:** The number of open issues is decreasing, and the working group aims to initiate Working Group Last Call (WGLC) in the near future, followed by IETF Last Call before the next IETF meeting in late July.
+*   **Adoption of i-regex:** The working group confirmed consensus on adopting the i-regex specification as part of JSONPath. There was no significant pushback to moving the draft from its current location to the JSONPATH Working Group's GitHub repository.
+*   **Comparison Normalization:** The specification currently lacks explicit text regarding character-by-character comparison in filter expressions and member name selection.
+    *   **Decision:** The spec should be updated to explicitly state that no character normalization is performed during comparisons.
+    *   **Action Item:** Glenn to create a Pull Request (PR) to add the necessary text.
+*   **Parentheses in Filter Expressions:** A discussion ensued regarding whether parentheses should be *required* in filter expressions (e.g., `[?(<expression>)]`) or remain optional.
+    *   Arguments for requiring them cited improved readability and potential for greater interoperability with existing implementations, many of which (including those inspired by the original blog post) already use or require them.
+    *   Arguments for keeping them optional focused on language generality and the parser's ability to handle them.
+    *   A sense of those present indicated that if a significant number of existing implementations *require* parentheses, the spec should align for better forward compatibility and interoperability.
+    *   **Decision:** The working group will investigate the behavior of existing implementations using the Bergmann comparison suite.
+    *   **Action Item:** Glenn to add test cases to the Bergmann comparison suite to determine how implementations handle filter expressions without parentheses and report the results.
+*   **Boolean Literals (`true`/`false`) in Filter Expressions:** The use of boolean literals directly as expressions within filters (e.g., `[?(true)]`) was debated.
+    *   The primary practical use case identified was for debugging, allowing parts of complex conditions to be temporarily replaced with `true` or `false`. However, it was noted that `1=1` or `1=0` could serve a similar purpose.
+    *   Existing implementations show varied support for `true`/`false` directly as predicates.
+    *   **Decision:** Boolean literals (`true`, `false`) will *not* be allowed as direct boolean expressions in filter contexts. They remain valid for comparisons (e.g., `key == true`).
+    *   **Action Item:** A clarifying note will be added to the specification to explain the domain separation between JSON values (which `true`/`false` are) and the boolean expressions used within JSONPath filters.
+*   **Security Considerations (Section 5.1 & 5.2):**
+    *   **5.1 (Code Injection/`eval`):** The need for the existing warning against using `eval`-like mechanisms for attacker-controlled JSONPath expressions was affirmed, despite some initial questions about its clarity and necessity for "serious programmers." The warning serves to prevent dangerous implementation practices by those less familiar with such risks.
+        *   **Decision:** The text in Section 5.1 will be improved for clarity to explicitly warn against treating JSONPath expressions as executable code in an underlying scripting engine.
+    *   **5.2 (Non-deterministic JSON):** The importance of warning against non-deterministic behavior arising from malformed JSON (e.g., duplicate keys, as addressed by i-json) when JSONPath is used for security policies was confirmed.
+        *   **Decision:** The text in Section 5.2 will be refined, potentially by replacing specific examples with a more general reference to i-json as a well-known source of inconsistent behavior.
+*   **i-regexp and Non-Standard Expressions:** Discussion on how `i-regexp` (and by extension, JSONPath) should handle expressions that fall outside its defined grammar (e.g., PCRE-specific features).
+    *   There was a consensus against mandating strict rejection to preserve backward compatibility for implementations that might rely on broader regex engines.
+    *   The concept of "checking" versus "non-checking" implementations was proposed. A "checking" implementation would validate input against the `i-regexp` grammar and report deviations, offering better interoperability and security.
+    *   **Decision:** For both `i-regexp` and JSONPath, the specifications will define "checking" and "non-checking" implementation classes. The benefits of "checking" implementations (e.g., improved interoperability and security) will be explicitly explained to guide implementers and users. This approach provides flexibility while encouraging robust behavior.
+*   **Functions and Extension Points:**
+    *   The addition of functions like `length` and `index` was discussed. These are not planned for JSONPath 1.0, partly due to the complexities of defining `length` consistently across different data types and the need to reconcile changes to the processing model for `index`.
+    *   The value of defining explicit *extension points* in the JSONPath 1.0 specification, even without including specific functions, was acknowledged. This would allow for future additions while preventing divergence in how extensions are handled. However, no one volunteered to produce a PR for this for 1.0.
+
+## Decisions and Action Items
+
+*   **Decision:** Declare consensus on adopting i-regex.
+*   **Decision:** Target IETF Last Call for JSONPath 1.0 before the end of July.
+*   **Decision:** Add text to the spec clarifying no character normalization in comparisons.
+    *   **Action Item:** Glenn to create PR for comparison normalization text.
+*   **Decision:** Test existing implementations via the Bergmann comparison suite regarding parentheses in filter expressions.
+    *   **Action Item:** Glenn to add test cases to the Bergmann suite for filter expressions without parentheses and report results.
+*   **Decision:** Do *not* allow boolean literals (`true`, `false`) to be used directly as boolean expressions in filters.
+    *   **Action Item:** Add a note to the spec explaining the domain separation between JSON values and boolean expressions in JSONPath.
+*   **Decision:** Keep the security warning against dangerous implementation practices (e.g., code injection/`eval`), but improve the text for clarity (Section 5.1).
+*   **Decision:** Keep the security warning against non-deterministic JSON behavior, and refine its text, potentially referencing i-json (Section 5.2).
+*   **Decision:** Define "checking" and "non-checking" implementation classes for both `i-regexp` and JSONPath, explaining the benefits of "checking" implementations (interoperability, security).
+*   **Decision:** Functions like `length` and `index` are not targeted for JSONPath 1.0. The value of defining generic extension points in 1.0 is noted, but no PR is currently planned for this.
+
+## Next Steps
+
+*   Complete the action items related to updating the specification text and conducting implementation testing.
+*   **Action Item:** James to send out a Doodle poll for the next interim meeting, tentatively aiming for the week of June 13th.

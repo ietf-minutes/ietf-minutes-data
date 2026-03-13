@@ -1,0 +1,104 @@
+# [MLS](../wg/mls.html)
+
+## Summary
+
+The MLS Working Group met to discuss the status of the MLS Protocol and Architecture documents, which are approaching IETF last call. Significant progress was reported on both documents, with several pull requests (PRs) reviewed and merged. Key technical discussions revolved around IANA registry definitions, terminology for message contents, security analysis of sender data protection, and refinements to the handling of unmerged leaves in the tree. The group also discussed the MLS Extensions document, specifically concerning `hpke` key reuse in targeted messages and the inclusion of a content type advertisement extension. The Federation document was briefly addressed, with a plan to resubmit a keep-alive version and continue offline discussions on privacy considerations.
+
+## Key Discussion Points
+
+*   **Architecture Document Status**:
+    *   The document has no open issues, following recent merges addressing Area Director (AD) review comments, particularly on multi-device privacy (PR 169).
+    *   Editorial changes and clarifications were noted as beneficial for readability.
+    *   The editor plans to conduct a full pass for duplication and minor fixes, welcoming pull requests for anything controversial.
+
+*   **Protocol Document - IANA Registries (PR 841)**:
+    *   Introduced `signature_label` and `exporter_label` registries, mirroring TLS exporter labels.
+    *   Discussion on including a "private use" provision. A sense of those present indicated that given the nature of string values (not resource-constrained like integers), it was better to omit a specific private label prefix to avoid future conflicts when private items become standard.
+    *   Initial contents for the `exporter_label` registry were discussed. It was agreed to register it as an empty table with headers for now, as specific initial contents can be added later if needed in the base specification.
+    *   A typo in the PR was noted for correction.
+
+*   **Protocol Document - Terminology (PR 839)**:
+    *   Discussed renaming structs with "MLS" prefixes for clarity.
+    *   Specific focus on `MLSGroupContent`. Suggestions included `message_contents` (Conrad) and `frame_content` (Benjamin). A slight preference for `frame_content` was noted, and the editor proposed `framed_content` (with a 'd').
+    *   Rough consensus was reached to retain `public_message` and `private_message` over `signed_message` and `encrypted_message` due to their existing ambiguity and potential for future flexibility.
+    *   Action was taken to update `content_aad` for clarity.
+
+*   **Protocol Document - Sender Data Protection (PR 836)**:
+    *   This PR adds prose to explain the security of the sender data protection scheme, which derives keys/nonces from a sample of ciphertext.
+    *   The scheme is inspired by Quick and relies on the primary Associated Authenticated Data (AAD) being indistinguishable from random data.
+    *   The explanation drew an analogy to the `hn1` construction analyzed in a paper by Bellare et al.
+    *   The changes were reviewed and deemed clear, with the construction considered to be at least as strong as the analyzed scheme.
+
+*   **Protocol Document - Unmerged Leaves Optimization (PR 838)**:
+    *   This PR proposed an optimization for removing members by only removing their leaf bit from unmerged nodes, rather than blanking the parent node, if the removed member was marked as unmerged.
+    *   Discussion highlighted the narrow scope of the optimization (only for new joiners who haven't updated yet) and the potential for increased implementation complexity and security concerns (e.g., malicious adders creating unmerged leaves where the removed member actually knows the private key).
+    *   The trade-off of small optimization benefit versus increased complexity and security considerations led to a consensus against merging this PR into the core protocol. It was suggested it could be considered as an extension if a real problem arises.
+
+*   **Protocol Document - Unmerged Leaves Validation (PR 837)**:
+    *   This PR adds stricter validation rules for `unmerged_leaves` to ensure correctness and prevent maliciously crafted trees.
+    *   The checks ensure downward continuity of the unmerged property across parent hash chains.
+    *   It was agreed that these checks are not overly expensive and improve correctness without harming security.
+
+*   **Extensions Document - Targeted Messages (PR from Raphael/Marta)**:
+    *   A concern was raised by Marta and Raphael about reusing `leaf_hpke` keys for targeted messages, as it introduces two different contexts (path secrets and targeted messages) for the same key.
+    *   While the current design works due to `psk` handling in `hpke`, it was described as a subtle argument that could be unintentionally broken by future extensions.
+    *   Suggestions included using a separate key for targeted messages or explicitly using the `info` field in `hpke` encryption for domain separation.
+    *   A sense of those present leaned towards adding more explicit context/domain separation to the `hpke` encryption in the core protocol, similar to how signature labels are used. This change is considered low cost and improves defense in depth.
+    *   The idea of a new extension for "send to group from external" was briefly discussed, noting authentication challenges.
+
+*   **Extensions Document - Content Type Advertisement (PR from Rowan)**:
+    *   Discussion on whether Rowan's content type advertisement extension should be a standalone document or merged into the main MLS Extensions document.
+    *   Concerns were raised about the varying maturity and complexity of extensions within a single document, and the eventual need to publish the extensions document.
+    *   Rowan emphasized the importance of this extension for applications like MIMI and its stability.
+    *   A compromise was reached to merge it into the current extensions document for now, with the understanding that it could be split into a standalone document later if needed (e.g., if MIMI requires it published sooner).
+    *   The structure of security considerations within the extensions document was also discussed, with a suggestion to have a main section with subsections for each individual extension.
+
+*   **Federation Document**:
+    *   The document had expired. Benjamin offered to resubmit a "keep-alive" version without content modifications.
+    *   Benjamin raised a critical point about the lack of specific guidance on privacy for delivery and authentication services, particularly in the context of Federation and its interaction with other specifications like MIMI.
+    *   Discussion ensued on whether this privacy guidance should be a standalone Best Current Practice (BCP) document, part of MIMI, or integrated into the Federation document. Raphael suggested a BCP for best privacy practices, which Federation could then refer to and potentially relax.
+    *   It was decided that Benjamin would resubmit the keep-alive version, and further discussion on the placement and scope of privacy considerations would continue offline.
+
+## Decisions and Action Items
+
+*   **Architecture Document**:
+    *   **Decision**: Benjamin to perform a full editorial pass, focusing on duplications and minor fixes. Controversial changes will be proposed as PRs.
+    *   **Action Item**: Benjamin to publish a new version of the architecture document (after the full pass, potentially waiting for the protocol document).
+*   **Protocol Document - IANA Registries (PR 841)**:
+    *   **Decision**: Remove the "private use" provision from the `signature_label` and `exporter_label` registries.
+    *   **Decision**: Define the `exporter_label` registry with headers but initially empty contents.
+    *   **Action Item**: Richard to make the discussed tweaks and merge PR 841.
+*   **Protocol Document - Terminology (PR 839)**:
+    *   **Decision**: Rename `MLSGroupContent` to `framed_content`.
+    *   **Decision**: Retain `public_message` and `private_message` terminology.
+    *   **Action Item**: Richard to update `content_aad` for clarity, apply the terminology changes, and merge PR 839.
+*   **Protocol Document - Sender Data Protection (PR 836)**:
+    *   **Decision**: Merge PR 836 as the explanation provides clear security analysis.
+    *   **Action Item**: Richard to merge PR 836.
+*   **Protocol Document - Unmerged Leaves Optimization (PR 838)**:
+    *   **Decision**: Do not merge PR 838 into the core protocol due to complexity/security concerns and limited benefits.
+*   **Protocol Document - Unmerged Leaves Validation (PR 837)**:
+    *   **Decision**: Merge PR 837 to add stricter validation rules for `unmerged_leaves`.
+    *   **Action Item**: Richard to merge PR 837.
+*   **Extensions Document - Targeted Messages**:
+    *   **Decision**: Richard to write a PR to add explicit context/domain separation (e.g., using the `info` field) to `hpke` encryption in the core protocol to prevent key reuse issues.
+    *   **Action Item**: Richard to draft the PR for `hpke` context binding.
+*   **Extensions Document - Content Type Advertisement**:
+    *   **Decision**: Merge Rowan's content type advertisement PR into the MLS Extensions document.
+    *   **Action Item**: Rowan to resolve conflicts and ensure formatting for merging the content type advertisement PR.
+    *   **Decision**: Structure the Extensions document's security considerations section with subsections for each extension (e.g., 6.1 for Extension A, 6.2 for Extension B).
+*   **Federation Document**:
+    *   **Action Item**: Benjamin to resubmit a "keep-alive" version of the Federation document (without content modification) to prevent expiration.
+    *   **Action Item**: Benjamin, Raphael, and others interested to continue offline discussions regarding the placement and scope of privacy considerations for delivery/authentication services (i.e., whether it belongs in Federation, MIMI, or a separate BCP).
+
+## Next Steps
+
+*   **Protocol and Architecture Documents**:
+    *   Editors (Richard and Benjamin) to complete final minor edits and publish new versions.
+    *   The chairs will then trigger the IETF last call, which is anticipated to last 2-4 weeks due to holidays.
+    *   Following IETF last call, directorate reviews will commence. The group is encouraged to address any comments or "discusses" promptly to streamline the process towards ISG review and RFC publication, aiming for RFC numbers in Q1 2023.
+*   **Extensions Document**:
+    *   Continue work on merged extensions and address any security consideration formatting.
+    *   Await new extension proposals (e.g., Joel's potential new extension).
+*   **Federation Document**:
+    *   Further offline discussion on privacy aspects.

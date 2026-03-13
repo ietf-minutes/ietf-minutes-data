@@ -1,0 +1,115 @@
+# [RTGWG](../wg/rtgwg.html)
+
+## Summary
+
+This RTGWG interim meeting focused on "Semantic Routing." The session aimed to provide a refresher on semantic routing concepts, discuss potential problems it aims to solve, explore architectural solutions, and present technology approaches. Key discussions revolved around defining semantic routing, its use cases (especially in intelligent medical devices), differentiating it from existing QoS and application-aware networking (APN) mechanisms, and addressing concerns related to its design, deployment, manageability, privacy, and security. Two "straw man" protocol approaches, SRv6 Network Programming and Extensible Inband Processing (EIP), were presented to illustrate potential technical solutions. The meeting concluded with a call for further discussion on the path forward, emphasizing the need for a coherent proposal.
+
+## Key Discussion Points
+
+### 1. Introduction to Semantic Routing (Dan Lopez)
+
+*   **Motivation**: Semantic routing is proposed to augment existing IP architecture to meet emerging requirements for future internet use cases.
+*   **Use Cases**: Focused on intelligent medical devices (e.g., continuous glucose monitors, EKG, MRI, field hospitals). These devices demand diverse network requirements such as always-on connectivity, low latency, high bandwidth for imaging, and robust operation in ad-hoc environments.
+*   **Core Elements**: Involves three main elements: routing/path computation, packet marking, and forwarding/dropping.
+*   **Definition**: It is not an overlay technology, nor is it a new traffic engineering technique. It aims to use existing or new information in the packet header to determine how a packet should be processed and routed.
+*   **Architectural Approach**: Augments, rather than replaces, current IP routing. Semantic elements can be applied to IP addresses.
+*   **Origins**: The topic originated in the IRTF and garnered significant interest when brought to the RTGWG.
+*   **Discussion**:
+    *   **Linda (Question)**: Asked about the specific semantic information carried for medical devices (e.g., patient name, disease name). Dan clarified that it's about prioritizing traffic based on critical alarms (e.g., glucose levels, EKG events) and managing bandwidth in resource-constrained environments like field hospitals.
+    *   **Hisham (Question)**: Inquired about using payload information (e.g., RTP for video encoding) for semantic routing. Dan acknowledged the possibility but highlighted concerns regarding encryption and privacy with payload inspection, stating it hasn't been a focus.
+    *   **Ac (Question)**: Drew parallels to Application-Aware Networking (APN) and questioned how to prevent "gaming" the system if critical applications are standardized. He also asked about commercial models and billing. Dan deferred detailed answers but suggested "trust but verify" for gaming. Adrian Farrel, as an ex-APN chair, clarified that APN primarily focused on per-hop behaviors, not influencing overall forwarding or routing paths, which distinguishes it from semantic routing's objectives.
+
+### 2. Service Provider Perspective on QoS (Phil Eardley)
+
+*   **Understanding Semantic Routing**: Viewed as differentiated forwarding behavior and differentiated paths, both intra- and inter-domain, potentially hop-by-hop and packet-by-packet.
+*   **QoS Benefits**: Provides a "time advantage" for applications that are currently at the edge of feasibility. This advantage diminishes as bandwidth grows.
+*   **QoS Limitations**: QoS re-shares existing capacity, it does not create new capacity. It can also introduce overhead.
+*   **Improvements**: QoS mechanisms can improve latency (e.g., AQM, ECN, L4S), reliability, energy efficiency, security (e.g., MPLS/VPNs), multipath utilization, and enable automation.
+*   **Commercial Alignment**: Emphasized that QoS mechanisms must align with a commercial model to be successful (e.g., wholesale QoS, business services paying for differentiated treatment). Challenges exist for individual consumer services.
+*   **Cautions**: Introducing QoS can increase the risk of denial of service, add complexity, and poses challenges for incremental deployability. Incentives must be aligned.
+*   **Questions for Semantic Routing**:
+    *   Why is semantic routing better than simply buying more bandwidth?
+    *   Who "loses" capacity when capacity is re-shared, and what becomes harder?
+    *   Who pays for semantic routing, and how does it align with a commercial model?
+*   **Discussion**:
+    *   **Adrian Farrel (Comment)**: Quoted Peter Löthberg, saying "QoS is about deciding whose packets you're going to drop," aligning with the idea of re-sharing capacity. Asked about pricing models for end-users for gaming vs. streaming services (Phil indicated this is hard for consumers, easier for businesses).
+    *   **Linda (Question)**: Asked about the difference between semantic routing QoS and traditional MPLS QoS. Phil stated this is a key question for semantic routing proponents to answer.
+    *   **Greg (Question)**: Asked about the relationship between semantic routing and Deterministic Networking (DetNet) for time-critical applications. Adrian suggested DetNet might be a "stovepipe solution" for a slice of the problem, and the interaction needs consideration.
+
+### 3. Concerns for Design and Deployment (Adrian Farrel)
+
+*   **Overarching Concern**: The internet routing system is fragile, and historically, design consequences and testing have been insufficient.
+*   **Specific Concerns**:
+    *   **Backward Compatibility**: New ideas must coexist with existing techniques and not break the internet. Evolution, not replacement (e.g., for IPv6).
+    *   **Deployability**: Firmware updates are challenging; walled gardens solve niche problems but multiply vendor implementations and create interoperability issues. Aim for wider deployability.
+    *   **General Utility**: Avoid proliferation of niche solutions. Address interconnectivity and interoperability. Consider what happens when packets leave a semantic domain.
+    *   **Future-Proofing**: Solutions should be extensible by design, leaving space in encodings for future features with forward/backward compatibility.
+    *   **Scalability and Stability**: Extensible encapsulation can increase header size (packet tax, parsing difficulty). Distributed routing protocols must manage flooding of status information (latency, link state) without compromising stability. Nodes need to converge on information.
+    *   **Manageability (OAM)**: Semantic routing increases network complexity, requiring more robust OAM. Dynamic behavior makes packet tracing difficult.
+    *   **Privacy and Security**: Semantic routing may increase the attack surface. Crucially, it must not allow determination of user identity or application being run, beyond what is already possible. Net neutrality and regulatory implications must be considered, with no trade-off between routing/forwarding information and privacy.
+*   **Question**: What is the path forward for this work: discussion, architecture, protocol, or abandonment?
+*   **Discussion**:
+    *   **Greg (Comment)**: Emphasized the importance of OAM for time-critical applications, noting the challenge in tracing paths.
+    *   **Linda (Question)**: Clarified that semantic routing means forwarding based on additional information in the packet, not solely destination. Adrian confirmed it's based on information in the packet, enhancing the existing destination field.
+
+### 4. Architectural Approaches (Dirk Kutscher)
+
+*   **Key Architectural Questions**: Communication semantics (beyond best-effort), abstractions (e.g., semantic header), architecture components/interactions, deployment strategies, and the role of SDOs like the IETF.
+*   **Evolution of Routing Abstractions**: From original IP locator-based addressing to "evolved IP routing" (using various packet header fields), moving towards an explicit "semantic header" for programmatic forwarding actions.
+*   **Proposed Architecture**: A high-level view integrating intent-based networking. Business logic provides an "intent" to an Intent Service Manager, mapped via an ontology to a "communication semantic." This feeds an orchestration engine, which, with policy, monitoring, and prediction, informs semantic routing (path information) and semantic forwarding (configuring actions in network nodes). Network topology, capabilities, and state are disseminated and accessed.
+*   **Deployment Considerations**:
+    *   **Overlay/Underlay/Inlay**: Impacts technical choices (e.g., extension headers for shim overlay vs. segregating address space for underlay).
+    *   **Routing Protocol Impact**: Integration with existing protocols or designing overlay routing.
+    *   **Shipping in the Night**: Reconciling rollout speed with system stability.
+    *   **Limited vs. Multi-Domain**: Ensuring secure interconnection and avoiding "semantic spillover" into unintended domains (e.g., industrial networking, vehicular communication).
+    *   **Programmatic Services**: Leveraging programmatic execution (e.g., via higher-level intent-based systems) for semantic enhancements.
+    *   **Economic Incentives**: Faster rollout over IPv6 (less burden on underlay changes), maintaining business stability.
+*   **IETF Role**: Define an extensible architectural framework with components, interfaces, and interactions. Establish interoperable communication semantics (purpose of communication, not just use cases). Map service descriptions for programmatic realization. Define abstractions for addressing, encodings, state distributions, and primitives.
+
+### 5. Proposed Protocol Approaches (Straw Men)
+
+#### a. SRv6 Network Programming (Suresh Krishnan)
+
+*   **Concept**: SRv6 is presented as a toolkit to augment IPv6 packets with additional instructions (Segment Identifiers - SIDs) on how to process them through the network.
+*   **SRv6 SID Structure**: Consists of a Locator (IPv6 prefix for routing to the SR node) and a Function (instruction for the node, e.g., shortest path, cross-connect).
+*   **Network Program**: A list of SRv6 SIDs carried in a Segment Routing Header (SRH) within an IPv6 packet. The SRH includes a "segments left" pointer to track processing.
+*   **Additional Features**: A "tag" field for grouping packets to receive similar policy/QoS treatment. A metadata TLV for extensible software-based functions.
+*   **Hardware/Software Optimization**: SRv6 SIDs are optimized for high-performance hardware processing, while metadata TLVs can handle more extensible, software-based network functions.
+*   **Deployment**: Encapsulates any payload packet (IPv4, IPv6, L2) inside an IPv6 header with an SRH. The original packet remains unmodified upon exiting the SR domain. Behaviors are defined in an IANA registry.
+*   **Relevance to Semantic Routing**: Addresses packet marking and forwarding information directly in the packet, aligning with semantic routing principles.
+*   **Discussion**:
+    *   **Kozak (Question)**: Asked if SRv6 is semantic routing or a tool for it, and what additional features are needed for semantic routing on top of SRv6. Suresh clarified it's a tool, and missing features can be defined as new behaviors.
+    *   **Geng (Question)**: Questioned if SRv6, with its domain-specific ingress/egress, isn't an overlay, contradicting a statement in Dan's presentation. Suresh argued it's more like an underlay, similar to MPLS label switching, as endpoints are unaware of the internal processing.
+
+#### b. Extensible Inband Processing (EIP) (Stefano Giordano)
+
+*   **Concept**: A generic and extensible mechanism to carry information in IPv6 packet headers, allowing network nodes to read, write, and make decisions based on this information.
+*   **Use Cases**: Proposed for semantic routing, advanced monitoring (telemetry), Deterministic Networking, and network slicing.
+*   **Implementation**: Can be carried either as an IPv6 Hop-by-Hop (HbH) option or as a TLV within the SRH (extending SRv6).
+*   **Motivation**: To overcome practical barriers and scalability issues with IPv6 extension headers. A single EIP header with many information elements (IEs) is preferred over numerous single-purpose HbH options.
+*   **Scalability**: While HbH options have limited space (effectively 32 types), EIP IEs offer a 24-bit code point space (16 million types), reducing standardization pressure. Common IEs (e.g., time stamping, authentication) can be reused across use cases.
+*   **Scope & Security**: EIP is intended for use in limited domains. Security uses an HMAC-based approach for authenticating information, similar to SRv6.
+*   **Semantic Routing Use Case (Geotagging)**: Demonstrated how a geotagging IE could carry geographical coordinates (source/destination) within the EIP header, potentially for routing in scenarios like Leo satellite networks. Encoding details for different precision levels were presented.
+*   **Prototype**: A Linux-based prototype using eBPF, including a packet generator, detector, and EIP router, supports experiments with geotagging and advanced monitoring (end-to-end delay, path tracing).
+*   **Discussion**:
+    *   **Greg (Question)**: Inquired about the amount of information collected for path tracing within the data packet (in-band telemetry) and its efficiency. Stefano confirmed it's in-band and seeks to reuse efficient encoding from SR path tracing. Greg then questioned the importance of in-band vs. out-of-band telemetry, suggesting iOAM (In-situ OAM) as an alternative. Stefano argued in-band can be more efficient for data plane processing (e.g., for sketches/reduced info) and that EIP offers a more general framework than iOAM, which is specific to monitoring. Greg countered that iOAM's extensible data types could accommodate geographic coordinates and supports hybrid telemetry collection. (The chairs noted this was becoming an oam-specific discussion, encouraging the two to talk offline).
+
+### 6. Final Discussion and Wrap-up
+
+*   Adrian reiterated key open questions: Is semantic routing worthwhile? Are there imminent applications and a business case? Can existing toolkits solve the problems? Should we pursue point solutions or a generic approach? What are the risks and benefits?
+*   **Roland (Chat Comment)**: Expressed concern about putting too much state/knowledge into the network, potentially making the architecture more fragile.
+*   **Geng (Comment)**: Noted a potential disconnect between the multi-modality, synchronization, and control plane focus of 5G/XR/VR use cases (as per 3GPP XRM) and semantic routing's emphasis on user plane, per-packet processing.
+*   **Alexey (Comment)**: Stated that the core question is "what semantic" identifies the routing. If it departs from the topological semantics of IP addresses, it represents a fundamental architectural change, not just a detail of implementation. Overloading identifier space is an architectural change.
+*   **Luis (Comment)**: Suggested applications requiring contextual information would benefit from semantic routing.
+*   **Jeff (Chair Comment)**: Advised following MPLS-related zero developments and finding a balance between control plane (which can be costly) and data plane (forklift upgrades, low success rate) approaches. He noted ongoing, unpublished work on "flattened semantics" to enable functionality on white boxes.
+
+## Decisions and Action Items
+
+*   No formal decisions were made regarding the adoption of semantic routing or specific protocol work.
+*   **Action Item**: The chairs (Yunjin and Jeff) will work with the ADs to assess the presentations, the expressed interest, and the technical discussions.
+*   **Action Item**: Adrian Farrel and his supporters are tasked with developing a coherent proposal for the next steps, based on the perceived interest and potential of semantic routing within RTGWG.
+
+## Next Steps
+
+*   The RTGWG chairs and ADs will evaluate the outcomes of this interim meeting.
+*   A proposal for future work, including potential directions or further discussion, will be drafted and presented to the working group.

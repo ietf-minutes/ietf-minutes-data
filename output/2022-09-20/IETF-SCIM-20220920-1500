@@ -1,0 +1,67 @@
+# [SCIM](../wg/scim.html)
+
+## Summary
+
+The SCIM Working Group session included discussions on several drafts and core SCIM concepts. Pamela D. outlined ambiguities in the `externalId` definition and usage across different provisioning domains, leading to a discussion on its practical implementation and utility. Matt and Danny S. presented an update on their draft for cursor-based pagination, emphasizing its necessity for interoperability with underlying data systems and addressing concerns about denial-of-service and state management. Phil H. provided an update on the SCIM profile for security event tokens, highlighting its alignment with the OpenID Shared Signals framework and the design for client-side recovery. Danny S. also presented drafts on roles and entitlements and referential values, both aimed at improving the discoverability of acceptable attribute values for SCIM clients. Action items were identified for several drafts to continue progress on the mailing list.
+
+## Key Discussion Points
+
+*   **Clarifying `externalId` Usage (Pamela D.)**
+    *   Pamela raised a question regarding the definition and treatment of `externalId`, specifically when a client in a *separate* provisioning domain accesses a resource initially created by another client. The specification defines `externalId` as relative and scoped to a given provisioning domain, leading to ambiguity on what `externalId` is returned to a new client.
+    *   **Phil H.** clarified that the `externalId` contract is between the client and server that set it. Implementers have flexibility: some may bind it to the client credential, others to the entire object. The specification was intentionally silent on this to allow implementer choice. The SCIM URI and permanent identifier are the guaranteed stable references.
+    *   **Matt** noted that in his experience, `externalId` is not often used due to its complexity and limited utility compared to server-allocated IDs, which clients remember.
+    *   **Danny S.** shared that `externalId` is leveraged by larger enterprises, particularly for IDP migrations, as a fail-safe mechanism for identifying or matching objects when other "friendly names" (like email/username) might change. He confirmed he hasn't seen implementations returning different `externalId`s per client.
+    *   **Vetting** mentioned use cases where user profiles are populated from multiple data sources, each using different `externalId`s, which are then mapped externally.
+    *   **Danny M.** stated that in their internal organization, a unique ID was always used, which was shared across various systems (IDP, HR) within a single ecosystem.
+    *   A sense of those present indicated that clarifying and documenting the common enterprise IDP and migration use cases for `externalId` would be valuable.
+
+*   **Cursor-Based Pagination (Matt and Danny S.)**
+    *   Matt presented the cursor-based pagination draft, emphasizing that many underlying application APIs or databases already use cursor-based pagination. Implementing index-based pagination (required by current SCIM spec) on top of a cursor-based system is difficult and can lead to memory depletion issues in the SCIM service provider by requiring the retention of full result sets.
+    *   The draft proposes two new query parameters: `cursor` and `count`, with the response including `nextCursor` and `previousCursor`. The `cursor` parameter was made mandatory (with an empty string for the first page) to resolve ambiguity if both cursor and index pagination were supported.
+    *   **Phil H.** raised concerns:
+        *   Change notifications (SCIM Events) are per object, so pagination isn't needed for change sets themselves, though Danny S. noted a large *change set* could still require pagination.
+        *   He questioned the need for cursor-based pagination if the goal is to download *all* data, arguing that a single download (if `maxResults` can be waived for privileged clients) is simpler and less prone to denial-of-service (DoS) attacks than maintaining cursors over long periods. Cursor-based paging, when used to lock up entire sets, can cause thrashing and memory exhaustion on servers.
+        *   Implementing cursors might be impossible for highly sharded systems or APIs not directly backed by databases.
+    *   **Matt** reiterated that cursor-based pagination allows matching the underlying system's strategy, avoiding complex and memory-intensive translation. He argued that DoS and memory concerns also apply to index pagination.
+    *   **Danny S.** agreed that pulling all data into memory for serving is a significant problem, especially with large user bases.
+    *   **Danny S.o.** from Microsoft indicated that if they were to build a SCIM service provider, they would prefer, and likely require, cursor-based pagination due to DoS concerns with index-based pagination. He suggested a future need for a server to declare support for *only* cursor-based pagination.
+    *   **Pamela D.** noted that the working group is defining an interface, not an implementation, and both pagination methods have potential DoS/memory issues. Adding cursor-based pagination provides an alternative that can be lighter weight for certain implementations.
+    *   **Phil H.** continued to express concern that an optional cursor-based paging standard would put pressure on all implementers to support it, fundamentally changing how underlying data systems are built for SCIM. He also questioned why, for full data downloads, a single download wasn't preferred over cursor-based paging.
+    *   **Matt** clarified that if *any* pagination is required by the spec (as index pagination currently is), then supporting a pagination strategy that aligns with existing code bases (like cursors) is critical for adoption.
+
+*   **SCIM Profile for Security Event Tokens (Phil H.)**
+    *   Phil H. updated on the SCIM Events draft, which aligns SCIM change events with the OpenID Shared Signals and Events (SSE) framework.
+    *   Key design principle: There is no long-term recovery mechanism on the SCIM service provider side. The recovery mechanism is the responsibility of the *event receiver* (client), which can build its own long-term recovery system (e.g., using a message bus like Kafka to store events locally). This avoids combinatorial complexity for the service provider.
+    *   The spec defines how events are transferred (push/poll) and assumes a single gateway between administrative domains for communication.
+    *   **Vetting** asked about the scope of events (identities/profiles vs. account management/login sessions).
+    *   **Phil H.** clarified that SCIM Events match the SCIM protocol, covering any SCIM resource type (e.g., create, patch, delete events for users, groups). Events can be configured to share either all raw data (for tightly related security partners/replication) or almost no data (requiring the receiver to pull the object for reconciliation, allowing access controls to work). Higher-level security events (like password reset) can include standardized claims and custom extended data.
+
+*   **Roles and Entitlements (Danny S.o.)**
+    *   Danny S.o. presented an updated draft aimed at allowing SCIM clients to discover the acceptable, predetermined values for `roles` and `entitlements` attributes on a user resource.
+    *   This addresses an interoperability problem: many SCIM service providers reject requests with values not from their predefined lists, leading to failed requests. The draft provides a standardized way for clients to retrieve these lists programmatically, avoiding manual documentation lookup.
+    *   **Vetting** questioned if a single attribute or list of values would be applicable to all downstream systems, given differing role/permission hierarchies.
+    *   **Danny S.o.** clarified that the draft focuses on the finite set of values that the *SCIM service provider itself* will accept, which are typically high-level (coarse-grained) roles or feature/license assignments for entitlements. It's up to the service provider implementer to define these values, potentially by querying internal sources. The draft does not attempt to define fine-grained permissions or address the complexity of multiple, disconnected downstream systems.
+
+*   **Referential Values (Danny S.o.)**
+    *   Danny S.o. introduced a draft to solve a similar discoverability problem for attributes whose values are constrained by references to other resources or a predefined list (e.g., `manager.value` referencing a user ID, or a `costCenter` attribute with a limited set of valid values).
+    *   The draft proposes new sub-attributes to the SCIM schema definition (`attribute` and `resourceType`) to indicate if an attribute's values are restricted and, if so, which resource type and attribute contain the valid values. This enables programmatic discovery for SCIM clients, improving efficiency and reducing failed requests.
+
+## Decisions and Action Items
+
+*   **External ID (Pamela D.)**
+    *   Pamela D. to summarize the discussion on `externalId` and mail it to the mailing list for further input, potentially including a survey.
+    *   Pamela D. to upload her discussion slide to the meeting materials.
+*   **Cursor-Based Pagination (Matt and Danny S.)**
+    *   Matt to resubmit the draft with revisions, specifically eliminating ambiguity by making the `cursor` query parameter mandatory (with an empty string for the first page).
+*   **Roles and Entitlements (Danny S.o.)**
+    *   Danny S.o. to work with the chairs to issue a call for adoption for the draft in the coming weeks.
+    *   All interested parties are encouraged to review the draft and provide feedback on the mailing list.
+*   **Referential Values (Danny S.o.)**
+    *   Danny S.o. to ensure the draft has been emailed to the mailing list and to solicit feedback from the working group.
+*   **General**
+    *   Chairs encourage all participants with in-progress drafts to post them.
+    *   Discussions on all topics will continue on the mailing list.
+
+## Next Steps
+
+The next in-person session for the SCIM Working Group is planned for IETF 115 in London, with remote participation options available. All authors are encouraged to update and post their drafts, and the working group will continue discussions on the mailing list.

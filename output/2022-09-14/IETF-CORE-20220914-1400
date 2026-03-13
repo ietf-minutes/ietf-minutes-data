@@ -1,0 +1,63 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This meeting primarily addressed two key topics: a discussion stemming from the Anima working group regarding the discovery of "join proxies" using Resource Directories (RD), and a review of remaining open issues for the `href` (Concise Identifiers) document. For the Anima WG issue, participants debated the architectural implications of using resource discovery mechanisms for protocol endpoints rather than traditional resources, concluding that further design work and a joint meeting are needed. For the `href` document, several proposals for normalizing percent-encoded text, resolving URI ambiguities, and handling path components were discussed and generally accepted, along with a strategy for handling test vectors.
+
+## Key Discussion Points
+
+### Anima WG Joint Proxy Mechanism Discovery
+
+*   **Problem**: The Anima WG has a completed document describing a joint proxy mechanism, but needs a way to discover these "join proxies". The current draft proposes using Resource Directories (RD) or multicast `.well-known/core` queries.
+*   **Proposed Mechanism**: The draft suggests a link with a `coaps+jpy:IP_address:join_port` URI and a resource type `rt=jp`.
+*   **Architectural Concern**: A "join proxy" is a protocol endpoint (a transport address and port) rather than a traditional "resource" with a hierarchical path. The use of a "fantasy URI scheme" (`coaps+jpy`) to represent a transport address raises architectural questions within CORE.
+*   **Discussion on URI Semantics**:
+    *   While historically, URI syntax has been used for transport addresses (e.g., `tcp:`), the concern is whether this is the "right way to express this information" for resource discovery.
+    *   **Alternative Suggestion**: Instead of linking to the proxy endpoint directly, the link could point to the *actual resource* that the join protocol ultimately interacts with. This link could then carry additional attributes (like `jp` for the join port) indicating how to reach that resource *via* the declared proxy. This approach would make `rt` a more appropriate attribute.
+    *   **Client Information Gap**: The current Anima draft's approach does not clearly inform the client *who* they will ultimately be speaking to beyond the proxy itself.
+    *   The `hosted-by` relation was mentioned but deemed not particularly helpful in this specific context.
+*   **Need for Clarity**: There's a need to generate a more extensive example illustrating the full discovery and registration flow, including how the join proxy registers itself as an endpoint and its associated resource.
+
+### Href Document Open Issues (CI/URI Translation)
+
+Karsten presented several open issues from the GitHub repository for the `href` document, and a sense of those present indicated general agreement on the proposed resolutions.
+
+*   **Issues 43 & 44: Percent-Encoded Text Normalization**:
+    *   **Problem**: Ambiguity in handling unreserved characters (e.g., `.`) and UTF-8 characters when they are percent-encoded in URIs being translated to CIs.
+    *   **Proposal**: Define a normalization algorithm that takes URI text, identifies valid UTF-8 encodings of unreserved Unicode scalar values for text strings, and places other percent-encoded bytes into byte strings. This effectively normalizes the representation to prioritize UTF-8 for unreserved characters.
+    *   **Discussion**: This approach implies diverging from CoAP's "net Unicode" requirement, potentially pushing CoAP itself to relax or update this requirement in the future.
+*   **Issue: URI with Scheme, No Authority, No Path (`foo:`)**:
+    *   **Problem**: The URI `foo:` presents an ambiguous translation: it could mean a scheme `foo` with a `null` path, or a scheme `foo` with an empty array path (implying no leading slash but an empty path segment).
+    *   **Proposal**: Resolve `foo:` to `scheme="foo", path=null`. To maintain consistency with URI resolution rules (e.g., `foo:bar/./../baz` resolving to `foo:`), the interpretation of `foo:` as `path=null` is preferred. This approach would also explicitly outlaw the ambiguous case of a scheme followed by a no-leading-slash indication but no actual path.
+*   **Issue 50: Grab Bag of Small Issues**:
+    *   **Empty Reference**: An entirely empty reference (e.g., `""`) is not useful and should not be allowed.
+    *   **Null vs. Empty Array for Path Components**:
+        *   **Problem**: Ambiguity in representing empty path components within a CI, specifically regarding whether `null` or an empty array (`[]`) should be used.
+        *   **Proposal**: Use `null` only when an empty array would occur at the *end* of the CI representation (e.g., `coaps:example.com?query` where the path is effectively empty). In the middle of a path, an empty array (`[]`) should be used to represent an empty path segment.
+        *   **Discussion**: The need for a simple sanity check or practical guideline for implementers for this context-sensitive rule was highlighted.
+    *   **Host Part in Authority Structure**:
+        *   **Problem**: The host part within the authority array in the CI structure is "weird" because it requires special processing (e.g., removing port, joining labels with dots) to reconstruct the hostname string, unlike other array-to-string conversions.
+        *   **Discussion**: While acknowledged as an unusual structure, it was deemed acceptable given that altering it would likely introduce more encoding bytes, and no strong objections were raised.
+*   **Test Vectors for Href**:
+    *   **Problem**: How to provide comprehensive test vectors for the `href` document.
+    *   **Proposal**: Include a few critical examples and corner cases within the RFC's appendices. For a more complete set, reference an external GitHub repository containing comprehensive test vectors and supporting software.
+    *   **Discussion**: This approach aligns with recent ISG sentiment regarding referencing external, living documents from RFCs.
+
+## Decisions and Action Items
+
+*   **Anima WG Joint Proxy Discovery**:
+    *   **Decision**: The current approach of using a "fantasy URI scheme" in the Anima draft for joint proxy discovery requires further architectural review.
+    *   **Action**: Karsten will prepare a more extensive example of the discovery and registration flow for joint proxies.
+    *   **Action**: A joint meeting will be scheduled with Anima WG participants to discuss and resolve the architectural implications.
+*   **Href Document Open Issues**:
+    *   **Decision (Issues 43 & 44)**: The proposed normalization algorithm for percent-encoded text, prioritizing UTF-8 for unreserved Unicode scalar values, is accepted.
+    *   **Decision (URI `foo:`)**: The URI `foo:` will be translated to `scheme="foo", path=null`. The case of a scheme followed by a no-leading-slash indication but no actual path will be outlawed.
+    *   **Decision (Issue 50 - Empty Reference)**: An entirely empty reference will not be allowed.
+    *   **Decision (Issue 50 - Null vs. Empty Array Path)**: Use `null` for empty paths only when an empty array would occur at the end of the CI; otherwise, use an empty array `[]` for empty path segments in the middle.
+    *   **Decision (Test Vectors)**: The `href` RFC will include selected key examples and corner cases in its appendices, while referencing a separate GitHub repository for a comprehensive set of test vectors and supporting tools.
+    *   **Action**: The document authors will generate pull requests in the `href` GitHub repository to incorporate these decisions.
+
+## Next Steps
+
+*   The `href` document authors will work on generating pull requests based on the accepted resolutions, with an aim to have them ready before the London IETF meeting.
+*   Coordination will begin to schedule a joint meeting between CORE and Anima WG participants to address the architectural questions surrounding joint proxy discovery.

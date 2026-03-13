@@ -1,0 +1,66 @@
+# [MASQUE](../wg/masque.html)
+
+## Summary
+
+This interim meeting focused on reviewing the proposed design for HTTP Datagrams and Connect-UDP, which resulted from the HTTP/3 Datagram Design Team's work over the past several months. The design team's output simplifies the HTTP Datagrams specification while providing extensible mechanisms for Connect-UDP. A show of hands indicated strong support for the proposed design direction, which will now be taken to the mailing list for formal working group consensus.
+
+## Key Discussion Points
+
+*   **Housekeeping**: The session was recorded. Attendees were requested to add their names and affiliations to the notes document, available via a link in the chat. The IETF Note Well and Code of Conduct were noted.
+*   **Agenda Focus**: The meeting's primary objective was to review and discuss the output from the HTTP/3 Datagram Design Team, aiming to finalize the design before IETF 113.
+*   **Background on Design Team**:
+    *   MASQUE Working Group's core focus is Connect-UDP.
+    *   The initial `h3-datagrams` draft was split into `http-datagrams` (a generic datagram transport over HTTP) and `connect-udp` (building on `http-datagrams`).
+    *   After multiple iterations and realizing a circular design process at IETF 112, a design team was formed to achieve consensus.
+    *   The design team's mandate was to reach rough consensus on the overall design for HTTP Datagrams and provide recommendations as GitHub pull requests to the working group.
+    *   Thanks were extended to all design team participants for their work in reaching a consensus proposal.
+*   **Design Team Output**: The output consists of two pull requests: one for `http-datagrams` and one for `connect-udp`.
+*   **Capsule Protocol**:
+    *   The `http-datagrams` document defines the Capsule Protocol, a sequence of Type-Length-Value (TLV) frames sent on an HTTP data stream.
+    *   Wire encoding uses QUIC-style variable-length integers (RFC 9000).
+    *   A IANA registry for capsule types will be maintained.
+    *   New HTTP methods or upgrade tokens (e.g., Connect-UDP, WebTransport) can declare their use of the Capsule Protocol.
+    *   A new `Capsule-Protocol` HTTP header is introduced to inform intermediaries that the Capsule Protocol is in use, allowing for translation between different HTTP versions (e.g., HTTP/3 client-to-frontend, HTTP/2 frontend-to-backend).
+*   **HTTP Datagrams Association**:
+    *   HTTP Datagrams are strongly associated with a currently open HTTP request stream (e.g., a Connect-UDP request). They cannot be sent on a plain QUIC connection without associated HTTP semantics.
+    *   Datagrams should not be sent once the associated stream is closed.
+*   **Ways of Sending HTTP Datagrams**:
+    *   **QUIC Datagram Frame**:
+        *   Utilizes the `draft-ietf-quic-datagram` extension (recently approved by IESG).
+        *   The payload of the QUIC Datagram frame includes a `Quart-Stream-ID` (client-initiated bidirectional stream ID divided by four to save bits) to associate the datagram with an HTTP request stream, followed by the HTTP Datagram Payload.
+    *   **New `DATAGRAM` Capsule**:
+        *   A new capsule type (`DATAGRAM`) is introduced. It consists of the capsule type, length, and the HTTP Datagram Payload.
+        *   This capsule is sent *within* an HTTP request stream, so no explicit `Quart-Stream-ID` is needed as the stream context is inherent.
+        *   This mechanism allows HTTP Datagrams to be sent over any version of HTTP, including scenarios where QUIC or UDP might be blocked.
+*   **Extensibility and Demultiplexing**:
+    *   The `Context-ID` concept, previously in `http-datagrams`, has been removed from that document. WebTransport, for example, does not require its own demultiplexing mechanism.
+    *   `Context-ID` has been moved to the `connect-udp` draft.
+*   **Connect-UDP Details**:
+    *   `Connect-UDP` uses the Capsule Protocol and is defined as an HTTP upgrade token (not a new HTTP method).
+    *   It uses the `CONNECT` method with a `:protocol` pseudo-header set to `connect-udp`. This relies on `draft-hamilton-httpbis-websocket-over-h3` (for H3) or RFC 8441 (for H2).
+    *   `Context-ID` provides demultiplexing within Connect-UDP:
+        *   A `Context-ID` of 0 indicates a raw UDP payload to be proxied to the destination specified in the request.
+        *   In the QUIC Datagram frame, `Context-ID` follows `Quart-Stream-ID`. In a capsule, it follows the Length.
+        *   Other `Context-ID` values are dynamically allocated per request for extensibility. Even numbers are client-allocated, odd numbers are server-allocated, similar to QUIC stream IDs.
+    *   **Context-ID Registration**:
+        *   Mechanisms for peers to communicate the semantics of `Context-ID`s are needed.
+        *   Two methods are foreseen: HTTP headers (for initial registration) and capsules (for stateful registration during the request's lifetime).
+        *   The current draft does not define a generic registration mechanism, deferring this to individual extensions.
+        *   **Open Question**: The working group needs to decide whether to define a standardized registration method within the document or continue to leave it to extensions. This is deferred to future WG discussion, potentially at IETF 113.
+    *   **Extension Composition**:
+        *   **Open Question**: How multiple extensions should compose (e.g., adding a timestamp then an ECN marker) is an open question deferred to future WG discussion.
+*   **Q&A**:
+    *   **Test Implementations**: A participant requested information on existing test stacks. Implementations exist in C++ (David K.'s team), Rust (Cloudflare, needing updates), and AIO-QUIC (Ericsson, open-source status unclear). A request was made to share information about test stacks on the mailing list.
+    *   **Comparison to Previous Design**: The major change from previous designs is significant simplification. The prior design had more complex concepts like `datagram_format_type` and optional context extensibility mechanisms with headers, which have now been removed or simplified, improving both specification and implementation.
+    *   **WebTransport Demultiplexing**: WebTransport does not require the same extensibility or demultiplexing mechanisms as Connect-UDP/IP; it has a direct API for datagrams. This decision avoids unnecessary complexity in `http-datagrams` for protocols that do not need it, prioritizing composition over inheritance.
+
+## Decisions and Action Items
+
+*   **Decision**: A show of hands was conducted to gauge the room's sentiment on the design team's output. 21 participants raised their hands indicating agreement with the design direction, and 0 did not. This strong support confirms the proposed direction.
+*   **Action Item**: The working group chairs will bring the design team's output to the MASQUE mailing list for formal working group consensus.
+*   **Action Item**: Implementers of the drafts are encouraged to share information about their test stacks on the MASQUE mailing list to facilitate broader adoption and testing.
+
+## Next Steps
+
+*   The design team's output will be presented to the MASQUE mailing list for formal working group consensus.
+*   Discussion on the need for a standardized `Context-ID` registration mechanism and how extensions should compose will be deferred to future working group meetings, possibly at IETF 113.

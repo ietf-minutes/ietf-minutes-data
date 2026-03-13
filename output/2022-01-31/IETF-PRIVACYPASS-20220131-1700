@@ -1,0 +1,56 @@
+# [PRIVACYPASS](../wg/privacypass.html)
+
+## Summary
+
+The PRIVACYPASS Working Group convened to discuss a proposed re-architecture of Privacy Pass and new protocol specifications. The presentation outlined a clearer separation of roles (Origin, Attester, Issuer, Client) and a two-part protocol structure: a consistent Redemption Protocol and extensible Issuance Protocols. A new HTTP Authentication scheme was proposed for the Challenge and Redemption phases. A significant technical discussion revolved around the privacy implications of "interactive tokens" and timing-based linkability. The working group expressed general support for the new direction, and a clear path forward for document updates and adoption calls was established.
+
+## Key Discussion Points
+
+*   **Re-architecting Privacy Pass:** The current architecture was revisited to improve implementability and deployment, while aligning with charter use cases and W3C considerations.
+*   **Decomposition of Roles:** The architecture proposes a clearer separation of functions:
+    *   **Origin (Redeemer):** The server challenging the client.
+    *   **Attester:** A function that receives an attestation from the client (e.g., solving a CAPTCHA, device attestation, account validation).
+    *   **Issuer:** A function that, trusting an Attester, issues a cryptographic proof/token to the client.
+    *   **Client:** The end-user agent.
+    *   These roles can be combined into a single entity (e.g., combined Origin/Attester/Issuer) or operate as distinct entities, offering deployment flexibility.
+*   **Protocol Structure:**
+    *   **Redemption Protocol:** Proposed as a consistent, standardized protocol for clients to redeem proofs with Origins. This interaction is crucial for cases where the client and origin lack a prior trust relationship.
+    *   **Issuance Protocol:** Proposed as an extensible mechanism for clients to obtain tokens from Issuers, specific to the attested property. Different issuance protocols can be defined for various use cases.
+*   **HTTP Authentication Scheme for Challenge and Redemption:**
+    *   The existing reliance on W3C JavaScript APIs and the HTTP API document's limitations were noted.
+    *   A new `Private-Token` HTTP Authentication method was proposed to standardize the challenge and redemption phases. This scheme aims to be extensible, supporting various token types, and functional in both web and non-web contexts.
+    *   **Challenge Phase:** The Origin indicates support for tokens, specifies desired token types (e.g., POPRF, publicly verifiable), names of trusted Issuers, and optional key hints.
+    *   **Optional Challenge Features:**
+        *   **Interactive Tokens:** An origin can include a one-time nonce in a challenge, requiring the client to obtain a fresh token inline. This aims to mitigate farming attacks.
+        *   **Origin Name:** An optional field included in the token signature, preventing cross-origin spending or fingerprinting.
+    *   **Redemption Phase:** The client presents a token, including its type, a client-generated nonce, a hash of the original challenge, the Issuer's key ID, and an authenticator blob (specific to the issuance method).
+    *   The goal is to keep Origin adoption simple, requiring minimal complex cryptography for token verification.
+*   **Basic Issuance Protocol:**
+    *   Details for how clients obtain tokens from Issuers.
+    *   Involves the client generating a fresh nonce, creating a context string (hash of the challenge), and performing a blind signature protocol (e.g., POPRF or Blind RSA) with the Issuer. The client's inputs (nonce, context) remain secret from the Issuer.
+    *   A registry for Issuance Protocol Types is proposed, detailing parameters like public verifiability, public/private metadata support, and authenticator size. Initial types include POPRF (P384/SHA384) and Blind RSA.
+    *   **Security Properties:** Unforgeability and Issuance Secrecy are key requirements, ensuring tokens cannot be forged and client-side inputs remain private from the Issuer.
+*   **Privacy of Interactive Tokens:**
+    *   A significant discussion point concerned the privacy implications of interactive issuance, particularly the potential for timing-based linkability. If an origin can dictate when a client requests a fresh token, it could reduce the client's anonymity set, making them uniquely identifiable.
+    *   Authors acknowledged this concern, comparing it to the "leaky goat problem" in ECH, where cryptographic unlinkability can be compromised by external metadata.
+    *   The `max-age` attribute in HTTP headers might allow clients to introduce delay or randomization to mitigate timing attacks, but clients may lack sufficient information (e.g., anonymity set size) to set an optimal policy.
+    *   It was suggested that separating the Attester and Issuer roles could offer protection if the Issuer does not observe the client's IP address or other identifying information.
+
+## Decisions and Action Items
+
+*   **General Support for New Architectural Direction:** A sense of those present indicates general support for the proposed re-architecture, the separation of redemption and issuance protocols, and the adoption of a new HTTP authentication scheme.
+*   **Document Progression Plan:** The chairs, in consultation with the authors, established the following plan:
+    1.  The proposed HTTP Authentication scheme document will be updated to include additional text and considerations regarding timing attacks and correlation issues.
+    2.  This updated HTTP Authentication scheme document will then be published in the IETF data tracker as an individual draft.
+    3.  Outstanding Pull Requests (PRs) against the existing Architecture and Protocol documents will be merged. These PRs will updated to cite the newly published HTTP Authentication draft.
+    4.  New versions of the Architecture and Protocol documents will then be published.
+    5.  Following these steps, the working group will issue a formal call for adoption of the HTTP Authentication scheme draft.
+
+## Next Steps
+
+*   Authors to update the HTTP Authentication scheme draft with privacy considerations for interactive tokens and publish it.
+*   Chairs to facilitate the merging of PRs for the Architecture and Protocol documents and their subsequent publication.
+*   Chairs to initiate an adoption call for the HTTP Authentication scheme draft after its publication and review by the working group.
+*   Further discussion and analysis of the privacy implications of interactive tokens and client-side privacy policy considerations are anticipated on the mailing list.
+*   Other planned presentations (e.g., rate limiting) are postponed to a future meeting or interim.
+*   Working group participants are encouraged to review existing implementations and interop testing efforts for the new proposals.

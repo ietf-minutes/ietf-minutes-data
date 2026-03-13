@@ -1,0 +1,68 @@
+# [PANRG](../wg/panrg.html)
+
+## Summary
+
+The PANRG session focused on progress with the Scion Internet Architecture drafts. Nikola Knezevic provided updates on the `draft-trammell-panrg-scion-component-analysis` document, which aims to decompose Scion into three main components: PKI, Control Plane, and Data Plane. Corinne Cath then presented a detailed overview of the Scion Control Plane PKI, its design principles, and existing deployments. A significant portion of the discussion centered on the appropriate pathways for these documents within the IETF ecosystem, distinguishing between Independent Submission Stream (ISE) for describing current deployments, IRTF for research questions (e.g., terminology, generalization of trust models), and IETF for standardization.
+
+## Key Discussion Points
+
+### Scion Component Analysis (Presented by Nikola Knezevic)
+
+*   **Background:** The work began in Vienna and continued through interim meetings, leading to an initial overview draft and this component analysis. The goal is to address questions about Scion's decomposition, independent usability of components, and relationship to existing protocols.
+*   **Draft Updates:**
+    *   The overall structure has been heavily modified to be more component-specific.
+    *   Each component (PKI, Control Plane, Data Plane) is analyzed for its properties, input dependencies, and outputs.
+    *   Discussions on existing protocols (e.g., X.509, RPKI, LISP, IGPs, Segment Routing, IP/UDP) are now integrated into component-specific sections, highlighting reuse or motivations for differences.
+*   **Component Dependencies:**
+    *   **PKI:** Requires initial trust bootstrapping, communication between PKI entities, and time synchronization. Provides cryptographic material (AS certificates, Roots of Trust as TRCs) to the Control Plane.
+    *   **Control Plane:** Provides authenticated segments and error management (SCMP) to the Data Plane.
+    *   **Data Plane:** Relies on the Control Plane and provides path-aware, secure communication to applications/endpoints. The term "endpoints" was suggested as more appropriate than "end hosts" to include tunnel endpoints.
+*   **Discussion on Document Path:** Nikola invited feedback on the component analysis and overview drafts, particularly regarding adoption within PANRG. The chair noted the relatively small attendance (11 people) and suggested moving the formal call for adoption to the mailing list for broader engagement before the London meeting.
+    *   The chair expressed an individual opinion that the component analysis draft is suitable for IRTF publication as it frames how to engage with new architecture development within the IETF.
+    *   The overview document might be a "holding document" or suitable for the Independent Submission Stream (ISE), evolving as specific components are parcelled out.
+
+### Scion Control Plane PKI (Presented by Corinne Cath)
+
+*   **Purpose:** To provide mechanisms for distributing and authenticating public keys used to verify Scion control plane messages and path segments, ensuring the integrity and authenticity of routing information.
+*   **Requirements:** Resiliency to root of trust compromise (especially single root), quick recovery, multilateral governance, support for versioning and updates, a flexible trust model (entities select trusted routes), and high availability (PKI functions without dependency on PKI servers for routing updates).
+*   **Isolation Domains (ISDs):** Logical groupings of Autonomous Systems (ASes) that share a uniform trust environment, administered by several "core ASes" which negotiate a Trust Root Configuration (TRC). CA certificates in an ISD can only create certificates for ASes within that ISD.
+*   **Trust Model:**
+    *   No omnipotent trust root or single Certification Authority (CA).
+    *   TRCs and their updates require approval by a voting mechanism involving multiple parties, enabling multilateral governance and preventing single-party compromise.
+    *   Users can select their trusted routes by joining an ISD/ISP.
+*   **Trust Root Configuration (TRC):** The trust anchor of an ISD, collecting X.509 v3 root and voting certificates, and defining trust policy parameters (e.g., validity period, grace period, core ASes). It bootstraps authentication within an ISD and facilitates revocation.
+*   **Signing Ceremony:** The initial "base TRC" is created in an in-person ceremony involving ISD representatives, voting ASes, administrators, and a neutral witness. Policy parameters and root certificates are agreed upon. Updates, especially "sensitive updates" (e.g., core AS changes, key compromise), may also involve ceremonies or automated voting.
+*   **Chain of Trust:** Root certificates (from TRC) sign CA certificates, which in turn sign AS certificates. ASes use their private keys to sign control plane messages, verified by corresponding AS certificates.
+*   **Certificate Types:** Root, CA, and AS certificates form the verification chain. Voting certificates (regular and sensitive) are used for TRC updates.
+*   **Revocation:** Root, voting, and core AS certificates are revoked through TRC updates. CA and non-core AS certificates are short-lived (11/3 days respectively) and effectively revoked by expiration. Scion does not use traditional CRLs; revoked certificates are discovered via the path exploration process.
+*   **TRC Discovery:** Currently manual, with operators exchanging TRCs out-of-band. Future plans include automatic discovery via Scion's path exploration and resolution methods.
+*   **Trust Reset:** In catastrophic situations (too many keys compromised), a full TRC reset may occur, requiring a new base TRC to be axiomatically trusted and distributed out-of-band.
+*   **Deployments:** The Scion Control Plane PKI is deployed in production in Switzerland (SIX Group financial infrastructure) and by Anapaya (based on HashiCorp Vault). An open-source implementation is available in Scion-proto. These implementations are generally interoperable, though some extensions may vary.
+
+### General Discussion on Document Pathways and Next Steps
+
+*   **IRTF Adoption vs. Independent Submission Stream (ISE) vs. IETF Standardization:**
+    *   **Karsten:** Clarified that IRTF adoption means a research group finds something "interesting research," not an endorsement for IETF standardization. Emphasized PANRG's role in fundamental analysis and terminology development.
+    *   **Brian (Chair):** Agreed on terminology focus, noting PANRG's current composition (routing/transport) might need more security expertise. Suggested that if adopted by PANRG, the draft would likely be generalized, not just a description of Scion's specific implementation.
+    *   **Colin/Dustin:** Recommended using the Independent Submission Stream (ISE) for documenting "what exists now" (e.g., Scion overview, PKI specification, control plane, data plane). This creates a stable, informatively referenceable baseline without requiring IETF change control. These efforts can run in parallel with IRTF research and potential IETF standardization.
+    *   **Nikola/Corinne:** Acknowledged the clarity on different streams and agreed that documenting existing deployments via ISE would be beneficial, especially given current deployments. They also expressed interest in continuing research discussions in PANRG and potentially IETF for engineering challenges.
+*   **Chair's Guidance:** Advised Scion authors to prioritize refining the four core documents (overview, PKI, control plane, data plane) for ISE publication as a foundational step. Concurrently, PANRG could start parallel research on general PKI/architecture models and a precise vocabulary for trust and authorization in path-aware networks.
+*   **PANRG's Ongoing Role:** The chair suggested that periodic updates on ISE document progress within PANRG meetings would be valuable for fostering research discussions and feedback, as this interaction has proven effective. Outreach to the security community (e.g., hackathons, Security Area) is needed to broaden expertise.
+*   **Path Properties Vocabulary:** The chair noted the expiration of the Path Properties Vocabulary document and added it to the agenda for London.
+
+## Decisions and Action Items
+
+*   **Decision:** The formal call for adoption of `draft-trammell-panrg-scion-component-analysis` will be conducted on the PANRG mailing list to gather broader feedback before IETF 118 in London.
+*   **Action Item:** Scion authors (Nikola Knezevic, Corinne Cath, and others) are encouraged to refine the "Scion Overview," "Scion Control Plane PKI," "Scion Control Plane," and "Scion Data Plane" drafts with the intent of submitting them to the Independent Submission Stream (ISE) as documentation of current Scion deployments.
+*   **Action Item:** PANRG chairs will schedule a PANRG meeting for IETF 118 in London, with a request to avoid Friday.
+*   **Action Item:** PANRG chairs will restart efforts on the "Path Properties Vocabulary" document.
+*   **Action Item:** Scion authors and PANRG chairs will perform outreach to attract security expertise to PANRG discussions, potentially through hackathon participation or by engaging with the IETF Security Area.
+*   **Action Item:** Scion authors should continue to provide periodic updates on their documentation efforts (including ISE-focused work) to PANRG to foster ongoing research discussion.
+
+## Next Steps
+
+*   Mailing list discussion regarding the adoption of `draft-trammell-panrg-scion-component-analysis`.
+*   Scion authors to focus on preparing the core Scion documents for Independent Submission Stream (ISE) publication.
+*   PANRG to begin or continue discussions on the generalization of trust and authorization models in path-aware networks, and to revisit the Path Properties Vocabulary document.
+*   Outreach efforts to broaden the participation of security experts in PANRG.
+*   Continued discussion and updates at IETF 118 in London.

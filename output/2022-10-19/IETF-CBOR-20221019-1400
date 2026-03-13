@@ -1,0 +1,72 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group meeting covered updates on several documents, including the CBOR Time Tag, JSON Path RegExp, and a new draft on CBOR encoding for DNS messages. A significant portion of the discussion focused on the future direction of CDDL 2.0, exploring syntax extensions for tag ranges, a processing model beyond validation, and a module superstructure. Key action items include progressing the DNS CBOR draft with `cbor-packed` integration and further developing the CDDL 2.0 draft, with a focus on IANA registry integration.
+
+## Key Discussion Points
+
+### CBOR Time Tag
+
+*   **Status**: The `cd8` document is nearing Working Group Last Call (WG Last Call).
+*   **Synchronization**: The WG aims to synchronize the CBOR Time Tag document's WG Last Call with `cd8`.
+*   **UT1 Pull Request**: A pull request to add UT1 to time scales is considered desirable but not critical for immediate inclusion; it could be added during WG Last Call if resolved. Completing the definition points for UT1 might be complex.
+*   A sense of those present indicated no reason to delay the WG Last Call synchronization.
+
+### JSON Path RegExp
+
+*   **Status**: JSON Path has issued a WG Last Call for its regular expression document.
+*   **Implications**: This document defines an interoperable regular expression syntax, which could unblock CBOR working group activities that previously struggled with standardizing regular expressions (e.g., `cddl .regx` operator, Yang's pattern statement).
+
+### CBOR Encoding for DNS Messages (draft-ietf-cbor-dns-00)
+
+*   **Motivation**: To transport DNS messages over CoAP, reduce packet size, and avoid fragmentation for common queries. Current DNS wire format can quickly exceed typical CoAP PDU limits (e.g., 8215 bytes).
+*   **Proposal Overview**:
+    *   **DNS Queries**: Defined as a CBOR array containing a minimum of the domain name (ITNA encoding as text string) and optionally a record type (defaults to `AAAA`) and record class (defaults to `IN`).
+    *   **DNS Responses**: Defined as an array of arrays, where each inner array corresponds to a section (e.g., answer section). Resource records (RRs) are CBOR arrays containing minimum TTL and resource data (byte string or text string for domain names), with optional name and record type (defaulting to the question's values).
+*   **Compression Analysis**:
+    *   **Simple Queries (e.g., IPv6 for `example.org`)**: Showed significant compression (e.g., 400% for query, 283.3% for response).
+    *   **Complex Queries (e.g., ANY record for `example.org`)**: Showed much less compression, with the CBOR format sometimes being larger than the DNS wire format, due to the wire format's built-in message compression (RFC 1035 section 4.1.4, suffix compression).
+*   **Discussion on Further Compression**:
+    *   **SHIM/Static Context**: Martin (presenter) asked if SHIM (Static Context Header Compression) could help. Karsten suggested it might not be suitable for the ad-hoc nature of DNS queries, as SHIM relies on predefined context between parties.
+    *   **`cbor-packed`**: Karsten suggested investigating `cbor-packed` for internal compression within the CBOR message. This could enable both prefix and suffix compression on elements like domain names (`example.org`) and IP addresses (IPv6), without requiring external context. This approach could compensate for the generality of CBOR compared to RFC 1035's specialized compression.
+    *   **EDNS0**: Special treatment for EDNS0 records needs to be addressed, as they are pseudo-resource records.
+*   **DNS Directorate Review**: A DNS directorate review is already scheduled for the top draft, and the reviewer can be pointed to this CBOR DNS draft for input. It's recommended not to widely advertise this draft within the entire DNS community at this early stage.
+
+### CDDL 2.0 (draft-ietf-cbor-cddl-2.0-00)
+
+*   **Scope**: The draft narrows the focus for CDDL 2.0 to three main areas: syntax issues, the processing model, and a module superstructure.
+*   **Syntax Deficits**:
+    *   **Ranges of Tag Numbers**: Proposed syntax `tag<CDDL type>` to allow defining CDDL for a range of tag numbers (e.g., `tag<166h..167h>`). This would be incompatible with CDDL 1.0.
+    *   **Tag-Oriented Literals**: Discussed the need to represent tag-oriented literals directly in CDDL, similar to diagnostic notation. This would likely also be a CDDL 1.0 incompatibility.
+    *   **Errata**: Addressing existing errata for RFC 8610; these fixes could potentially be a separate "Corrections and Clarifications" document.
+*   **Processing Model**: Beyond simple validation, exploring features like annotations (for debugging/explaining validation paths), co-occurrence constraints, and data transformation (e.g., adding default values, canonicalization). The idea is to define a simple annotation syntax within CDDL 2.0, with specific mechanisms and processes potentially in separate documents.
+*   **Module Superstructure**:
+    *   **Compatibility**: Aims for limited compatibility with CDDL 1.0 implementations using pragmas or preprocessor-like statements.
+    *   **Namespaces**: Discussion on how to manage namespaces using characters like `$` or `@`.
+    *   **Referencing**: Different models for referencing other modules (e.g., `hash-include` vs. linker-style).
+    *   **IANA Registry Import**: A mechanism to programmatically import values from IANA registries (e.g., COSE algorithm values) into CDDL definitions.
+    *   **Cross-document References**: Syntax for referencing rules from other RFCs (e.g., `RFC1990.OID`) to enable CDDL libraries.
+    *   **Export/Import Syntax**: Explicit `export`, `import`, and `include` operations for managing modules.
+    *   **ABNF Compatibility**: Noted that ABNF has similar needs, and solutions for CDDL might be applicable to ABNF.
+*   **IANA Registry Integration**: Discussion about ongoing major overhauls to IANA registry storage and mechanisms. There is a desire to ensure easy programmatic import of registry values into CDDL. Karsten will talk to IANA representatives (Amanda) to discuss the best way forward, potentially a side meeting at IETF 115.
+*   **Joint WG Topics**: No formal joint meetings are planned for IETF 115. Barry and Karsten were encouraged to reach out to other WGs (e.g., RATS, TIES, COSE-related groups) to identify needs for expressing structures in CDDL 2.0. The idea of "best practices for using CDDL with COSE" was mentioned as a potential topic.
+
+## Decisions and Action Items
+
+*   **Decision**: Proceed with synchronizing the CBOR Time Tag document's Working Group Last Call with `cd8`.
+*   **Action Item**: Martin (presenter for DNS CBOR) to investigate integrating `cbor-packed` for prefix and suffix compression in the next version of the DNS CBOR draft.
+*   **Action Item**: Martin to look into special treatment for EDNS0 in the DNS CBOR draft.
+*   **Action Item**: Martin to ping the DNS directorate reviewer about the CBOR DNS draft.
+*   **Action Item**: Karsten to coordinate with Amanda (IANA) regarding the programmatic import of IANA registry values for CDDL 2.0, potentially scheduling a side meeting at IETF 115 or inviting IANA representatives to the CBOR session.
+*   **Action Item**: Karsten and Barry (or other chairs/interested parties) to check with other WGs (RATS, TIES, SECDISPATCH, COSE-related groups) for specific CDDL 2.0 expression needs before IETF 115.
+*   **Action Item**: WG participants are encouraged to review `draft-ietf-cbor-cddl-2.0-00` and provide comments.
+*   **Action Item**: Barry (WG Chair) to check with Gen about his availability for IETF 115.
+*   **Action Item**: WG participants to reply on the mailing list with suggested agenda items for the IETF 115 session.
+
+## Next Steps
+
+*   The CBOR Time Tag document will proceed towards WG Last Call.
+*   The DNS CBOR draft will be updated to incorporate `cbor-packed` compression and address EDNS0, aiming for an update at IETF 115.
+*   The CDDL 2.0 draft will be further developed based on feedback, focusing on IANA registry integration and module superstructure, with discussions planned for IETF 115.
+*   Outreach to other WGs will determine potential cross-group work and CDDL 2.0 requirements.

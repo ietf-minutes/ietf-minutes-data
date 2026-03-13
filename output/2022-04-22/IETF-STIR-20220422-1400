@@ -1,0 +1,79 @@
+# [STIR](../wg/stir.html)
+
+## Summary
+
+The STIR working group discussed the status of several drafts, including STIR-RCD-Claims, Connected Identity, Identity Header Error Handling, Out-of-Band STIR for Service Providers, and Messaging. Key discussions revolved around the prescriptive language in STIR-RCD-Claims regarding trust models, the architectural implications of out-of-band passport delivery, and the applicability of STIR credentials to messaging with considerations for freshness and non-repudiation. A separate discussion during Any Other Business (AOB) focused on the renewed relevance of OCSP and short-lived certificates for handling complex and dynamic TNAuthList references in certificate delegation scenarios.
+
+## Key Discussion Points
+
+*   **STIR-RCD-Claims (draft-ietf-stir-rckeys-16)**
+    *   **Updates**: Incorporated comments from a participant regarding changes from -15 to -16, specifically fixing JSON Pointer Digest procedures and digest example values, and relocating a section.
+    *   **New `icon` Key Value**: A new `icon` key value was added, defined as a URI/URL to an image, similar to the `icon` definition in `Call-Info`. Participants expressed positive feedback, noting it simplifies use cases like name/logo display and avoids the overhead of jCard.
+    *   **Prescriptive Language on Trust Models**: A participant raised concern about a paragraph that was perceived as overly prescriptive regarding trust models and the mandatory use of JWT claims constraints with RCD claims in non-RCD passports. It was agreed that the working group should explain consequences and trust implications but not dictate industry trust models.
+    *   **Security Considerations**: A point was raised regarding the privacy implications of exposing `rcdi` claims in public certificates used for JWT claim constraints.
+    *   **Outcome**: The document shepherd will post -17 with revisions, including reverting the overly opinionated paragraph, adding text to emphasize the privacy concern with `rcdi` in public certificates, and minor typo fixes.
+
+*   **Connected Identity (draft-ietf-stir-connected-identity-02)**
+    *   **Purpose**: This draft aims to provide guidance for signing messages beyond `INVITE` (e.g., `BUY`, `UPDATE`) to enable bilateral authentication, addressing use cases like route hijacking, short-stopping, and linking STIR to media security.
+    *   **Updates**: The draft has achieved working group item status. It now explicitly punts on conferencing scenarios and includes more text on pre-association and directory usage for discovering connected identity support.
+    *   **Open Action Item**: Further text is needed regarding privacy and anonymity risks associated with probing for connected identity support via pre-session dialogues.
+    *   **Relationship to RFC 4916**: The participant leading this work prefers to position it as an update rather than a formal "bis" (obsoleting) of RFC 4916, explaining how existing mechanisms apply to post-RFC 8224 STIR.
+    *   **Next Steps**: The draft requires detailed examples for both successful and "rainy day" (misdirection) scenarios. A co-author expressed willingness to dedicate more time to the document once the STIR-RCD-Claims draft is finalized.
+
+*   **Identity Header Error Handling (draft-ietf-stir-error-handling-01)**
+    *   **Updates**: The draft included a specific reference to a SIPCORE draft (draft-ietf-sipcore-session-id), and minor editorial updates. Basic security considerations were added, reinforcing the need to strip passports when used as an ID for error references to protect privacy.
+    *   **Privacy Concern**: A participant suggested strengthening the security considerations to recommend the use of compact identity headers over full forms if privacy is valued, as intermediate entities might not strip information correctly.
+    *   **Outcome**: The document shepherd will post -02 incorporating the updated security considerations.
+
+*   **Out-of-Band STIR for Service Providers (draft-ietf-stir-oob-service-providers-01)**
+    *   **Purpose**: This draft addresses the use of out-of-band passport delivery for service providers, particularly in international or mixed IP/PSTN environments, where direct in-band transmission is not feasible. It operates under the assumption that the Call Placement Service (CPS) is operated by or on behalf of the service provider, altering the data collection threat model from RFC 8816.
+    *   **Interfaces**: The draft proposes using the REST interface defined in RFC 8816 (currently informational) for accessing the CPS. Discussion occurred on "eating the down-ref" (normatively referencing an informational RFC) to achieve a Proposed Standard status.
+    *   **Push vs. Pull Models**: The draft describes push and pull models for CPS interaction. For the push model to terminating service providers, the lead participant proposed punting on defining a complex subscription/notification interface, suggesting that any necessary discrimination logic for multi-tenanted services would likely reside in external policy or databases. Participants agreed that the working group should not define a new push interface, encouraging the use of existing battle-tested pub/sub systems.
+    *   **Security Considerations**: Text was added on the substitution attack. Discussions noted that while substitution attacks are possible, they are considered difficult and highly detectable for the types of bulk unsolicited communications STIR primarily targets. For fraud use cases, the concern is higher.
+    *   **API Authentication**: The draft proposes mutual TLS for authenticating access to the CPS. A participant expressed concerns about the practical interoperability challenges of standardizing REST APIs with specific authentication mechanisms like mutual TLS.
+    *   **Out-of-Scope Discussion**: A participant suggested using ISUP UUI for discovery or binding information to passports for TDM interconnects, but this was considered out of scope for IETF work due to challenges in upgrading SS7 networks.
+    *   **Outcome**: The document shepherd will incorporate "musts" and "shoulds" and refine text based on discussions, leading to a -02 version.
+
+*   **Messaging (draft-ietf-stir-messaging-02)**
+    *   **Purpose**: This draft aims to apply STIR's credential infrastructure to messaging where telephone numbers are used as identifiers (e.g., SMS/MMS).
+    *   **Paths**: Two paths are identified: SDP-negotiated sessions (e.g., RCS) and individual message methods (`MESSAGE`). The focus is on MIME-level signing.
+    *   **Freshness**: Text on passport freshness was added. Discussion centered on the challenge of short STIR passport expiry (60s) in store-and-forward messaging systems, and how message systems can correlate passport timestamps with message send times to provide an accurate user experience. The long-term retention of verification status in message history and across multiple devices was also discussed.
+    *   **Non-Repudiation**: The utility of STIR for strict non-repudiation in messaging was debated, especially considering potential telephone number reassignment, although it was generally agreed to be helpful for proving a message was sent from a specific number at a specific time.
+    *   **Conferencing**: Group messaging/conferencing remains out of scope, with the potential for MLS (Message Layer Security) application requiring separate work, possibly a new working group.
+    *   **Outcome**: The draft is considered to be in good shape.
+
+*   **Any Other Business (AOB): OCSP and Short-Lived Certificates**
+    *   **Motivation**: These drafts (OCSP for STIR and Short-Lived Certificates) have been revived due to emerging needs in certificate delegation, particularly when using TNAuthLists containing actual telephone numbers (rather than Service Provider Codes).
+    *   **Problem**: Including large, dynamic TNAuthLists directly in certificates by value is impractical. Using "by reference" (a URI in the Authority Information Access extension pointing to the list) raises concerns about downloading large lists and revealing entire number inventories.
+    *   **Proposed Solutions**:
+        *   **OCSP Extension**: A proposed OCSP extension would allow a relying party to query if a specific telephone number is within the scope of a certificate, avoiding the need to download the full TNAuthList. This is distinct from general certificate revocation.
+        *   **Short-Lived Certificates**: Generating certificates with very short lifetimes (e.g., per TN or range) that enterprises could acquire dynamically (e.g., via ACME-like protocols).
+    *   **Discussion**: Both approaches have merits. OCSP stapling was mentioned as a way to alleviate round-trip issues for OCSP checks. The practical deployment of ACME for STIR certificate acquisition was questioned.
+    *   **Outcome**: Participants expressed support for exploring both OCSP with stapling and short-lived certificates to address this real and emerging market need. Further informal discussion (e.g., an interim meeting) is needed to define requirements and mature the solutions.
+
+## Decisions and Action Items
+
+*   **STIR-RCd-Claims**:
+    *   **Decision**: Revert the prescriptive paragraph regarding trust models in non-RCD passports.
+    *   **Action**: Chris will post draft-ietf-stir-rckeys-17, incorporating the reversion of text, typo fixes, and adding a note on privacy concerns for `rcdi` in public certificates.
+    *   **Action**: Following the posting of -17, the chairs will initiate a targeted Working Group Last Call (WGLC) to verify that changes have adequately addressed previous issues and haven't introduced new ones.
+
+*   **Identity Header Error Handling**:
+    *   **Decision**: Update security considerations to explicitly advise using compact identity headers if privacy is valued.
+    *   **Action**: Chris will post draft-ietf-stir-error-handling-02.
+    *   **Action**: Following the posting of -02, the chairs will initiate a Working Group Last Call.
+
+*   **Out-of-Band STIR for Service Providers**:
+    *   **Decision**: The working group will not define a new push interface; existing pub/sub solutions should be leveraged. The document will punt on specifying complex subscription mechanisms for push models.
+    *   **Action**: John will prepare draft-ietf-stir-oob-service-providers-02, incorporating "musts" and "shoulds" and refining text based on discussion points.
+    *   **Action**: Following the posting of -02, the chairs will initiate a Working Group Last Call, allowing sufficient time for review.
+
+*   **Messaging**:
+    *   **Decision**: The draft is ready for Working Group Last Call.
+    *   **Action**: The chairs will initiate a Working Group Last Call in the next couple of days for draft-ietf-stir-messaging.
+
+## Next Steps
+
+*   **Connected Identity**: Participants are encouraged to provide further review and contribute examples and privacy text.
+*   **OCSP and Short-Lived Certificates**: An interim or informal call will be organized to further discuss requirements and flesh out the details of both OCSP-based and short-lived certificate solutions for managing TNAuthLists in certificate delegation. Interested parties are encouraged to participate.
+*   **General**: Participants are reminded to read newly posted drafts before their respective Working Group Last Calls.

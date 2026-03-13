@@ -1,0 +1,66 @@
+# [ADD](../wg/add.html)
+
+## Summary
+
+This joint inter-meeting of ADD, DNSOP, and DPRIVE working groups focused on the challenges and potential solutions for DNS discovery in split horizon DNS environments, particularly in the context of encrypted DNS. The session aimed to build a shared understanding of the problem space, acknowledging the widespread deployment of split DNS, and to identify aspects amenable to standardization within the IETF architecture. A presentation by Ben Schwartz provided a foundational framework and definitions, followed by an open discussion covering various perspectives on authorization, validation, filtering, and the scope of IETF intervention. While no formal decisions were made, there was a clear recognition of the complexity of the problem and the need for future work to clearly delineate use cases and their technical solutions.
+
+## Key Discussion Points
+
+*   **Welcome and Logistics:**
+    *   The meeting was a joint inter-meeting of ADD, DNSOP, and DPRIVE working groups.
+    *   Glenn (ADD Co-chair) welcomed participants, noted the IETF Note Well applies, and emphasized a principle of kindness in discussions.
+    *   Scribes volunteered for notes and Jabber chat monitoring.
+    *   The agenda, focused on background, a presentation, and open discussion, was adopted without changes.
+    *   Chairs from DNSOP and DPRIVE highlighted the relevance of split DNS to their respective working groups, particularly concerning DNS-related and privacy aspects. Eric Vyncke (AD) noted the potential for a "DNS directory" concept and mentioned Warren Kumari (AD) would be late.
+
+*   **Background on Split DNS (Glenn's introduction):**
+    *   ADD has been working on discovery mechanisms for encrypted DNS (DoH/DoT), with "Discovery of Designated Resolvers" (DNR) and DHCP/RA-based approaches being mature.
+    *   The group encountered a "wall" with split DNS environments, recognizing it as an important use case. Concerns were raised that if IETF did not provide a standard solution, ad-hoc mechanisms would proliferate, hindering future standardization.
+    *   A previous draft addressing split DNS failed to achieve working group adoption, not due to rejection of its approach, but because the group was not ready. Issues raised included validation of resolver authority, answer validation, and the potential role of DNSSEC.
+    *   These related topics were deemed beyond ADD's initial scope, leading to this joint session to build consensus on the problem space before ADD (or other WGs) defines specific discovery mechanisms.
+    *   It was explicitly stated that the meeting was not to debate the existence of split DNS (acknowledging its widespread deployment), but to discuss how to manage discovery within it.
+
+*   **Presentation: "Split Horizon DNS" (Ben Schwartz):**
+    *   **Definition:** Split Horizon DNS occurs when a network-provided resolver gives "meaningfully different" answers than a general-purpose resolver. Reasons include corporate intranets, different domain behavior, or optimization.
+    *   **DNS Hijacking:** Defined as answering queries without authorization from the zone. Examples include hijacking existing domains, NXDOMAIN hijacking, and inventing new TLDs. It was noted that IETF standards generally prohibit this.
+    *   **Authorized Split Horizon DNS:** The local resolver is authorized by the zone owner to serve local answers.
+    *   **Intractable Topics:** The IETF cannot solve fundamental incompatibilities in trust relationships or compel changes in security assumptions. Solutions should focus on technical problems for parties with compatible goals.
+    *   **Making Progress:** Focus on "technically interesting" cases, particularly "hybrid resolvers" (which combine multiple DNS functionalities like /etc/hosts lookups with upstream forwarding, or zone file serving with iterative resolution).
+    *   **The Interesting Case:** Both client and network-provided resolver are hybrid resolvers, cooperating to give the client access to network local zones within each party's threat model.
+    *   **Scope for Standards Development:**
+        *   **Easy:** Enabling clients to learn about split horizon names (e.g., Provisioning Domains, ikev2 config, DHCP search option). These identify the source of the claim but don't authenticate content.
+        *   **Hard but Possible:** Enabling clients to distinguish DNS hijacking from authorized split horizon. This requires:
+            1.  An identity for the local resolver.
+            2.  An assertion from the zone owner authorizing the local resolver.
+            3.  A way to ensure that assertion was not forged.
+            4.  A secure transport to the resolver.
+        *   Ben briefly mentioned how the DNR draft and NS records could contribute to these points, especially if clients have a secure, external resolution path.
+
+*   **Open Discussion (General):**
+    *   **Scope of Split DNS and Hijacking:**
+        *   **Tommy Pauli** raised concerns that focusing only on publicly attestable names would miss common "walled garden" cases where local names are not public. He suggested a fallback mechanism (try public DNS, then local) for non-public names, noting that dual-facing resolution (same name, different answers) is the harder problem.
+        *   **Ben Schwartz** reiterated that non-public names or inventing TLDs constitutes DNS hijacking, which creates compatibility problems (e.g., with ICANN's gTLD program), and IETF should guide towards supportable architectures.
+        *   **Paul Wouters** noted that even in authenticated VPN cases (ikev2), strict allow-lists are required, reflecting fear of blanket authority. Non-VPN cases lack trust. The common scenario of `example.com` resolving differently internally and externally must be supported.
+        *   **Warren Kumari** expressed concern that the discussion views DNS as a "spherical cow" and might ignore messy real-world cases like DNS64 or captive portals. He worried about solving only "convenient" problems and ignoring "icky or hard" ones, emphasizing operator input (e.g., via DNSOP).
+        *   **Andrew Campling** highlighted two enterprise concerns: leaking internal names if clients query external resolvers first, and enterprise environments often blocking access to external resolvers for security reasons (making validation via external resolvers impossible).
+        *   **Ecker** agreed that fallback could leak names. He suggested clients needing an "assertion" from the local resolver about controlled domains to filter potential fallbacks. He also distinguished between hijacking non-existent domains (less problematic for IETF) versus overloading existing ones (more complex).
+        *   **Paul Vixie** introduced the use case of policy-based filtering (e.g., RPZ for botnets), where the local resolver intentionally modifies or blocks answers for global names. He argued that the "global-first, then local fallback" model fails this crucial real-world scenario. He also stressed the importance of transparency and user consent for any network-imposed DNS policy, citing privacy concerns for commercial/political tracking.
+        *   **Glenn (Chair)** noted the need for discovery documents to be very clear about which use cases they address and which they do not, as this is a "herd of elephants." He suggested documenting potential use cases more broadly.
+    *   **Validation of Resolver Authority and Answer Validation (Agenda Questions):**
+        *   **Tommy Pauli** suggested validation isn't always needed; sometimes a hint is sufficient. He liked the idea of a local network providing a signed list of domains it's authoritative for (perhaps with an enterprise cert), rather than relying solely on public DNS or DNSSEC. For less sensitive walled-garden content, even a simple hint list without proof might suffice.
+        *   **Ecker** noted that without authentication, the current system allows resolvers to do anything. The problem arises with DNSSEC and with non-default resolvers (e.g., DoH/DoT upstream resolvers, private relay) that bypass the local network.
+        *   **Paul Vixie** reiterated that the local resolver might have policy (e.g., RPZ) to filter or deny queries for global names, which makes a global-first approach problematic.
+        *   **Ted Hardie** suggested an "applicability statement" for any proposed solution, clearly defining what it *does* and *does not* cover. He advocated focusing on solvable problems rather than trying to map every idiosyncratic use case or solve filtering (which he saw as distinct from discovery).
+        *   **Eric Vyncke** suggested providing technical solutions for validation where clients *do* want it, without mandating it across all policies.
+
+## Decisions and Action Items
+
+*   No formal decisions were made during this meeting.
+*   **Chairs' Observation:** There is a clear need for any future discovery documents from ADD (or related WGs) to precisely define the use cases being addressed and explicitly identify those that are out of scope.
+*   **Implied Direction:** Continue discussions on mapping the diverse sub-cases of split horizon DNS to identify which are amenable to technical solutions within the IETF's architectural principles and charter. The principle of transparency for network-imposed policy was a recurring theme.
+
+## Next Steps
+
+*   The meeting notes will be finalized and made available early next week.
+*   The session recording will be published.
+*   Discussions on this topic are expected to continue on the working group mailing lists and at future IETF meetings.

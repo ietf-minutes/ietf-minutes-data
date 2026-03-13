@@ -1,0 +1,69 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting of the CORE Working Group focused on two main drafts: "Concise Problem Details" (draft-ietf-core-problem-details) and "Group Communication with Proxies" (draft-ietf-core-group-com-proxy). The "Concise Problem Details" draft successfully concluded its cross-working group last call, with discussions on addressing feedback, IANA considerations, and a tight publication timeline due to 3GPP dependencies. The "Group Com Proxy" draft presented recent updates and a discussion on its features, security considerations, and next steps, culminating in a strong indication for working group adoption. Additionally, a reminder was issued for further reviews on "Conditional Attributes" which is still in working group last call.
+
+## Key Discussion Points
+
+### Concise Problem Details (draft-ietf-core-problem-details-03)
+
+*   **Working Group Last Call (WGLC)**: The cross-WG last call (involving CORE, CBOR, and HTTP API WGs) concluded on Tuesday (May 24, 2022).
+*   **Feedback and Addressing Comments**: High-quality feedback was received from Marco, Christian, Håkon, and Roberto Paoli. Comments are being addressed in the `wglc-processing` branch on the repository.
+*   **Tag 38 Fix-up**: A parallel discussion in the CBOR WG led to extending the semantics of Tag 38 to optionally include language direction (left-to-right, right-to-left). This change has potential backward compatibility implications but received positive feedback from the CBOR WG for its "no clutter" approach. The `auto` base direction is now explicit. The context of defining Tag 38 within an evolving landscape of mixed-direction text standardization was highlighted.
+*   **Shepherding and IANA Processing**: Shepherding has begun, and IANA processing has been initiated for a new media type, associated content format, and new sub-registries for extension points. Håkon H. provided thumbs up on the content format registration.
+*   **Timeline Pressure**: The milestone for submission to IESG is June 2022, driven by a dependency from 3GPP documents planning to publish in June. A suggestion was made to request IESG and AD reviews in parallel to expedite the process.
+*   **WGLC Comment Review (Carsten Bormann)**:
+    *   **Editorial Changes**: 11 of 18 commits were editorial, including consistent use of "Concise Problem Details Data Item" (CPDDI) and reference tweaks.
+    *   **Technical Knit**: Corrected an entry in the registry regarding standard probability entries.
+    *   **Problem Shape**: A new term "problem shape" was defined. The draft explicitly moves away from the `problem type` concept in RFC 7807, arguing that it does not mesh with the reality of evolving interfaces. A custom CPDDI with number `7807` is defined to carry information for systems still using 7807 problem types.
+    *   **Base URI**: A new standard CPDDI (`-5`) was introduced for `base URI`, acknowledging that `base URI` (like response code) might be lost when a CPDDI is stored outside of its request/response context.
+    *   **Ignore Unknown Principle**: Discussion on applying JSON extensibility patterns, where unknown entries are ignored for forward compatibility. This prevents breaking old receivers when new elements are introduced. The challenge of defining how to handle new structures within existing map keys was also noted, but it was decided not to include extensive text on this.
+    *   **Example for RFC 7807 Invalid-Params**: Discussion around an example of porting a 3GPP TS29.112 construct. The example uses a CBOR array, while the original JSON uses a map. Carsten and Thomas preferred the array for its CBOR-friendliness, despite Håkon's suggestion for a map to maintain closer parity with the JSON. The array was deemed acceptable as an example of using custom problem details entries in a CBOR context.
+*   **Discussion on Type Field**: Håkon raised concerns about 3GPP's desire for a one-to-one mapping, including the `type` field. Carsten noted that Appendix B of the draft addresses this.
+*   **WGLC Closure**: The working group last call for `draft-ietf-core-problem-details` was confirmed closed.
+
+### Group Com Proxy (draft-ietf-core-group-com-proxy)
+
+*   **Purpose**: Addresses issues identified in `group-com-bis` related to using a proxy in combination with group communication. The draft defines how a proxy collects unicast responses from multiple servers (following a multicast request) and forwards them.
+*   **Key Updates (since version 5)**:
+    *   **Multicast Timeout Option**: Renamed from `Multicast Signaling` to be more specific. The length of the `uint` is now 4 bytes (seconds). The proxy removes this option from the request.
+    *   **Response Forwarding Option**: Semantics for the port number have been updated for more compact representation. `Null` implies the same port as the destination port in the group request; `absent` implies the default transport port (currently 5683 for CoAP).
+    *   **Reverse Proxy Processing**: A new section details how a reverse proxy can act as an origin server, potentially determining a default timeout for collecting responses. The importance of the client being aware of this default configuration (ideally through a pre-established security/authentication relationship) was noted.
+    *   **Response Revalidation**: Placeholder notes added for revalidation between a proxy and servers, specifically in combination with cacheable OSCORE.
+    *   **New Example**: An appendix now includes an example for a reverse proxy using one IP address and embedding the group URI in the URI path (using RFC 8075 format) for better scalability.
+    *   **HTTP to CoAP Reverse Proxy**: Section 9.10 considers this scenario, discussing streamed delivery of CoAP responses via HTTP chunked transfer encoding (`multi-part mixed`). Carsten raised a point about chunk delimitation, which was clarified as being handled by multi-part boundaries.
+*   **Summary of Features**: The draft resolves caching issues at the proxy, handles two types of response revalidation (including `Group ETag` for client-proxy revalidation), supports both forward and reverse proxies, addresses HTTP-to-CoAP interactions, and considers proxy chains.
+*   **Relations to Other Documents**: The draft has dependencies and relations with `draft-ietf-core-responses` and `draft-ietf-core-oscor-capable-proxies`. Carsten's WGLC review of `group-com-bis` highlighted that this document (group-com-proxy) needs to be adopted by the WG for `group-com-bis` to progress effectively regarding proxy issues.
+*   **Implementation Interest**: Rikard Hjort expressed strong interest, confirming he is working on an implementation for a forward proxy handling unicast requests to multicast servers, with plans to add group OSCORE between proxy and servers.
+*   **Discussion on Reverse Proxy Default Timeout (Christian Amsüss)**: Christian argued against a default timeout on a reverse proxy, suggesting it's problematic if the client is unaware it's communicating with a reverse proxy and expects a single response. He emphasized the need for negotiation or advertisement to prevent issues like token disagreement. Carsten agreed that explicit signaling is safer for protocol state machines, especially in chained proxy scenarios. A sense of those present indicated a preference for explicit signaling over implicit defaults.
+*   **Discussion on URI Path for Addressing (Christian Amsüss)**: Christian questioned the use of embedding the address in the URI path (RFC 8075 style), suggesting that the `Uri-Host` option would be more appropriate for CoAP, even in reverse proxy scenarios. Esam to follow up offline to clarify how `Uri-Host` could be used.
+*   **Working Group Adoption**: Carsten noted that all prerequisites for a working group adoption call are met, and the chairs should consider initiating one soon.
+
+### Conditional Attributes (draft-ietf-core-conditional-attributes)
+
+*   **WGLC Status**: The draft is still in working group last call.
+*   **Feedback Needed**: Only one review (Carsten's) has been received. More feedback is needed before closing the WGLC. Even "fine as is" feedback is valuable.
+
+## Decisions and Action Items
+
+*   **Concise Problem Details (draft-ietf-core-problem-details)**:
+    *   **Decision**: Working Group Last Call is officially closed.
+    *   **Action Item**: Authors to submit the updated draft (based on the current pull request) to the IESG for publication this week (ideally by Friday, May 27, 2022).
+    *   **Action Item**: Shepherds to prepare the shepherd's report for submission by Friday, May 27, 2022.
+*   **Group Com Proxy (draft-ietf-core-group-com-proxy)**:
+    *   **Action Item**: Authors to address the discussion points regarding the reverse proxy default timeout, favoring explicit signaling, negotiation, or advertisement over implicit defaults.
+    *   **Action Item**: Authors to revisit the use of URI path for addressing information versus the `Uri-Host` option, potentially with an offline discussion with Christian.
+    *   **Action Item**: The chairs will consider initiating a working group adoption call for this document soon.
+*   **Conditional Attributes (draft-ietf-core-conditional-attributes)**:
+    *   **Action Item**: Working Group members are urged to review the document and provide feedback on the mailing list within the next couple of weeks, including "fine as is" comments.
+
+## Next Steps
+
+*   **Concise Problem Details**: Proceed with IESG and AD reviews, potentially in parallel, to align with 3GPP's June publication timeline.
+*   **Group Com Proxy**:
+    *   Align terminology and concepts with `draft-ietf-core-responses`.
+    *   Consider using CRIS for addressing information in options.
+    *   Define a cancellation mechanism for proxy collection processes.
+    *   Complete the text for HTTP to CoAP proxies and add specific security considerations for group cases.
+*   **Conditional Attributes**: Await further working group feedback to conclude its WGLC.

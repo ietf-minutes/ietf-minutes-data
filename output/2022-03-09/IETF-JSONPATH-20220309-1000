@@ -1,0 +1,83 @@
+# [JSONPATH](../wg/jsonpath.html)
+
+## Summary
+
+This interim meeting focused on assessing the current status of the `draft-ietf-jsonpath-base` and `draft-ietf-iregx` documents, discussing open issues, and planning for the Working Group Last Call. Key discussions revolved around the IETF document lifecycle, security considerations, the treatment of singular vs. plural paths in filter expressions, the potential introduction of a general extension point mechanism, and equality comparisons of structured values. The general sentiment is that the JSONPath draft is nearing completion, potentially one IETF cycle away from submission to the IESG.
+
+## Key Discussion Points
+
+*   **Draft Status and IETF Process**:
+    *   The `draft-ietf-jsonpath-base` is considered to be "within one IETF" cycle of being ready for submission to the IESG. Participants generally agreed with this assessment.
+    *   An overview of the IETF document lifecycle was provided: Working Group Last Call -> IESG review -> IETF Last Call -> Directorates review -> RFC Editor.
+    *   It was emphasized that `draft-ietf-jsonpath-base` and its normative reference `draft-ietf-iregx` should ideally advance together to avoid publication delays.
+    *   The criteria for submission include achieving consensus on the document within the WG and ensuring it is robust enough to survive subsequent review processes.
+
+*   **Open Issues and Tasks (from Glenn's email)**:
+    *   **Security Considerations (Issue 25)**:
+        *   Discussion identified key areas: Denial of Service (DoS) possibilities (especially from regex in `iregx`), information exposure if paths are crafted by attackers, and the danger of using `eval()` in implementations.
+        *   It was noted that JSONPath primarily extracts information and doesn't introduce new vulnerabilities if the source document is already accessible, but runtime performance and incorrect assumptions about path behavior (e.g., using it for blacklists) are concerns.
+        *   James to draft the security considerations section.
+    *   **Examples (Issues 69, 136)**:
+        *   General agreement on the value of clear examples, both inline and a larger example in an appendix.
+        *   Preference for straightforward examples in the main body, with complex edge cases relegated to an appendix ("small print").
+        *   Glenn volunteered to work on examples.
+    *   **Table 1 Edit (Issue 148)**: Carsten volunteered to edit Table 1.
+    *   **String Normalization (Issue 117)**: Carsten volunteered to review this, noting it should be a short task.
+    *   **Issue 150: List Selectors allow Filter Selectors**:
+        *   Confirmed that PR 165, which allows filter selectors within list selectors, was merged.
+    *   **ABNF Refactoring (Section 3.5)**:
+        *   Discussion about improving the consistency of ABNF for filter expressions (e.g., naming the `?boolean-expression` part). This was deemed an editorial task. Glenn to handle as part of section rearrangement.
+
+*   **Normalized and Singular Paths (Issue 155)**:
+    *   A distinction was drawn between a "normalized path" (defined by its syntax, always selecting zero or one node) and a "singular path" (defined by its semantics, also yielding zero or one node).
+    *   Significant discussion on whether filter expressions (especially for comparisons and regex matches) should require singular paths or allow plural paths (node sets).
+    *   **Consensus**: For **comparison expressions** and **regex match expressions**, paths will be restricted to **singular paths** to avoid ambiguity regarding "all match" vs. "any match" semantics.
+    *   For **existence tests**, general (plural) paths will be allowed, as the semantic "it exists" is clearer.
+    *   Reluctance to introduce "nested filters" or allow filter selectors within `descendant selector` (double-dot) unless there's strong evidence of existing implementation or clear use cases, to avoid extending the language beyond its interoperable subset.
+    *   **Action**: Carsten to produce examples to explore the implications of nested filters and relative path usage in filter expressions, particularly in the context of PR 164.
+
+*   **Function Notation / Extension Points**:
+    *   The need for features like `length` (e.g., for array size checks) and access to member names/array indices was highlighted.
+    *   Discussion about introducing a general extension point mechanism in the syntax (e.g., using a `#` character) to allow for future functions or custom operations without constantly changing the core grammar.
+    *   Concerns were raised about:
+        *   Maintaining interoperability when extensions are allowed.
+        *   Curating the namespace for extensions (referencing RFC 6648 principles).
+        *   The "You Aren't Gonna Need It" (YAGNI) principle for adding features not immediately required.
+    *   Argument for "now or never": establishing a common extension syntax early could prevent fragmentation where different implementations invent their own incompatible syntaxes.
+    *   **Decision**: While there are reservations, the group will explore a crisp proposal for an extension point mechanism, potentially defining `length` as a mandated extension to demonstrate its use and encourage implementation. This proposal would need to address syntax, policy for namespace curation, and potential initial use cases. Carsten will take this on.
+    *   The `at index` (accessing parent/member name context) idea was discussed as a possible use case but noted as potentially breaking the current processing model.
+
+*   **`@` sign optional**: **Decision**: No.
+
+*   **Related Standards (e.g., SQL/JSONPath Expression)**:
+    *   Discussion on whether to reference external standards, particularly paywalled ISO standards.
+    *   **Decision**: A non-normative reference *could* be included if someone volunteers to write a useful paragraph explaining the relationship for readers familiar with that other standard. The person who raised the issue is encouraged to draft such a paragraph.
+
+*   **Output of Normalized Paths**:
+    *   The current specification allows implementations to optionally return normalized paths.
+    *   **Decision**: This will remain optional. The syntax for normalized paths should, however, be clearly defined in the document.
+
+*   **Equality Comparisons of Structured Values (Issue 145)**:
+    *   **Decision**: JSONPath will **not** support equality comparisons for structured values (objects or arrays). This is to avoid complexity around recursive comparisons, member name normalization, and potential for large data comparisons.
+    *   **Action**: James to close PR 145 with an explanation that this feature "failed to achieve consensus support" in the WG, acknowledging the discomfort with this decision but citing the complexity.
+    *   String comparisons *will* be based on Unicode code points; the document needs to explicitly state this.
+
+## Decisions and Action Items
+
+*   **Consensus**: The `draft-ietf-jsonpath-base` is nearing WG Last Call, with likely one more interim meeting before submission to the IESG. Both `draft-ietf-jsonpath-base` and `draft-ietf-iregx` should advance together.
+*   **Consensus**: For comparison and regex match expressions within filters, paths must be singular. For existence tests, general (plural) paths are allowed.
+*   **Decision**: Not to make the `@` sign optional.
+*   **Decision**: JSONPath will not support equality comparisons of structured values (objects/arrays).
+*   **Action**: James to draft the Security Considerations section (Issue 25).
+*   **Action**: Glenn to work on examples (inline and appendix, Issues 69, 136) and editorial ABNF rearrangement for filter expressions.
+*   **Action**: Carsten to edit Table 1 (Issue 148).
+*   **Action**: Carsten to review String Normalization (Issue 117).
+*   **Action**: Carsten to produce examples for nested filters and relative path use in filters, specifically for PR 164, to inform further discussion on singular paths.
+*   **Action**: Carsten to develop a crisp proposal for a general extension point mechanism in the syntax, potentially including `length` as a mandated example, addressing syntax, policy, and use cases.
+*   **Action**: James to close PR 145 with an explanation regarding the lack of consensus for structured value equality comparisons.
+*   **Action**: The proposer of the "Related Standards" issue is requested to draft a paragraph for non-normative inclusion if they believe it provides useful context.
+*   **Action**: Ensure the document explicitly states that string comparisons are based on Unicode code points.
+
+## Next Steps
+
+*   **Next Interim Meeting**: A doodle poll will be sent out by Glenn for a meeting in **late April / early May**, aiming for the week of April 25th (Monday, Tuesday, or Thursday options).

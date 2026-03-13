@@ -1,0 +1,50 @@
+# [LPWAN](../wg/lpwan.html)
+
+## Summary
+
+The LPWAN working group held an interim meeting to primarily discuss critical architectural considerations related to device and rule identification, rule instantiation, and security within LPWAN contexts, particularly concerning mesh networks and rule provisioning. Updates were provided on the status of the Chic for Sigfox (Compound ACK) and Chic for NB-IoT drafts, with the former nearing conclusion. Planning for the upcoming IETF 115 meeting in London included a proposal for a dedicated side meeting to delve deeper into the architecture challenges.
+
+## Key Discussion Points
+
+*   **Approval of Previous Minutes:** The minutes from the last meeting were approved without objection.
+*   **Draft Status - Chic for Sigfox (Compound ACK):**
+    *   The document is in Working Group Last Call.
+    *   IPR confirmations are mostly complete; one author is pending.
+    *   Issues in the YANG model were identified by Sergio: sentences not fitting the page, and a mismatch between the module name definition and the name within the module. Laurent committed to addressing these issues.
+    *   The sense of those present indicates a core group within the WG is interested in and satisfied with this document, though broader WG engagement has been limited. The AD noted this is common for some WG deliverables.
+*   **Draft Status - Chic for NB-IoT:**
+    *   The document has progressed to the RFC Editor Queue, awaiting an RFC number.
+    *   A liaison statement regarding NB-IoT specifics has been sent to 3GPP, and a reply is awaited.
+    *   The Protocol Contexts and State (PCS) parts are informational, while the end-to-end components are normative.
+*   **IETF 115 London Planning:**
+    *   The LPWAN WG session is scheduled for November 11th, 12:00-1:30 PM.
+    *   The agenda cutoff is October 26th; requests for slots are needed by October 25th.
+    *   Both chairs will be present in person for the first time in three years.
+    *   A side meeting in London was proposed to focus on the architecture discussion, potentially on Thursday or Friday, depending on participants' travel arrangements.
+*   **Architecture Discussion - Device & Rule Identifiers:**
+    *   **Current Model:** In a star topology, devices (Dev) communicate with a core (App). Rules are stored on both. Uplink: Core identifies Dev by full ID, finds rule, decompresses, sends IPv6 to App. Downlink: Core matches destination IPv6 to a rule to identify Dev.
+    *   **ND Cache vs. Rules:** A key architectural question arose regarding the identification of devices. Pascal suggested that device identification (e.g., mapping IP to MAC/device ID, similar to an ND cache) should be a separate table from the rule set itself. This allows first identifying the target device, then applying only the rules relevant to that device, preventing incorrect rule matches. OpenChic's current implementation, which can embed device IDs within rules, was noted to collapse these distinct functions.
+    *   **Device as Router / Shared IP:** Discussion on whether a device can act as a router or if multiple devices could share an IP address (differentiated by UDP port). If so, the device identifier mapping might need to include port information. The "device ID" is considered critical, especially in scenarios like Ripple where a root needs to identify specific leaves behind a 6LR, requiring the device ID to be present in the packet.
+    *   **Mesh Networks and Role Symmetry:** In mesh environments, the traditional "core" and "device" roles become less clear, potentially symmetric. Laurent proposed that rules need to be identified by two elements (X and Y) to handle peer-to-peer communication, with unique rule IDs for X->Y and Y->X flows.
+    *   **Role Assignment:** Karsten suggested that endpoints must know their role (Dev/App) in advance for each interaction. Pascal proposed that if a transport layer (e.g., PPP, a tunnel, or a TCP/UDP session) is established, the initiator typically assumes the "device" role.
+    *   **Rule Instantiation:** Pascal introduced the concept of "instantiation" where rule sets could use placeholders (e.g., "$device", "$application") for IP addresses or other device-specific IDs. These placeholders would be filled in at the time a session starts, based on the roles (device/application) adopted by the communicating nodes. This enables a single, generic rule set to be applied across many equivalent devices.
+*   **Architecture Discussion - Rule Provisioning & Security:**
+    *   **Fine-grained Access Control for Rules:** Laurent raised a security concern regarding the mutability of fields in YANG models. While YANG allows declaring leaves as read/write, a Chic rule might require specific fields (e.g., destination address on the core) to be immutable by a device to prevent DoS attacks. This implies a need for more granular access control than typical YANG models provide, potentially at the row/field instance level within a rule, not just the column/leaf level.
+    *   **Trust and Signing of Rules:** The discussion extended to how to cryptographically ensure the integrity and authenticity of rule sets, especially which fields are mutable or immutable. Pascal suggested signing non-mutable fields, or signing the entire rule set after zeroing out mutable fields (similar to IPsec's approach for mutable headers), to ensure they haven't been tampered with before distribution. The trust chain for who signs the rules and defines mutability is crucial.
+
+## Decisions and Action Items
+
+*   **Decision:** Minutes from the previous meeting were approved.
+*   **Action Item:** Laurent will address the identified issues in the Chic for Sigfox (Compound ACK) YANG model (line length, module name mismatch).
+*   **Action Item:** Laurent will perform a YANG review of the Chic for Sigfox (Compound ACK) document.
+*   **Action Item:** Chairs will identify suitable times and rooms for a dedicated side meeting on architecture in London, based on participant travel availability.
+
+## Next Steps
+
+*   Further refine the architectural design, specifically focusing on:
+    *   The distinction between device identification (e.g., ND cache) and rule sets.
+    *   Handling of device roles (Dev/App) in mesh networks.
+    *   The mechanism for rule instantiation using placeholders for device-specific values.
+    *   Addressing fine-grained access control and cryptographic integrity for rule fields (mutable vs. immutable) in YANG models.
+*   Participants interested in contributing to the architecture discussion in London are encouraged to inform the chairs of their travel plans.
+*   Prepare slides for the IETF 115 London meeting by November 4th.

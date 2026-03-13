@@ -1,0 +1,86 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE working group discussed the status of various drafts, including a call for adoption for RTCP messages for Green Metadata, ongoing work on RTP over Quick, and an architecture for end-to-end encrypted media over RTP. Key discussions revolved around title choices for the Green Metadata draft, the interpretation of Quick's `max_streams` limit, and a comprehensive scoping exercise for RTP over Quick covering planned usages, topologies, relevant Quick extensions (including timestamps), SDP profiles, and congestion control. Finally, an initial architecture for end-to-end encrypted media in WebRTC contexts was presented, receiving positive feedback for further development.
+
+## Key Discussion Points
+
+*   **Note Taker**: Spencer Dawkins and Mel were the designated note-takers.
+*   **IPR and Code of Conduct**: Standard IETF reminders were given regarding IPR disclosure and professional conduct.
+*   **Draft Status Update**:
+    *   Two drafts are in AUTH48 and expected to be published soon.
+    *   "SKIP" is in IETF Last Call.
+    *   "Marketing Mode" requires a revised ID.
+    *   `draft-ietf-avtcore-1783-best` was published.
+    *   `draft-ietf-avtcore-rtp-payload-vvc` is adopted, requiring an updated draft.
+    *   `draft-ietf-avtcore-b3c-rtp` was submitted for working group adoption and is awaiting chair approval.
+
+*   **Green Metadata (RTCP Messages for Spatial and Temporal Resolutions)**:
+    *   Young presented on `draft-ietf-avtcore-rtcp-messages-green-metadata`.
+    *   **SDP Definition**: A comment from Nokia suggested clarifying how the RTCP mechanism collaborates with SDP updates. The authors plan to add an SDP definition subclass similar to RFC 510 to define the RTCP feedback attribute and relevant parameters.
+    *   **Draft Title**: Magnus suggested the title `rtcp-messages-for-green-metadata` might be unclear as the messages provide resolution information, not energy savings directly. Two alternative titles were proposed: "RTCP messages for spatial and temporal resolutions" or "Codec Resolution Control Message in RTP Audio Visual Profile with Feedback." The working group decided to discuss the title further on the mailing list.
+    *   **Notification Message Efficiency**: A comment suggested the notification message might be wasteful by repeating picture width, height, and frame rate, proposing only SSRC and sequence number might be sufficient (saving 32 bits). The authors noted existing notifications send complete fields, and consistency might be preferable. A sense of those present indicated that descriptive fields are better if not overly expensive.
+    *   **Sender-Initiated Resolution Change**: It was clarified that if a sender changes resolution due to congestion, it does not necessarily need to send a notification, analogous to how RTCP TMMBR (Temporary Maximum Media Bit Rate) works.
+
+*   **RTP over Quick - Max Streams Limit**:
+    *   Bernard presented on a potential issue where Quick implementations could hit a `max_streams` limit, especially if streams are not cleaned up correctly or in high-concurrency scenarios like large-scale conferencing (e.g., 49 simultaneous video streams).
+    *   **Clarification of `max_streams`**: There was a discussion about whether `max_streams` refers to the maximum *numeric stream ID* or the maximum *number of concurrently open streams*. Jonathan offered to clarify this with Quick authorities.
+    *   **Impact on Implementations**: Implementers need to be aware of concurrency (e.g., sending I-frames and P-frames simultaneously) and proper stream closure to avoid hitting limits and resource leaks.
+    *   **Documenting the Issue**: It was suggested that a note in the RTP over Quick specification might be warranted to warn implementers.
+
+*   **RTP over Quick - Scoping Discussion**:
+    *   Spencer and York led a discussion on defining the scope for RTP over Quick and its corresponding SDP specification.
+    *   **Goal**: The aim is to make RTP over Quick "useful" by doing what is needed now, without over-engineering for every imaginable future use case, while trying not to break future possibilities.
+    *   **Planned Usages**:
+        *   SIP VoIP environments: Bernard noted a lack of current interest from PBX/handset communities, challenging the idea of a drop-in RTP/UDP replacement. Peter added that early SIP over Web (RTP over HTTP) discussions might be relevant precedents.
+        *   WebRTC environments: Bernard questioned current interest, noting that WebRTC implementations primarily use DTLS-SRTP.
+        *   Web Transport environments: Agreed as a planned usage.
+        *   Mobile applications doing RTC: Peter suggested adding this as a distinct use case.
+        *   Stefan commented that applications (not call control standards) should define usefulness, and a drop-in replacement for RTP over UDP (without standardized call controls) is still desired by large industry segments.
+    *   **Topologies**:
+        *   Multicast is out of scope for now, as Quick does not support it.
+        *   The need to analyze unicast topologies in detail was noted, especially regarding multiplexing multiple RTP streams over the same pre-negotiated Quick channel. Roman emphasized avoiding unnecessary limitations and the need for SDP negotiation to demultiplex streams.
+    *   **Relevant Quick Extensions**:
+        *   **Datagrams**: Assumed to be used by `draft-ietf-avtcore-rtp-over-quick`.
+        *   **Quick Timestamps**: Discussion about `draft-seemann-quic-ts`. Bernard noted the Web Transport WG did not recommend mandatory use due to limited implementation. Peter, Mo, and Harold expressed interest in timestamps for congestion control (one-way delay, packet scheduling). Spencer will solicit feedback on the AVTCORE mailing list regarding its usefulness for RTP over Quick. Jonathan noted implications for API design and information passing between Quick stack and RTP layer.
+    *   **SDP Profiles**:
+        *   Discussions included full protocol definitions, secure RTP (SRTP) keying, and relaying/forwarding between Quick and UDP/RTP.
+        *   Jonathan raised concerns about gatewaying DTLS-SRTP to Quick due to keying issues, suggesting tunneling DTLS over Quick might be terrible or that `mask` WG solutions are more appropriate for such tunneling. Roman suggested tunneling DTLS over Quick, while not ideal, is feasible for prototyping and gateway scenarios, but acknowledged higher overhead.
+        *   It was suggested to defer deeper discussions on SDP until topologies are better understood.
+    *   **Quick Congestion Control**:
+        *   The `draft-ietf-avtcore-rtp-over-quick` currently proposes an ALPN (`RTP-Mux-Quick`) distinct from H3 to avoid awkward aspects of nested RTP/H3 controls.
+        *   Bernard and Peter stressed that ALPN and congestion control algorithms are orthogonal. The ALPN should not dictate the CC algorithm; rather, an explicit mechanism (like a constructor hint) should be used.
+
+*   **Codec Agnostic Payload Format (End-to-End Encrypted Media RTP Architecture)**:
+    *   Yuan presented `draft-ietf-avtcore-encrypted-media-rtp-architecture`. This draft aims to enable end-to-end encryption of media over RTP, specifically in the WebRTC context (clients and SFUs).
+    *   **Architecture**: It proposes an encryptor component between the media encoder and packetizer. The packetizer now becomes tied to the media encrypter, which passes encrypted content and relevant metadata (from WebCodecs API) for RTP header generation and payload splitting.
+    *   **SFU Role**: SFUs must be able to compute decodable units from packets, use metadata (e.g., in dependency descriptors) for forwarding decisions, and potentially record encrypted content.
+    *   **Receiver Role**: Reconstruct encrypted content, perform early processing (e.g., keyframe requests), and use existing RTP redundancy mechanisms.
+    *   **Feasibility**: The architecture allows for different underlying encryption formats (SFrame, S-Packet) while maintaining a consistent packetizer interface.
+    *   **Repacketization**: Yuan raised the question of whether SFU repacketization (e.g., large to small packets due to MTU differences) should be in scope. Feedback is welcome.
+    *   **Solution Content**: Peter highlighted design decisions for the format, including payload type (optional/required) and metadata like frame number, offset, or index, which are useful for SFU repacketization.
+    *   **Next Steps**: Jonathan and Bernard encouraged Yuan to continue this work. Jonathan suggested submitting the architecture draft as a WG document and starting parallel work on solutions. Harold emphasized coordination with W3C WGSE.
+
+## Decisions and Action Items
+
+*   **Action for Chairs**: Approve `draft-ietf-avtcore-b3c-rtp-00` as a working group document.
+*   **Action for Young**: Start a mailing list thread on the AVTCORE list to discuss the appropriate title for the Green Metadata draft.
+*   **Decision (Green Metadata)**: The `rtcp-messages-for-green-metadata` draft is considered suitable for adoption, pending the outcome of the title discussion and submission as a working group document.
+*   **Action for Jonathan**: Clarify the meaning of Quick's `max_streams` limit (numeric ID vs. concurrent open streams) with Quick authorities.
+*   **Decision (RTP over Quick Topologies)**: The working group will develop text to analyze unicast RTP over Quick topologies in detail, with subsequent discussion on where this text should reside (e.g., in the main draft, a separate informational draft).
+*   **Action for Spencer**: Send an email to the AVTCORE mailing list to solicit feedback on the usefulness and potential mandating of Quick timestamps for RTP over Quick.
+*   **Decision (RTP over Quick SDP)**: Further discussion on SRTP keying models for relaying/forwarding between RTP over Quick and RTP over UDP, considering options like tunneling DTLS/SRTP over Quick, is needed.
+*   **Decision (RTP over Quick Congestion Control)**: It was reiterated that ALPN and congestion control algorithms are orthogonal and should not be tightly coupled; an explicit mechanism for CC algorithm selection is preferred.
+*   **Action for Mathis**: Start a mailing list thread to discuss the various multiplexing options for RTP over Quick, including the use of Web Transport, partial Web Transport, or a dedicated RTP/RTCP-only multiplexing scheme.
+*   **Action for Yuan**: Submit `draft-ietf-avtcore-encrypted-media-rtp-architecture` as a working group document before IETF 116.
+*   **Decision (End-to-End Encrypted Media RTP Architecture)**: The working group expressed strong interest in this problem space; the architecture draft should be advanced as a working group document, and parallel work on concrete solutions should begin. Coordination with the W3C WGSE is encouraged.
+
+## Next Steps
+
+*   Working group participants are encouraged to engage in the mailing list discussions for the Green Metadata title, Quick timestamps, and RTP over Quick multiplexing options.
+*   Yuan will prepare the encrypted media RTP architecture draft for working group document submission and begin working on solutions in parallel, coordinating with W3C WGSE.
+*   Jonathan will seek clarification on the Quick `max_streams` definition.
+*   The chairs will approve the B3C RTP payload format as a working group document.
+*   The working group will continue to refine the scope and technical details of RTP over Quick through further discussions and future meetings.
+*   The next regular AVTCORE meeting will be at IETF 116.
