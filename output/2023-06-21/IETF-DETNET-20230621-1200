@@ -1,0 +1,84 @@
+# [DETNET](../wg/detnet.html)
+
+## Summary
+
+This DETNET working group session focused on evaluating existing Time-Aware Shaper (TAS) and Credit-Based Shaper (CBS) mechanisms against the requirements draft (draft-ietf-detnet-requirements), which served to refine both the understanding of these mechanisms and the requirements themselves. Key discussions included the scalability implications of per-flow versus per-traffic class scheduling and the need to clarify evaluation criteria for "high utilization" and jitter. The session also featured a presentation on a new draft proposing "Bounding End-to-End Delay with Queue Resizing" (draft-antoine-detnet-bound-delay-queue), which introduced a dynamic queue capacity adaptation mechanism and an RSVP-inspired signaling protocol. The working group agreed to update the requirements draft based on these discussions and committed to using a standardized evaluation framework for future mechanism proposals.
+
+## Key Discussion Points
+
+### Agenda Review and Logistics
+*   The agenda for the meeting included an introduction, a deep dive into TSN queuing and scheduling mechanisms (TAS and CBS) to evaluate against the requirements draft, and a presentation on Antoine's "Bounded End-to-End Delay Queue" draft.
+*   A volunteer (Ariana) was sought for note-taking.
+
+### Evaluation of TSN Mechanisms (IEEE 802.1Qbv and 802.1Qav/Qbu)
+
+#### Time-Aware Shaper (TAS) / IEEE 802.1Qbv Evaluation (presented by Xiaofu)
+*   **3.1 Total with Time Synchronization**: Yes, due to nanosecond clock synchronization requirements.
+*   **3.2 Support Large Single-Hop Propagation Latency**: Yes, as link delay is considered independently per node.
+*   **3.3 Accommodate Higher Link Speed**: Partial, requires more precise timer control and smaller GCL time intervals, impacting device capacity.
+    *   **Clarification**: The evaluation of TAS refers to its classical TDMA use, not CQF or other enhancements.
+*   **3.4 Be Scalable to Large Number of Flows**: Partial. Per-flow GCL calculation is an "NP-hard problem" for the control plane. Per-traffic class scaling is better.
+    *   **Discussion**: The requirements draft currently does not distinguish between individual flow scheduling and traffic class scheduling. This needs to be addressed, as it impacts the evaluation of scalability for both existing and new mechanisms.
+*   **3.5 Tolerate High Utilization**: Possible, as GCL time intervals dedicate bandwidth. Unused reserved bandwidth is wasted.
+*   **3.6 Tolerate Flow Fluctuation**: No, recalculation of GCLs is complicated and requires frequent updates on all nodes the flow traverses.
+*   **3.7 Be Scalable to Large Number of Hops with Complex Topology**: Partial, GCL calculations become more complex with hop count, though per-hop delay can be negligible.
+
+#### Credit-Based Shaper (CBS) / IEEE 802.1Qav/Qbu Evaluation (presented by Xiaofu)
+*   **3.1 Total with Time Synchronization**: No, as it relies on credit-based operation, not time synchronization.
+*   **3.2 Support Large Single-Hop Propagation Latency**: Yes.
+*   **3.3 Accommodate Higher Link Speed**: Yes, but requires more precise credit calculation and capacity. May not need to be combined with ATS at high speeds.
+*   **3.4 Be Scalable to Large Number of Flows**: Partial, shaping is based on traffic classes for aggregated flows. May need additional shaping (e.g., ATS) for individual flows to avoid burstiness.
+    *   **Discussion**: The relevance of combining CBS with ATS was raised. Johannes noted that the combination of CBS and ATS for the same traffic class in a single port is not standardized by IEEE 802.1Q. The WG acknowledged that non-standardized but useful combinations could be discussed. The need to update the requirements draft for traffic class vs. flow scaling applies here as well.
+*   **3.5 Tolerate High Utilization**: Yes, through pre-configuration of bandwidth limits per traffic class. Best-effort flows can use unused portions.
+    *   **Clarification**: Administrative idle slope value for bandwidth limits.
+*   **3.6 Tolerate Flow Fluctuation**: Yes, as bandwidth reservation is based on worst-case burst behavior, potentially overestimating latency.
+*   **3.7 Be Scalable to Large Number of Hops with Complex Topology**: Partial, current delay is overestimated, inversely proportional to idle slope, leading to large worst-case delays.
+
+#### General Discussion on Mechanism Evaluation Framework
+*   **Evaluation Template**: The chairs requested that proposers of new queuing and scheduling mechanisms use a similar evaluation chart against the requirements draft.
+*   **Requirements Draft Completeness**: There was a sense that the current requirements draft might not be complete enough for a useful comparison. Toerless specifically suggested adding a requirement for Jitter lower than the maximum latency minus physical link propagation latency, which differentiates asynchronous (like CBS) from synchronous mechanisms.
+*   **High Utilization Definition (3.4)**: Ping noted that the evaluation method for "high utilization" differed between TAS and CBS, suggesting a need for clearer definition in the requirements draft. The discussion indicated that "dead time" (unused reserved bandwidth) detracts from meeting this requirement.
+*   **Link Speed Variation**: Xiaofu suggested a new requirement to discuss "high-speed network interworking with low-speed network," acknowledging that real networks have varying link speeds (access, aggregation, backbone). This could be related to requirement 3.8.
+
+### Bounding End-to-End Delay with Queue Resizing (Antoine's Presentation)
+
+*   **Motivation**: To address use cases requiring bounded delay but not strict jitter constraints (e.g., online gaming), bridging the gap between complex TSN/DetNet IP solutions and traditional QoS. It avoids synchronization and centralized management.
+*   **Dynamic Queue Capacity Adaptation**:
+    *   **Core Idea**: Leveraging network calculus, the maximum queue delay is an affine function of buffer capacity for FIFO queues served by a deterministic round-robin scheduler. By adapting buffer capacity, the worst-case queue delay can be controlled.
+    *   **Mechanism**: Nodes dynamically adjust queue capacities based on two occupancy thresholds (nearly full, minimal). If a reservation request cannot be met with current queue capacity, the system attempts to shrink (if below minimal threshold) or grow (if nearly full threshold is crossed) a queue's capacity while respecting existing contracts.
+*   **Signaling Mechanism (RSVP-inspired)**:
+    *   **Goal**: To signal end-to-end delay reservation requirements for flows.
+    *   **Differences from RSVP**:
+        *   Allows exploration of multiple paths.
+        *   Allows either the destination or the source to choose the final path for reservation (RSVP typically has destination-only decision).
+    *   **Example**: Path messages (requests) carry max E2E delay, current E2E delay commitment, capacity, and a recorded route. Each node adds its delay contribution and identifier. Reply messages (Resv) confirm the chosen path.
+*   **RSVP Adaptation and Encoding Challenges**:
+    *   **Mapping**: Requests map to RSVP Path messages, replies to Resv messages.
+    *   **Flow ID**: RSVP relies on 5-tuple for flow identification, which might be limiting for DetNet flows not tied to specific transport protocols (e.g., if only IP source/destination is used). Flow labels could be an alternative but require path-wide trust.
+    *   **Delay Encoding**: Encoding max E2E delay and node delay commitment within standard RSVP T-spec/Flowspec and Adspec objects is "tedious" and requires computation at each node, not a direct read.
+    *   **RSVP Limitations**: Lack of clear policy for multi-path management, slow failover (error messages back to source via destination).
+    *   **Proposal**: Interest in a "cleaner" RSVP object specifically for deterministic networking flow information.
+*   **Discussion on Antoine's Proposal**:
+    *   **Control Plane vs. Data Plane Focus**: Toerless and Janos suggested that the RSVP control plane aspects might be better discussed in a broader WG or separated, as DETNET primarily focuses on data plane enhancements. Concerns were raised about RSVP's known scaling issues for large networks, preferring modern solutions like Segment Routing for traffic steering.
+    *   **Data Plane Information**: Janos asked about per-flow identification and queuing at intermediate nodes, which is required by the proposal.
+    *   **Data Plane Mechanism Simplicity**: Xiaofu questioned the detail of the data plane mechanism beyond simple queue resizing, noting that complex models exist in TSN. Antoine confirmed the goal was a simpler data plane compared to complex TSN mechanisms, acknowledging more detail on data plane aspects could be added.
+    *   **RSVP Overhead**: Kashinath inquired about using RSVP's refresh/reverse messages for maintaining guarantees, but Antoine noted their limitations in flexibility and delay for quick reactions.
+
+## Decisions and Action Items
+
+*   **Requirements Draft Update (ACTION: Ping, DETNET Chairs)**: Ping will update the requirements draft (draft-ietf-detnet-requirements) within the next two weeks (target July 5th). This update should incorporate:
+    *   Text distinguishing between individual flow scheduling and traffic class scheduling and its implications for scalability.
+    *   Clarifications for evaluating "high utilization" (requirement 3.4), addressing concerns about "dead time."
+    *   Consideration of adding a requirement for jitter (e.g., "Jitter lower than max latency minus physical link propagation latency").
+    *   Consideration of adding a requirement for accommodating different link speeds (access, aggregation, backbone).
+*   **Mechanism Evaluations (ACTION: All new mechanism proposers)**: Proposers of new queuing and scheduling mechanisms are requested to prepare evaluation charts similar to those presented for TAS and CBS, using the updated requirements draft as a basis. Proposers may add additional slides for unique characteristics not captured by the template.
+*   **Antoine's Draft Refinement (ACTION: Antoine)**: Antoine is encouraged to refine his draft by:
+    *   Providing more detailed descriptions of the data plane mechanisms.
+    *   Considering separating the RSVP protocol mechanisms into a separate draft if appropriate, to allow the data plane aspects to be evaluated independently of a specific control plane.
+
+## Next Steps
+
+*   Continue discussions on the DETNET mailing list regarding the requirements draft and proposed mechanisms.
+*   Ping will post an updated version of the requirements draft by July 5th.
+*   Proposers of new mechanisms will prepare evaluation slides based on the updated requirements draft.
+*   The next DETNET working group meeting is scheduled for four weeks from now (due to the US Independence Day holiday).

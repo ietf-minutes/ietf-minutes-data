@@ -1,0 +1,64 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held an interim meeting to review the progress of core drafts, including the MOQ Transport, Naming, and Warp Streaming Format. Key discussions focused on the architectural split between transport and streaming format layers, the proposed media model, and challenges related to prioritization and track naming. The chairs announced a call for adoption for the MOQ Transport draft. While formal adoption of streaming format drafts was deemed premature, an agreement was reached to move these drafts into the working group's GitHub organization to facilitate collaborative development and preserve discussion history. The meeting also included an update on the Requirements draft and initial planning for the IETF 117 meeting and hackathon.
+
+## Key Discussion Points
+
+*   **MOQ Transport Draft Overview (Colin):**
+    *   The draft defines the core mechanism for moving media bits over WebTransport or raw QUIC, aiming for lower latency, better scalability, and unified ingest/distribution.
+    *   Key terminology includes "Client/Server" (initiator/responder in QUIC/TLS sense), "Producer/Consumer" (media flow direction), and "Relays" (CDN-like intermediate devices).
+    *   The media model revolves around "Tracks," organized into "Groups" (independently decodable segments, e.g., GOPs), which contain "Objects" (actual media data).
+    *   "Full Track Names" (a concatenation of a "Track Namespace" and "Track Name") are opaque binary blobs used as unique identifiers and caching keys, distinct from the "Connect URL." Short integer "Track IDs" are used as aliases for efficiency.
+    *   MOQ objects carry Track ID, Group Sequence, Object Sequence, metadata (like "Send Order" or "Priority"), and an opaque payload.
+    *   The protocol's call flow (SETUP, ANNOUNCE, SUBSCRIBE) is largely symmetric for both distribution and contribution scenarios, and for direct endpoint-to-endpoint or relay-involved communications.
+    *   **Prioritization/Congestion Control:** A crucial open issue is defining an algorithm for how relays and endpoints prioritize sending objects given congestion limits. Two candidate algorithms, "Send Order" (sender-defined, incrementing) and "Priority Order" (object-based priority within a group), are proposed in the draft. It was noted that the protocol intends to avoid explicit end-to-end feedback to the encoder for scalability reasons.
+
+*   **Namespaces, Names, and Uniqueness (Victor):**
+    *   The "Full Track Name" (Track Namespace + Track Name) serves as the unique identifier for a track and a cache key, without content negotiation.
+    *   Track Namespaces are typically announced by producers and can define boundaries for priority handling.
+    *   Track names are logical and do not dictate the physical connection point, which is determined by the "Connect URL."
+    *   The concept of a "Scope" was introduced as a set of servers that provide consistent track names for complex applications like video conferencing.
+
+*   **Warp Streaming Format Draft Overview (Will):**
+    *   This draft is the first proposed "streaming format" layer, designed to sit atop MOQ Transport, focusing on CMAF-packaged content for live/near-live streaming with good interoperability.
+    *   It maps media into MOQ objects, ensuring clean switching at group boundaries. Various packaging options (full CMAF fragment per object, chunks, or single frames) are allowed.
+    *   A "Catalog" is a special track that describes other available tracks (codec, resolution, bitrate, decoder initialization data). Catalog objects can be deltas from prior states.
+    *   Proposals included integrating the catalog's full track name with the Connect URI to reduce round trips and client-initiated server-side ABR based on throughput levels in SUBSCRIBE messages.
+    *   **Open Issues:** Defining a prioritization strategy that leverages MOQ Transport, standardizing an ABR strategy, solidifying track name string representation, allowing catalogs to describe tracks from different namespaces, ensuring media time synchronization across groups, reserving a name for catalog tracks, and content protection.
+    *   Discussion highlighted the need for clarity on how streaming formats identify themselves (e.g., via a registered type in the catalog's first variant) and how client/server negotiate multiple format support. It was generally agreed that while the draft initially focuses on CMAF, it could be expanded to support other packaging schemes.
+
+*   **Example Flows (Luke):**
+    *   Demonstrated end-to-end contribution and distribution flows, emphasizing MOQ's ability to carry any data, not just media.
+    *   Illustrates how Connect URL, Track Namespace, and Auth tokens are used for initial connection and track identification.
+    *   Relays are responsible for routing based on Connect URL and can optionally rewrite namespaces.
+    *   A key feature is "pull-based" contribution, where a producer only sends media objects when a consumer explicitly subscribes, allowing for zero-viewer scenarios without unnecessary data transmission.
+
+*   **Requirements Draft Update (Spencer & James):**
+    *   The `MOQ Requirements` draft is now an official working group document (`draft-ietf-moq-requirements-00`).
+    *   Future work includes incorporating a section on "exploration of mock scenarios and data model" and clarifying "end-to-end security" in the context of intermediate devices.
+    *   Priorities for discussion include refining terminology for relays, caching, and media translators, and applying BCP 14 language correctly to define requirements for the MOQ *system* versus individual protocols.
+    *   A significant point of discussion for IETF 117 is to clearly articulate why MOQ is beneficial and what value it adds compared to existing solutions like HTTP/3 over QUIC for low-latency streaming.
+    *   The importance of supporting peer-to-peer use cases, including peers acting as relays or for in-network caching, was raised, along with the broader consideration of QUIC over ICE.
+
+## Decisions and Action Items
+
+*   **Decision:** The chairs will issue a call for adoption for the `MOQ Transport` draft (currently `draft-ietf-moq-transport-00`). No objections were raised.
+*   **Decision:** Formal working group adoption of streaming format drafts (e.g., Warp Streaming Format, Low Overhead Container) is postponed.
+*   **Decision:** To foster collaboration and preserve history, repositories for streaming format drafts will be moved to the `mock-wg` GitHub organization. Each draft will reside in its own repository, but without formal `draft-ietf-moq-*` naming or full WG adoption at this stage.
+*   **Action Item:** Chairs to issue the call for adoption for the `MOQ Transport` draft to the mailing list.
+*   **Action Item:** Chairs to coordinate with James and Spencer to move the `MOQ Requirements` draft into the `mock-wg` GitHub organization.
+*   **Action Item:** Will (author of Warp Streaming Format) and the Low Overhead Container (LOC) authors are requested to publish their current drafts to the `internet-drafts` directory.
+*   **Action Item:** Will and the LOC authors will then coordinate with the chairs to transfer their respective GitHub repositories (including all issues and history) into the `mock-wg` GitHub organization.
+*   **Action Item:** Spencer will create a GitHub issue in the `MOQ Requirements` draft repository to capture the discussion on peer-to-peer use cases and scenarios involving peer-to-peer QUIC over ICE.
+
+## Next Steps
+
+*   **IETF 117 Hackathon:** There was strong interest in an IETF 117 hackathon. The chairs will set up a table and coordinate with the WebTransport WG. Participants are encouraged to bring implementations and potentially develop a simple, non-video streaming format for initial interop testing of the core transport and pub/sub mechanisms.
+*   **IETF 117 Meeting Agenda:** The group will have two 90-minute sessions. Anticipated topics include:
+    *   Addressing issues raised against the (likely adopted) `MOQ Transport` draft.
+    *   Detailed discussions on streaming format drafts (Warp, LOC) and their evolution.
+    *   Updates and contributions to the architecture draft, with a focus on a non-normative architecture that supports hop-by-hop operation.
+    *   Terminology alignment across all working group documents.
+    *   Participants with additional agenda requests should contact the chairs.

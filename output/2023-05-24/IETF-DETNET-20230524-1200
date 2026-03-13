@@ -1,0 +1,62 @@
+# [DETNET](../wg/detnet.html)
+
+## Summary
+
+The DETNET Working Group meeting focused on two main areas: the status of the DETNET requirements draft and a detailed presentation on "Tagged Cyclic Queuing and Forwarding" (TCQF). The discussion highlighted the stability of the requirements document and the immediate need to validate these requirements by attempting to evaluate existing Time-Sensitive Networking (TSN) mechanisms against them. The TCQF presentation provided extensive background, validation evidence, and a technical deep-dive into how cyclic queuing can be extended for large-scale wide-area networks by using an explicit cycle identifier in the packet header to overcome limitations of purely time-based mechanisms in the presence of clock synchronization inaccuracies and variable propagation/processing latencies. The scalability benefits of this stateless, per-class approach over per-flow state models were also emphasized. A key action item emerged for volunteers to perform the initial evaluation of a TSN mechanism against the requirements draft.
+
+## Key Discussion Points
+
+*   **DETNET Requirements Draft Status:**
+    *   A new version of the requirements draft was posted, which an author indicated as stable. It includes one new requirement and incorporates other comments as text within existing requirements.
+    *   Lack of comments on the mailing list was noted.
+    *   The need to evaluate existing TSN mechanisms against the DETNET requirements was emphasized as a way to "shake out bugs" and ensure the requirements are tractable before evaluating new proposals.
+    *   A poll of the room was taken for volunteers to perform this evaluation.
+
+*   **TCQF (Tagged Cyclic Queuing and Forwarding) Presentation:**
+    *   **Motivation and History:** The presentation provided a history of the TCQF draft, originating in 2018 and undergoing several revisions, including a recent merge with another draft to enhance explanations and incorporate MPLS and IP encapsulation.
+    *   **Validation:** Extensive validation work by Huawei (called "Deterministic IP" or DIP) was presented, including:
+        *   Large-scale, high-speed ns3 simulations.
+        *   Hardware implementation on 100 Gigabit Ethernet routers using an FPGA for cyclic queuing.
+        *   Omnet++ simulations on large topologies (e.g., Sprint topology with 315 routers).
+        *   Large-scale network deployments on the CERNET research network across China (paths over 1000 km), demonstrating very low latency and Jitter (on-time forwarding).
+    *   **Core Mechanism - TSN CQF Limitations:**
+        *   TSN's Cyclic Queuing and Forwarding (CQF, 802.1Qch/qbv) operates by switching between transmit and receive buffers based on packet arrival time.
+        *   This mechanism introduces a "dead time" problem in two-cycle operation where propagation and processing latencies reduce the usable cycle buffer, potentially leading to zero throughput on longer links.
+        *   While faster networks (e.g., 100Gbps) make CQF more efficient by allowing more bytes per cycle, the dead time problem persists for long links.
+    *   **Multi-Buffer CQF (3-Cycle) and WAN Challenges:**
+        *   Using three or more cycles can mitigate the dead time problem by providing more buffering flexibility, allowing packets from an earlier cycle to be buffered for transmission in a later cycle.
+        *   However, relying solely on packet arrival time for cycle assignment is problematic in large-scale WANs due to:
+            *   **Clock synchronization inaccuracy (MTIE):** High-speed networks require sub-microsecond MTIE, which is difficult and costly to achieve at scale. Variations in clock sync create overlapping arrival windows for packets from different cycles.
+            *   **Variable link propagation latency:** Factors like cable length changes (e.g., due to temperature) cause variations in propagation delay.
+            *   **Processing latencies (Jitter):** Variations in processing within devices (e.g., FEC, fabric scheduling) add Jitter.
+    *   **TCQF Solution - Explicit Cycle ID (Tagging):**
+        *   To overcome these WAN challenges, TCQF proposes including a "cycle ID" (or tag) explicitly in the packet header. This removes the reliance on precise arrival time and enables:
+            *   Support for arbitrary link lengths and latencies.
+            *   Tolerance for lower clock synchronization accuracy (MTIE larger than cycle time).
+            *   Support for higher node propagation/processing latency variations.
+    *   **Importance of On-Time Forwarding:**
+        *   TCQF provides "on-time forwarding" (low Jitter), which is crucial for control loop applications (e.g., industrial PLCs, remote driving).
+        *   On-time forwarding allows the packet arrival itself to serve as the timing mechanism, eliminating the need for clock synchronization in end devices, unlike asynchronous time-sensitive (ATS) mechanisms.
+    *   **Scalability for Wide Area Networks:**
+        *   Traditional per-flow, per-hop state models (e.g., IntServ RFC 2212, TSN ATS) lead to N-squared scalability issues in large WANs, similar to problems experienced with multicast (per-flow state on P-routers) or RSVP-TE.
+        *   TCQF, using a small, fixed number of cycle queues (e.g., 3-5) per P-router (provider core router), offers a stateless, DiffServ-like per-class QoS model. This scales independently of the number of edge devices or individual flows.
+        *   This approach enables "auto-provisioning" of deterministic services without requiring state changes in core routers.
+    *   **Packet Encapsulations:**
+        *   For immediate adoption, TCQF can leverage existing packet header fields like MPLS Traffic Class (TC) or IPv6 DSCP for conveying the cycle ID, as only a few cycle ID values are typically needed.
+        *   For future flexibility, a new extension header (e.g., "Deterministic IP Header") is proposed for IPv6, with options like the Destination Option Header (DOH) or Hop-by-Hop Option Header suggested (noting the DOH acronym collision with DNS over HTTPS).
+    *   **Draft Structure:** The presentation outlined the merged draft's content, covering motivation, architecture fit, forwarding plane specification (per-hop configuration, packet processing, ingress node behavior), encapsulation, and various considerations (high-speed optimizations, controller computation, different bandwidth links, controller plane generalities).
+    *   **Questions:**
+        *   Clarification was sought on whether cycle sizes can be changed and if different nodes can use different cycle times. It was stated that all nodes in a path generally need to agree on the duration of a single cycle, but a controller can map cycles across links with different speeds.
+        *   It was inquired if the DETNET requirements draft adequately covers multicast; the presenter acknowledged this might be an oversight and would review.
+
+## Decisions and Action Items
+
+*   **ACTION ITEM:** The Working Group chairs issued a call for volunteers to evaluate an existing TSN mechanism (e.g., TSN CQF) against the current DETNET requirements draft. The goal is to produce a brief review (e.g., a sentence per requirement section) detailing how the mechanism meets, partially meets, or does not meet each requirement, and why. This exercise is intended to "shake out bugs" in the requirements document itself, not to propose changes to TSN.
+*   **ACTION ITEM:** Turalo to review the DETNET requirements draft to ensure it adequately covers the aspects of multicast traffic.
+
+## Next Steps
+
+*   Volunteers are encouraged to come forward to undertake the evaluation of a TSN mechanism against the DETNET requirements draft.
+*   Authors of the TCQF drafts will continue the process of merging the two drafts.
+*   Discussion with the 6man Working Group will be initiated regarding potential IPv6 extension headers for TCQF, particularly addressing the DOH acronym collision.
+*   Further discussions on the structure and content of the TCQF draft are welcome.

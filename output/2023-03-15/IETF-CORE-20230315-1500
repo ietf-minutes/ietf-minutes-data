@@ -1,0 +1,70 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting of the CORE working group focused on the status and open points for several key documents related to the CoAP, YANG, and CBOR (CoRE Conf) ecosystems. Key discussions included the completeness of SIDs for RPCs and actions in the `corsid` document, a proposed manual SID allocation scheme for LPWAN applications, simplifications for the `coap` specification, and considerations for the CoRE YANG Library and other relevant YANG models. Tooling for SID generation and type extraction was also highlighted.
+
+## Key Discussion Points
+
+*   **CORSID Document Status and Tooling Challenges**
+    *   The `corsid` document (revision 20) is currently in IESG processing, with a parallel Working Group Last Call undertaken due to substantive changes. Feedback, particularly from Rob Wilton (DNA), identified issues.
+    *   A significant challenge is the lack of robust tooling to validate the example content and SID file specification.
+    *   **Specific Problem:** Current `pyang` tooling does not generate a complete set of SIDs, specifically omitting `input` and `output` nodes for RPCs and actions (e.g., for `ietf-system` RPCs like `set-current-date-time`). This can lead to ambiguity when differentiating same-named leaves within `input` and `output`.
+    *   **Consensus:** A sense of those present indicated that `input` and `output` nodes for RPCs and actions should be included in the SID output. It was also agreed that mapping all schema nodes (even those not typically instantiated in data instances, like `choice` or `case`) would "future-proof" the specification. This aligns with existing `restconf` behavior.
+    *   **Action:** Efforts are needed to evolve `pyang` (or similar tools) to emit a complete set of SIDs, including these `input` and `output` nodes.
+
+*   **APWAN SID Allocation for LPWAN Networks**
+    *   Laura presented a proposal for a manual SID allocation mechanism tailored for APWAN (LPWAN) networks to optimize CBOR encoding for extremely low-bandwidth environments.
+    *   **Goal:** Minimize the size of Deltas in CBOR encoding, particularly for frequently used data nodes, aiming for single-byte Deltas (values between -24 and +23).
+    *   **Proposal:** Instead of `pyang`'s default alphabetical allocation, manually allocate SIDs by separating identities from data nodes into distinct blocks. Gaps (e.g., 23 values) are inserted between list SIDs to allow for future extensions without re-allocating SIDs for frequently used leaves within those lists.
+    *   **Discussion:**
+        *   This manual approach is permissible under the `corsid` process, which allocates ranges from Ayana to WGs, allowing custom allocation within those ranges.
+        *   A trade-off exists: `pyang`'s alphabetical sorting often keeps child nodes of a parent within the 23-Delta range naturally. Manual allocation might improve locality at lower tree levels but could affect higher-level locality.
+        *   Identities never appear in Deltas and should ideally be assigned the smallest possible values (within the 0-60,000 range for 2-byte encoding) as they are always encoded as their full value.
+        *   The need for empirical examples to demonstrate the actual byte-saving benefits of such custom allocations was highlighted.
+
+*   **CoRE Conf over CoAP (CoAP) Simplification (draft-ietf-core-coap-yang-02.12)**
+    *   The `coap` document maps YANG operations to CoAP, similar to `restconf` to HTTP. The dash-11 version had complexities and a known bug, preventing backwards compatibility with dash-12.
+    *   **Proposed Simplification (dash-12):** Simplified URI instance identifier encoding. All keys after the initial SID are CBOR-encoded, then Base64-encoded for inclusion in the URI query part. Numeric SIDs in the URI path use a compact integer Base64 encoding (e.g., `1533` becomes `X9`).
+    *   **Discussion:** A concern was raised regarding the readability of Base64-encoded data in URIs, moving away from human-readable GETs.
+    *   **Consensus:** A strong sense of those present was to further simplify the specification, potentially by deprecating or making optional the HTTP-like `GET`, `POST`, and `PUT` methods in favor of `FETCH` and `PATCH-I-PATCH` for all operations. This would streamline the protocol by using a consistent payload-based approach for all interactions.
+
+*   **CoRE YANG Library**
+    *   This document defines a simplified YANG Library model suitable for constrained devices to announce available YANG modules.
+    *   **Discussion:** The meeting questioned whether ecosystem changes over the past 5-6 years (e.g., around `mmda` which is already included) necessitate further updates. A key objective for this library is to enable clients to implement it using compile-time data, avoiding runtime calculation on constrained devices.
+    *   **Action:** Document the objective of enabling compile-time data for the CoRE YANG Library within the draft.
+
+*   **YANG Models Relevant to CoRE**
+    *   Discussion touched upon various YANG models being developed (e.g., for ADoC/OSCORE, SHIC (RFC 8824) updates, OEM, Access Control).
+    *   **Issue:** Some standard YANG types (e.g., `hex-string`, `datetime`) are "chatty" or inefficient when encoded directly into CBOR, impacting efficiency for constrained devices.
+    *   **Best Practice Suggestion:** Model developers targeting constrained environments should be mindful of data types, using `binary` for inherently opaque data like cryptographic keys or hashes where human readability is not paramount.
+    *   **Broader Problem:** YANG models are ideally written for human readability, and protocols should handle wire efficiency. However, the current CoRE Conf architecture lacks a general mechanism to automatically convert chatty YANG types into more efficient CBOR representations (e.g., specific CBOR tags for IP addresses, MAC addresses, datetimes, or specific string formats). This requires a future development project to extend YANG-CBOR.
+    *   **Action:** The working group needs to gather more information on real-world applications needing such optimizations to prioritize future development efforts for efficient encoding of chatty YANG types.
+
+*   **Binary YANG Push**
+    *   Two documents related to binary YANG push were mentioned: the `UDP-NOTIF` document (in NETCONF WG) and a draft introducing structure for notifications.
+    *   **Concern:** The `UDP-NOTIF` document is not truly a binary protocol and dismisses congestion control concerns, which CoAP explicitly addresses.
+    *   **Suggestion:** CoAP could potentially serve as a robust transport for binary YANG push in some environments, offering solutions to transport-related problems. This is primarily a discussion point for the NETCONF WG to advance.
+
+*   **General Ayana Allocation of SIDs for IETF Modules**
+    *   **Issue:** The current SID allocation process, if applied individually, would be impractical for the hundreds of published IETF YANG modules. This issue needs broader attention, potentially involving the NETCONF WG and collaboration with `yankeelock.org`.
+
+*   **Pyang Fork for Type Extraction (Laurent and Alex Fernandez)**
+    *   Laurent and Alex Fernandez have developed a fork of `pyang` and a Python library (`pi_core_conf_library`) that extracts type information from YANG models.
+    *   **Benefit:** This type information is crucial for bidirectional conversion between JSON/XML and CBOR (CoRE Conf), especially when converting back from CBOR (where an `int` could represent a plain `int`, an `enum`, or an `identifier`). It helps automate parsing a YANG tree and validating models with tools like `yangsan`.
+    *   **Action:** Encourage the working group to review this `pyang` fork.
+
+## Decisions and Action Items
+
+1.  **CORSID SIDs:** The `corsid` specification should be updated to ensure `input` and `output` nodes for RPCs and actions are always assigned SIDs. `pyang` (or equivalent tooling) needs to be fixed to emit these SIDs.
+2.  **APWAN SID Allocation Example:** Laura is requested to provide an encoded example of the proposed APWAN manual SID allocation to empirically demonstrate its benefits.
+3.  **CORSID Document Check:** Laura to review the `corsid` document to determine if its current text sufficiently covers custom/manual SID allocation within an assigned range and submit a WG last call comment if not.
+4.  **CoAP Simplification:** The working group will explore further simplification of the `coap` specification, considering deprecating or making optional `GET`, `POST`, and `PUT` methods in favor of consistently using `FETCH` and `PATCH-I-PATCH`. This needs to be confirmed on the mailing list.
+5.  **CoRE YANG Library Objective:** The `core-yang-library` draft should explicitly document the objective of enabling compile-time data generation for constrained devices.
+6.  **YANG Model Efficiency:** The working group will gather information on applications requiring efficient encoding of "chatty" YANG types (e.g., `hex-string`, `datetime`, IP/MAC addresses) to inform future development of robust conversion mechanisms within the CoRE Conf architecture.
+7.  **Pyang Fork Review:** Working group participants are encouraged to review Laurent's `pyang` fork and Alex Fernandez's `pi_core_conf_library` for type extraction.
+
+## Next Steps
+
+*   The next scheduled meeting is at IETF 116 on Tuesday, July 28th, for two hours.
+*   Tentative interim meetings are planned to resume in the second half of April, potentially starting on April 26th, maintaining the cadence of every other Wednesday. Details will be confirmed on the mailing list during IETF 116.

@@ -1,0 +1,56 @@
+# [DETNET](../wg/detnet.html)
+
+## Summary
+
+The DETNET interim meeting focused primarily on a presentation from Norm Finn (Huawei) regarding ongoing work and developments in the IEEE 802.1 Time-Sensitive Networking (TSN) Task Group, specifically detailing 802.1DC (Quality of Service Provision by Network Systems) and 802.1Qdv (Enhancements to Cyclic Queuing and Forwarding). The discussion highlighted how these IEEE standards aim to provide deterministic networking capabilities, their scalability properties, and potential integration points with IETF DETNET work. A planned discussion on taxonomy aspects for enhanced data plane proposals was postponed due to insufficient offline preparation and upcoming holidays.
+
+## Key Discussion Points
+
+*   **Agenda and Postponement of Taxonomy Discussion:**
+    *   Co-chair Yanos Farkash opened the meeting and reminded participants of IETF notewells and conduct guidelines.
+    *   The planned discussion on taxonomy aspects for enhanced data plane proposals was postponed due to a lack of offline preparation and the upcoming holiday season.
+    *   A participant requested continued discussion on the mailing list regarding next steps for the taxonomy work, with a potential interim in January.
+*   **Liaison Statements:**
+    *   Two liaison statements were received: one from ITU-T SG13 on deterministic networking efforts (for information) and one from IEEE 802.1 concerning projects relevant to DETNET. Norm Finn presented on the latter.
+*   **802.1DC: Quality of Service Provision by Network Systems**
+    *   **Purpose & Status:** This document is in its final ballot stage and allows non-bridge devices (e.g., hosts, routers, NICS) to claim conformance to 802.1Q TSN QoS standards and utilize associated YANG modules without incorporating bridge-specific functionalities (like MAC address forwarding).
+    *   **Features:** It incorporates a wide range of QoS features including strict priority, weighted fair queuing, credit-based shapers, scheduled output, cyclic queuing and forwarding (CQF), asynchronous traffic shaping (ATS), token bucket marking, VLAN tagging, priority control, frame replication and elimination for reliability (FRER), per-stream filtering and policing (PSFP), and frame preemption.
+    *   **Discussion on DETNET Integration:**
+        *   Florian gave feedback on attempting to apply the 802.1DC YANG model for DETNET router configuration, noting challenges with configuring the priority-to-traffic-class table and the clarity of stream identification before flow classification/metering. Norm clarified that priority mapping is seen as a bridge feature and that stream identification clarity is an open ballot comment.
+        *   A participant (Toerless) questioned how DETNET flow classification and TSN DC actions would integrate within a YANG model, and whether 802.1DC is sufficient for DETNET router contexts. Norm acknowledged that 802.1DC is not a router specification, encouraging cooperation to address such needs (e.g., adding a token bucket shaper if DETNET requires it).
+        *   Florian committed to sharing a simple example of DETNET YANG model integration with 802.1DC on the mailing list.
+*   **802.1Qdv: Enhancements to Cyclic Queuing and Forwarding**
+    *   **Purpose & Status:** This is an amendment to 802.1Q, currently in its early task group ballot stage. It introduces a new queuing mechanism based on multi-level nested transmission cycles with output bins.
+    *   **Motivation for Scaling:** Current TSN mechanisms face scalability challenges in large networks, such as recomputing parameters for all flows when a single flow is added/removed, and configuring every relay node. QDV aims to reduce these issues.
+    *   **Mechanism:** It employs several queues, each divided into bins, with each queue rotating its bins at a regular but different frequency (faster frequency implies higher priority). These queues feed into a simple priority selection mechanism.
+    *   **Bandwidth Allocation:** QDV simplifies admission control by allowing approximation of total CQF traffic bandwidth per link against configured limits.
+    *   **Buffering:** The enhanced CQF (QDV) manages buffering by marking frames with their bin number, rather than requiring a separate queue for each bin, thus being more efficient than the original CQF.
+    *   **Benefits:** Trivial admission control, near-trivial per-flow worst-case delay computation (sum of per-hop delays), and critically, adding or deleting a flow does not change the delay of other flows.
+    *   **Costs/Trade-offs:** Unlike ATS, QDV is not infinitely flexible. Flows must fit into a fixed number of traffic classes with characteristic periods, potentially leading to wasted bandwidth (if assigned too high priority) or buffer space (if too low priority).
+    *   **Comparison with ATS:** Norm Finn suggested a continuum between ATS and QDV. While ATS offers flexibility with flow types, its computation for large networks can be intractable. QDV simplifies computation at the cost of less flexibility in flow types, offering optimal performance for flows that match its service classes.
+    *   **Bin Assignment Methods:**
+        *   **Time of Arrival:** Frames assigned based on the bin they were in at the previous hop, using their arrival time. This avoids per-flow state machines.
+        *   **Field in Frame (Labeling):** Marking frames with their transmitted bin number.
+        *   **Byte Counting:** Using per-flow byte counters (Mick Seaman's algorithm) to spool data into bins, ensuring no flow exceeds its allocated bytes per bin. This method is more flexible but requires maintaining flow state.
+    *   **Frequency Locking:** To maintain deterministic behavior without per-flow state, nodes must rotate their bins at exactly the same frequency across a frequency-locked region. Phase inaccuracies can be accommodated with additional buffering, making it easier than sub-nanosecond time synchronization.
+    *   **Flow Aggregation:** Norm acknowledged the criticality of flow aggregation but noted that 802.1Qdv does not currently specify a multi-layer flow wrapper protocol. Implicit flow aggregation is supported through 802.1 flow identification (assigning multiple flows to the same stream handle). QDV is considered a good fit for aggregation as it delivers aggregated flows at a steady rate, reducing buffering needs.
+    *   **TDM vs. Statistical Multiplexing:** A participant (Jinu) raised a philosophical question about TSN/DETNET's move towards TDM-like behavior, contrasting it with the internet's success with statistical multiplexing. Norm Finn emphasized that users wanting "push-button" deterministic behavior, often from industrial control backgrounds, require strict guarantees (e.g., zero congestion loss), which TDM-based approaches like QDV can provide. Toerless argued that deterministic bounded latency simplifies designing reliable control systems compared to dealing with probabilistic complexities.
+*   **Call to Action:** Norm Finn concluded by expressing his hope that DETNET will consider the combination of 802.1DC and 802.1Qdv as a basis for scaling up deterministic networking, given his belief that physics will necessitate TDM for large-scale solutions.
+
+## Decisions and Action Items
+
+**Decisions:**
+
+*   Discussion on taxonomy aspects for enhanced data plane proposals postponed to a later meeting.
+
+**Action Items:**
+
+*   **Florian:** Share an example of DETNET YANG model integration with 802.1DC on the DETNET mailing list for further discussion.
+*   **Co-chairs:** Plan next steps for the taxonomy discussion, including continued offline discussions and mailing list engagement, and a potential interim meeting in January.
+*   **DETNET Working Group:** Consider the capabilities and models presented for 802.1DC and 802.1Qdv as a potential basis for scaling deterministic networking in future DETNET work.
+
+## Next Steps
+
+*   Continue offline preparations and mailing list discussions regarding the taxonomy aspects for enhanced data plane proposals.
+*   Potential interim meeting in January 2024 to resume the taxonomy discussion.
+*   DETNET participants are encouraged to review the 802.1DC and 802.1Qdv documents and consider their implications for DETNET's architectural and data plane work, particularly regarding scalability and integration.

@@ -1,0 +1,46 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+The MPLS Working Group interim meeting covered two primary topics: open technical questions regarding MPLS Network Actions (MNA) concerning Entropy Label (EL) and Equal Cost Multi-Path (ECMP) hashing, and the necessity of "stickiness" for the No Fast Reroute (NFFR) flag in MPLS Fast Reroute (FRR) deployments. A presentation on the NFFR flag stickiness highlighted potential looping issues in double-failure scenarios if the flag is prematurely cleared. Discussions identified several action items, including further investigation into MNA interactions with other MPLS features and a call for detailed mailing list discussions on MNA's implications for ECMP/EL.
+
+## Key Discussion Points
+
+*   **Review of Open Action Items:**
+    *   **MNA and MPLS Features Intersection**: Continued investigation into how MNA interacts with existing MPLS features. Greg volunteered to present on Beer and MNA interaction after IETF 117.
+    *   **Greg's Datapath/MNA Slides**: Greg's slides from the previous session need to be officially uploaded/archived on the notes wiki.
+    *   **Updates to MNA Working Group Drafts**: Tarek to send a summary of previous discussions regarding MNA draft updates to the working group mailing list.
+
+*   **Open Questions on MNA and ECMP/Entropy Label (EL)**:
+    *   A discussion was held on the interaction between MNA packets (which can modify the MPLS stack for packets within the same flow) and ECMP hashing, particularly regarding the Entropy Label (EL).
+    *   **Key Questions Raised**:
+        *   Whether MNA mandates using an EL as a network action and if MNA-capable Label Switching Routers (LSRs) must hash on the EL instead of the full stack.
+        *   Whether MNA packets must only traverse MNA-capable LSRs.
+        *   The implication of MNA packets carrying the classic EL/ELI along with the MNA header, which would allow non-MNA capable LSRs to hash on EL.
+        *   The placement of mutable MNA data within the Incremental State Data (ISD) to avoid affecting hashing by non-MNA capable devices (e.g., not in the first 20 bits of the LSE, or using repurposed TC/TTL fields).
+    *   **Discussion Points**:
+        *   The complexity of mixed deployments (Brownfield) where not all LSRs are MNA-capable or support EL.
+        *   The challenge of path selection and transient network conditions, where MNA packets might be detoured through non-MNA capable LSRs.
+        *   A sense of those present indicated that the situation is nuanced and requires more detailed specification. It was noted that if a node does not support MNA but needs to perform ECMP, traditional EL/ELI is necessary.
+    *   **Conclusion**: There is no simple "yes" or "no" answer to these questions. The discussion highlighted the need for more detailed technical specification and clarification within MNA documents.
+
+*   **NFFR Flag Stickiness in Fast Reroute (FRR)**:
+    *   Stuart presented a scenario demonstrating the necessity of the NFFR (No Fast Reroute) flag being "sticky" and persisting throughout the packet's journey on the FRR path, rather than being cleared at the merge point.
+    *   **Scenario**: A network fragment with two PLRs (PLR1, PLR2) both capable of FRR to a multi-homed prefix H.
+    *   **Problem Illustrated**: If both links (PLR1-H and PLR2-H) fail simultaneously, and the NFFR flag is cleared at the merge point (X or Z in the examples), packets will loop indefinitely between PLR1 and PLR2 until their TTL expires, consuming bandwidth. This occurs because neither PLR knows the packet's history after the NFFR flag is cleared.
+    *   **Argument**: The established FRR philosophy dictates that repairs are against a set of postulated failures. A second failure observed anywhere in the network should trigger an "abandon all hope" scenario, leading to network reconvergence, rather than attempting a second FRR.
+    *   **Proposed Solution**: The NFFR flag must remain sticky (active) on the packet until it either reaches its destination or is explicitly removed by an endpoint that understands its significance. This ensures that a second FRR is not attempted, preventing loops during network instability.
+    *   **Documentation Needs**: There was a discussion on where to document this critical NFFR behavior. Previous NFFR drafts have expired, and the original author is no longer actively working on it. It was suggested that this general FRR principle, while transcending MNA, should be documented, potentially within a relevant MNA draft as a general explanation, or in a new, dedicated NFFR draft.
+    *   **Encoding**: The question of how to encode the sticky NFFR action (e.g., as a new sub-stack or modifying an existing hop-by-hop sub-stack) was raised but not fully resolved, as it is orthogonal to the core problem of stickiness.
+
+## Decisions and Action Items
+
+*   **Action**: Greg to prepare and present on the interaction between Beer and MNA after IETF 117.
+*   **Action**: Tarek to send a summary of previous discussions on MNA draft updates to the working group mailing list.
+*   **Action**: Tarek to initiate a detailed discussion on the mailing list regarding the open questions on MNA, ECMP, EL, and mutable data placement, encouraging specific text proposals for existing MNA drafts.
+*   **Decision**: The NFFR flag must be "sticky" and persist beyond the FRR merge point to prevent packet looping in multiple-failure scenarios.
+*   **Action**: The chairs will follow up on the status of a new or revived draft addressing NFFR flag stickiness, its requirements, and potential encoding, and will explore finding new authors if necessary.
+
+## Next Steps
+
+The working group will continue these discussions on the mailing list. Participants are encouraged to provide detailed text proposals for the MNA documents to address the identified open questions regarding ECMP, EL, and mutable data. The chairs will coordinate efforts to establish or revive a document that clearly specifies the necessary "stickiness" of the NFFR flag.

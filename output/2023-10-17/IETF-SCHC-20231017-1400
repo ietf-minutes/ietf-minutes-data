@@ -1,0 +1,53 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC Working Group meeting included a presentation on the latest updates to the SCHC over IEEE 802.15.4 draft, detailing different approaches for single-hop and multi-hop communication, specifically route-over methods. A significant portion of the meeting was dedicated to discussions around the SCHC architecture, including proposals for nesting SCHC compressions, defining SCHC header formats for various layers (e.g., Ethernet, IPv6, PPP), and the handling of management messages. Key architectural questions regarding header alignment, middlebox traversal, and CRC calculation on compressed vs. uncompressed data were debated. The need for clear architectural definitions to enable further progress in specific SCHC instantiations was highlighted.
+
+## Key Discussion Points
+
+*   **Opening Remarks and Agenda**: The chair reminded participants of the IETF Notewell, best practices, code of conduct, and patent rules. The agenda included updates on SCHC protocol numbers, the SCHC Architecture draft, and the SCHC over 15.4 draft.
+*   **SCHC Protocol Numbers**: An update mentioned a new version of protocol numbers for SCHC, requiring an update to request a "next header" type instead of a "protocol type."
+*   **SCHC Architecture Draft**: Version 01 of the architecture draft was published, reflecting previous discussions. The state of discussion is still open.
+*   **SCHC over IEEE 802.15.4 Draft (Carles)**:
+    *   **Motivation**: To allow SCHC header compression as an alternative to 6LoWPAN HC, particularly for IPv6 UDP CoAP headers.
+    *   **Fragmentation**: The document proposes to continue using 6LoWPAN or 6LoWPAN fragmentation.
+    *   **Protocol Stacks**: Outlined traditional 6LoWPAN, RFC 8824 for CoAP compression using SCHC, and using SCHC to compress UDP CoAP (a focus of this draft and the architecture draft).
+    *   **Architecture Alignment**: Noted the need for continued coordination and alignment with the main SCHC architecture draft, especially regarding UDP CoAP compression.
+    *   **15.4 Topologies**:
+        *   **Single-Hop**: Uses a SCHC Dispatch (a 6LoWPAN dispatch type) as the first field in the 15.4 frame payload, signaling a SCHC packet. Both endpoints must store rules.
+        *   **Multi-Hop**: Supports Mesh-Under and Route-Over.
+            *   **Route-Over Approaches**:
+                *   **Straightforward Route-Over (SRO)**: All routers store all rules. Low overhead (1 byte SCHC dispatch), but not scalable for large networks.
+                *   **Tunnel Ripple Based Route-Over (TRRO)**: Utilizes tunnels (e.g., from host to 6LBR) with Ripple non-storing mode to offload intermediate nodes from storing all rules. Requires routing artifacts (e.g., RFC 8138) with higher overhead. May require traversing the root node.
+                *   **Pointer Based Route-Over (PBO)**: Precedes the SCHC packet with a "SCHC pointer" and "SCHC pointer dispatch." The pointer indicates the location and size of the destination address residue, allowing intermediate nodes to route without storing the full compression rule. Offers variable overhead (3 bytes + variable residue) and is scalable without requiring Ripple.
+    *   **Discussion on "SCHC Header"**: Pascal and Laurent questioned the term "SCHC header" in figures, suggesting "protocol header" to avoid confusion with the abstract "SCHC header" concept being defined in the architecture. They discussed the need for well-known initial signaling to decode the beginning of a SCHC packet, potentially differing based on the underlying protocol (PPP, 15.4, IPv6).
+    *   **Rule ID Uniqueness**: Laurent raised a point about the uniqueness of rules, suggesting that a rule ID might need to be associated with a specific source, meaning rule '1' for A could be different from rule '1' for B.
+*   **SCHC Architecture Discussion (Laurent's Proposal)**:
+    *   Laurent presented slides exploring how CoAP OSCAR could fit into the SCHC architecture, based on hypotheses for SCHC headers (carrying info like next hop, session ID, CRC).
+    *   **Layered/Nested SCHC**: Proposed three independent SCHC "instances" or "layers": one for OSCAR (inner message), one for CoAP (outer end-to-end), and one for network (IP UDP on LPWAN segment). Each has its own independent rule ID space.
+    *   **Packet Representation**: Introduced a notation to distinguish uncompressed, compressed (parentheses), and encrypted (square brackets) elements.
+    *   **Session Management**: Proposed a session management layer that uses source addresses to point to different SCHC session management contexts, which in turn point to specific SCHC instances (with their own rule sets for compression, decompression, fragmentation).
+    *   **Management Messages**: Proposed a "management" nature for rules (alongside compression, fragmentation, no compression). These rules could use link-local addresses for key management (e.g., OSCAR, TLS) or managing CoAP contexts, without requiring explicit rule IDs in the management message itself.
+*   **Discussion on Eric's Email (Architectural Clarifications)**:
+    *   **SCHC over Ethernet**: Clarified that the "next ether type" in the SCHC header for Ethernet allows for compression of IPv4, IPv6, or other protocols, not just IPv6.
+    *   **Extension Headers vs. Protocol Headers**:
+        *   Agreement that from an architectural layering perspective, the *uncompressed* SCHC header (on paper/in memory) would ideally be a SCHC header followed by the UDP protocol (if UDP is compressed).
+        *   **8-byte Alignment**: Eric questioned if an extension header, if used for SCHC, must maintain 8-byte alignment on the wire for middlebox traversal. Pascal suggested that compressed packets might not need to be aligned on the wire if middleboxes are not expected to process them, likening it to ESP. Alternatively, an IP protocol number could be used instead of an extension header.
+        *   **IPCP Comparison**: Eric noted similarities between SCHC and IPCP (an old compression scheme) which uses a protocol header, suggesting this might be a "safer" architectural approach for traversal. An IP protocol number would allow chaining SCHC after AH or ESP.
+    *   **SCHC Header Format**: Laurent reiterated that the "SCHC header" as an abstract concept should not imply a fixed bitwise format, as the actual on-wire format will depend on the layer and specific protocol context (e.g., Ethernet vs. IPv6 vs. PPP). The rule itself defines the format.
+    *   **CRC Calculation**: Discussion on whether CRC should be calculated on the *compressed* or *uncompressed* version of the data. Calculating on the compressed version guarantees transmission integrity but doesn't guarantee the exact original packet is restored after decompression, especially if rules allow for slack or variable padding.
+
+## Decisions and Action Items
+
+*   **Action**: Carles to continue ensuring alignment between the SCHC over 15.4 draft and the SCHC Architecture draft.
+*   **Action**: Carles to provide additional details on managing rule IDs in the SCHC over 15.4 draft, especially regarding uniqueness within the network.
+*   **Decision**: The chair will attempt to reserve a meeting room in Prague for a whiteboard discussion on the architecture and set up a video call for remote participation (for Pascal).
+
+## Next Steps
+
+*   Continue refining the SCHC architecture draft, particularly addressing the definition of SCHC headers for different layers, nesting of SCHC instances, and the handling of management messages.
+*   Further technical discussions are needed on the implications of extension headers vs. IP protocol numbers for SCHC insertion, including alignment requirements and middlebox processing.
+*   Clarify the policy for CRC calculation (on compressed or uncompressed data) within SCHC.
+*   Update the SCHC over 15.4 draft to reflect architectural clarifications and provide more examples.
+*   IETF 118 will feature a SCHC meeting (90 minutes, Thursday) and a 6LoWPAN meeting (2 hours, Friday).

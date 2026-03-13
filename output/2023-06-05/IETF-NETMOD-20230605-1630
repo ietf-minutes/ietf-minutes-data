@@ -1,0 +1,59 @@
+# [NETMOD](../wg/netmod.html)
+
+## Summary
+
+This NETMOD interim meeting provided a deep dive into the experiences and lessons learned from the development of the BGP Yang module. Presenters Jeff Tantsura and Mahesh Jethanandani, co-authors of the module, shared insights on structuring content, handling features and augmentations, maintainability, type versioning, schema mount, module interoperation, and collaborative development processes. The discussion highlighted challenges inherent in modeling large, evolving protocols like BGP within the IETF framework and offered recommendations for future Yang module authors.
+
+## Key Discussion Points
+
+*   **Content Structuring and Scope**:
+    *   The BGP Yang module underwent numerous iterations to define its core content, balancing completeness for protocol representation with vendor-neutrality.
+    *   Challenges included deciding which historical extensions (e.g., route reflection, confederations, communities) to include in the core module versus handling them as augmentations, leading to "feature creep" if not carefully managed.
+    *   An iterative review process, involving protocol experts, modeling experts, and usability considerations, was crucial.
+*   **Yang Features and Augmentations**:
+    *   Yang `features` enable flexible inclusion of optional components, but can complicate the model for servers and clients. The BGP module aimed for a core set of mandatory-to-implement features.
+    *   Early consideration of potential future features is essential, especially for elements like list keys (e.g., BGP add-paths requiring path ID in route list keys, even if add-paths is optional).
+    *   Augmentations are the preferred mechanism for most extensions, requiring a robust skeleton in the base module. Avoiding "subtractive" techniques like `deviations` was recommended.
+    *   Noted challenges with vendor differences in implementing de facto features (e.g., BGP route reflector `client-reflect` configuration), sometimes leading to omission from the model.
+*   **Maintainability and Versioning**:
+    *   Designing modules to easily accommodate future extensions is critical. Groupings, while useful for reuse, cannot be augmented, posing long-term maintenance challenges.
+    *   The BGP module structure had to ensure extensibility for BESS WG features (VPN path attributes, address families) and IDR extensions.
+    *   **Type Versioning / IANA and IETF Modules**:
+        *   For extensible types, delegation to IANA for maintenance was suggested to allow changes without frequent RFC publication. However, there are no clear guidelines on what definitions should reside in IANA vs. IETF modules.
+        *   Identity definitions allow incremental extensions without module republishing, but raise concerns about "code point squatting" if not centrally managed or explicitly registered.
+        *   **BGP Extended Communities**: This was highlighted as a major pain point due to their flexible, 8-byte structure used by various VPN protocols. Modeling these for human-friendly configuration (e.g., `route-target:100:200`) requires managing a growing set of regular expressions attached to a generic type, making extensibility difficult (e.g., adding flags to a `color` community without breaking existing definitions or requiring extensive backfilling of zeros). The raw hexadecimal format offers a stable fallback.
+    *   **Bit Fields**: The Yang `bits` construct is useful for defined bits, but struggles with operational state for older implementations receiving newly assigned bits. There's no way to assign default names to unknown bits or change bit names once assigned, which impacts visibility and backward compatibility. A proposal for handling "unknown bits" was briefly mentioned.
+*   **Importance of Examples**:
+    *   Examples are crucial for validating models during development (acting as "unit tests") and for guiding implementers and users.
+    *   It was recommended to include complete configuration examples that demonstrate interworking with other modules (e.g., BGP example 8.5 showing dependencies).
+    *   Examples, combined with validation tools like `yanglint`, can detect breaking changes during module evolution.
+*   **Schema Mount**:
+    *   Schema mount provides a flexible way to graft models under different hierarchies, addressing scenarios where already-augmented models (e.g., BGP augmenting routing protocol model) need to be placed within a network instance.
+    *   Tools like `yanglint` are now adding support for validating schema mount examples.
+*   **Module Interoperation (Interwork)**:
+    *   Testing interoperation between modules (e.g., BGP with TCP AO/MD5, IPsec, Policy, BFD) is critical. Authors found deficiencies in other published modules during this process, sometimes halting last calls (e.g., tcpm module).
+    *   The IETF lacks a formal "gating process" to ensure modules correctly interoperate with others they reference or are intended to be used with.
+*   **Collaboration and Tooling**:
+    *   For large modules with long development cycles, structured collaboration (e.g., GitHub for issues, pull requests, cross-review) is essential.
+    *   A containerized build environment (using Docker) greatly improved consistency by providing a uniform toolchain for all authors, facilitating validation and draft text generation.
+    *   It was emphasized that Yang models should be kept separate from the Internet Draft text for easier compilation, validation, and testing before inclusion.
+*   **General Learnings**:
+    *   Large modules require significant iterative effort and many reviewers.
+    *   Getting the foundational structure right early is crucial to avoid disruptive changes.
+    *   Tooling, maintainability, and thorough testing are paramount.
+    *   The IESG should carefully consider IANA delegation and potential for "code point squatting" when defining types and identities.
+    *   Interoperation *must* be tested to find problems.
+
+## Decisions and Action Items
+
+*   An action item was noted for Mahesh Jethanandani and Jeff Tantsura to present guidance on their containerized build environment and Yang modeling best practices at a future IETF meeting, potentially in the Ops area or RTGWG.
+*   A recommendation was made that manageability (Yang model development) should be considered a requirement and developed concurrently with new protocol features/RFCs, similar to how implementations are required.
+*   It was recommended that the IESG give strong attention to the delegation of types to IANA and how code point management interacts with the use of identities to avoid code point squatting.
+*   The presenters encouraged the group to document and disseminate the lessons learned as best practices (e.g., internet drafts, wiki entries) for new IETF Yang authors.
+
+## Next Steps
+
+*   Continue the development and refinement of the BGP Yang module based on ongoing reviews and implementation feedback.
+*   Further discussions on handling bit vectors and other maintainability challenges in the datatracker.
+*   Address the deficiencies in RFC 8294's route target, route origin, and route distinguisher type definitions, with a long-term goal of pushing these definitions to IANA.
+*   Explore opportunities to present the containerized Yang development environment and associated best practices to a wider IETF audience.

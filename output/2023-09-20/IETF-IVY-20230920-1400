@@ -1,0 +1,65 @@
+# [IVY](../wg/ivy.html)
+
+## Summary
+
+The IVY working group met to discuss the way forward for the network inventory core model, building on previous polling results and presentations from several draft authors. While no formal decisions were made, the discussion revealed a strong inclination towards a modular approach for the network inventory model, separating concerns such as hardware, software, licenses/entitlements, and physical location. Key points of discussion included the scope of the base inventory model (hardware-only vs. generic physical/virtual), the definition of "network-element," and the structure for integrating various inventory aspects. The chairs presented a preliminary mapping of existing drafts to a proposed modular structure, which will form the basis for further discussion on the mailing list.
+
+## Key Discussion Points
+
+*   **Polling Results on Network Inventory Core Model**:
+    *   A mailing list poll was conducted over three weeks to gauge preference for adopting existing drafts or creating a new one as the network inventory base model.
+    *   The poll presented three options: adopt `draft-ietf-ccamp-network-hardware-inventory` (Option 1), adopt `draft-wu-opsawg-network-inventory-management` (Option 2), or write a new `00` version (Option 3).
+    *   Results were highly divided, with significant support for Option 1 and a substantial portion favoring Option 3 or a "merged" Option 4 (combining elements).
+    *   The chairs noted that the boundaries between options blurred, as even adopting an existing draft would involve significant updates and incorporation of valid aspects from others.
+    *   Key questions arising from the poll included: should hardware and additional inventory evolve separately? Should existing drafts be merged? Should equipment room information be part of the core model?
+
+*   **`draft-wu-opsawg-network-inventory-management` Proposal (presented by Bo)**:
+    *   Bo presented a proposal for a generic inventory model encompassing both hardware and software.
+    *   Discussions with `ietf-ccamp-network-hardware-inventory` authors at IETF 117 revealed different goals: `ccamp` preferred a hardware-only model currently, while `opsawg` sought a more generic model.
+    *   The `opsawg` model uses "Network elements" for both physical and virtual devices and "components" for both hardware and software, extending `ietf-hardware` with software classes.
+    *   Bo argued that `ietf-ccamp-network-hardware-inventory` (hardware-only) cannot be simply augmented into a generic model because its `network-element` and component definitions are restricted to physical hardware. Augmentation would result in two separate inventory models, not a common one.
+    *   Proposed creating a merged draft for consistent terminology or defining a common core network management model.
+    *   Suggested defining a separate `ietf-inventory-topology` module for mapping and correlation, to be worked on at a later stage.
+
+*   **`draft-ietf-ccamp-network-hardware-inventory` Proposal for Modularization (presented by Italo)**:
+    *   Italo proposed using the `ccamp` draft as a starting point for a base inventory model, with a modular approach.
+    *   Proposed splitting the inventory into a base hardware model, augmented by separate modules for software, licenses, and location.
+    *   To make the base model more generic, the top-level container would be renamed "network-inventory," and the `component` list definition would be generalized to cope with software components, even if they aren't defined in the base document.
+    *   Software inventory would be an augmentation, adding attributes to indicate virtual network elements and new identities for software components.
+    *   Licenses would also be an augmentation under the top `network-inventory` container, drawing from `draft-marisol-netmod-asset-lifecycle-management-operations` (DMLMO).
+    *   For location information, Italo proposed generalizing "equipment room" to "site," which could be recursive (campus > building > room). This would be in a separate module to allow optional implementation.
+    *   The proposal suggested keeping a common root container (`network-inventory`) for easier retrieval of all information via a single RESTCONF GET operation, though this was debated.
+    *   The modularization could result in four to five modules: base network inventory (hardware), software inventory, network licenses, network element location, and (later) inventory topology.
+    *   Next steps included an attribute-by-attribute review to identify attributes applicable to physical, virtual, hardware, and software components.
+
+*   **`draft-marisol-netmod-asset-lifecycle-management-operations` (ALMO) (presented by Marisol)**:
+    *   Marisol reiterated the ALMO draft's relevance, focusing on asset lifecycle management beyond basic inventory.
+    *   ALMO defines "asset" generically as hardware or software, physical or virtual, and its components, including an extension to "service."
+    *   Highlighted ALMO's approach to entitlements (formerly licenses) and its ability to be augmented, providing a practical example in its appendix.
+    *   Mentioned that ALMO already covers dynamic concepts like power management measurements.
+    *   Proposed releasing new versions of ALMO focusing on data models for IVY, including an independent module for entitlement reference, drawing from DMLMO.
+
+*   **Discussion on Specific Issues**:
+    *   **Location Information**: Alex questioned whether location should augment `network-inventory` or be entirely separate, cross-referenced but not contained. The chairs and Italo noted that a separate module would make it optional.
+    *   **Top-Level Container**: Alex also questioned the need for a top-level container, suggesting it could be removed to avoid instance name prefixes and allow for non-inventory use cases (e.g., digital twin). Italo argued for a common container for single GET operations.
+    *   **Generic vs. Hardware-Only Base Model**: Olga emphasized the need for a common core model that incorporates both virtual and physical network functions from the start, rather than augmenting a physical-only base. Bo echoed this, questioning how a "hardware-only" definition could later support virtual devices without changing its fundamental nature.
+    *   **Terminology Clarity**: Robert highlighted confusion around terms like "physical," "hardware," "software," and "virtual," suggesting a terminology list.
+    *   **Dynamic Data vs. Inventory**: Tony raised the topic of power management (active power utilization, power on/off), asking how to incorporate dynamic aspects. Daniela clarified that inventory traditionally refers to static data (like a datasheet), but this scope could be revisited. Marisol noted ALMO's work on dynamic measurements.
+    *   **Filtering for Hardware-Only Data**: Bo suggested that if a generic model is adopted, filtering mechanisms (XPath/subtree filters) could be used to retrieve hardware-only data when needed, rather than separating into distinct modules. Daniela acknowledged the technical feasibility but preferred modular separation for quicker progress on the hardware part.
+
+## Decisions and Action Items
+
+*   No immediate formal decisions were made regarding draft adoption or specific model structures during the meeting.
+*   **Chairs' Proposed Modular Structure**: The chairs presented a preliminary mapping of existing drafts to a proposed modular structure:
+    *   `ietf-ccamp-network-hardware-inventory` (and relevant parts of `opsawg`) could form the basis for a `network-inventory` module (hardware use cases).
+    *   Remaining software parts of `opsawg` could form a `software-network-inventory` module.
+    *   `draft-marisol-netmod-asset-lifecycle-management-operations` (ALMO) could be used for a `ietf-entitlements-network-inventory` module.
+    *   A new document would cover `network-element-location`.
+    *   A fifth document would cover mapping inventory against topology (to be developed later).
+*   **Action Item**: The chairs will write down a detailed proposal based on the discussed modular approach, including the mapping of existing drafts, and share it on the IVY mailing list for further discussion and to gather formal consensus.
+*   **Informal Poll**: An informal, non-binding poll of the room indicated a general preference for the chairs' proposed modular approach, with 14 in favor, 4 against, and 5 abstentions/unsure. Those against or unsure indicated concerns about specific details (e.g., location augmentation) or clarity of definitions.
+
+## Next Steps
+
+*   The chairs will draft a formal proposal outlining the modular approach and the proposed mapping of existing drafts/content.
+*   This proposal will be shared on the IVY mailing list to continue the discussion and work towards reaching consensus.

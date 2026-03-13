@@ -1,0 +1,81 @@
+# [TAPS](../wg/taps.html)
+
+## Summary
+
+The TAPS working group held an interim meeting to address outstanding GitHub pull requests (PRs) and IESG review comments, with a focus on resolving blocking issues for document progression. Key discussions revolved around the architecture document's title, the necessity of a TAPS registry, clarification of various API properties and interactions, and how to address complex interactions and discoverability concerns raised in reviews. Due to the volume of feedback, a follow-up interim meeting will be scheduled.
+
+## Key Discussion Points
+
+*   **Meeting Logistics & Priorities**: The chairs emphasized addressing the most critical issues early in the meeting due to some participants needing to leave early. Michael volunteered to drive the GitHub interface.
+
+*   **Architecture Document Title Change (PR 1290)**:
+    *   **Motivation**: Based on IESG feedback, an "Architecture" document describes a plan, not a specification with requirements. To address this, the proposed title change was from "Transport Services Architecture" to "Transport Services Architecture and Requirements".
+    *   **Discussion**: It was noted that the IESG's preference was to include "Requirements." Gorry suggested changing "An Architecture and Requirements" to "Architecture and Requirements" for better flow.
+    *   **Decision**: The working group agreed to change the title to "Architecture and Requirements". PR 1290 was subsequently merged.
+
+*   **Architecture Document Language Revisions (PR 1288)**:
+    *   **Context**: Related to the title change, Gorry had submitted a substantial PR to revise the document's text, distinguishing between "Transport Services System," "Transport Services Architecture," and "Transport Services Implementation."
+    *   **Discussion**: This PR was deemed important but required a detailed review.
+    *   **Action Item**: Tommy volunteered to review PR 1288 offline.
+
+*   **Registry for TAPS API Elements (Issue 588)**:
+    *   **Context**: An email from Philip suggested creating a registry, with an emphasis on its usefulness for API users/consumers.
+    *   **Discussion**: Gorry highlighted the importance of separating the IETF-defined namespace (without an underscore prefix) from vendor-specific identifiers (using an underscore prefix). The general sense was that while defining the namespace separation is crucial, the *creation* of an actual IANA registry could be deferred and initiated by a future RFC. Some current text about the registry should be made non-normative.
+    *   **Decision**: The working group agreed to keep the text defining underscore-prefixed names for vendor-specific elements and clarifying that a registry *can* be created by a future RFC, while ensuring current descriptive text remains non-normative.
+
+*   **Endpoints and Endpoint Identifiers (PR 1285)**:
+    *   **Discussion**: This PR clarifies the usage of "endpoint" versus "endpoint identifier" throughout the documents. It was described as a lengthy but not overly complex set of wording clarifications.
+    *   **Action Item**: The chairs requested wider review from the working group to help resolve these nitpicks.
+
+*   **Security by Default (Issue 1279 / Arch 3.1)**:
+    *   **Context**: Roman had suggested a recommendation that default values ensure "correctness and security."
+    *   **Discussion**: There was a question about the vagueness of "specialized security features." Paul clarified that Roman's intent was to ensure widely applicable defaults are not inherently insecure. This was not considered a blocking discuss point but rather a need for clarification.
+
+*   **IESG "Review Must Reply" Comments**:
+    *   **Listener and Pre-connection**: An IESG comment raised concerns about inconsistency in section 3 regarding "listen as a pre-connection." Gorry could not immediately locate the inconsistent text.
+    *   **ALPN Mention**: Discussion confirmed ALPN (Application-Layer Protocol Negotiation) is relevant as a hint for protocols that support it (e.g., TLS, QUIC) and is security-related.
+        *   **Action Item**: Michael to draft text for clarification.
+    *   **Host Name vs. Fully Qualified Domain Name (FQDN)**:
+        *   **Concern**: Whether the `hostname` parameter can be unqualified, and if the architecture assumes an FQDN, leading to ambiguity.
+        *   **Discussion**: It was agreed that while FQDNs are desirable, unqualified hostnames might be passed. The implementation document should clarify the implications, considering resolver configurations and search domains.
+        *   **Action Item**: Tommy to add clarification in the implementation draft.
+
+*   **Lars's Comments (IESG)**:
+    *   **Complex Interaction between Properties**: Lars expressed concern about undefined interactions between numerous properties, contributing to his potential abstention. He cited an example of an unreliable connection with a "reliable message" property.
+        *   **Discussion**: Gorry argued that in such a case, the operation should simply fail. A general statement could clarify that attempting to add functionality via per-message properties that is not supported by the underlying connection will result in failure, while removing functionality (e.g., making a reliable connection unreliable) would generally succeed.
+        *   **Action Item**: Gorry to draft clarifying text on this point.
+    *   **Scheduler Property**: Clarification on what "scheduler" means.
+        *   **Discussion**: The proposal was to state it apportions available capacity according to connection priorities.
+        *   **Decision**: PR 1292, which addresses this, was approved to be merged after conflict resolution.
+    *   **Future Interactions Undefined**: Lars questioned how programmers can make informed choices with undefined future interactions.
+        *   **Discussion**: It was emphasized that TAPS aims to *improve* upon existing APIs like BSD sockets, which also have complex feature interactions, by providing a cleaner, categorized framework. The existence of comprehensive implementations was also noted. The alternative (making the document experimental) was generally seen as undesirable.
+        *   **Decision**: The response will highlight TAPS's improvements over existing APIs and the presence of implementations, asserting that it provides a better framework for managing such interactions.
+    *   **Protocol Specific Options (`with_protocol`)**: Lars queried why `with_protocol TCP/TLS` was not explicitly defined, and what such a specification would entail.
+        *   **Discussion**: While TAPS generally discourages explicit protocol selection to promote flexibility, it was acknowledged that legacy applications might need to specify a transport (e.g., SCTP). Preventing this entirely might be too restrictive. Allowing explicit choice, however, implies a need for a defined list of valid protocol names and combinations.
+        *   **Decision**: TAPS should allow explicit protocol selection for specific scenarios. The API documentation *should* provide a list of choosable protocols and combinations.
+    *   **Usage of Protocol Identifiers**: Related to the above, it was confirmed that protocol identifiers are strings, based on the list provided in the API documentation.
+    *   **Available Interface Names**: Lars questioned how applications learn about available interface names (e.g., "en0").
+        *   **Discussion**: This issue has been addressed previously (e.g., Issue 865, IPv6 scoped addresses in 864). The `pre_connection.resolve` method can be used to discover interfaces matching specified constraints. It was also noted that platform-specific APIs provide interface names.
+        *   **Decision**: Reference the `pre_connection.resolve` mechanism and acknowledge the role of platform-specific APIs for interface discovery.
+    *   **"Not just IETF document in the RFC Series"**: Lars's comment on this point was marked as resolved, indicating it had been overtaken by events or addressed elsewhere.
+
+## Decisions and Action Items
+
+*   **Decision**: The title of the architecture document will be "Architecture and Requirements." (PR 1290 merged)
+*   **Decision**: PR 1292 (Scheduler property) to be merged after conflict resolution.
+*   **Decision**: TAPS will define namespaces where IETF-defined elements do not use an underscore prefix, and vendor-specific elements use an underscore prefix. The formal IANA registry creation for TAPS elements can be initiated by a future RFC.
+*   **Action Item**: Tommy to review PR 1288 (Architecture document language revisions).
+*   **Action Item**: Michael to draft text addressing the ALPN mention and its security implications.
+*   **Action Item**: Tommy to add clarification in the implementation draft regarding the handling of qualified vs. unqualified hostnames.
+*   **Action Item**: Gorry to draft text for Lars's comment on complex property interactions, clarifying expected failure modes when unsupported functionality is attempted.
+*   **Action Item**: The API documentation *should* contain a list of choosable protocols and protocol combinations.
+*   **Action Item**: The discussion regarding interface name discovery (e.g., "en0") will be addressed by referencing the `pre_connection.resolve` method and acknowledging platform-specific APIs.
+*   **Action Item**: The chairs (Gorry, Michael) and editors (Tommy) will apply focused edit cycles in the coming weeks to resolve as many outstanding issues as possible.
+*   **Action Item**: Gorry to communicate updates on the Architecture document to Eric (IESG), aiming to close his discuss comment.
+*   **Action Item**: Editors will ensure all IESG reviews are formally replied to, summarizing resolutions.
+
+## Next Steps
+
+*   A Doodle poll will be circulated to schedule another interim meeting for the week of October 23rd or the week prior, to continue addressing the remaining issues before the upcoming IETF meeting.
+*   During this interim, the focus will be on triaging and assigning the remaining complex issues, particularly those from Lars's review.
+*   Participants are encouraged to prepare comments or draft text for unresolved issues to facilitate quicker resolution.

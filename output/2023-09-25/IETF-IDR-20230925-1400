@@ -1,0 +1,85 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR Working Group interim meeting focused on three key draft documents: BGP Entropy Label Capability (ELC), BGP Color-Aware Routing (CAR), and BGP Class-based Tunnel (CT). Discussions included reviews, clarifications, and open issues for each. A significant portion of the meeting addressed a proposal to remove an appendix from the ELC draft, as well as design limitations and normative dependencies raised for the CAR and CT drafts. Lastly, there was an initial discussion on potentially splitting the large Flowspec V2 draft into smaller, more manageable pieces to facilitate implementation and adoption.
+
+## Key Discussion Points
+
+### BGP Entropy Label Capability (ELC)
+
+*   **Draft Status**: John Scudder presented an update following a working group last call, incorporating reviews for versions 10 and 11.
+*   **Resolved Issues**:
+    *   Title and filename adjusted (filename maintained for consistency).
+    *   Clarified language in Section 2.3 regarding iBGP route selection, allowing for policy-driven behavior ("consenting adult").
+    *   Improved messaging in Section 2.4 on message malformation.
+    *   Added a private use range.
+    *   Updated "address family" to "NLRI" in Version 11 to improve precision.
+*   **Open Issues**:
+    *   **MMH vs. ELCv3**: A participant questioned the necessity of ELCv3 given MMH capabilities. The author's view is that ELCv3 provides a solution deployable now.
+    *   **Language Imprecision**: Remaining imprecise language in "Labeled NLRI," "binary integers," "send," and "accept" statements will be addressed in a future version.
+    *   **Multipath Routes**: It was acknowledged that handling multipath routes when one path is not ELC capable requires careful text, with a general agreement that ELCv3 *must not be propagated* if any path lacks ELC capability.
+    *   **Appendix A (Transition Mechanism)**: This appendix, detailing a transition mechanism for Attribute 28, was discussed. While the author preferred keeping it to assist implementers, a sense of those present indicated a preference for its removal, aligning with a previous consensus to deprecate Attribute 28. The author stated willingness to follow working group consensus.
+
+### BGP Color-Aware Routing (CAR)
+
+*   **Draft Status**: DJ presented the status, noting the draft was adopted at IETF 114 with broad support and two interoperable implementations. Several issues raised during the working group last call are being addressed, with an O3 version expected.
+*   **Motivation for Two Route Types (Type 1 and Type 2 IP Prefix)**:
+    *   **Type 1 (IP address + Color)**: Supports redistributing SR policies in multi-domain networks.
+    *   **Type 2 (IP Prefix)**: Primarily for SRv6 routed services, where unique locator prefixes are assigned per intent/color. It follows BGP RFC 4271 semantics, installed in the IPv6 forwarding table, and leverages existing color-aware procedures (e.g., Local Color Mapping Extended Community for end-to-end color).
+*   **Design Choice for Type 2**: The decision to use a distinct route type for Type 2, rather than an overloaded Type 1 with a special color (e.g., color=0), was justified by avoiding "hacky" solutions and leveraging the CAR SAFI's extensibility.
+*   **Security and Route Leaking**: The CAR SAFI, designed for infrastructure routes, provides separation from other SAFIs (e.g., BGP IPv4/IPv6 SAFI), thus *preventing* route leaking rather than introducing security risks. Policy-based redistribution between SAFIs remains an operational concern.
+*   **Scope and Applicability**: Clarification was sought on the specific service SAFIs that CAR supports and the use of VPN CAR. A participant (Karan) suggested that extensive applicability text might be better suited for a separate document.
+*   **Charter Alignment**: A participant (Jeff Haas) raised a concern that the Type 2 route, which is intended for SRv6 routes *without* an explicit color in the NLRI, might be considered out of scope for *this specific document* given the original "color-aware" charter of CAR.
+*   **Ambiguities (Nats)**: Several ambiguities were noted, including:
+    *   Precedence between Color Extended Community (EC) and NLRI/Local Color Mapping (LCM) EC when both are present.
+    *   Ensuring consistent label generation for anycast use cases.
+    *   Defining interoperation procedures between Type 1 and Type 2 routes in MPLS/SRv6 interworking scenarios.
+
+### BGP Class-based Tunnel (CT)
+
+*   **Draft Status**: Kali Raj presented, highlighting that the draft is a comprehensive solution for intent-driven service mapping, supporting various transport protocols and service families. Many editorial comments have been incorporated, text reorganized for readability, and an error handling section added.
+*   **Reserved Bits Handling**: Discussion around reserved bits led to clarification: "must set to zero on send" and "should ignore on reception and *must* leave unaltered."
+*   **Design Limitations (Swadesh)**: A participant (Swadesh) expressed significant concerns regarding CT's use of Route Distinguishers (RDs) in a hop-by-hop transport routing model, arguing it introduces sub-optimal behaviors like lack of localized fast convergence, duplicate routes, churn, and increased control plane state, unlike existing BGP IP/LU. He requested these limitations be explicitly captured in the draft.
+    *   The author (Kali Raj) countered that Swadesh's concerns apply to worst-case deployment scenarios, and the *recommended* deployment (originating routes at the egress PE) avoids these issues. Different deployment models offer flexibility.
+    *   Further discussion involved the comparison of CT's RD usage with VPN CAR's RD usage, with Swadesh arguing that VPN CAR uses RDs for their original VPN purpose (customer routes, overlapping IP spaces), whereas CT introduces RDs into the transport layer, exposing it to churn issues.
+*   **Normative References**: Concern was raised that the CT draft includes normative references to individual (non-RFC) drafts, particularly for SRv6 functionality. This is not standard practice for IETF specifications, and options like moving such functionality to separate documents or making references informative were discussed.
+*   **Operational Considerations**: A suggestion was made to add a "pros and cons" section for the various design options and flexibility offered by CT in its operational considerations.
+*   **Implicit Null Label**: Discussion on how to deterministically determine a router's support for MPLS, SRv6, or both when an implicit null label is used for route origination.
+
+### Flowspec V2
+
+*   **Background**: Flowspec V1 had known implementation problems. V2 aimed to address these, including a new TLV format, user ordering of matches, action ordering, and Yang modules. The "Wide Communities" mechanism, critical for V2, is currently stalled at the IESG.
+*   **Implementation Challenges**: Implementers (Nokia, Juniper) have indicated that the current comprehensive V2 draft is too large to implement all at once.
+*   **Proposal for Partitioning**: A proposal was presented to split Flowspec V2 into smaller, more manageable pieces:
+    *   **Part 1 (High Priority)**: Focus on enhanced DDoS and simple firewall use cases, including IP matches only, user ordering on matches (with default sorting within user-defined order), and ranges.
+    *   **Actions**: Reformat extended communities (e.g., 7 bits for assignment + 1 bit for failure mode, or 5 bits + 2 bits for short ordering).
+    *   **Future Parts**: Extended actions (leveraging Wide Communities once unblocked), firewalls for tunnels, and management.
+*   **Related Work**: A participant (Kali Raj) noted that some redirect actions in Flowspec V2 could potentially be incorporated into the MNH (Multi-Next-Hop) draft.
+*   **Design Considerations (Jeff Haas)**: Multi-next-hop might not be appropriate for all firewall actions. The core need for Flowspec V2 actions is bundling, dependencies, and failure modalities. The encoding (Wide Community container or new path attribute) is secondary. Adjusting the numbering space for default sort order was also highlighted.
+
+## Decisions and Action Items
+
+### Decisions
+
+*   A sense of those present indicated that **Appendix A of the BGP Entropy Label Capability (ELC) draft will be deleted.** This decision will be confirmed via a mailing list poll.
+
+### Action Items
+
+*   **Chair (Sue)**: To initiate a second working group last call for the BGP ELC draft shortly after the current discussion points are closed.
+*   **Nats**: To send detailed comments regarding ambiguities in CAR (Color EC precedence, anycast, interop) to the IDR mailing list.
+*   **Swadesh**: To send detailed concerns about CT's use of RDs in transport (including churn issues and a comparison with VPN CAR's RD usage) to the IDR mailing list.
+*   **Jeff Haas**: To send detailed points regarding CAR's Type 2 route (potential out-of-charter alignment) to the IDR mailing list.
+*   **Ketan**: To send detailed comments on CT (normative references to individual drafts, implicit null label behavior) to the IDR mailing list.
+*   **CT Authors (Kali Raj et al.)**: To consider adding a "pros and cons" section for various design options and flexibility into the CT draft's operational considerations.
+*   **Chair (Sue)**: To launch working group mailing list threads within the next week (with a two-week response window) for the consolidated issues raised by Nats, Swadesh, and Jeff Haas regarding CAR and CT.
+*   **Ketan and Kali Raj**: To work together and provide a summary of their resolved and remaining CT discussion points by Wednesday/Thursday.
+*   **Flowspec V2 Authors/Working Group**: To provide feedback on the proposal to partition the Flowspec V2 draft into smaller, more focused documents, starting with "DDOS/simple firewall" use cases.
+
+## Next Steps
+
+*   The BGP ELC draft will proceed to a second working group last call following confirmation of Appendix A's removal.
+*   Extensive mailing list discussions will take place to resolve the remaining technical issues and concerns for both CAR and CT drafts, in preparation for their respective second working group last calls.
+*   A Security Directorate pre-review for the CT draft is pending.
+*   Feedback will be gathered on the proposal to partition the Flowspec V2 draft.
+*   The chairs will evaluate the need for additional interim meetings to continue discussions, particularly for Flowspec V2.

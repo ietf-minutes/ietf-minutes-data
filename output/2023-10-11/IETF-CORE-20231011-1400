@@ -1,0 +1,92 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting covered significant updates and discussions across several CORE working group drafts: PubSub, CoMID, CoR, and Groupcoms. For PubSub, the key discussion revolved around the architecture for hosting topic data on external servers, with a decision to defer standardizing the broker-data owner protocol. CoMID updates highlighted its progress to the ISG and the need for a separate document for standard SID files. CoR received extensive review comments, leading to decisions to simplify the data store architecture and address fundamental issues in subsequent iterations. The Groupcoms document discussion focused on clarifying language around experimental protocols, unsecured discovery, security objectives, and CoAP group definitions. An ad-hoc discussion on DNS-SD to CoRE Link Format mapping also took place.
+
+## Key Discussion Points
+
+### CoAP PubSub (draft-ietf-core-coap-pubsub)
+
+*   **Architectural Musings:** A participant mused that the PubSub design, specifically the split between registration and data resources, might have been beneficial for the Resource Directory (RD) to better manage proxying scenarios and provide registrants details about their proxied registrations.
+*   **Draft Update Overview:** Jaime provided an update on PubSub draft versions, noting version 12 introduced a new resource structure (topic collection, topic configurations, topic data) and a topic lifecycle (half-created, fully created, deleted).
+*   **Topic Properties:** Discussed existing properties (e.g., topic name as application identifier, max subscribers) and authorization following ACE WG drafts. A new property, `Observer-Check`, was added to regulate subscriber lists.
+*   **Hosting Topic Data Remotely:** The primary technical discussion point was the feasibility and implications of hosting the topic data resource on a CoAP server *different* from the PubSub broker.
+    *   **Complexity:** It was noted that this introduces significant complexity as the broker's state (e.g., lifecycle, subscriber counts, errors) needs to be synchronized with the remote data server, requiring a new protocol between them.
+    *   **Client Perspective:** Publishers and subscribers are unaffected as they interact directly with the topic data resource via its URI. The issue is purely between the broker and the data owner.
+    *   **Christian's Architectural Observations:** A participant suggested that PubSub bundles several independent concepts: resource metadata (e.g., tombstone representation, expiration), delegation of authority, and cache population (broker as reverse proxy). They hoped to conceptually separate these for future extensibility without requiring PubSub changes.
+*   **Security Considerations:** Input was provided regarding leveraging ACE profiles for Publishers/Subscribers and using Group OSCORE/Group Admin as inspiration for administrator security models.
+*   **Next Steps for PubSub:** Jaime intends to update the draft to version 13, incorporating clarifications and editorial changes, and to focus on the security considerations section before the next IETF cutoff. He also mentioned updating an io.coap implementation for the upcoming hackathon.
+
+### CoAP Management Interface (CoMID) (draft-ietf-core-comid)
+
+*   **ISG Progress:** CoMID is currently with the ISG, with telechat scheduled for next week.
+*   **YANG Identities:** A review comment related to treating YANG identities like user identities was noted as a potential confusion of terms.
+*   **Standard SID Files:** A strong concern was raised about the lack of progress on publishing standard SID files for other IETF protocols. It was proposed to create a *second document* to address this, which would eventually be very short, pointing to registries and providing additional information. This is to be addressed before the 19th.
+
+### CoAP Resource (CoR) (draft-ietf-core-cor)
+
+*   **Review Comments:** Carsten provided an update on CoR, detailing feedback from a working group last call.
+    *   **Tom Patsch's Review (Netconf perspective):** Suggested following Netconf/Netmod conventions, including declaring normative appendices as normative.
+    *   **Andy's Technical/Editorial Comments:** Numerous editorial points, a request for more examples (noting infrastructure limitations for validation).
+    *   **Fundamental Observations:**
+        *   **Data Store Architecture (Unified vs. NIMDA):** The document attempts to support both a simple "unified" architecture and the more complex New Management Data Architecture (NIMDA) from RFC 8342. It was noted that supporting NIMDA properly requires addressing several issues for which there's insufficient implementation experience.
+        *   **Request-Response with Keyed Instance Identifiers:** The document's approach of not repeating keys in the response for instance identifiers (e.g., IP address, port for observation relationships) was flagged. This conflicts with the defined media type, which expects a full instance identifier, and complicates correspondence rules for correlating fetched data with responses.
+        *   **Discovering Keys/Depth/Fields:** The current definition implies needing to fetch the entire data store to discover available keys. The need for `depth` and `fields` parameters (similar to Restconf) or an alternative mechanism was highlighted.
+        *   **Error Handling:** The document lacks explicit "All or Nothing" semantics for updates. If multiple data items are updated and one fails, rollback requirements need to be defined.
+        *   **Eliding Output YANG Structure:** Questions were raised about when and how to completely elide the output YANG structure if no output is defined for an RPC.
+        *   **"Extra Layer in Encoding for Zero":** A review comment from Andy, the meaning of which was unclear to the chairs.
+        *   **Ordered-by Property in YANG Arrays:** YANG has arrays ordered by the server vs. ordered by the client. This distinction is not addressed in CoR, potentially leading to unspecified behavior.
+*   **Plan for CoR:** Carsten plans to incorporate editorial and Yang document convention fixes into version -17. More fundamental issues will be turned into GitHub issues for design team discussion and wider feedback at IETF 119 in Prague.
+
+### CoAP Group Communication (Groupcoms) (draft-ietf-core-groupcoms)
+
+*   **Review from John Postel:** Esco presented four key issues identified in John Postel's review.
+*   **Issue 1: Using Experimental/Obsolete Protocol (RFC 7390):** The draft stated it's "not recommended" to use RFC 7390's experimental protocol.
+    *   **Discussion:** A participant argued that "experimental" doesn't inherently mean "not recommended." It was clarified that the intent was to convey that the experiment concluded without widespread adoption.
+*   **Issue 2: Unsecured Discovery (CoAP Multicast No-Ack):** The draft mentioned "early discovery of devices and resources" as a typical use case for no-ack mode.
+    *   **Discussion:** Concern was raised that this could be interpreted as an excuse to avoid security. Concrete examples of secure deployments where an initial unsecured discovery step is inherent (e.g., secure device bootstrap) were requested.
+*   **Issue 3: "Sensitive and Mission-Critical" Terminology:** The draft used "sensitive and mission-critical" to require security and "non-sensitive and non-critical" to allow no-sec.
+    *   **Discussion:** This binary approach was deemed problematic. It was suggested to shift focus to "security objectives" of an application and specific "steps in a workflow" that might inherently not afford immediate security (e.g., initial bootstrap), rather than broad labels like "sensitive."
+*   **Issue 4: CoAP Group Definition Conflict:** The text described CoAP groups as having an optional address and port, while a figure showed them as mandatory.
+    *   **Discussion:** The conflict arises from distinguishing between the conceptual definition of a group (always having an address and port for communication) and its naming/identification (which might use a hostname, resolved later, or rely on a default port). The need for clarification was agreed upon. A participant also suggested showing the group name in the figure.
+
+### Ad-hoc Discussion: DNS-SD to CoRE Link Format Mapping
+
+*   **Proposal:** Esco raised a question about defining a straightforward, generic one-way mapping from a DNS-SD service definition to a CoRE Link Format link for advertising service availability.
+*   **Response:** Carsten suggested aiming for an *abstract* mapping that avoids the "contorted" DNS-SD representation (caused by DNS's limitations as a substrate). The goal should be to map the *meaning* of the DNS-SD data, not its specific DNS record structure, and to focus on a one-way mapping (DNS-SD to CoRE).
+
+## Decisions and Action Items
+
+### CoAP PubSub (draft-ietf-core-coap-pubsub)
+
+*   **Decision:** Do not explicitly forbid hosting the topic data resource on a different server than the broker in the current draft. Standardizing the protocol for communication and state synchronization between the broker and a separate data owner will be deferred to a future, second document.
+    *   **Action (Jaime):** Modify the draft text to reflect this, specifically in topic creation and terminology definitions, ensuring the broker is not mandated to create the topic data resource itself.
+*   **Action (Jaime):** Publish version 13 of the PubSub draft. Prioritize current changes and clarifications, and aim to include an updated security considerations section before the IETF 119 cutoff.
+
+### CoAP Management Interface (CoMID) (draft-ietf-core-comid)
+
+*   **Decision:** A second document will be initiated to define standard SID (Security Identifier) files for other IETF protocols, which will eventually be very short, primarily pointing to registries.
+
+### CoAP Resource (CoR) (draft-ietf-core-cor)
+
+*   **Decision:** The current CoR draft will focus on the "unified" data store architecture. Support for the New Management Data Architecture (NIMDA) will be deferred to a separate, future document.
+*   **Action (Carsten):** Implement editorial fixes and align with Yang document conventions in the next draft version (-17). For more fundamental technical questions (e.g., keyed instance identifiers, discovery parameters, error handling, ordered-by arrays), create GitHub issues and organize design team meetings or wider feedback at IETF 119 in Prague.
+
+### CoAP Group Communication (Groupcoms) (draft-ietf-core-groupcoms)
+
+*   **Decision:** The text regarding RFC 7390 will be revised to state that the experiment defined by that RFC has concluded, rather than simply stating it's "not recommended."
+*   **Decision:** To clarify the use of unsecured discovery, the draft will make an informative reference to secure bootstrap methods (e.g., draft-ietf-anima-constrained-voucher, C-BRSKI) as concrete examples where an initial CoAP No-Ack discovery step is part of an overall secure process.
+*   **Decision:** Rephrase security recommendations by focusing on "security objectives" of an application and specific "steps in a workflow" that may or may not afford immediate security, moving away from broad "sensitive/non-sensitive" labels.
+*   **Decision:** Update the text to clarify the CoAP group definition to differentiate between the mandatory address and port for actual group communication and the flexible naming/identification (e.g., hostnames) that may be resolved later.
+    *   **Action (Esco):** Draft proposed text changes for these Groupcoms issues.
+    *   **Action (Esco):** Start separate mailing list threads for discussion on the updated text for Groupcoms.
+
+## Next Steps
+
+*   **PubSub:** Jaime to publish draft-ietf-core-coap-pubsub-13 and continue work on the security considerations section. An implementation will be updated for the IETF 119 hackathon.
+*   **CoMID:** Continue through the ISG process. A new document to be initiated for standard SID files.
+*   **CoR:** Carsten to prepare draft-ietf-core-cor-17 with editorial fixes. GitHub issues for fundamental design questions will be created, with discussions and feedback sought for IETF 119.
+*   **Groupcoms:** Esco to draft revised text based on the discussion and initiate mailing list threads for further review and consensus.
+*   **DNS-SD to CoRE Link Format Mapping:** Esco to explore defining an abstract, one-way mapping, avoiding replication of DNS-specific complexities.
+*   **Future Interim Meetings:** Planning for future interim meetings will proceed with the usual cadence, synchronizing with CoBore, with details to be confirmed on the mailing list.

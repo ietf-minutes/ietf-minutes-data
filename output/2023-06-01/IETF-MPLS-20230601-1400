@@ -1,0 +1,70 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+This was a joint interim meeting of the MPLS, PALS, and DETNET working groups. Key discussions included updates on the label 14 reclamation effort, a detailed review of options for using the "first nibble" in MPLS Post-Stack Data (PSD) headers, and a presentation of an In-situ OAM (iOAM) use case for PSD. A significant part of the discussion also centered on the feasibility and implications of modifying In-Stack Data (ISD) by transit nodes within the MPLS label stack.
+
+## Key Discussion Points
+
+*   **Meeting Logistics and Agenda Review:**
+    *   The interim was a joint meeting between MPLS, PALS, and DETNET.
+    *   The Note Well was reviewed, and participants were reminded that the session was being recorded and would be broadcast.
+    *   The agenda was presented and accepted without objection.
+*   **Action Items from Previous Meeting:**
+    *   **PSD Questions:** A set of five questions for the working group regarding PSD was reiterated. Laura clarified that the primary request is to gather how *existing* use cases respond to these questions, rather than solicit new use cases.
+    *   **PSD Use Cases:** Input was requested for strong PSD use cases. Rakesh Gandhi presented one during this meeting.
+*   **Label 14 Reclamation Update:**
+    *   A liaison to ITU-T is being drafted to inquire about the possibility of reclaiming Label 14.
+    *   A poll to the working group on this topic is on hold until the liaison to ITU-T is sent.
+    *   Concerns were raised that reclaiming Label 14 might be a difficult process as it was primarily allocated for ITU-T purposes.
+*   **First Nibble Discussion for MA-PSD:**
+    *   Laura presented three cases for the first nibble in MA-PSD:
+        1.  Allocate a unique value, sender sets, receiver checks. (Uncertain/unnecessary as other packet info is sufficient for identification).
+        2.  Set to zero. (Similar uncertainty).
+        3.  Set to an allocated value, ignore on receipt. (Allows non-MA-capable devices to infer MA-PSD).
+    *   Tony advocated for the first nibble to be a well-defined demultiplexing (D-Max) point, separate from other signaling.
+    *   Greg and Joel (and Stewart) expressed caution about using the first nibble as a D-Max point, citing its small size, existing heuristic uses, and potential for confusion. It was noted that DETNET uses 0 and 1, and NSH uses a value to avoid accidental confusion (not for D-Max). Beer also uses a value other than zero.
+    *   A concern was raised about potential conflicts with Ethernet pseudo-wires without a control word if the first nibble is solely used for D-Max.
+    *   Stewart suggested that while the first nibble might not be a general D-Max point, it could serve for D-Max *within* the MA protocol after the MA-PSD is identified via the label stack (e.g., for future OAM features).
+    *   Jags questioned the coexistence of NSH and MA headers, to be added to the list of interactions to consider.
+    *   Tarak suggested that the first nibble could be examined only when a specific service label is present, potentially mitigating confusion.
+    *   Stewart proposed crafting a set of questions for the MPLS mailing list to gather wider input on the preferred approach for the first nibble.
+*   **iOAM Use Case for PSD (Rakesh Gandhi):**
+    *   Rakesh presented an iOAM use case focusing on telemetry, outlining four options:
+        1.  **Flag-based:** A simple in-stack flag triggers telemetry on nodes; collector reconciles data. Candidate for ISD.
+        2.  **Alternate Marking:** In-stack flags for delay/latency and flow identifiers. Easier for collector, local policy for data export. Candidate for ISD.
+        3.  **Direct Export (iOAM RFC 9326/9197):** More information carried in-packet (flow ID, flags for requested data). Each node exports to collector. Candidate for PSD due to potential data size.
+        4.  **Recording Option (iOAM RFC 9197):** Information collected in a fixed/pre-allocated header by each node and passed to the egress PE, which then performs telemetry. Collector does not need to reconcile data from multiple nodes. Candidate for PSD.
+    *   **Discussion on iOAM Use Case:**
+        *   Greg compared option 1 to alternate marking and suggested considering the IPPM hybrid two-step for out-of-band telemetry collection to reduce in-band load, especially for DETNET. He highlighted iOAM direct export's flexibility with limited in-stack impact.
+        *   Tony questioned the practicality of hop-by-hop recording (incremental option) due to potential MTU problems.
+        *   Laura and Rakesh clarified that the "pre-allocated" iOAM option (RFC 9197) does *not* cause the packet to grow, as space is reserved at ingress. However, if the pre-allocated size is large (e.g., 4x32 bits per node for many hops), it could still exceed practical in-stack limits (e.g., a suggested 5 LSEs). Rakesh provided an example of 3 bytes/node, 48 bytes for 13 hops.
+        *   Tarak noted an advantage of in-band hop-by-hop recording: only the egress PE needs to export telemetry, reducing the load on transit nodes compared to direct export from every node.
+        *   Tony reiterated MTU concerns, especially for customer payload, and stated 13 hops is insufficient for some large networks.
+        *   Jianing argued that MTU issues are common to any protocol that increases packet size, and ingress nodes should account for it.
+        *   Stewart concurred that for MPLS in limited domains, LSP length is often known, and protocols can define actions for exceeding size.
+        *   Greg further argued that out-of-band collection improves latency measurement accuracy by avoiding queuing delays associated with in-band stamping.
+        *   Rakesh suggested that instead of full iOAM options, a few specific flags in MA could be defined for common telemetry items (e.g., interface ID, timestamp, node ID) to avoid provisioning every P-node.
+        *   Tarak proposed segmenting paths for iOAM recording if the number of hops is too high.
+*   **Feasibility of Modifying In-Stack Data (ISD):**
+    *   Stewart inquired whether ISD (e.g., for "no further fast-reroute" or decrementing a latency budget) could be modified by transit nodes within the MPLS label stack, as this would require the stack to be a read-write cache rather than just read-only. He expressed concern about potential hardware limitations.
+    *   Tony clarified that while "cheap" SoC routers generally allow full write access, the concern is more with hardware-optimized routers. He noted that the ISD draft is designed to avoid writing to the first LSE to prevent hashing issues.
+    *   Tarak observed that SRv6 allows SRH header modification, but MPLS typically involves push/pop operations.
+    *   Jianing raised a critical point: if multiple copies of ISD are placed deep in the stack (to be accessible after pops), modifying only the top accessible copy would lead to synchronization problems.
+    *   Stewart agreed that synchronization rules would be needed but was primarily asking about the raw hardware capability for simple modification of a single field not at the top of the stack.
+    *   Stewart requested that individuals with access to hardware teams inquire about the feasibility of such modifications (inserting or changing a bit within the label stack, not at the top).
+
+## Decisions and Action Items
+
+**Action Items:**
+
+1.  **Chairs:** Discuss Stuart's proposal to draft a set of questions for the MPLS mailing list regarding the first nibble discussion to gather wider input.
+2.  **Greg Mirsky:** Offer to prepare a presentation for a future meeting on the IPPM hybrid two-step mechanism for out-of-band telemetry collection, if there is interest.
+3.  **All Participants (with hardware access):** Inquire with their respective hardware teams about the feasibility of modifying fields within the MPLS label stack (not just the top label) by transit nodes.
+
+## Next Steps
+
+*   The discussion on the first nibble will continue, potentially with questions posed to the mailing list.
+*   Participants are encouraged to provide further input on PSD use cases, specifically addressing how existing use cases respond to the five questions previously circulated.
+*   Further investigation into hardware capabilities for ISD modification is needed.
+*   Requests for slots for future interim meetings should be sent as early as possible for planning.

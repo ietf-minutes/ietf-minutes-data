@@ -1,0 +1,60 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+The MPLS MA interim meeting began with a review of open action items. An action item concerning the BIER working group's allocation of value 5 for the MPLS first nibble was closed following an investigation into RFC 8296. A new action item was opened to address the intersection of MPLS MA with existing features like BIER, specifically concerning entropy and version fields in post-stack data.
+
+The main part of the meeting featured a presentation by Wu Yi on a use case for Post-Stack Data (PSD) in MPLS, focusing on cross-domain iOAM interworking. The presentation covered an overview of on-path telemetry technologies (passport, postcard, hybrid modes) and argued for PSD as a mechanism to carry iOAM data across MPLS tunnels between IPv6 domains. Significant discussion ensued regarding the applicability of iOAM in cross-domain scenarios, security implications, and the general approach to supporting telemetry options within MPLS. No consensus was reached on the presented use case, and further discussion on the mailing list was requested.
+
+## Key Discussion Points
+
+*   **Action Item Review - BIER First Nibble:**
+    *   An investigation into RFC 8296 confirmed that BIER allocates value 5 for the MPLS first nibble.
+    *   This allocation serves two purposes: preventing confusion with ECMP logic on transient LSRs and providing a sanity check (BFRs discard packets with other values in the first nibble).
+    *   It was noted that value 0 would only address ECMP, not the sanity check.
+    *   The action item was deemed closed.
+*   **Action Item Review - MA and Existing Features Intersection:**
+    *   The BIER header includes version and entropy fields immediately after the first nibble.
+    *   A question was raised about how MPLS MA's intent to carry entropy (in-stack or metadata) intersects with existing MPLS features that use post-stack data, such as BIER.
+    *   It was noted that this intersection, particularly regarding post-stack data, does not appear to be explicitly addressed in current MA discussions.
+*   **On-Path Telemetry Overview (Wu Yi):**
+    *   Presented a classification of on-path telemetry technologies:
+        *   **Passport Mode** (e.g., iOAM Trace RFC 9197): Information carried in user packet, data added at every node.
+            *   Pros: Auto-correlated data, efficient bandwidth, low configuration, low bandwidth consumption.
+            *   Cons: Packet size inflation, encapsulation needs, security vulnerability (plain data), data loss if user packet is dropped.
+        *   **Postcard Mode** (e.g., iOAM Direct Export RFC 9326, PBTMP): Data sent separately to a collector.
+            *   Pros: Low/near-zero packet overhead, potential for more secure data transport (can encrypt postcards without delaying user traffic), better for pinpointing packet drop locations.
+            *   Cons: Data correlation challenges at the collector, higher data export overhead (standalone postcard packets), higher configuration overhead (especially marking-based), iOAM DX still requires encapsulation.
+        *   **Hybrid Mode** (e.g., Hybrid Two Steps): Combines aspects of passport and postcard modes.
+    *   A participant noted that the classification might mix generating and collecting/transporting telemetry information, and that Alternate Marking also allows transit node measurements.
+    *   It was highlighted that not every node in postcard mode *must* export, and partial data collection is still valuable.
+*   **Use Case: Cross-Domain iOAM Interworking with MPLS PSD (Wu Yi):**
+    *   Proposed a scenario involving multiple network domains (e.g., IPv6) interconnected by an MPLS tunnel, where hop-by-hop iOAM Trace is desired across all nodes in a "uniform mode."
+    *   Mechanism: iOAM data from IPv6 extension headers would be copied into MPLS PSD upon entering the MPLS tunnel, collected at MPLS nodes, and then copied back to IPv6 extension headers upon exit.
+    *   **Arguments for PSD (vs. ISD):**
+        *   **Overhead:** iOAM data can accumulate significantly (e.g., 19 "label switch elements" of data), making In-Stack Data (ISD) impractical.
+        *   **Complexity:** PSD allows keeping iOAM header format intact, avoiding complex transformations required for ISD encoding.
+        *   **Deployment:** Potential for quicker deployment due to current maturity of relevant drafts.
+        *   **Compatibility:** Acknowledged a general challenge for PSD placement regarding existing solutions (e.g., "immediately after the label stack and before the original payload") and suggested unification or careful placement.
+    *   **Discussion and Concerns:**
+        *   A participant strongly questioned the applicability of iOAM (defined for "limited domains") to cross-domain scenarios, citing security concerns and violations of iOAM's defined scope (RFC 9197, RFC 8799). The mechanism of copying/applying headers was also questioned regarding its standardization status.
+        *   Wu Yi defended the use case, suggesting that if an entire network is under a single management domain, it could be considered a "limited domain," and that the scenario also applies to tunnels within a single domain.
+        *   The chair asked why direct export (postcard mode) wouldn't work, to which Wu Yi reiterated that user choice in IPv6 mandates an equivalent mechanism in MPLS.
+        *   A participant reiterated that the MPLS working group must make decisions about which telemetry options to support, considering implications on the MPLS data plane, rather than simply allowing all options due to choices made in other data planes.
+        *   Wu Yi emphasized designing for extensibility to support future use cases.
+
+## Decisions and Action Items
+
+*   **Decision:** The action item to investigate BIER's allocation of value 5 for the MPLS first nibble (RFC 8296) is **closed**.
+*   **Action Item (New):** Investigate how MPLS MA entropy and version fields intersect and interact with existing MPLS features, particularly when handling post-stack data like that from BIER. (Owner: WG)
+*   **Action Item (Ongoing):** Greg to give a presentation on DetNet and its intersection with MA on July 6th. (Owner: Greg)
+*   **Action Item (Ongoing):** Authors/editors of the MA requirements and framework drafts to update them to address LSR behavior with multiple ISDs, whether the top ISD should be a superset, and handling repeated ISDs for readable depth. (Owner: Draft authors/editors)
+*   **Action Item:** Wu Yi to initiate a mailing list discussion on the presented cross-domain iOAM use case for PSD and share links to relevant tunneling mode drafts. (Owner: Wu Yi)
+*   **Action Item:** The chairs will also initiate a mailing list discussion on the use case to foster further technical discussion. (Owner: Chairs)
+
+## Next Steps
+
+*   Continue the technical discussion on the mailing list regarding the cross-domain iOAM use case for PSD and its applicability, implications, and alternatives within the MPLS context.
+*   Further investigate and address the newly identified intersection between MPLS MA's entropy/version fields and existing MPLS features' post-stack data.
+*   Await Greg's presentation on DetNet and MA intersection in July.
+*   Await updates on the MA requirements and framework drafts.

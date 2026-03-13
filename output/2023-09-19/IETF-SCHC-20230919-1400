@@ -1,0 +1,62 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+This session continued the discussion from IETF 117 regarding the definition and use of the SCHC Header (SHIC), its encapsulation in UDP or natively over IPv6, and the implications for nested SCHC layers in complex architectures. A key update was also provided on 3GPP's work on Zero Energy Devices (ZEDs) and SCHC's potential role. The discussion highlighted the need to define the SHIC structure, how it's conveyed (implicitly or explicitly), and how multiple SCHC layers interact. Challenges related to IPv6 extension headers, rule management, and security were also addressed.
+
+## Key Discussion Points
+
+*   **3GPP Zero Energy Devices (ZEDs) Update**
+    *   A participant provided an update on 3GPP discussions concerning the scope of Zero Energy Devices (ZEDs) for standardization, targeting Release 19.
+    *   Three types of ZEDs were described: very simple back-scattering devices (Type 0), devices with a small battery or supercapacitor (Type 1), and devices with rechargeable batteries (Type 2). The initial focus for standardization is expected to be on more capable devices (Type 1/2).
+    *   SCHC is identified as a strong candidate for reducing energy consumption in ZED transmissions.
+    *   There is a plan to submit a draft explaining ZED characteristics, cellular network requirements, how SCHC addresses these problems, and identified gaps.
+    *   A participant expressed interest in collaborating on this draft.
+
+*   **SCHC Header (SHIC) and Encapsulation Overview**
+    *   The chairs recapped the discussion from IETF 117 on how SCHC operates at different layers, potentially with multiple nested SCHC instances within a single packet.
+    *   The core requirements for any SCHC instance include identifying the compression/decompression endpoints, a session ID (if multiple sessions exist), and optional integrity protection (checksum).
+    *   The concept of device and network roles (originating from LPWANs) was reiterated, noting that SCHC is fundamentally point-to-point.
+    *   Session setup and management were discussed, ranging from hardcoded sessions in simple devices to more dynamic bootstrapping for capable endpoints. The context required by SCHC (rule sets, amendments, rule data, runtime state like fragmentation timers) was outlined.
+
+*   **Native IPv6 Encapsulation and the Conceptual SHIC Header**
+    *   For native IPv6 encapsulation, a conceptual IPv6 Extension Header for SCHC (SHIC) was proposed. This header would logically sit in the IPv6 next header chain, signaling SCHC presence and carrying SCHC-specific information.
+    *   The proposed SHIC header format includes a `Next Header` field, `Length`, a `Checksum` (which could potentially replace inner UDP checksums), and a `Session ID`, with space for future `Options`.
+    *   A concern was raised about the feasibility of getting a dedicated IPv6 Next Header number from 6man due to potential firewall issues and general reluctance to add new extension headers that "fly in the air."
+    *   It was noted that if the SHIC header itself is compressed, the initial rules needed to decode it (at least up to the Session ID) must be well-known or hardcoded, as no preceding information would signal them.
+    *   Architecturally, it was suggested that separate SCHC sessions for different layers (e.g., one for the inner PDU and another for the SHIC header itself) provide cleaner layering.
+
+*   **UDP Encapsulation**
+    *   If SCHC needs to traverse the internet, it would likely be encapsulated within UDP. In this scenario, the UDP destination port could serve as the SCHC session identifier, and the UDP checksum could protect the SCHC payload.
+    *   This approach could potentially eliminate the need for an explicit SHIC header if no options are required and only a single ULP is compressed.
+
+*   **Nested SCHC Layers in Complex Architectures**
+    *   A detailed example architecture with OSCORE, CoAP, and UDP/IP layers, each potentially compressed by SCHC, was presented to illustrate nested SCHC.
+    *   The challenge of signaling the presence of an inner SCHC layer/header was highlighted, suggesting that this information must be part of the outer SCHC's compression rules or context.
+    *   The independence of rule IDs for different SCHC layers (e.g., SHIC rules, compression rules, fragmentation rules) was noted.
+    *   Discussion ensued on whether SHIC rules should be global or layer-specific. The current understanding leans towards layer-specific SHIC headers (e.g., IPv6 SHIC, CoAP SHIC) that adapt to the context of their respective layers, as endpoint identification, for example, might be implicit from the IPv6 header but explicit in a higher-layer SHIC.
+    *   The illustration showed the full compression stack, from an OSCORE message to an LPWAN-sent packet, and its decompression and reconstruction at the gateway to be sent over the internet.
+
+*   **SCHC Context and Management**
+    *   The full SCHC context includes rule sets, amendments, rule data (e.g., IP addresses for instantiated rules), and runtime state (e.g., fragmentation timers).
+    *   The need for network management (e.g., via NETCONF, CoAP, RESTCONF) to configure and amend rules was acknowledged.
+    *   An open question is how to manage the SCHC rules themselves, especially the initial, well-known rules, given the lack of prior signaling.
+    *   Proposed approaches for management included using special IP addresses (anycast, link-local) or well-known session IDs for management traffic.
+    *   Security considerations, such as using COSE encryption for management messages and trusting specific public keys, were briefly mentioned.
+    *   The potential overhead of dedicating bits for management session IDs was discussed.
+
+## Decisions and Action Items
+
+*   **Decision**: The working group will continue to investigate and define the SCHC Header (SHIC) structure and its role in both native IPv6 and UDP encapsulations, particularly in complex, layered architectures.
+*   **Action Item**: Edgar committed to preparing and submitting the first version of a draft explaining the relevance and application of SCHC for 3GPP Zero Energy Devices, targeting Release 19.
+*   **Action Item**: Loher committed to further developing the architectural description of nested SCHC, including how SHIC structures and rules are defined and interact across different layers.
+*   **Action Item**: The working group will conduct further discussions on the management of SCHC context and SHIC rules, considering implications for security, overhead, and initial bootstrapping.
+*   **Action Item**: The working group will consider the process and challenges of requesting an IPv6 Next Header value or EtherType for native SCHC encapsulation, should that path be pursued.
+
+## Next Steps
+
+The working group will continue to refine the architectural document that details the definition and usage of the SCHC header across various layers and encapsulation methods. Specific focus will be given to:
+1.  Formalizing the structure and signaling mechanisms for the SCHC Header (SHIC).
+2.  Describing the management plane for SCHC contexts and rules, including initial rule provisioning and dynamic updates.
+3.  Addressing the implications of native IPv6 encapsulation, including potential IANA considerations.
+4.  Exploring the application of SCHC in emerging areas like 3GPP Zero Energy Devices.

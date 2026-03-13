@@ -1,0 +1,104 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+This interim meeting of AVTCORE covered the status and ongoing discussions for several drafts: RTP Payload Format for SKIP, Green Metadata, RTP over QUICK, and Viewport Region of Interest for Volumetric Media. Key discussions revolved around addressing IESG ballot comments for SKIP, clarifying congestion control strategies for RTP over QUICK, and refining the technical specifications for immersive media delivery. No drafts were adopted during this session, but authors were given specific feedback and action items to revise their documents.
+
+## Key Discussion Points
+
+### IETF Note Taker
+
+*   Sam Hurst volunteered to take notes for the meeting.
+
+### Draft Status Review
+
+*   **RTP Payload Format for SKIP**: Currently in IESG review, with ballot comments requiring significant clarification.
+*   **Green Metadata**: Adopted as a Working Group (WG) draft.
+*   **RTP over QUICK**: Recently submitted a new revision, actively under discussion.
+*   **Viewport Region of Interest for Volumetric Media**: New submission, presented for initial feedback.
+*   Other drafts: VC and Cryptex published. VP-Dyne awaiting trademarking for publication. RFC 7983bis approved with minor IANA/editorial actions outstanding.
+
+### RTP Payload Format for SKIP (Dan Romascanu, Michael Fowler)
+
+*   **IESG Comments & Ballot Positions**:
+    *   A section on congestion control considerations will be added, noting that SKIP's control mechanisms are limited by the underlying codec.
+    *   The "change controller address" section will be renamed to "SKIP contact information" to clarify that it refers to the SKIP 210 specification, not the internet draft itself.
+    *   Minor editorial corrections will be made.
+    *   **Core Discussion**: Reviewers (e.g., Roman, Sarker) are seeking a typical RTP payload format description, which is challenging for SKIP due to its highly variable and opaque nature. The authors position SKIP as a "Clear Channel," similar to RFC 4040, but extended for video and other media.
+        *   The payload is "entirely opaque" once key establishment is complete.
+        *   Packetization is primarily handled by the underlying codec (e.g., H.264), and SKIP encrypts the resulting data.
+        *   It was suggested to explicitly add a small "RTP Payload Format" section that clarifies this, explaining the key establishment state and how underlying codecs fill the payload.
+        *   The existing RFC 7202 security considerations section is deemed relevant as SRTP offers more than just payload encryption (e.g., authentication, RTCP security).
+    *   **Deep Packet Inspection (DPI)**: Emphasized that network devices cannot and should not try to profile or filter SKIP traffic due to its variability, which aligns with concerns about "ossification" seen in other protocols like QUIC. A suggestion was made to include text in security considerations about DPI.
+    *   **Jitter Buffer**: Clarification needed that jitter buffers can *only* be implemented in endpoint devices, not that they are optional for endpoints.
+    *   **Link to SKIP Spec**: An explicit link to the SKIP 210 specification will be added.
+    *   **Design Principles**: It was discussed that only a "30,000-foot view" of SKIP's operation (message exchange, key establishment, subsequent opaque data flow) is necessary for the RTP payload format document, rather than extensive details of the state machine.
+
+### Green Metadata (Yang Song)
+
+*   **WG Draft Updates**:
+    *   Added a new Section 6, "SDP Definition," to define RTCP FB attributes and parameters for the proposed temporal spatial resolution (TSR) request and notification messages, aligning with RFC 5104.
+    *   A new TSR value was added to CCM parameters.
+*   **Discussion**:
+    *   Interaction with SDP negotiation: Messages should operate within the window allowed by SDP, not necessarily trigger dynamic SDP renegotiation.
+    *   **Title Clarification**: An individual opinion suggested clarifying the draft's title to "Temporal Spatial Resolution" (TSR) rather than "Green Metadata" to avoid confusion with MPEG's broader Green Metadata scope.
+
+### RTP over QUICK (Madison Matuszak, Spencer Dawkins, York Franke)
+
+*   **Recent Submission Updates**:
+    *   Rewritten abstract and restructured introduction (background, in/out of scope).
+    *   New terminology for congestion control and rate adaptation.
+    *   New subsection on multiplexing using flow identifiers.
+    *   Clarifications on RTCP feedback packet fields mapped to Quick state information.
+    *   Editorial changes and acknowledgments updated.
+*   **Congestion Control and Rate Adaptation**:
+    *   **Open Questions**: What type of congestion control to use? Which layer (Quick, RTP, Application) should be responsible? How do concurrent non-RTP streams share bandwidth?
+    *   **Contentious Discussion**: The idea of "disabling Quick congestion control" was discussed. Issues include:
+        *   Lack of a defined way to signal this to the other end (e.g., port numbers, ALPN).
+        *   Conformity to RFC 8085 if Quick CC is off, requiring the RTP layer to handle CC.
+        *   The primary concern is how different layers (Quick, RTP, Application) and entities know who is responsible for congestion control and rate adaptation.
+    *   **Interoperability**: It was noted that different CC algorithms can run on each side (e.g., BBR and New Reno) without negotiation. The draft's role is to describe what leads to good results.
+    *   **Mandatory Algorithm**: No agreement on whether to mandate a specific rate adaptation algorithm.
+    *   **Keyframe Spikes**: Bernard D. highlighted that large keyframes (10x or more P-frame size) are a critical challenge for congestion control, requiring the application to adjust encoding parameters (resolution, QP) based on available bitrate and congestion window size, especially considering round-trip times.
+    *   **Concurrency**: Sending P-frames concurrently with keyframes can affect glass-to-glass latency and congestion window growth.
+    *   **Feedback Mechanisms**: Discussion centered on whether to extend Quick for necessary timestamps or implement feedback mechanisms on top of Quick via streams or datagrams.
+    *   **GitHub Issues**: The authors plan to clean up and structure the congestion control issues in GitHub for a more coherent discussion at IETF 116.
+*   **Other Issues**:
+    *   **Quick Multicast/Multipath**: Considered for a follow-up document as these are separate works in progress.
+    *   **S-frame/S-packet**: Discussion deferred, pending general resolution that might apply outside RTP over QUICK.
+
+### Viewport Region of Interest (ROI) for Volumetric Media (Divyaroop Bhatnagar)
+
+*   **Motivation**: High bandwidth requirements for immersive media (e.g., point clouds) necessitate partial delivery based on user's viewport or region of interest.
+*   **Concept**: Volumetric video frames can be divided into independently decodable "3D tiles" mapped to 3D spatial regions (axis-aligned cuboids). Receivers request portions of content. Senders prepare and report back the transmitted regions.
+*   **Proposed Solutions**:
+    *   **RTCP Feedback Messages**: For requesting static, arbitrary, or 3D viewport regions. Based on RFC 5104 (payload-specific feedback).
+    *   **RTP Header Extension**: For real-time reporting of transmitted 3D region information or dynamic region updates from sender to client.
+    *   **SDP Signaling**: For negotiating capabilities, defining static 3D regions (positions, sizes, content portion).
+*   **Coordinate System Discussion**: Mo raised a concern about using meters and floating-point values in a global world coordinate system for viewport requests, questioning interoperability. The author clarified that regions are based on pixels, but viewports are physical coordinates translated by the sender. Clarification is needed in the draft to distinguish these.
+*   **Next Steps**: The draft is currently soliciting suggestions and feedback, not requesting adoption yet. The architecture from an RTP perspective (header extensions, feedback messages) seems reasonable, but the specifics of the data content and coordinate systems need expert review.
+
+## Decisions and Action Items
+
+*   **RTP Payload Format for SKIP**:
+    *   **ACTION**: Dan Romascanu and Michael Fowler to revise the draft to:
+        *   Add a congestion control considerations section.
+        *   Rename "change controller address" to "SKIP contact information".
+        *   Add a dedicated "RTP Payload Format" section explaining the opaque nature post-key-establishment, the role of underlying codecs in packetization, and the mechanism for pre-key-establishment SKIP message exchange.
+        *   Clarify the "Clear Channel" concept and explicitly advise against deep packet inspection.
+        *   Add a link to the SKIP 210 specification.
+        *   Clarify jitter buffer implementation for endpoint devices.
+    *   **EXPECTATION**: A new version (v05) is ready and will be submitted, anticipating IESG members dropping or changing their discusses based on these clarifications.
+*   **Green Metadata**:
+    *   **ACTION**: Chairs to consider potential renaming of the draft to more clearly indicate its focus on "Temporal Spatial Resolution" (TSR).
+*   **RTP over QUICK**:
+    *   **ACTION**: Madison Matuszak, Spencer Dawkins, and York Franke to clean up and better structure the congestion control issues on GitHub for a more focused discussion at IETF 116.
+    *   **CALL FOR PARTICIPATION**: Volunteers are encouraged to review the updated scope sections (Section 1) and existing GitHub issues, providing comments or contributing text, especially on congestion control. (Rui says he can work on congestion control issues in the chat.)
+*   **Viewport Region of Interest for Volumetric Media**:
+    *   **ACTION**: Divyaroop Bhatnagar to clarify the coordinate systems used in the draft, distinguishing between pixel-based dimensions for regions and the translation of real-world viewport coordinates by the sender.
+
+## Next Steps
+
+*   Authors will continue to iterate on their drafts based on feedback and action items from this meeting.
+*   IETF 116 will include further discussion on RTP over QUICK, particularly on the refined congestion control issues.
+*   The Viewport Region of Interest draft will continue to gather feedback on the mailing list for future development.

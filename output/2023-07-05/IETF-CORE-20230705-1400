@@ -1,0 +1,83 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group held an interim meeting to discuss the status and future direction of several key drafts. Significant progress was reported on CorCoP documents, though a dependency on `pyang` for `draft-ietf-core-sid` is causing delays. Discussions on CoAP attacks highlighted potential vulnerabilities in blockwise transfers and token manipulation, leading to a proposal for clarifying `Request-Tag` usage. Updates on DNS over CoAP included recent clarifications and open questions regarding service records and translation to HTTP. Finally, a new general approach to "non-traditional responses" was proposed and received initial support from the working group, aiming to streamline the definition and implementation of various multi-response CoAP mechanisms.
+
+## Key Discussion Points
+
+*   **CorCoP (Concise IoT Data Model and Protocols)**
+    *   **`draft-ietf-core-sid` (CBOR SID encoding):**
+        *   The draft is undergoing revision, adding Global file status and passage status.
+        *   A key blocker is the `pyang` tool, which is required for generating examples and validation. Current `pyang` implementations do not produce correct examples for the draft, requiring manual editing.
+        *   Identified issues with `pyang` generation include: missing dependency vision sections, singular/plural inconsistencies (e.g., "items" vs. "item"), incorrect embedding structure, and SIDs being generated as numbers instead of `uint64` strings.
+        *   Further work is needed to incorporate `pyang` patches from Law and his students.
+    *   **`draft-ietf-core-comac` (CorCoP CoAP mapping):**
+        *   The document, which maps CorCoP to CoAP (similar to RESTCONF over HTTP), completed a working group last call and underwent simplifications (version -13).
+        *   Remaining issues include:
+            *   Media types defined are `CBOR Sequence` media types, requiring name changes (addressed in editor's copy).
+            *   An example labeled "RPC example" is actually an "action example" (addressed in editor's copy, need a true RPC example).
+            *   **Problematic POST format:** The current example for RPC/action requests shows a redundant "input SID" within the request payload (e.g., `reboot-sid` followed by `input-sid` for a `reboot` RPC).
+            *   **Proposal:** Remove the explicit "input SID" from RPC/action requests. It is implicitly understood that requests have an input and responses an output SID, and routing is handled by the operation name itself (e.g., "reboot"). This simplifies the protocol and reduces payload size. This proposal is currently being discussed among authors and implementers.
+        *   Progress on this draft is dependent on `pyang` updates for SID generation and validation.
+    *   **Yang Library:** The group aims to finish the Yang library and develop binary formats for data types like IP addresses and dates, which can be verbose in text formats.
+
+*   **CoAP Attacks**
+    *   **Block 2 Responses Vulnerabilities:**
+        *   Without `Request-Tag` or `E-tag`: Reordering attacks can lead to clients receiving and appending corrupted data if the server's response order (LIFO/FIFO) is manipulated.
+        *   With `E-tag` only: The server might send the next block of data for a request not yet received, leading to client confusion about how to handle unexpected `E-tag` values.
+        *   With `Request-Tag` only: The server can correctly identify the request, but the client cannot detect if the underlying resource data has changed.
+    *   **`Request-Tag` Usage:**
+        *   The question was raised whether `Request-Tag` should be sent with every request, even when blockwise transfer is not explicitly expected, given RFC 9175 allows it and RFC 9177 (Q-block) requires it. This could introduce overhead, especially for DTLS.
+        *   A sense of those present indicated that **sending `Request-Tag` with every request that has a request payload and may have a response payload is a good mitigation.** This addresses scenarios where initial non-blockwise requests might lead to fragmented responses, or where re-transmissions of blackholed messages occur.
+        *   This clarification is particularly important for `fetch` operations and in the presence of proxies, which might need to handle multiple blockwise activities concurrently.
+        *   **Proposal:** A small, short document updating RFC 9175 to clarify that `Request-Tag` usage applies not only to requests with fragmented bodies but also to requests with any body where the recipient cannot be sure the response will not be fragmented. This proposal was generally supported.
+    *   **Token Manipulation:**
+        *   A man-in-the-middle attacker can manipulate CoAP tokens, leading to a client matching responses to the wrong requests.
+        *   This attack is particularly effective against `CON` messages where the attacker can ACK and drop responses.
+        *   **OSCORE** provides end-to-end protection against this, but **DTLS** does not if the attacker acts as a rogue proxy.
+        *   It was noted that this type of attack (rogue proxy, `no-sec`) represents a situation where security is already compromised, distinguishing it from attacks that exploit vulnerabilities when security was assumed.
+    *   **Clarifications for Block 1 / Observe:**
+        *   For de-registering an `Observe` request that used `Block 1`: The client must send the entire original data.
+        *   A question was posed on whether the client must wait for all `Block 2` responses to complete the de-registration process. The sense of those present was that it is **voluntary** for the client to retrieve all blocks. If the initial response indicates successful de-registration, the client is done. Servers must be prepared for clients not to fetch all blocks and manage associated state (e.g., via garbage collection).
+    *   **Destination for Clarifications:** The group decided that various clarifications regarding `Observe` and `Blockwise` interactions should be captured as issues in the CORE WG repository, potentially for a future corrections or clarifications document.
+
+*   **DNS over CoAP (Doc)**
+    *   **Objective:** Encrypted name resolution for IoT devices using CoAP.
+    *   A paper on DNS over CoAP has been published (Conex 2023).
+    *   **Message Formats:** The `doc` draft uses the classic DNS wire format (`application/dns-message`). The `dnscbor` draft (in CBOR WG) uses a CBOR-based format (`application/dns+cbor`) for smaller messages, with optional `compact-cbor`. `application/dns-message` serves as a fallback.
+    *   **Recent Changes (on GitHub):** Clarified `doc`'s orthogonality to DNS over HTTPS (DoH), recommended `/dns` root path, allocated Content-Format ID 35353 for `application/dns-message`, rationalized TTL rewriting, and added implementation status.
+    *   **Open Discussions:**
+        *   **SVCB DNS Records:** Need to allocate an ALPN ID for CoAP over DTLS for Service Binding and Parameter Specification via DNS (SVCB) records. The existing CoAP ID is for TLS only.
+        *   **Doc to DoH Translation:** How to translate `fetch` requests in CoAP to HTTP for proxying to DoH. It was concluded that due to incompatible characteristics (e.g., TTLs, specific HTTP methods for DoH), a direct translation or simple reverse proxy from Doc to DoH is not feasible and should be explicitly stated.
+        *   **Unprotected Doc (DNS Message ID = 0):** For unprotected use cases (no crypto), the draft currently recommends setting the DNS message ID (MID) to zero to prevent response spoofing. It was confirmed that relying on CoAP tokens is sufficient for this purpose, and the DNS MID can indeed be zero, provided a non-trivial CoAP token is used.
+        *   **Content-Format ID for `application/dns+cbor`:** Discussion on the appropriate Content-Format ID. While 5353 (mnemonic for DNS port) was considered, lower numbers (e.g., 53) are preferred for new IETF specifications to preserve the experimental range. A concrete number needs to be chosen for the draft.
+
+*   **Non-Traditional Responses**
+    *   **Scope Expansion:** An individual draft (Karsten and Christian) proposes to generalize the concept of "non-traditional responses" beyond specific options like triangular responses.
+    *   **Definition:** A non-traditional response is any response that is not a single, direct response to a single request (e.g., observations, multicast responses, Q-block messages).
+    *   **Goal:** Define the general concept, specify how such options are defined, and provide universal guidance for processing them (e.g., token management, flow control). This aims to reduce redundancy across multiple specifications and simplify implementations.
+    *   **Support:** The working group expressed initial positive sentiment for this direction, recognizing its potential to clarify existing mechanisms and streamline future CoAP extensions.
+    *   **CoAP Options:** Requests soliciting non-traditional responses must indicate this intent (e.g., via CoAP options, header components, or context like multicast addresses). A general "proxy-unsafe" option could be introduced to signal that a token will remain open for multiple responses, allowing proxies to manage state without necessarily understanding the specific application.
+    *   **Next Steps:** The authors will gather further implementation experience based on this positive feedback before submitting a significant update. This topic is planned for detailed discussion at the IETF 117 side meeting.
+
+## Decisions and Action Items
+
+*   **`draft-ietf-core-comac` (CoAP Mapping):**
+    *   **Decision:** The proposal to remove the explicit "input SID" from RPC/action requests (as it's redundant) will be pursued and incorporated into the draft, pending discussion with authors and implementers.
+*   **CoAP Attacks - `Request-Tag` Clarification:**
+    *   **Action Item:** John Preuveneers will open issues (one per bullet point) in the CORE WG repository for the identified clarifications related to `Block 2` and `Observe` interactions.
+    *   **Action Item:** Christian Amsüss will prepare a small, short document updating RFC 9175 to clarify that `Request-Tag` usage applies to any request with a payload where the response might be fragmented, not just `Block 1` fragmented requests.
+*   **DNS over CoAP:**
+    *   **Decision:** For unprotected DNS over CoAP, the DNS Message ID (MID) can be set to zero, relying on CoAP tokens for response validation. This will be clarified in the draft.
+    *   **Action Item:** The draft will address the Content-Format ID for `application/dns+cbor`, aiming for a number in the lower allocation space (e.g., 53 or 533) and will explicitly state that direct translation between Doc and DoH via a simple proxy is not feasible.
+*   **Non-Traditional Responses:**
+    *   **Decision:** The working group generally supports the direction of the non-traditional responses draft to generalize the concept of multiple responses and provide common guidance.
+    *   **Action Item:** Christian Amsüss will gather implementation experience and prepare an updated draft for the CORE side meeting at IETF 117.
+
+## Next Steps
+
+*   **CorCoP Documents:** Continue work on `pyang` patches to enable correct example generation and validation for `draft-ietf-core-sid` and `draft-ietf-core-comac`. Target discussion of `draft-ietf-core-comac` at IETF 117.
+*   **IETF 117 CORE Session:** The working group will meet for a 2-hour session on Tuesday, July 25th (San Francisco morning).
+*   **IETF 117 CORE Side Meeting:** A physical side meeting with Meetecho will be held on Friday, July 28th (San Francisco morning), with "Non-Traditional Responses" as the main topic.
+*   **Post-IETF 117 Interims:** The chairs will confirm the tentative calendar for future interim meetings with the CBOR WG co-chairs to maintain interleaving schedules.

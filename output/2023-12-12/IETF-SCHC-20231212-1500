@@ -1,0 +1,58 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC working group meeting covered updates on previously adopted drafts, initiated a discussion on an adoption call for the SCHC OAM draft, reviewed the current status and open questions for the SCHC Access Control draft, and discussed the evolving SCHC Architecture to support layering and multiple protocols. Key discussions revolved around the scope of the OAM draft, the granularity and security implications of access control rules, and the definition of 'origin' in a layered SCHC architecture.
+
+## Key Discussion Points
+
+*   **Note Well & Agenda**: The meeting began with the standard IETF Note Well reminder. The agenda included discussion on access rules and next steps for the SCHC architecture.
+*   **Action Items Recap**:
+    *   The adoption calls for `draft-ietf-schc-access-control` and `draft-ietf-schc-8824-update` were successfully confirmed via the mailing list after the last IETF meeting.
+    *   The chairs announced plans to move `draft-ietf-intarea-schc-header` to the SCHC WG, requiring coordination with the INTREA chairs.
+*   **SCHC OAM Draft Adoption Call**:
+    *   A proposal was made to initiate an adoption call for `draft-barthel-schc-oam` to become a working group item.
+    *   Pascal raised concerns about the broad scope implied by "OAM" and suggested a more specific title or focus on ICMPv6 message processing, rather than general OAM which includes many other aspects (e.g., Neighbor Discovery, probing methods).
+    *   It was clarified that the proposed draft primarily focuses on compressing ICMPv6 messages.
+    *   The chairs suggested using the adoption call period itself to thoroughly discuss and clarify the draft's exact scope, feature set, and potential title refinement. This would allow for community input on what specific OAM functionalities SCHC intends to cover.
+*   **SCHC Access Control Draft Presentation**:
+    *   Ian and Anna presented on the `draft-ietf-schc-access-control`, emphasizing the evolution of SCHC usage beyond LPWAN (e.g., cellular, short-range, satellite, UDP/TCP/ICMP, IPC) and the need for robust access control.
+    *   The presentation highlighted that existing work on the SCHC YANG data model for LPWAN could be extended to new protocols.
+    *   Three levels of granularity for access control were proposed:
+        1.  Control over the set of rules (add/remove rules).
+        2.  Control over individual rules (add/remove fields from a compression rule).
+        3.  Control over specific descriptors within a field (e.g., Target Value, Field ID, CDA).
+    *   The open question was the necessary granularity, especially for 'copy-repeatable' fields like CoAP URI paths, and the potential security implications of allowing changes to certain values (e.g., `Per-M-OCDA`) which could create attack vectors.
+*   **Discussion on Access Control Granularity and Security**:
+    *   Karl expressed skepticism about the proposed approach, questioning the specific attack scenarios being protected against and whether restricting modifications (e.g., only to Target Values for certain fields) might hinder flexibility needed for evolving traffic patterns (e.g., new CoAP types).
+    *   Pascal emphasized the need to prevent SCHC from being an attack vector, differentiating between adding new rules (for new flows) and modifying existing rules (more dangerous). He suggested that adding new rules that only apply if existing ones don't match is less risky than modifying existing rules or adding rules that take precedence.
+    *   Lauren suggested the core question is about trust: if a secure association is established, more flexibility might be allowed.
+    *   Karl countered that the problem might be more about securing the *installation* of rules (authentication of the modifier) rather than restrictive ACLs.
+    *   Pascal highlighted the "zero-trust" concept: even trusted peers can be compromised, and ACLs can prevent a compromised peer from manipulating memory or causing buffer overflows by imposing restrictions on rule modifications.
+    *   Ian noted that an earlier version of the draft attempted to define threat models but was deemed too broad. The current draft focuses on providing a "toolbox" for changes based on the YANG data model, suggesting that threat analysis and onboarding could be a separate draft.
+    *   Karl reiterated the need to define threats *before* providing tools, and questioned if a SCHC context, being between two hosts, inherently limits certain types of attacks (e.g., diverting traffic). Pascal responded that a compromised peer could still manipulate rules to attack the *memory* of the other device.
+*   **SCHC Architecture Evolution Presentation**:
+    *   Lauren presented an evolving SCHC architecture, introducing the concept of a "discriminator" (or "origin") to identify which SCHC stack instance should process an incoming packet. This could be an IP address, port number, MLS label, or other connection ID.
+    *   The architecture includes a `SCHCher` (SCHC header) to carry signaling for SCHC and potentially an instance identifier for routing packets to specific SCHC instances.
+    *   A new type of `management` rule was proposed to handle rule management (e.g., adding/modifying rules) through a dedicated management plane.
+    *   An example of layered SCHC was shown, where a packet (e.g., OSCORE over CoAP over UDP/IP) could undergo multiple layers of SCHC compression/decompression, each handled by a dedicated SCHC instance selected by discriminators and `SCHCher` information.
+    *   Lauren reported successful implementation of this layered architecture in OpenSCHC with minimal changes, highlighting its flexibility.
+*   **Discussion on SCHC Architecture**:
+    *   Pascal emphasized the need to clearly define the concept of "origin" as it applies to different layers and network technologies (e.g., IP, Ethernet, LPWAN where the origin might be implicit or device-specific).
+    *   Lauren clarified that the "origin" can be different at each layer of the stack (e.g., an MLS label at one layer, then source/destination IP at the next).
+    *   The concept of "implicit" origin for LPWAN (e.g., LoRaWAN) was discussed, where the network type itself identifies the context. This implies a need for per-device configuration on how to handle implicit origins.
+    *   It was suggested that a dedicated subsection on "SCHC instance resolution" should be added to the architecture draft to formalize these concepts.
+
+## Decisions and Action Items
+
+*   **Action Item (Chairs)**: Initiate an adoption call for `draft-barthel-schc-oam` to become a working group item. The adoption call period will be used to invite discussion on the exact scope, feature set, and appropriate title for the document.
+*   **Action Item (Chairs)**: Contact Bob (INTAREA chair) to move `draft-ietf-intarea-schc-header` to the SCHC working group.
+*   **Action Item (Ian, Anna, Karl, and WG)**: Continue discussion on the SCHC mailing list regarding the Access Control draft's granularity, specific security threats, and the balance between protection and flexibility in rule management.
+*   **Action Item (Lauren, Pascal)**: Collaborate to refine the definition of the "origin" concept and to draft a new subsection on "SCHC instance resolution" within the SCHC architecture draft. This text will then be proposed to the working group for review.
+
+## Next Steps
+
+*   The working group will proceed with the adoption call for the SCHC OAM draft, with a focus on defining its scope during the review period.
+*   Discussions on the SCHC Access Control draft will continue on the mailing list to achieve consensus on the appropriate level of control and address security concerns.
+*   Pascal and Lauren will work on formalizing the "origin" and instance resolution concepts for the SCHC architecture draft, laying the groundwork for more flexible and layered deployments.
+*   The next SCHC interim meeting is scheduled for January.

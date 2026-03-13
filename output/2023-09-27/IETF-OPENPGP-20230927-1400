@@ -1,0 +1,104 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+The OpenPGP Working Group held an interim meeting to discuss the status of the Crypto Refresh draft and, more importantly, to gather input and build consensus for a new working group charter. Several individuals presented proposals for new work items, covering topics such as OpenPGP semantics, Post-Quantum Cryptography (PQC), a common certificate store, Web of Trust (WoT) semantics, and various cleanups including the Stateless OpenPGP Interface (SOP). The discussion highlighted the challenge of an extensive backlog of potential work items and the need for a prioritization strategy for the new charter. A broad consensus was reached to consider all proposed new topics for the charter, with subsequent efforts to prioritize specific work for Milestones.
+
+## Key Discussion Points
+
+### Crypto Refresh Draft Status
+*   The Area Director (AD) review by Roman exposed no major flaws but suggested many improvements. Paul has been diligent in responding, with proposed changes tagged "ad review" in gitlab.
+*   Several outstanding errata still need proposed text corrections.
+*   The goal is to finalize the draft within 1-2 weeks, gather feedback on changes, merge them, and cut a new draft for the AD.
+
+### Rechartering Goals
+*   The primary goal for this interim meeting was to understand what the working group is interested in for a new charter and to consider potential Milestones.
+*   Milestone dates are often fictional, but their sequencing (what needs to be done first) is important.
+
+### Proposed New Work Items
+
+#### OpenPGP Semantics (Justus)
+*   **Problem**: The current standard provides mechanisms but is vague on semantics, leading to interoperability issues (e.g., varied signature validation results in interop tests).
+*   **Identified Areas for Clarification**:
+    *   **Messages**: Generally well-understood, but existing discussion in bug tracker should be picked up.
+    *   **Certificates**: Lack guidance on validity circumstances, canonicalization, and reasoning.
+        *   **Revocations**: Proposed two classes (hard: key compromise; soft: potentially reversible) to address current varied implementations.
+        *   **Encryption Subkeys**: Guidance needed on certificates with multiple encryption subkeys.
+    *   **Signatures**: Complexity around subpackets.
+        *   Guidance needed on expected number of subpackets and behavior if different.
+        *   Clarification on direct key signature subpacket coverage (Issue 170).
+        *   Subkey bindings should mandate key flags.
+        *   Reason for revocation should be mandatory on revocation signatures.
+        *   The regular expression subpacket should be replaced.
+        *   Trust signature delegations: The maximum value for chain length should mean infinite, not 255.
+*   **Discussion**: Andrew suggested rolling semantics of signatures into a larger document to be read alongside Crypto Refresh. The working group would need to figure out how this work would be done (e.g., new internet draft).
+
+#### Post-Quantum Cryptography (PQC) (Falco)
+*   **Goal**: Integrate Post-Quantum Cryptography into the OpenPGP protocol.
+*   **Status**: An existing draft (version 2) is published, with a repository for public comments. Running code implementations exist based on RNP and Boten (V6 code with PQC). Proton also has experimental V6/PQC implementation.
+*   **Scope**: The proposed rechartering text is intended to be open, allowing the working group to decide on specifics like record-now-decrypt-later (RNDL) attack mitigation vs. full hybrid sign schemes.
+*   **Discussion**: General agreement on the importance of this topic. Stavros noted that the PQC project has a limited funding timeline (1.5 years).
+
+#### OpenPGP Certificate Store (Justus)
+*   **Problem**: The current `keyring` interchange format for certificates and keys does not scale, leading to poor performance and interoperability (e.g., GnuPG's keybox/keyd). Existing solutions are proprietary.
+*   **Proposed Solution**: A standard storage directory inspired by Maildir, indexed by primary key fingerprint.
+    *   Default location, synchronization for modifications.
+    *   Extension mechanism for building indices (subkey lookups).
+    *   **Trust Root**: A distinguished certificate (and potentially key) in the store for issuing local certifications and reasoning with the Web of Trust calculus. This could be individual or system-wide.
+*   **Status**: An expired Internet-Draft exists, with two implementations (PGPainless, Sequoia).
+*   **Discussion**: Jonathan raised concerns about this moving the WG more into application-level discussions rather than protocol-level, and questions about scalability for large key stores (suggested `git`-like subdirectories for indexing).
+
+#### Web of Trust (WoT) Semantics (Neil, presented by Justus)
+*   **Problem**: OpenPGP defines mechanisms (third-party certifications, delegations, scoping with regex) but does not define *how* to authenticate a user ID or a binding between a key and a user ID. While implementations exist, semantics are not well-defined.
+*   **OpenPGP Expressiveness**: WoT is a highly expressive calculus, encompassing hierarchical models like X.509.
+*   **Use Cases**: Increase security (authenticating bindings) and usability (key discovery, identifying authenticated user IDs for display).
+*   **Models**: Beyond traditional Key Signing Parties (KSPs), other models are possible (federated, CAs like PGP Global Directory or Proton CA, TOFU, provenance recording).
+*   **Proposed Solution**: Define WoT semantics as a maximum flow problem, modeling trust as "water flowing through pipes." This offers a good mental model and efficient implementation.
+*   **Status**: An existing draft (not yet submitted to IETF templates) with two independent implementations (PGPainless, Neil's).
+*   **Discussion**: Justus committed to proposing charter text.
+
+#### Various OpenPGP Cleanups and SOP (DKG)
+*   **Delegated Revoker and Attestations**:
+    *   A draft outlines a delegated revoker mechanism (full cryptographic key) as an improvement over the old revocation key, narrowing the range of revocations.
+    *   **First-Party Approved Third-Party Certifications**: Addresses the flooding attack where certificates accumulate unbounded third-party certifications. A well-defined mechanism with existing implementations (e.g., keys.openpgp.org) and reserved code points.
+*   **User ID Conventions**: A draft exists to correct the longstanding misrepresentation of User IDs as RFC 2822 email addresses. It provides ABNF and pseudocode for the actual conventions.
+*   **One-Pass PGP/MIME Verification**:
+    *   **Problem**: V6 and salted signatures make one-pass verification of `multipart/signed` PGP/MIME messages difficult, similar to the `hash-salt` issue with cleartext signing.
+    *   **Potential Solution**: Add a `salt` parameter to the `Content-Type`.
+    *   **Discussion**: Daniel expressed skepticism about the need for this, questioning if one-pass processing is widely used for `multipart/signed`.
+*   **Stateless OpenPGP Interface (SOP)**:
+    *   **Goal**: Define a minimalist API for OpenPGP programs, clarifying high-level semantics for implementers. Focuses on signing, verification, encryption, and decryption.
+    *   **Status**: Several solid implementations, basis for the interoperability test suite. A new C library API has been sprouted, but not yet implemented for encryption/decryption.
+    *   **Discussion**: Aaron views SOP as very useful for interop testing and suggests it could be a "living draft" or a baseline for extending new mechanisms. Jonathan asked about hardware-backed key support, highlighting missing implementation pieces, not spec. He also advocated for WoT tooling, possibly outside SOP.
+
+### General Rechartering Discussion
+*   **Problem of Scope**: Stephen raised concerns that the combined set of proposed work items represents "way too much work" for the working group to complete in a reasonable timeframe (e.g., "100 years").
+*   **Prioritization Mechanisms**:
+    *   Aron suggested prioritizing based on who is willing to work on and review which topics.
+    *   Daniel noted that existing drafts and implementations show commitment but also cautioned against too many parallel drafts slowing everything down.
+    *   Justus suggested that current workload is a backlog from the previous working group's hiatus.
+    *   Stavros mentioned the PQC project's funding timeline (1.5 years) as a practical consideration for prioritization.
+    *   Andrew expressed concern that rigid sequencing could block people from working on less-prioritized but valuable items where they have expertise and interest.
+    *   Daniel suggested prioritizing by estimated completion time (e.g., PQC is far along, forward secrecy has no draft yet).
+*   **Charter vs. Milestones**: It was clarified that Milestones can be changed without changing the charter, allowing for a broad charter while focusing on a subset of work at any given time.
+
+## Decisions and Action Items
+
+*   **Crypto Refresh Finalization:**
+    *   **Decision**: Paul will wait 1-2 weeks for feedback on AD review changes and outstanding errata before merging changes and cutting a new draft for Roman. An appendix listing all fixed errata entries will be added to the document.
+    *   **Action**: Stephen and DKG commit to reviewing the AD review changes and proposing text for the remaining outstanding errata within the next week.
+*   **Rechartering - New Work Items:**
+    *   **Decision**: A poll of the room (9 raised hands out of 13 present, 0 'do not raise hand') indicated a positive sense towards considering the newly discussed topics for inclusion in the draft Charter. Daniel noted his skepticism regarding the one-pass PGP/MIME processing.
+    *   **Action**: Justus committed to proposing charter text for the "OpenPGP Certificate Store" and "Web of Trust Semantics" topics.
+*   **Rechartering - Charter Text & Prioritization Strategy:**
+    *   **Decision**: The working group intends to adopt a *broadly scoped* Charter text that lists many potential work items as examples. This will be complemented by a process to prioritize a *smaller number* (e.g., 3-4) of specific work items to be included as Milestones for the immediate future. This prioritization will be periodically revisited.
+
+## Next Steps
+
+*   **Chairs**: Daniel and Stephen will work on a proposal for a polling mechanism to be sent to the mailing list within the next week. This poll will aim to gather input from the working group on their top 3-4 priority topics from all discussed items to inform the initial Milestones for the new charter.
+*   **Working Group Participants**:
+    *   Review and provide feedback on the outstanding merge requests (tagged "ad review") for the Crypto Refresh draft within the next week.
+    *   Propose text for any remaining errata for the Crypto Refresh draft.
+    *   Submit proposed charter text for any new work items committed to during the meeting (e.g., Justus for cert store and WoT semantics).
+    *   Consider the overall draft Charter text (e.g., Daniel's merge request #3) and provide word-smithing suggestions.
+*   **Chairs Meeting**: Daniel and Stephen will meet on Monday, October 2nd, 14:00 UTC, to coordinate these next steps.

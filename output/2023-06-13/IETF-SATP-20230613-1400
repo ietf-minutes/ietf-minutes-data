@@ -1,0 +1,50 @@
+# [SATP](../wg/satp.html)
+
+## Summary
+
+This session served as a workshop, primarily focusing on reviewing the latest version of `draft-thomas-satp-core` and conducting a detailed discussion on error messages and alerts within the SATP protocol. Key updates to the core draft were presented, followed by an in-depth exploration of a proposed error handling model, specific error types for different protocol stages, and scenarios requiring human intervention. A key decision was made regarding message format, and several action items were identified for further document development and discussion at the upcoming IETF 117 meeting.
+
+## Key Discussion Points
+
+*   **Review of `draft-thomas-satp-core-01`:**
+    *   Thomas presented changes to the draft, particularly focusing on sections 6, 7, and onwards, aiming for improved readability and consistency.
+    *   **Terminology:** Efforts were made to ensure consistent use of terms like "claims" over "assertions."
+    *   **Message Structure:** The concept of "transfer initiation claims" was introduced to consolidate and shorten message flows, avoiding repetition of verbose details.
+    *   **Entity Verification:** The prefix `verified_` was added to entity IDs (e.g., `verified_originator_entity_ID`) to emphasize the requirement for Gateway (G1/G2) verification of identities.
+    *   **Message Format:** A participant (Ram) questioned whether JSON should be explicitly specified. A participant (Dave) clarified that the IETF typically recommends declaring one format (e.g., JSON) as **mandatory-to-implement (MTI)** for interoperability, while allowing optional implementation of other formats (e.g., XML). Architectural separation of format from transport was encouraged.
+    *   **Placeholders:** Section 10 was noted as a placeholder for session resumption discussion, and section 11/Appendix A contained the initial (acknowledged as "badly written") draft of error messages.
+*   **Error Message Workshop:**
+    *   **Proposed Model:** Thomas introduced a proposed error model inspired by TLS RFCs, distinguishing between "orderly closure" (e.g., `terminate_notification`) and "abortive closure" (for unexpected errors).
+    *   **Error Structure:** Errors are envisioned to include a description and a severity level.
+    *   **Formatting:** A participant (Dave) suggested using consistent formatting (e.g., JSON syntax) for error messages, aligning with the document's general approach for message examples. The IMAP specification was cited as a good example of clear, readable protocol documentation.
+    *   **Error Scenarios (Stage by Stage):** The discussion systematically reviewed potential errors across different stages of the transfer protocol:
+        *   **Stage 2 (Transfer Commence):** Badly formed message, incorrect parameters (e.g., wrong clock timestamp, failed signature), ACK mismatch (e.g., wrong session ID).
+        *   **Stage 2 (Lock Assertion and Receipt):** Badly formed message (wrong claim, issue in claim data structure), bad signature (G2 cannot validate G1's signature), wrong transaction ID, mismatch hash value (incorrect hash of previous message), expired signing key/certificate, expired claim (e.g., lock assertion claim valid for only 60 seconds, but G2 takes 5 minutes).
+        *   **Operation Failure:** A participant (Dave) highlighted the absence of errors explicitly indicating an *operation failure* on an underlying network (e.g., G1 unable to perform a lock). Thomas acknowledged this as a critical addition to be more informative.
+        *   **Stage 3 (Commit Prepare / Act):** Badly formed message, mismatch hash value, incorrect parameter, message out of sequence.
+        *   **Stage 3 (Commit Ready):** Similar error types related to the asset creation process by G2.
+        *   **Stage 3 (Commit Final / Receipt):** Similar error types related to the final assertion of job completion by G1 and G2.
+    *   **Implicit vs. Explicit ACKs:** A participant (Alex) questioned the need for explicit ACKs in certain message flows, suggesting that the next message in a defined sequence could imply acknowledgment, unless a digital signature or specific data is required for the acknowledgment. Thomas reiterated that some ACKs in the three-phase commit are digitally signed receipts and thus explicit.
+    *   **Human Intervention:** Thomas discussed rare scenarios requiring human intervention, distinct from automated rollbacks. An example included a situation where G1 has extinguished an asset, but G2 has crashed and upon recovery, cannot automatically assign the asset to the beneficiary (Bob). The goal is to document these rare, critical cases to guide future implementations and operations, not to prescribe manual overrides for routine errors. A participant (Ram) raised concerns about legal liability for human intervention, which Thomas clarified as intervention for unresolved states rather than arbitrary rollbacks.
+*   **Session Resumption:** Rafael and Thomas have been whiteboarding ideas for session resumption, proposing a simple pair of messages ("I want to resume" / "Yes/No") to be included in the SATP Core spec. The focus is on the SATP protocol level, assuming TLS is still active or has re-established.
+
+## Decisions and Action Items
+
+*   **Decision:** JSON will be specified as the **mandatory-to-implement** default format for SATP messages, while allowing for optional implementation of other formats.
+*   **Action Item (Thomas):** Revise the error message text in section 11 and Appendix A of the `satp-core` draft, incorporating feedback on:
+    *   Using consistent JSON-like formatting for error messages.
+    *   Including concrete examples of error messages.
+    *   Adding error types for underlying *operation failures* (e.g., inability to perform a lock).
+    *   Refine stage one error messages.
+*   **Action Item (Thomas/Rafael):** Further develop the session resumption text for section 10 of the `satp-core` draft.
+*   **Action Item (Working Group):** All participants are encouraged to provide further input on:
+    *   Obvious error scenarios.
+    *   Edge cases for error handling.
+    *   Detailed scenarios requiring human intervention.
+*   **Action Item (Chairs):** Issue a call for agenda items for IETF 117 in San Francisco.
+
+## Next Steps
+
+*   Continue to improve the `draft-thomas-satp-core` document, particularly focusing on the error message section and adding text for human intervention cases and session resumption.
+*   The primary focus for the IETF 117 meeting in San Francisco will be the continued development of the `satp-core` document.
+*   A dedicated discussion on session resumption is planned for the IETF 117 working session.

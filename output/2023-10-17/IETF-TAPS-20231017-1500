@@ -1,0 +1,137 @@
+# [TAPS](../wg/taps.html)
+
+## Summary
+
+The TAPS working group held a meeting to review open Pull Requests (PRs) and issues, aiming to resolve as many as possible. Discussions covered various aspects of the TAPS API specification, including the strictness of transport property names, protocol identifiers, handling of connection states, and specific wording clarifications. Several PRs were merged, and many issues were closed or assigned for further work. Due to the remaining open items, the group agreed to schedule another meeting after the upcoming IETF meeting.
+
+## Key Discussion Points
+
+*   **ALPN (Application-Layer Protocol Negotiation)**
+    *   Discussed where ALPN values should be specified in the API.
+    *   General agreement that ALPN should primarily be part of security parameters, as it's often derived automatically by the transport services system based on the selected protocols. Explicit specification by the application would typically be through a service request that might implicitly set ALPN.
+    *   A note was added to clarify that the transport services system can provide ALPN values automatically if not explicitly specified.
+    *   **Decision**: PR committed and merged.
+
+*   **Transport Property Names Strictness (PR)**
+    *   This was a significant discussion point, revisiting previous conversations about naming conventions for transport properties.
+    *   The PR proposed stricter rules for property names, including case-insensitivity, allowing only camel case in documents, and restricting the use of underscores to specific contexts (e.g., vendor namespaces or conversion to snake_case for implementation). Hyphens were also discussed, with a general sense to disallow them.
+    *   Concern was raised regarding how prescriptive the specification should be, especially concerning language-specific conventions (e.g., leading underscores in Go or C having special meaning).
+    *   The goal is to prevent "wild chaos" in naming and allow implementations to transpose names to fit their environment (e.g., camelCase in documents, snake_case in C/Python).
+    *   **Consensus**: The general feeling was to be less prescriptive about the exact character set and allow for language-specific transposition, while still recommending camel casing in the document itself. The intention is to make it "as clear and least confusing as possible."
+    *   **Action Item**: Tommy to create a new PR reflecting a less strict approach, possibly focusing on "consistently camel cased" for documentation without excessive character restrictions, acknowledging UTF-8 strings.
+
+*   **Protocol Identifiers (PR)**
+    *   Discussion focused on defining protocol identifiers as strings and how they are structured (e.g., using slashes as separators).
+    *   Clarified that documentation *ought* to list available protocols. The system itself should not necessarily provide a query mechanism for all possible protocols.
+    *   An example of string format was requested if slashes are separators.
+    *   A PR to specify protocol identifiers as "strings" was reviewed.
+    *   **Decision**: Agreed to simplify to "strings" and remove explicit mention of slashes as separators in the primary definition, relying on documentation for specific formats. PR merged.
+
+*   **"If done type" Clauses / Numeric or Unlimited Values**
+    *   Discussed how to specify properties that can be a numeric value or indicate "unlimited" (e.g., `groupConnectionLimit`).
+    *   The current wording "numeric non-negative or unlimited" was considered clunky by some but clear for C-style implementations (where -1 might signify unlimited).
+    *   A proposed change to use "union type or a special value" was present in the PR.
+    *   **Consensus**: Agreed to merge the PR, acknowledging it might be slightly clunky but addressing the underlying concern for clarity in different implementation contexts. (Note: PR had conflicts, so immediate merge was deferred).
+
+*   **Opportunistic Security**
+    *   A clarification was made that if security is opportunistic, it allows unauthenticated connections to proceed if available.
+    *   **Decision**: PR committed and merged.
+
+*   **Scope and Apply Conditions**
+    *   Discussed an example clarifying the use of protocol identifiers to apply conditions (e.g., alternate port for QUIC vs. TCP).
+    *   **Decision**: PR committed and merged.
+
+*   **HTTPS Protocol Implications**
+    *   A clarification was added to explain that `https` implies the underlying system resolves to suitable protocols (e.g., TLS over TCP or QUIC), not that a specific transport is always used. This addresses concerns about implied protocol stacks for common service names.
+    *   **Decision**: PR committed and merged.
+
+*   **`zeroRttSessionEstablishment` Message Replayability**
+    *   Discussed the wording for the `zeroRttSessionEstablishment` property, specifically the phrase "safely replayable message."
+    *   A concern was raised that this wording was "awfully specific."
+    *   **Consensus**: After discussion, it was agreed to leave the current wording as is, as it conveys an important safety implication and has been subject to prior discussion.
+    *   **Decision**: Issue closed without changes.
+
+*   **`Ignore` vs. `None` for "No Preference"**
+    *   Discussed changing the keyword `ignore` to `none` for indicating "no preference" in property settings.
+    *   Concern was raised that `none` could be ambiguous, implying the absence of a feature (e.g., "congestion control none") rather than "no preference."
+    *   **Consensus**: The group preferred "no preference" as a clearer explicit value.
+    *   **Action Item**: Tommy to change `ignore` to `no preference` in the specification.
+
+*   **Won't Fix Issues Review**: The group quickly reviewed several issues previously marked as "won't fix" or to be closed.
+    *   **Backpressure**: Closed (already handled by buffer growth).
+    *   **Port integer type**: Closed (issue was a troll/non-technical comment).
+    *   **Quick example in Section 10**: Closed (addressed by existing PRs and examples).
+    *   **MPTCP**: Closed (no direct API influence).
+    *   **Application changing partial message while sending**: Closed (too implementation-specific).
+    *   **Prohibit interface-scoped IP addresses**: Closed (no prohibition intended).
+    *   **TCP in uppercase**: Discussed consistent casing for "TCP" within examples.
+        *   **Action Item**: Tommy to correct casing of "TCP" in an example where it appears as a name (`tcpUserTimeoutValue`) to be uppercase. Issue moved from "won't fix" to "to fix".
+    *   **Half-close clarification**: Closed (can be achieved with an empty message having `final` set).
+
+*   **Review Must Reply Issues**:
+    *   **Define words related to connection states**: Clarification needed on how `listener` relates to `pre-connection` objects, and how to query connection states (e.g., "ready to send/receive").
+        *   **Action Item**: Tommy to clarify the relationship between `pre-connection` and `listener` objects and to propose defining read-only connection properties (e.g., `state`, `canSend`, `canReceive`) as an enumeration or tuple.
+    *   **Security parameters and listen objects**: This issue is expected to be resolved by the clarification on `pre-connection` and `listener`.
+    *   **Identity and server certificate**: How to specify multiple identities or pin remote certificates.
+        *   **Action Item**: Brian to address this, along with credentials.
+    *   **Single credentials for multiple protocols**: This issue was considered covered by the previous one. Closed.
+    *   **Net Flow vs. IP flows**: Concern about supporting transport mode IPsec.
+        *   **Consensus**: Out of scope for the TAPS API, as there's no direct binding for it. Implementations could potentially use security properties for extensions.
+        *   **Decision**: Close the issue with this rationale.
+    *   **Application learns available interfaces**: How applications can get information about available interfaces.
+        *   **Action Item**: Tommy to propose a change where `local endpoints` returned by `resolve` include information about available interfaces.
+    *   **Clarify ambiguity in security properties**: Brian is already working on this.
+    *   **Add local endpoint with ephemeral port to example**: Request to show ephemeral port usage.
+        *   **Action Item**: Tommy to take this.
+    *   **Remote Candidates array type/variable ambiguity**: Clarification needed on the syntax for `add remote` and whether remote candidates are passed as an array type or a variable.
+        *   **Action Item**: Assign to Colin for clarification, as he was likely the original author of the relevant text.
+    *   **Credentials vs. my certificate**: Clarification on how credentials (including keys) are handled versus just certificates.
+        *   **Action Item**: Brian to take this.
+    *   **Wrong IP address in example**: An example IP address range needed correction.
+        *   **Action Item**: Tommy to verify and correct the example IP address according to RFCs.
+    *   **`withIPAddress` vs. `withMulticastGroupID`**: Discussion on why multicast group ID is a separate call, rather than being part of `withIPAddress`. It was recalled that this separation was important for correctly specifying SSM (Source-Specific Multicast) and binding local endpoints.
+        *   **Action Item**: Phil to provide rationale based on his past work on SSM.
+
+## Decisions and Action Items
+
+*   **Merged PRs**:
+    *   ALPN: Clarification on automatic ALPN values.
+    *   Opportunistic Security: Clarified unauthenticated nature.
+    *   Scope and Apply Conditions: Example clarification.
+    *   HTTPS Protocol Implications: Clarified underlying protocol resolution.
+    *   Protocol Identifiers: Defined as strings.
+*   **Issues Closed without Changes**:
+    *   `zeroRttSessionEstablishment` wording.
+    *   Backpressure.
+    *   Port integer type.
+    *   Quick example in Section 10.
+    *   MPTCP.
+    *   Application changing partial message while sending.
+    *   Prohibit interface-scoped IP addresses.
+    *   Half-close clarification.
+    *   Single credentials for multiple protocols.
+    *   Net Flow vs. IP flows.
+    *   All endpoints same service.
+*   **Action Items**:
+    *   **Tommy**:
+        *   Create new PR for Transport Property Names, making it less strict, recommending camel casing, and allowing language-specific transposition.
+        *   Change `ignore` to `no preference` in the specification.
+        *   Correct casing of "TCP" in section 4.1 example.
+        *   Clarify the relationship between `pre-connection` and `listener` objects, and propose defining read-only connection properties.
+        *   Propose change for `resolve` to return interface information.
+        *   Add local endpoint with ephemeral port to an example.
+        *   Verify and correct example IP address (RFCs).
+    *   **Brian**:
+        *   Address multiple identities / pinning remote certificates.
+        *   Address credentials vs. certificates (including keys).
+        *   Continue work on clarifying ambiguity in security properties.
+    *   **Colin**:
+        *   Clarify the syntax for `add remote` regarding array type vs. variable for remote candidates.
+    *   **Phil**:
+        *   Provide rationale for having `withMulticastGroupID` as a separate call, based on past work on SSM.
+
+## Next Steps
+
+*   **Another Meeting**: Due to the remaining open issues, another meeting will be scheduled after the upcoming IETF meeting (likely late November). A Doodle poll will be circulated to find a suitable time.
+*   **Issue Resolution**: Assigned individuals will work on their action items to prepare PRs or further clarifications.
+*   **Security Rollup**: Brian expects to send out a "security rollup" for review soon.

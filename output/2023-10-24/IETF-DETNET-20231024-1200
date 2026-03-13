@@ -1,0 +1,61 @@
+# [DETNET](../wg/detnet.html)
+
+## Summary
+
+The DETNET Working Group held an interim meeting to discuss the latest revisions to the scaling requirements draft, an initial evaluation of a bounded delay queue mechanism, and open discussion on new queuing and scheduling mechanisms, particularly focusing on their categorization and taxonomy ahead of the upcoming IETF meeting in Prague. Key discussions centered on refining evaluation criteria for new mechanisms, understanding the limitations and characteristics of proposed solutions, and establishing a framework for classifying these mechanisms.
+
+## Key Discussion Points
+
+### Scaling Requirements Draft Update (Ping)
+
+*   **Draft -04 Revisions:** Ping provided an update on the -04 version of the scaling requirements draft, highlighting changes primarily in Section 3.7 (Requirement 7).
+*   **Section 3.7 - Evaluation Criteria:** The previous draft contained language about "acceptable" and "unacceptable" criteria for latency, jitter, and resource scheduling. The updated -04 version now states that performance "can be evaluated based on the latency bound, jitter bound, and execute time required for resource scheduling, which might be constant or linear functions or exponential functions in terms of numbers," moving away from prescriptive standards.
+*   **Desired Characteristics:** The Chair, David, suggested that language should capture that latency almost certainly varies linearly with the number of hops, while jitter should be controlled and constant, independent of the number of hops. There was general agreement to avoid the terms "acceptable" and "unacceptable."
+*   **Control Plane Complexity:** Shifu raised concerns that resource scheduling, especially the path calculation component (e.g., in RSVP-TE), can be complex and is not always linearly related to the hop count. Jinu further clarified that routing calculation and resource scheduling are control plane functions performed before traffic flows. He noted that some queuing mechanisms, particularly slot-based scheduling, can incur significant control plane burden, potentially leading to long scheduling times in large-scale networks. The sentiment was to acknowledge this complexity and consider it as a performance criterion.
+
+### Bounded Delay Q Mechanism Evaluation (Antoine)
+
+*   Antoine presented an initial evaluation of his "bounded delay Q mechanism via Q resizing" against the DETNET requirements.
+    *   **3.1 (Timings Asynchrony):** Tolerated, as each node enforces a local delay bound.
+    *   **3.2 (Large single-hop propagation latency):** Tolerated, by considering the maximum bounded propagation delay.
+    *   **3.3 (High link speed):** Tolerated; the mechanism acts on delay in queues, independent of link speed beyond the mechanism's capacity.
+    *   **3.4.1 (Scalable to large # flows):** Partially met. Scalability is limited by the total queue capacity at bottleneck nodes. When a node's queue capacity is fully allocated, it cannot accept new flows, forming a hard limit.
+    *   **3.4.2 (Tolerating high utilization):** Not met. Resources allocated to a flow in a queue cannot be multiplexed or reused by other flows, leading to potentially lower utilization.
+    *   **3.5 (Prevent flow fluctuation from disrupting service):** Met. Flow fluctuations are tolerated within reserved capacity limits. A strict flow acceptance mechanism at the ingress node prevents excess packets or bursts from entering the network, effectively dropping them if they exceed the reservation. Theoretical computations (using network calculus) support that burst accumulation does not occur with strict flow acceptance and deterministic service rates.
+    *   **3.6 (Tolerate failures/topology changes):** Not met (in the current draft version). A failure requires re-establishing reservations via RSVP, and no specific failover mechanism is yet described in the draft. This was acknowledged as a broader "global framework" concern rather than a direct queuing/scheduling mechanism issue.
+    *   **3.7 (Scalable to large # hops):** Partially met. While no theoretical limitations are identified, large-scale simulation evaluations are currently lacking to fully back this claim.
+    *   **3.8 (Support multiple mechanisms):** Partially met. The mechanism assumes deterministic queue service (e.g., deterministic round-robin). It does not support changes in packet priority, reordering, or non-deterministic queue service times.
+*   **Detailed Discussion:**
+    *   The mechanism reserves a queue (or space within a queue) for each flow on every node along its path.
+    *   Strict flow acceptance at the ingress node ensures that flows adhere to their reserved bandwidth and burst limits, dropping excess traffic to maintain delay bounds throughout the network.
+    *   The underlying scheduling algorithm is a variation of deterministic round-robin.
+    *   Jinu requested references to the mathematical analysis for the mechanism, which Antoine stated are primarily contained within the draft itself and previous interim presentations.
+
+### Mechanism Categorization/Taxonomy (David)
+
+*   The Chair, David, presented initial ideas for categorizing new queuing and scheduling mechanisms to facilitate discussion and comparison, with the aim to reduce the number of proposed solutions. The proposed categories were:
+    1.  Periodic scheduling (e.g., TSN per-priority level time-based schedules)
+    2.  Shaping (e.g., ATS, work-conserving algorithms)
+    3.  Time Division Multiplexing (e.g., CQF, enhanced CQF, and extensions)
+*   **Feedback on Categorization:**
+    *   Hasham's email inquired about the purpose of this categorization; David clarified it addresses the limitations of existing TSN mechanisms (e.g., CQF, TAS) in meeting DETNET's scaling requirements for flows and hops.
+    *   Jong commented that "Time Division Multiplexing" is a poor name for the third category and suggested "CQF variant" or "Cyclic Queuing."
+    *   Jong and Shifu suggested that the Time-Aware Shaper (802.1Qbv) should be moved from "Shaping" to "Periodic scheduling" due to its use of a gate control list and repeating cycles. David agreed to re-examine this.
+    *   Jinu emphasized that "work-conserving" versus "non-work-conserving" is a fundamental distinction and should be a primary categorization rule. He noted that traditional "shapers" are non-work-conserving, while many work-conserving schedulers (like Fair Queuing or Round Robin) did not fit easily into the proposed categories. There was an agreement that the "Shaping" category might need to be renamed to encompass both traditional non-work-conserving shapers and new work-conserving algorithms.
+    *   Jinu also highlighted the need to clarify terminology, particularly "time slot" vs. "cycle," noting Florian's previous email on this topic, as their interpretation significantly impacts control plane and data plane complexity.
+
+## Decisions and Action Items
+
+*   **Action Item (David):** Propose new text for Section 3.7 of the scaling requirements draft on the mailing list, incorporating the discussion points regarding linear latency with hops and constant jitter independent of hops, and a refined approach to evaluating control plane complexity.
+*   **Action Item (Antoine):** Review the draft text to clarify the underlying deterministic round-robin scheduling algorithm and ensure its assumptions are clear to readers.
+*   **Action Item (Antoine):** Provide references for the mathematical analysis of the bounded delay Q mechanism, either by pointing to the relevant sections in the draft and previous presentations or by linking to external papers if available.
+*   **Action Item (David):** Re-examine the placement of Time-Aware Shaper (802.1Qbv) within the proposed categorization scheme.
+*   **Action Item (David):** Explore renaming the "Shaping" category to accommodate both work-conserving and non-work-conserving mechanisms, or add a note to the current category B stating it includes both.
+*   **Action Item (All):** Provide further comments on the proposed categorization/taxonomy to the mailing list.
+
+## Next Steps
+
+*   The Working Group will continue discussions on the scaling requirements draft via the mailing list, with Ping presenting the current version at the Prague meeting based on existing text.
+*   David will start assembling a document on the mechanism categorization, potentially preparing slides for the Prague meeting.
+*   The chairs and participants will work towards evaluating and potentially narrowing down the number of proposed solutions based on the established requirements and categorization.
+*   Continued interim meetings are anticipated after IETF 118.

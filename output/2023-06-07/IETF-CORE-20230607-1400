@@ -1,0 +1,90 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group held an interim meeting to discuss the progress of two key drafts: "OSCORE-Capable Proxies" and "FOSCO: CoAP Retransmission Timeout and Congestion Control." The "OSCORE-Capable Proxies" draft presented updates on defining OSCORE use with proxies and nested OSCORE protection, with a significant discussion on splitting off its "onion forwarding" appendix and how to handle the CoAP Hop-Limit option. The "FOSCO" draft provided an update on its state-based retransmission and congestion control mechanisms, including feedback from reviews and next steps towards Working Group Last Call. Additionally, "Other Business" covered a request to change the "Conditional Attributes" draft to Standards Track and an update on the "Groupcom Base" draft, including its relation to "Non-Traditional Responses."
+
+## Key Discussion Points
+
+### OSCORE-Capable Proxies (draft-ietf-core-oscore-capable-proxies)
+
+*   **Motivation**: Address the undefined use of OSCORE with proxies and the prohibition of double protection (nested OSCORE) in RFC 8613, which is required for secure proxy interactions (e.g., client-proxy authentication, end-to-end client-server OSCORE).
+*   **Use Cases**:
+    *   CoAP group communication with proxies for client identification.
+    *   Multicast notifications where proxies manage tickets.
+    *   Lightweight M2M scenarios where the LwM2M server acts as a proxy or a Gateway acts as a reverse proxy, requiring OSCORE between client and proxy, in addition to end-to-end OSCORE.
+*   **Contributions**:
+    *   Updates RFC 8613 to define OSCORE use between origin endpoints and proxies, and between proxies.
+    *   Explicitly allows nested OSCORE protection, typically two layers (one end-to-end, one per hop). More than two layers are explored in Appendix B.
+*   **Recent Updates (v5 & v6)**:
+    *   Clarified that proxies must check if forwarding a decrypted request is authorized.
+    *   Clarified corner cases where a proxy should not forward a valid request (e.g., multicast notifications option).
+    *   Added a flowchart illustrating incoming request processing, emphasizing iterative decryption for nested layers.
+    *   Improved rules for CoAP option protection (Class E, U, I), aiming to protect as many options as possible. A flowchart was presented for this.
+    *   Added guidelines for establishing OSCORE security contexts, including using EDHOC and optimized workflows.
+    *   Improved notation for nested protection.
+    *   Included a message flow example for EDHOC + OSCORE request optimization, showing a reduction from 16 to 10 messages.
+*   **Open Point 1: OSCORE Protected Onion Forwarding (Appendix B)**:
+    *   The appendix describes using multiple layers of OSCORE for "Tor-like" anonymous forwarding. The main document's rules allow for this.
+    *   **Discussion**: Concerns were raised about the complexity and potential for implementation without proper thought.
+    *   **Sense of those present**: Support for removing Appendix B from the current draft and developing its content into a separate experimental draft for further research and implementation.
+*   **Open Point 2: CoAP Hop-Limit Option (RFC 8798)**:
+    *   Currently, RFC 8798 does not define OSCORE processing for the Hop-Limit option. RFC 8613 states unknown options default to Class E (encrypted end-to-end).
+    *   **Implication**: If Hop-Limit is Class E, proxies cannot read or decrement it, rendering it largely useless for hop-by-hop control.
+    *   **Proposal**: Define Hop-Limit as Class U (unprotected end-to-end, but protected for the next hop) in the draft, enabling proxies to process it.
+    *   **Discussion**: The proposal would allow hop-by-hop processing while ensuring protection between hops. Examples are needed to clarify the behavior under different scenarios.
+
+### FOSCO: CoAP Retransmission Timeout and Congestion Control (draft-ietf-core-fosco)
+
+*   **Overview**: An optional retransmission timeout (RTO) and congestion control mechanism for CoAP, designed for environments with random loss and congestion. Replaces default RTO/congestion control in RFC 7252.
+*   **RTO Calculation**:
+    *   **Fast RTO**: Standard TCP-like RTO (RFC 6298), with a slight modification for non-unicast sessions.
+    *   **Slow RTO**: Measured from the original transmission, including all retransmissions, until acknowledgment, then multiplied by 1.5.
+*   **Three-State RTO Logic**:
+    *   **Fast State**: Normal operation, uses Fast RTO, binary exponential back-off (like TCP).
+    *   **Fast-Slow State**: Entered after a retransmission; first applies Fast RTO, then Slow RTO if unsuccessful. Single-shot state.
+    *   **Slow State**: Entered if retransmissions are needed in Fast-Slow state, indicating congestion. Always applies Slow RTO first, then Fast RTO with binary exponential back-off.
+*   **Current Status (v02 submitted March 2023)**:
+    *   Working Group document since March 2020.
+    *   Addressed feedback from Carsten's review (retransmission count option, terminology) and Yoshi's DSVR early review.
+    *   Document was dormant due to lack of cycles, revived recently.
+    *   **Yoshi's Feedback**: Requested more explanation and justification for the virtual back-off series logic and why it can be slightly more aggressive than TCP RTO.
+*   **Open Points**:
+    *   **Pseudocode (Appendix A)**: Request for clarification on the notation used in the pseudocode and more explanatory text in the main document.
+    *   **Authorship**: Discussion about the current author list given the long dormancy and current activity levels. Marco will discuss with other authors about potentially listing some as contributors.
+    *   **Scope**: FOSCO focuses purely on RTO mechanics and does not change `NSTART` or the number of concurrent open requests.
+    *   **Relation to CoAP-PM (draft-ietf-core-coap-pm)**: Suggestion to investigate if the CoAP Performance Measurement (CoAP-PM) document's methods for RTT estimation could complement or be integrated with FOSCO.
+
+### Other Business
+
+*   **Conditional Attributes (draft-ietf-core-conditional-attributes)**:
+    *   A request was received from OMA LwM2M for this informational draft to be changed to Standards Track. OMA LwM2M is normatively referencing it and prefers Standards Track for such references.
+    *   **Discussion**: The document's content (e.g., use of "MUST", "SHOULD") is suitable for Standards Track. Changing status would entail more rigorous ISG review. Authors are open to this, seeking WG direction. Previous discussions at IETF 116 showed some support.
+    *   **Decision**: The Working Group will consider changing the status of `draft-ietf-core-conditional-attributes` to Standards Track.
+*   **Groupcom Base (draft-ietf-core-groupcom-base)**:
+    *   **Status**: Waiting for follow-up from the shepherd (Carsten) on Working Group Last Call review comments and additional editorial comments from John.
+    *   **Discussion**: Christian suggested adding a reference to `draft-ietf-core-responses` (Non-Traditional Responses document) in `groupcom-base`. `groupcom-base` defines an "incarnation" of non-traditional responses, and a reference would clarify the general concept.
+    *   **`draft-ietf-core-responses` Status**: Discussion ensued about whether `draft-ietf-core-responses` should be an informative or normative document. Christian believes it needs to be normative to provide concrete processing rules for different non-traditional response types, not just describing similarities. This is a point to be taken to the mailing list.
+
+## Decisions and Action Items
+
+*   **OSCORE-Capable Proxies**:
+    *   **Decision**: Appendix B ("OSCORE Protected Onion Forwarding") will be removed from `draft-ietf-core-oscore-capable-proxies` and its content will be used to develop a separate experimental draft.
+    *   **Action Item**: Authors to clarify the interaction with the Hop-Limit option, potentially defining it as Class U, and provide examples.
+*   **FOSCO**:
+    *   **Action Item**: Marco to clarify the pseudocode notation in Appendix A and add more explanatory text in the main document.
+    *   **Action Item**: Marco to discuss authorship with co-authors to ensure the listed authors are actively engaged, or reclassify some as contributors.
+    *   **Action Item**: Marco to investigate how `draft-ietf-core-coap-pm` could complement FOSCO's RTT estimation.
+*   **Conditional Attributes**:
+    *   **Decision**: The Working Group will formally consider changing the status of `draft-ietf-core-conditional-attributes` from Informational to Standards Track.
+    *   **Action Item**: Chairs to reply to OMA LwM2M, acknowledging their feedback and pointing to the meeting notes.
+*   **Groupcom Base**:
+    *   **Action Item**: Carsten (shepherd) to follow up on the Working Group Last Call comments for `draft-ietf-core-groupcom-base`.
+    *   **Action Item**: Authors to add an informative reference to `draft-ietf-core-responses` in `draft-ietf-core-groupcom-base`, specifically in the section discussing multiple responses from the same server for group requests.
+    *   **Action Item**: The discussion about the normative vs. informative nature and scope of `draft-ietf-core-responses` will be taken to the mailing list.
+
+## Next Steps
+
+*   **OSCORE-Capable Proxies**: Submit version 7 of the draft before the cutoff, incorporating new identified use cases (ESCL OSCORE, CoAP-PM), covering SCHC header compression at a high level, improving figures, and addressing the discussed open points. The authors believe version 7 should be ready for a Working Group adoption call.
+*   **FOSCO**: Submit version 03 by early July (hopefully before the next IETF meeting), including explanations and justifications requested by Yoshi for the back-off logic. Seek further reviews, aiming for Working Group Last Call after v03.
+*   **Working Group**: Continue discussions on the mailing list regarding the status and scope of `draft-ietf-core-conditional-attributes` and `draft-ietf-core-responses`.

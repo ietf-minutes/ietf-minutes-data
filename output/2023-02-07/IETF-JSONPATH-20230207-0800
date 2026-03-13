@@ -1,0 +1,73 @@
+# [JSONPATH](../wg/jsonpath.html)
+
+## Summary
+
+The JSONPATH Working Group held an interim meeting to review the status of the "RegExp" and "Base" drafts, discuss outstanding technical issues, and plan for moving the drafts towards Working Group Last Call (WGLC) and subsequent publication. A key goal for the meeting was to resolve issues to enable the "RegExp" draft to be sent to the IESG immediately, and to prepare the "Base" draft for WGLC. Discussions focused on specific GitHub issues related to type definitions, parsing ambiguity, and function behavior.
+
+## Key Discussion Points
+
+*   **"RegExp" Draft Status:**
+    *   The latest update to the "RegExp" draft (Karsten's latest update, thank you for catching Corner cases on ECMAScript expressions) was reviewed and considered ready for IESG submission.
+    *   **Decision:** The working group agreed to send the "RegExp" draft to the IESG, pending an update to the Shepherd write-up.
+    *   **Action Item:** James to update the Shepherd write-up for the "RegExp" draft and initiate its submission.
+
+*   **"Base" Draft Goal:**
+    *   The primary objective for the "Base" draft is to get it into a position for Working Group Last Call.
+
+*   **Issue 366: "value" type in Table 13 conflates with "JsonValue" abstraction**
+    *   A discussion arose regarding the use of "value" in the type column of Table 13, which conflicts with "value(parameter)" in the abstract instances column, meant to represent JSON values.
+    *   The current wording was deemed confusing due to the term collision.
+    *   Various naming conventions were considered, including appending "Type" (e.g., "ValueType") or "T" (e.g., "ValueT") for the enumerated types.
+    *   **Decision:** It was agreed to rename the type "value" to "ValueType" and apply this suffix consistently to all enumerated types in the table (e.g., "OptionalNodeOrValueType").
+    *   **Action Item:** Karsten to create a Pull Request (PR) to implement this naming change in the draft.
+
+*   **Issue 368: Strict Parsing Option**
+    *   The discussion addressed potential tightening of the spec for greater compile-time checking, specifically for implementation options.
+    *   It was noted that the spec already has well-defined semantics and a type system, and adding general type system rules for future function extensions would be difficult.
+    *   **Decision:** The working group agreed to leave the spec tolerant by default regarding type checking for input values. Implementations are free to offer "strict parsing" as a Quality of Implementation (QoI) feature without it being a normative spec behavior. This issue is linked to ongoing test suite changes.
+    *   **Action Item:** This issue will be closed once the associated test PR is merged.
+
+*   **Issues 385, 387, 388, 389 (Coercion, Subtyping, Parsing Ambiguity, Test Booleans):**
+    *   A lengthy and complex discussion ensued regarding the relationship between coercion and subtyping, the lack of a formal definition for "coercion" in the spec, and ambiguities in the ABNF grammar.
+    *   **Coercion/Subtyping:** There was a debate on whether coercion (e.g., extracting a value from a node for a function argument) should be considered part of the subtype hierarchy or distinct from it.
+    *   **ABNF Ambiguity:** Specific concerns were raised about the ABNF rules for `function-argument`, `filter-path`, and `comparable`, where a `function-expression` could derive through multiple paths, each with different type expectations (e.g., `optional-nodes-or-subtype` vs. `optional-node-or-value-or-subtype`).
+        *   This ambiguity makes it challenging for parsers (especially deterministic PEG parsers) to decide which derivation to follow without semantic information about the function's return type.
+        *   The comments in the ABNF aim to clarify type expectations, but a general BNF parser might not respect these, leading to reliance on post-parsing validity checks.
+    *   **Issue 387 (Match function as comparable):** This issue is deeply intertwined. Previously, a decision (in Issue 360, codified in PR 365) was made that the `match()` function, which returns an "expression Boolean" (distinct from a JSON `true`/`false` literal), should *not* be used in comparisons like `match(...) = true`.
+        *   Table 15 currently reflects this by showing `$.match(foo) = true` as "invalid typing."
+        *   This creates an apparent inconsistency: while shorthand (e.g., `$.match(foo)`) implies an existence test, explicitly comparing it to `true` is disallowed, despite other functions (e.g., `length()`) returning values that *can* be compared to literals.
+        *   Greg noted implementation challenges if "expression Booleans" and "JSON Booleans" are not formally distinguished, and if a function can act as both a test and a comparable in a way that creates parsing ambiguity.
+    *   **Consensus:** The participants recognized that these issues are deeply interrelated and complex. It was agreed that further written discussion with concrete examples is essential to clarify the problem and find a consistent solution, possibly involving a clearer definition of validity constraints and how they interact with parsing.
+
+*   **Versioning:**
+    *   A question was raised about versioning for JSONPath.
+    *   **Decision:** There was general agreement not to include explicit versioning mechanisms within JSONPath expressions (e.g., `$.jsonpath-v2(foo)`). RFCs are immutable, and future changes would lead to new RFCs.
+
+*   **`index()` Function (Issue 151 / 386):**
+    *   The utility of an `index()` function (to return the key/index of a node) was discussed, with some participants finding it useful.
+    *   Previous discussions indicated that many use cases for `index()` often implicitly desired a "selector" capability (e.g., returning the *name* itself for further processing), which is outside the current scope of the JSONPath "Base" draft.
+    *   The current model does not formally allow a function to access the normalized path of a node, which would be necessary for an `index()` function.
+    *   **Decision:** The working group decided not to add an `index()` function to the "Base" draft at this point, as existing user requests often imply broader functionality (selectors) not currently addressed, and the proposed function would not sufficiently address current user needs.
+
+## Decisions and Action Items
+
+**Decisions:**
+
+1.  The "RegExp" draft will be sent to the IESG after James updates the Shepherd write-up.
+2.  The type `value` in Table 13 (and similar types) will be renamed to `ValueType` (e.g., `OptionalNodeOrValueType`) for clarity.
+3.  The spec will remain tolerant by default regarding type checking; strict checking is considered a Quality of Implementation (QoI) feature.
+4.  No explicit versioning mechanism will be added to JSONPath expressions.
+5.  An `index()` function will not be added to the "Base" draft at this time.
+
+**Action Items:**
+
+*   **James:** Update the Shepherd write-up for the "RegExp" draft and proceed with its submission to the IESG.
+*   **Karsten:** Create a PR to implement the renaming of types in Table 13 (e.g., `Value` to `ValueType`).
+*   **Karsten:** Add detailed descriptions and concrete examples to GitHub issues 385, 387, 388, and 389 to further clarify the parsing ambiguity, coercion, and test Boolean issues.
+*   **All participants:** Engage in written discussion on the mailing list and GitHub for the deeply interrelated issues (385-389), focusing on concrete examples to illustrate the problems and proposed solutions.
+
+## Next Steps
+
+*   Continue detailed technical discussion on the interrelated issues (385-389) via GitHub and the mailing list, with a strong emphasis on providing concrete examples.
+*   Once these outstanding issues for the "Base" draft are satisfactorily resolved, the Working Group Last Call for the "Base" draft will be initiated via email (on the data tracker) for a two-week period.
+*   No further interim meetings are currently planned unless significant feedback from the WGLC necessitates them.

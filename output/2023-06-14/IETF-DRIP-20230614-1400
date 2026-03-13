@@ -1,0 +1,69 @@
+# [DRIP](../wg/drip.html)
+
+## Summary
+
+This interim meeting focused on crucial updates regarding the allocation of SAM code points and Session IDs from ICAO/ASTM, a review of comments received on `draft-ietf-drip-registries`, and a detailed discussion of the complementary roles and contents of `draft-ietf-drip-registries` and `draft-ietf-drip-dki`. Key decisions were made to expedite the technical `registries` document while allowing `dki` to address more complex implementation and policy issues. Representatives from ICAO and ASTM joined the meeting to provide direct updates on the registry allocation progress.
+
+## Key Discussion Points
+
+*   **Administrative and Agenda**: The session began with general greetings and a review of the agenda. Stu was confirmed as the note taker.
+*   **`draft-ietf-drip-arch` Publication**: The working group noted the successful publication of `draft-ietf-drip-arch` as an RFC.
+*   **Registry Allocation Update (ICAO/ASTM)**:
+    *   A liaison statement regarding registry allocation was sent to ASTM.
+    *   Gabriel Cox (ASTM) reported high confidence that the ICAO portal for SAM code points and Session IDs would be operational by the end of the week.
+    *   Stu clarified that the specific session ID type was granted in January 2022 (baked into the F3411-22a standard) but has not yet appeared in a public registry. SAM types still require assignment.
+    *   Salo de Silva (ICAO) confirmed that the system is ready and will be launched by the end of the week with both capabilities (SAM and Session ID allocation).
+    *   Gabriel Cox stated he would serve as the designated expert for IETF's initial request (expected to be four IDs), anticipating same-day review and authorization.
+    *   Discussion confirmed that while a formal liaison statement response might take months, an informal, publicly recorded communication (e.g., via mailing list or a public web page) acknowledging the allocation from ASTM/ICAO would be sufficient for the IETF to move forward.
+*   **`draft-ietf-drip-registries` Reviews and Updates (Adam)**:
+    *   **DNSDIR Review (Tim Wicinski)**: Feedback included the need for an IANA consideration section for domain delegation, a proper definition for the RR type (not just a placeholder), clarification of Section 10 (now referencing `dki`), moving Section 4.5 to terminology, defining additional terms, improving Figure 2, and adding registry examples as an appendix (identified as a high-priority action item).
+    *   **Bob Moskowitz's Review**: Focused on text cleanup (some of which has been incorporated into `dash-10`) and strategic discussions on separating content between `registries` and `dki` to minimize ICAO delegation requirements in the former.
+    *   **OPSDIR Review (Upster)**: Comments included that Section 5.3 was underspecified (lacking details for UAS vendors on running name servers), the resolution of UAS IDs is life-critical, Section 6.1 was hard to parse (being fixed in `dash-10`), Section 7 (key management) was incomplete, and concerns about ICAO domains sounding like TLDs (suggesting DNSDIR involvement).
+    *   **TSVART Review**: Adam noted he had not yet seen this review but would look for it.
+    *   **Transport Review**: This review indicated the document was acceptable from a transport perspective.
+    *   **Security Review**: Med expressed disappointment with the depth of the security review, feeling it was too superficial given the importance of the document's security aspects. He suggested Adam engage the reviewer directly for more detailed feedback.
+    *   **Registry Working Items**:
+        *   **RA Allocations/Pre-definitions**: The RA space has been carved up into Apex, ISO Numeric Codes, Manufacturer Code Authorities, and Experimental ranges. RAs are now allocated in groups of four to align with nibble boundaries, correcting an earlier design choice for DNS data delegation.
+        *   **ISO Numeric Codes**: A proposal to use ISO country numeric codes (e.g., ISO 3166-1) for CAAs, mapping them directly to ranges of RAs (four RAs per CAA), to jumpstart deployments.
+        *   **Manufacturer Code Authorities**: A mechanism to map 4-character manufacturer codes from anti-CTA to RAHDA pairs, requiring a minimum of 82 RAs for over 1.3 million combinations, eliminating the need for a mapping service.
+        *   **Experimental Range**: The last two RA allocations are designated for DRIP working group testing, with the upper four in this range available for temporary assignments to businesses (e.g., Google) for testing purposes.
+        *   **New Resource Record Type**: A rough cut of a new CBORE-encoded resource record type, derived from the HIP RR, was introduced, including fields for abbreviation, URI, endorsement, an active flag, and a serial number. The mechanism for endorsement expiry requires further discussion.
+        *   **Section 6.1 Rework**: Section 6.1 has been restructured with cleaned text, subsections, and figures for different supported scenarios. Discussions continue regarding DNS Apex ownership and management.
+*   **`draft-ietf-drip-dki` Discussion (Bob Moskowitz)**:
+    *   **Motivation**: Bob's attempt to implement a test environment with `registries-09` revealed unknowns, lack of tools, and potential security risks, necessitating a separate document.
+    *   **Purpose**: `dki` aims to handle implementational matters, policy, and long-term resolutions, allowing `registries` to remain technical and progress faster.
+    *   **Tooling**: Bob developed Python tools for creating DETs and endorsements due to a lack of open-source options.
+    *   **DNS Testing Environment**: Jim Reed set up `drip-testing.org`. Discussions arose about the Apex structure (reverse IPv6 arpa vs. grouped under an Apex). It was noted that ICAO cannot be expected to quickly step into a testing Apex role. The suggestion was made to use "HHIT" (Hierarchical HIT) for the Apex naming to avoid political implications with "ICAO".
+    *   **Trust and Key Handling**: Bob identified a flaw in the original 3-level endorsement model where the HDA directly signed UA DET endorsements, posing a significant security risk (analogous to a root CA directly signing end-entity certificates). He proposed an "Issuing Level" added to the HDA (not RAA) to mitigate this risk, creating distinct authorization, issuing, and operational endorsements.
+    *   **Missing Apex Alternatives**: Given ICAO's unsuitability for a timely Apex role, Bob presented three alternatives:
+        *   **Trustless RAs**: Recommended for simplicity but with distribution challenges and no Apex in authorization transmissions.
+        *   **RAs Cross-Endorsing**: Similar to FAA/Eurocontrol practices, but with N-squared scaling issues, acceptable for initial testing.
+        *   **RA Bridge**: Like the IETF PKI, but raises the question of who would run it. Bob indicated a preference for proceeding with a trustless model for now.
+    *   **Simplifying RA Assignment**: `dki` explores using ISO 3166-1 numbers for countries and CTI codes for manufacturers to simplify RA allocation.
+    *   **x509 Certificates**: Acknowledging demand from the aviation sector for x509 certificates, `dki` proposes two profiles for x509 as a backup to DKI endorsements, including the potential for integrating with PKIX certificate requests and ACME.
+    *   **Integration with IATF PKI**: `dki` discusses integrating with the International Aviation Trust Framework (IATF) PKI, potentially using ECDSA certificates for DETs and leveraging hierarchical HITs with DNS. FAA has shown interest in this approach.
+    *   **Conclusion**: Bob emphasized that `dki` evolved to fill gaps in `registries`. The strategy is to move `registries` (technical aspects) to Last Call swiftly, while `dki` (implementation, policy, and longer-term trust) progresses at a more considered pace.
+*   **`registries` vs. `dki` Split**: Adam affirmed that the goal is for `registries` to be technically broad enough to support `dki`'s more political and process-focused content, confirming a good middle ground has been reached.
+
+## Decisions and Action Items
+
+**Decisions:**
+
+*   The IETF DRIP WG agrees that an informal, publicly recorded communication from ICAO/ASTM acknowledging the allocation of SAM code points and Session IDs is sufficient, negating the need for a formal liaison statement for this specific allocation. This record should be made publicly available (e.g., via mailing list or a web page).
+*   The `draft-ietf-drip-registries` document will focus primarily on purely technical matters to facilitate its progression towards Last Call.
+*   The `draft-ietf-drip-dki` document will address implementation details, policy, and longer-term trust framework considerations, acknowledging that this work will proceed at a more deliberative pace.
+
+**Action Items:**
+
+*   **Stu and Med**: Continue to push ICAO and ASTM to provide a public record of the SAM code point and Session ID allocation within the coming week.
+*   **Adam**: Formally reply to Tim Wicinski's DNSDIR review comments on `draft-ietf-drip-registries-11`, outlining proposed modifications.
+*   **Adam**: Formally respond to Bob Moskowitz's comments on `draft-ietf-drip-registries` shared on the mailing list.
+*   **Adam**: Locate and address comments from the TSVART review of `draft-ietf-drip-registries`.
+*   **Adam**: Follow up on the security review of `draft-ietf-drip-registries` to ensure sufficient technical depth is addressed, potentially by engaging directly with the reviewer.
+*   **All Participants**: Review Section 8.1.1 (new resource record type) of `draft-ietf-drip-registries-11` in preparation for a detailed discussion at the next interim meeting.
+
+## Next Steps
+
+*   The working group will continue to develop `draft-ietf-drip-registries`, incorporating review feedback and the proposed RA allocation structure, with the aim of advancing it to Last Call.
+*   Development of `draft-ietf-drip-dki` will proceed, addressing the outlined implementation details, enhanced key handling, and exploration of Apex alternatives.
+*   Another interim meeting will be scheduled in approximately two weeks to continue technical discussions, with a specific focus on the resource record type defined in `draft-ietf-drip-registries` Section 8.1.1.

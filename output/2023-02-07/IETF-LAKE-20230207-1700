@@ -1,0 +1,72 @@
+# [LAKE](../wg/lake.html)
+
+## Summary
+
+The LAKE working group held an interim meeting to discuss the status of the `ad hoc` draft and potential rechartering items. Updates on `ad hoc` draft versions 18 and 19 were presented, including detailed technical changes and ongoing directorate reviews. Key discussions around rechartering focused on three main areas: adding a re-keying mechanism to `ad hoc`, developing implementation guidelines for `ad hoc`, and expanding the scope to cover generic External Authorization Data (EAD) items. The chairs will draft a potential new charter based on these discussions and circulate it for community feedback. A meeting slot has been requested for IETF 119 in Yokohama to continue these discussions and provide updates on `ad hoc` reviews.
+
+## Key Discussion Points
+
+*   **`ad hoc` Draft Status Update (Joran and John)**
+    *   **Version 18** (posted after IETF 115):
+        *   Padding updated to be included in EAD with label 0.
+        *   EAD syntax clarified, `ad_value` made optional.
+        *   Clarifications on authentication credentials (using RPK/public key), encoding `ID_cred` using a key, public key representation (y-coordinate of ephemeral key), and validation.
+        *   Processing after protocol completion: all verification results should be available to the application for decision-making.
+        *   Relationship between `ad hoc` and OSCORE identifiers clarified with a table.
+        *   Terminology alignment: using "session" consistently, "discontinue" instead of "terminate."
+        *   Updated CDDL and numerous nits.
+    *   **Version 19** (posted recently, no wire format impact):
+        *   Incorporated comments from directorate reviews (Secretariat, Tsvart, Genart, Shepherd).
+        *   Clarifications on relationship to Sigma, role of static Diffie-Hellman, roles of Initiator/Responder, and a neat description of how to construct suites (from Donald Eastlake).
+        *   Further clarifications on suite negotiation, padding EAD processing, and handling plaintext.
+        *   Message correlation text moved from an appendix to a new subsection, simplifying the explanation.
+        *   Added clarification on transport properties, assuming flow control is handled by the underlying transport.
+        *   Updated IANA considerations with detailed registration procedures for methods, error codes, EAD labels, and Cipher Suites.
+        *   Normative text in Appendix A clarified regarding its relationship to the OSCORE draft, and message flows given names ("forward" and "reverse").
+        *   Updated security analysis and a new appendix on the `ad hoc` state machine (reviewed by three implementers, no objections received on the mailing list).
+    *   **Discussion on State Machine:** A question was raised by Carson about the linearity of the state machine and handling of duplicate messages or potential forks. The general sense was that the first processed message wins, and subsequent duplicates for the same state transition would be ignored or result in an error. The possibility of an attacker causing denial of service by flipping bits and causing aborts was briefly discussed. This discussion was requested to be moved to the mailing list for further detail.
+    *   **AD Review:** Paul Wouters (AD) indicated plans to review the `ad hoc` draft this week, finishing by next week or the week after.
+
+*   **Re-keying for `ad hoc` (Rafa and John)**
+    *   **Motivation:** The `dit` method, which uses `ad hoc` for authentication, identified a need for resumption capabilities (to reduce message flows, asymmetric operations, and avoid external credential fetching). A re-keying mechanism within `ad hoc` could serve this and other applications.
+    *   **Options for Re-keying:**
+        1.  Rerun `ad hoc` (baseline).
+        2.  Use PSK with a Diffie-Hellman exchange (similar to TLS 1.3 or IKEv2 re-keying). Offers better security against key compromise.
+        3.  Use PSK with random number exchange (no Diffie-Hellman), deriving new key material (similar to TLS 1.3 resumption or IPsec re-keying). Simpler, but with potential limitations (e.g., short-term use, not for full handshakes).
+        4.  No randomness (discarded due to weak security).
+    *   **Technical Considerations:** Option 2 involves one asymmetric operation, Option 3 involves zero (compared to three for a full `ad hoc` handshake). A significant privacy concern was raised regarding PSK identifier reuse, enabling tracking.
+    *   **Proposal:** Re-keying could be specified as a new `ad hoc` method, removing `ID_cred` in messages 2 and 3, adding `ID_cred_psk` in message 1, defining PSK and key derivation, and deriving new PSK identifiers to mitigate privacy issues. This functionality was present in early `ad hoc` drafts.
+
+*   **Guidelines for `ad hoc` Implementations (Marco)**
+    *   **Motivation:** The core `ad hoc` specification intentionally leaves certain practical aspects out of scope. Implementers, especially those developing `ad hoc` libraries or applications, need guidance on these areas. An informational draft was proposed.
+    *   **Proposed Areas for Guidelines:**
+        1.  **Key Update:** How applications manage `ad hoc` sessions, authentication credentials, and derived key material. Discussed scenarios like credential invalidation (destroying keys) versus key material problems (selective updates, potentially using OSCORE key update protocol or re-running `ad hoc`). Impact of external frameworks like ACE (access token validity) was noted.
+        2.  **Trusting New Authentication Credentials On The Fly:** When `ad hoc` exchanges new credentials by value.
+            *   *Trust Model 1 (Strict)*: Only accept if already stored/trusted.
+            *   *Trust Model 3 (Open)*: Accept if valid and verifiable (clarified to mean preliminary acceptance with additional verification, e.g., proximity).
+            *   *Trust Model 2 (Middle Ground)*: Accept new if valid AND a trusted identifier (e.g., a hash of the certificate) is already stored.
+        3.  **Processing Incoming `ad hoc` Messages:** The non-linear nature of processing, where "core `ad hoc` processing" may defer to application "side processing" for credential validation and EAD item handling. EAD items might influence credential validation or require signature verification before processing. A "processor object" concept was suggested for application logic.
+    *   **Support:** These areas were seen as good topics for an informational draft, and implementer views would be valuable.
+
+*   **EAD Items for Rechartering (Melissa)**
+    *   **Existing/Upcoming Use Cases for EAD:**
+        *   Third-party authorization for device enrollment (lightweight BRSKI, draft already submitted).
+        *   OCSP stapling and certificate revocation (a new draft is planned for submission before the Yokohama cutoff).
+        *   Remote attestation.
+    *   **Proposal for Charter:** Include a paragraph in the new charter for generic EAD items to allow the working group to process future proposals in this area.
+    *   **Discussion:** A question was raised about the open-ended nature of EAD items and the working group's long-term scope. It was agreed that while `ad hoc` enables many combinations, the charter could initially list specific, meaningful use cases and defer other proposals for future charter discussions.
+
+## Decisions and Action Items
+
+*   **Decision:** Melissa Watanach will draft a first cut of a new LAKE working group charter for community discussion.
+*   **Decision:** A 1-hour meeting slot will be requested for IETF 119 in Yokohama to discuss `ad hoc` review updates and rechartering proposals.
+*   **Action Item:** Carson to post detailed questions and thoughts regarding the `ad hoc` state machine's abort behavior and comparisons to TLS/DTLS connection robustness to the mailing list.
+*   **Action Item:** Joseph (with Joran and John as co-authors) will aim to submit a draft on OCSP stapling for EAD before the IETF 119 Yokohama cutoff.
+*   **Action Item:** Marco to consider developing an informational draft outlining guidelines for `ad hoc` implementations, covering key update, trust models, and message processing.
+*   **Action Item:** Stephen Farrell (co-chair) will submit the request for the Yokohama IETF 119 meeting slot.
+
+## Next Steps
+
+*   AD Paul Wouters to complete his review of the `ad hoc` draft in the coming weeks.
+*   The draft working group charter will be circulated on the mailing list for community review, feedback, and expressions of support or objection.
+*   Updates on the `ad hoc` draft review and rechartering proposals will be presented and discussed at the IETF 119 meeting in Yokohama.

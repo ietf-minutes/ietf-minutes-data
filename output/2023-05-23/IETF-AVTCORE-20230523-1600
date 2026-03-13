@@ -1,0 +1,124 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE working group held an interim meeting to review the status of several active drafts, discuss outstanding DISCUSS comments from the IESG, and address new technical issues. Key discussions included resolving comments on the `skip-servicemode` and `frameworking` drafts, updates on the `b3c-payload` and `green-metadata` drafts, and substantial progress on the `rtp-over-quick` draft including `STOP_SENDING` semantics and error codes. A new draft on S-Frame packetization was introduced, and a discussion was held on the broader implications of peer-to-peer QUIC for RTP and related congestion control work.
+
+## Key Discussion Points
+
+### Administrative
+*   **Logistics**: There were initial technical issues with the PDF slides and audio. The session was recorded.
+*   **Note Taker**: Spencer Dawkins volunteered to take notes on a best-effort basis, with others encouraged to assist and review.
+*   **Agenda**: The proposed agenda was accepted without changes.
+*   **Document Status**:
+    *   `draft-ietf-avtcore-rtp-over-quick-multiplexing` (`bp9`) and `draft-ietf-avtcore-rtp-over-quic` (`7983bis`) are in the RFC Editor queue. `bp9` is awaiting print marking.
+    *   `draft-ietf-avtcore-rtp-over-quick`, `draft-ietf-avtcore-hevc-green-metadata`, and `draft-ietf-avtcore-b3c-payload` have been adopted as working group documents.
+
+### draft-ietf-avtcore-skip-servicemode
+*   **Overview**: Version 05 was published on March 29th, focusing on clarifying network device behavior, emphasizing SKIP as an opaque, encrypted payload that network devices should not attempt to filter or modify.
+*   **IESG DISCUSS Comments**:
+    *   **Roman's comment (Section 4)**: The document now explicitly states that details are entirely opaque post-encryption. The difficulty of addressing reviews without the reviewers having access to or reviewing the SKIP documents was noted.
+    *   **Socker's comment (Section 6, RFC 7202, RTP Profile, Jitter Buffer)**:
+        *   **RFC 7202**: Discussed how the security properties apply given the encrypted nature of SKIP, and the argument that generic RTP security concerns still apply to pre-encrypted (clear) messages. It was suggested that existing text from Section 2 on end-to-end security, authentication, and encryption could be moved to the security considerations section for clarity.
+        *   **RTP Profile**: The document avoids defining a specific RTP profile for SKIP due to its variability (different messages, sizes, clear/encrypted traffic). The option of SRTP or not SRTP is outside SKIP's scope but could be mentioned if it clarifies confusion.
+        *   **"Variable" Term**: Socker's confusion about "variable" meaning variable bit rate was noted. This wording was already updated in the previous revision to clarify it means variable packet size.
+        *   **Jitter Buffer**: Socker's dislike of "may be implemented" was discussed. It was clarified that a jitter buffer is implementation-specific and not a BCP-14 "MAY". Changing to "could be" was suggested to avoid confusion about optionality.
+*   **IESG Reviewer Engagement**: There has been radio silence from reviewers for two months despite follow-up from authors and the AD.
+*   **Next Steps**: Focus on addressing Socker's DISCUSS comments first.
+
+### draft-ietf-avtcore-frameworking
+*   **Paul Wooters' DISCUSS (Privacy Considerations)**:
+    *   **No Privacy Considerations Section**: The document currently lacks a dedicated privacy considerations section.
+    *   **Header Extensions Exposure**: The core concern is the exposure of standard SRTP header extensions on the wire to middleboxes.
+    *   **Proposed Solution**: Augment the security considerations to add privacy points. Clarify that frameworking is intended for deployments *with* middleboxes, and it intentionally reveals information to them. Suggest a recommendation to use technologies like `cryptex` (draft-ietf-rtcweb-cryptex) if header extension information is sensitive and needs to be protected on the wire (i.e., not just exposed to the middlebox, but also protected from further observation). If not using middleboxes, it may be better not to negotiate frameworking for privacy.
+*   **IESG Engagement**: The chairs might escalate to the AD to put this document on a "returning item" list to prompt feedback.
+
+### draft-ietf-avtcore-b3c-payload
+*   **Updates**: Version 01 of the draft, incorporating changes from the last meeting, is available.
+*   **New Issues**:
+    *   **Hex to Base64 Coding**: A proposal to change hex-coded fields to base64, similar to BBC RTP payload format. The author suggests moving to consistent base64 coding.
+    *   **Comments in SDP Examples**: Remove comments from example SDP fields and add them as text instead to maintain syntax correctness.
+*   **Readiness for WGLC**: The author believes these are minor changes and the draft should be ready for Working Group Last Call soon.
+
+### draft-ietf-avtcore-green-metadata
+*   **Updates**: Version 01 was uploaded in April.
+*   **Title Change**: The title was updated to "RTCP Messages for Temporal and Spatial Resolution Requests" to accurately reflect that it only covers temporal and spatial resolution requests, not all green metadata messages.
+*   **Constraint for TSR Messages**: A constraint was added specifying that temporal and spatial resolutions in TSR messages shall not exceed resolutions negotiated via SDP.
+*   **Receiver Behavior**: Discussion centered on clarifying receiver behavior when TSR messages request resolutions higher than SDP-negotiated limits. It was suggested to make this receiver-centric: the receiver should ignore such requests (not apply them to media output) but *still send* a tsrn message with the actually used or available resolutions, to avoid endless re-requests.
+
+### draft-ietf-avtcore-rtp-over-quick
+*   **RTCP Analysis**: A large table was added detailing RTCP packet types/subtypes and their quick equivalents or rationale for not needing replacement. Still work in progress to consider topology differences and green metadata interaction. Duplicated text will be resolved by referencing tables.
+*   **Topologies**: A table for RFC 767 topologies was added, explaining RTP over Quick compatibility, with ongoing work to align with RTCP analysis for different topologies.
+*   **Congestion Control (CC) Terms and Definitions**: New terms for delay-based, loss-based, and application/RTP CC were added.
+*   **CC Recommendations**: The document avoids BCP recommendations for CC algorithms, as choices are application/codec dependent. References to experimental (RMCAT) and expired (GCC) drafts are informative.
+*   **Resolving CC Interactions**: A new subsection clarifies interactions between Quick and application-layer CC, addressing issues arising from CC at different layers, application limitations, and diverse Quick CC behaviors.
+*   **Open CC Issues**: How to handle CC for shared connections (single 5-tuple) and mixed media/non-real-time streams. Also, whether real-time CC algorithms are suitable for direct implementation in Quick stacks.
+*   **STOP_SENDING**:
+    *   **Previous Discussion**: Problematic for RTP as `STOP_SENDING` lacks an offset, making it unclear which frames the receiver wants to cancel, potentially canceling more than intended, especially for multiple RTP frames per stream.
+    *   **Current Draft**: The draft now paraphrases RFC 9000: a Quick sender receiving `STOP_SENDING` must send a `RESET_STREAM` and not retransmit lost data. For RTP, the sender *must* continue sending media on *new* Quick streams but *must not* retransmit media frames already sent on the stream that received `STOP_SENDING`.
+    *   **Semantics Discussion**: Debate on whether `STOP_SENDING` can be effectively used for RTP's "too late" semantics. It's a blunt tool for canceling outstanding efforts. For multiple RTP frames per stream, its utility is limited, and specific application-layer signaling might be needed. The document notes that receivers might accidentally cancel more frames than intended, suggesting other mechanisms might be preferred.
+*   **MAX_STREAMS**: The draft now includes an example calculation for stream credit negotiation and notes that signaling may be required if the receiver doesn't know the sender's stream requirements.
+*   **Acronym**: `roq` (pronounced "rock") was adopted for RTP over Quick.
+*   **Error Codes**: Work is ongoing to define error codes for RTP over Quick (e.g., `NO_ERROR`, `PROTOCOL_ERROR`, `STREAM_CREATION_ERROR`, `PACKET_ERROR`, `FRAME_CANCELED`, `UNKNOWN_FLOW_ID`, `SIGNALING_ERROR`).
+*   **Other Open Issues**: Ice interaction, extending motivation for `roq` adoption, MTU considerations for quick extensions and small RTP packets, listing helpful quick extensions, and `MULTICAST_QUIC` (status unclear, possibly out of scope for this document).
+
+### draft-ietf-webrtc-hevc-profile
+*   **Motivation**: Browsers (Chromium) are adding HEVC support via WebCodecs API (decode/encode, hardware-only, typically Main Profile Level 3.1). This draft provides WebRTC guidance, as RFC 7742 only covers AVC.
+*   **Approach**: Follows RFC 7742 model. Requires RFC 7798 packetization/depacketization, support for level 3.1, and suggests level 4. Requires decoder support, encoder is optional.
+*   **SDP Parameters**: Level ID, Max FPS, Max BR, etc.
+*   **VPS/SPS/PPS**: Same approach as RFC 7742 for AVC: signal inbound, not in SDP.
+*   **Video Orientation**: Use CVO extension.
+*   **SVC Support**: Currently limited in hardware, so not included.
+*   **IETF Charter Fit**: A sense of those present indicates this work is within AVTCORE's charter, but communication with the RTCWEB mailing list is needed.
+
+### draft-thatcher-avtcore-s-frame-packetization (New Draft)
+*   **Concept**: Packetize with codec-specific packetizer, then encrypt payload with S-Frame, then packetize using S-Frame specific packetization. The S-Frame RTP header uses the SSRC, timestamp, etc., from the first packetization, but uses a specific payload type for S-Frame.
+*   **Key Decisions in Draft**:
+    *   Requires negotiation of one S-Frame.
+    *   Includes a Media Frame ID to group RTP packets for the same media frame.
+    *   Includes a fragment index for packet ordering.
+    *   All RTP header extensions are currently copied to all S-Frame RTP packets.
+    *   The embedded payload type from codec-specific packetization is copied to all S-Frame packets.
+*   **Outstanding Questions/Discussions**:
+    *   Sequence Number Handling: How the depacketizer derives the sequence number for the assembled S-Frame.
+    *   Introduction: Need an introduction clarifying the end-to-end encryption process and how encrypted blobs are packetized.
+*   **Next Steps**: Too early for adoption. Author to refine the draft based on feedback.
+
+### Peer-to-Peer Quick Discussion
+*   **Background**: Initial P2P Quick prototype (G-Quick) in Chromium (2019) led to WebTransport (client-server only), but many envisioned applications (game streaming, remote desktop) require peer-to-peer. New API discussions are restarting.
+*   **Overlap with RTP over Quick**:
+    *   **Quick + ICE**: Demuxing (ice magic cookie), self-signed certs with signaling fingerprints, turning off quick migration, saving round trips.
+    *   **ALPN**: Potential for a generic ALPN like `q2q` for all P2P Quick, whether native or browser-based, instead of separate ALPNs for RTP over Quick. This would be qualified by signaling, not ALPN itself.
+    *   **SDP Signaling**: Proposal for SDP to signal P2P Quick (UDP/QUIC, ICE attributes, fingerprint), similar to DTLS/ICE. This could be extended for RTP (like `m=audio RTP/AVP ...`). The need to separate non-RTP P2P Quick definitions from RTP-specific ones was raised.
+    *   **Real-time Congestion Control**: This is a cross-cutting concern, relevant for all real-time media over Quick, not just RTP. Needs to be solved for everybody.
+*   **Working Group Home**: The core work on P2P Quick (general, non-RTP specific) is likely out of AVTCORE's scope. Discussion on where this work should be done: quick WG (potentially requiring re-chartering), a new dedicated WG (like WebTransport), or the new Congestion Control WG (though real-time aspects might be out of their initial scope). W3C for Web API parts.
+*   **Relationship to AVTCORE**: AVTCORE (`roq` authors) should be aware of this, contribute requirements, and ensure synchronization.
+
+## Decisions and Action Items
+
+*   **Note Taking**: Spencer Dawkins to continue as primary note-taker for this meeting, with others assisting.
+*   **draft-ietf-avtcore-skip-servicemode**:
+    *   **Action**: Authors to prepare a proposed set of changes to address Socker's DISCUSS comments and send them directly to Socker for review. (Owner: Mo, Dan)
+    *   **Action**: Chairs to inquire with the Area Director about placing this document on the IESG's "returning item" list to encourage reviewer engagement. (Owner: Chairs)
+*   **draft-ietf-avtcore-frameworking**:
+    *   **Action**: Author to add privacy considerations to the security considerations section, including a mention of `cryptex` as a potential solution for protecting sensitive header extensions and clarifying that frameworking is intended for topologies with middle boxes (and not recommended for others to preserve privacy). (Owner: Mo)
+    *   **Action**: Author to update the draft based on these changes. (Owner: Mo)
+    *   **Action**: Chairs to consider one round of email follow-up with the DISCUSSor; if no response, proceed with draft update and standard process. (Owner: Chairs, Mo)
+*   **draft-ietf-avtcore-b3c-payload**:
+    *   **Action**: Author to implement changes: move to base64 coding for fields and remove comments from SDP examples, adding them as text instead. (Owner: Lori)
+    *   **Action**: Chairs to coordinate Working Group Last Call once these minor changes are complete and the author indicates readiness. (Owner: Chairs)
+*   **draft-ietf-avtcore-green-metadata**:
+    *   **Action**: Authors to update the draft to clarify receiver behavior for TSR messages: if resolutions requested are higher than SDP-negotiated limits, the receiver shall ignore the request (i.e., not apply it to media) but still respond with a tsrn message reflecting the actually used or available resolutions. (Owner: Srinivas)
+*   **draft-thatcher-avtcore-s-frame-packetization**:
+    *   **Action**: Author to add an introduction to the draft, drawing from previous discussions and materials. (Owner: Peter Thatcher)
+    *   **Action**: Author to submit the draft to the IETF archive. (Owner: Peter Thatcher)
+    *   **Action**: Author to request review from the working group after submission. (Owner: Peter Thatcher)
+*   **draft-ietf-webrtc-hevc-profile**:
+    *   **Action**: Chairs to notify the RTCWEB mailing list about the existence of this draft and the AVTCORE WG's plan to adopt it, inviting any objections or suggestions. (Owner: Chairs)
+
+## Next Steps
+
+*   Continued work on all active drafts, addressing open issues and DISCUSS comments as outlined above.
+*   Monitor progress on the `draft-thatcher-avtcore-s-frame-packetization` and solicit feedback from the working group.
+*   AVTCORE document authors for RTP over Quick (`roq`) to remain engaged with the broader peer-to-peer Quick discussions and efforts related to Quick+ICE integration, ALPN, SDP signaling, and real-time congestion control, contributing requirements and ensuring interoperability where applicable.
+*   The chairs will monitor the chartering process of the new Congestion Control Working Group and discussions in the Quick WG regarding peer-to-peer functionality to determine the appropriate venue for general peer-to-peer Quick work that is not specific to RTP.

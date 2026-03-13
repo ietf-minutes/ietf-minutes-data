@@ -1,0 +1,68 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI working group received an update from the design team on the architectural concepts and current status of the five related drafts. The session included a detailed walkthrough of the proposed architecture, clarifications on terminology and state management, and example scenarios for adding and removing participants. A significant portion of the discussion focused on the modularity of the design, particularly around the end-to-end encryption (MLS) component, and the need for document consolidation and clarity for future adoption.
+
+## Key Discussion Points
+
+*   **Architectural Concepts Review**:
+    *   The established client-server-server-client architecture remains central, with the MIMI scope covering the server-to-server interactions within a room.
+    *   Each room is hosted on a single, constant Hub server, through which all room-related communications are routed to accommodate potential lack of full mesh connectivity.
+    *   **Terminology Clarification**: The term "member" is now exclusively used for clients within an MLS group, while "participant" refers to users in a room. A user is a participant; their clients are members.
+    *   **Participant States**: A participant can be "active" (having clients joined to the MLS group) or "inactive" (no clients in the MLS group).
+    *   **Room State Visualization**: The room state comprises an Authorization Policy, a Participant List, and an MLS Group (which includes a list of clients). There's an implied mapping from MLS clients to users.
+    *   **Interlock of State Components**: A hierarchy of governance was proposed: the Authorization Policy governs who can be a participant, and the Participant List acts as a boundary for the MLS Group (a client can only be in the MLS Group if its user is in the Participant List).
+    *   **Confirmation Mechanism**: The MLS key schedule is proposed as a confirmation mechanism. Hashing the entire room state (Authorization Policy, Participant List) into an MLS group context extension or PSK ensures that all clients agreeing on the MLS state also agree on the other room state components.
+    *   **Order of Operations**: To maintain invariants, specific orders are required for changes:
+        *   **Joins**: User added to Participant List *before* client added to MLS Group.
+        *   **Leaves**: Client removed from MLS Group *before* user removed from Participant List.
+        *   Ecker and Basil raised questions on the implications of this order, particularly for adversarial scenarios or the specific flow of removing Alice's clients. Richard suggested an "exiting state" for participants during removal.
+
+*   **Lego Brick Protocol Model**:
+    *   The architecture is conceptualized as modular "Lego bricks": Transport, End-to-End Encryption (MLS group), Policy, and Signaling protocols, with Application Logic tying them together.
+    *   The End-to-End Encryption block is described as an "MLS-shaped hole."
+    *   **Flexibility for other E2E protocols**:
+        *   Ecker inquired if this implies extensive efforts for abstraction to allow non-MLS E2E. The consensus was that the WG's charter is to build MLS-flavored MIMI, and while the design aims for *reasonable* modularity, it is not the WG's responsibility to extensively facilitate other E2E protocols. Implementers wishing to use other protocols would be responsible for making them fit the MLS-shaped hole and potentially implementing missing features (e.g., confirmation).
+        *   Tim asked about in-band negotiation for E2E protocols; Matthew and Conrad noted versioning could provide agility, but no specific in-band negotiation is expected within the WG's scope.
+        *   Matthew highlighted the pragmatic benefit of modularity for transitional adoption by providers currently using other E2E solutions.
+
+*   **Document Status and Consolidation**:
+    *   The five current drafts (MIMI Arch, MIMI DS, MIMI MLS Group, MIMI Policy, MIMI Signaling) map to the "Lego blocks" but are currently disconnected and inconsistent.
+    *   **Feedback on Consolidation**: Ecker and Tim strongly advocated for consolidating documents.
+        *   Ecker found the current separation difficult to follow and read, suggesting a "Håland's Law" effect (over-modularization makes a system harder to understand).
+        *   Tim noted the administrative overhead of multiple documents, referencing experience in PPM WG.
+        *   Conrad suggested keeping "MIMI DS" as a separate document due to its potential utility for other MLS users outside MIMI.
+        *   Travis, author of Policy and Signaling, agreed those two could easily merge, and transport *might* merge into a "MIMI protocol stack," but likely not into a single document.
+    *   **Content Gaps**: Ecker noted that some documents reference external content (e.g., GitHub issues) which needs to be filled in for clarity before adoption calls.
+    *   **MIMI Arch Document**: Discussion on whether to keep the architecture document separate or merge it. Matthew and Rowan preferred keeping it separate as a high-level "what" document guiding readers to the "how" protocol documents.
+
+*   **Scenario Walkthrough: Alice Adds Bob**:
+    *   Assumptions: Bob's identifier discovered, consent handled, many join flows exist.
+    *   Flow: Alice creates group (outside MIMI), then a signaling event to invite Bob. Hub establishes secure connection and fans out the invite. Bob's server checks policy/consent. Bob accepts, creating a join signaling state change. Hub distributes join. Hub sends group info to Bob's server. Bob performs an external commit, which is sent to Hub, processed, and distributed to Alice, updating room state.
+    *   **Confirmation Point**: Conrad explained that the Hub requires the *next commit* (including Bob's external commit) to feature the updated participant list (with Bob) as part of the group state's confirmation mechanism.
+    *   **Hub Enforcement**: Ecker questioned the necessity and feasibility of the Hub enforcing MLS invariants, particularly if clients could pretend to meet them or if the Hub's enforcement logic is complex. Conrad argued it prevents group splits where members disagree on the participant list. Richard emphasized the need to formally specify these rules and their security guarantees.
+
+*   **Scenario Walkthrough: Alice Leaves**:
+    *   Assumptions: Alice and Bob in room, Alice's server is Hub.
+    *   Flow: Alice generates a leave signaling event and sends to Hub. Hub requires all Alice's devices to leave the MLS group. Bob (as the remaining participant) generates an MLS commit to remove Alice's clients. The commit goes to Hub, is processed, and distributed. Alice learns her clients were removed.
+    *   **Post-Leave Hub Transfer**: Travis highlighted that if Alice's server was the Hub, and Alice leaves, the room's Hub role might need to transfer to another server, a topic not yet fully discussed by the design team.
+
+## Decisions and Action Items
+
+*   **Decision**: The working group will focus on MLS-flavored MIMI. While the architecture allows for modularity, the core specification will be built assuming MLS. The WG will not undertake extensive efforts to define a generic, abstract E2E interface for non-MLS protocols.
+*   **Action Item (Design Team)**:
+    *   **Document Consolidation**: Review and consolidate the existing five drafts (MIMI DS, MIMI MLS Group, MIMI Policy, MIMI Signaling, MIMI Transport) into a fewer, more cohesive set of documents. The goal is to improve readability and consistency.
+    *   **Technical Alignment**: Integrate the architectural concepts discussed (e.g., member/participant distinction, state interlocks, confirmation mechanism, specific order of operations for joins/leaves) into the updated documents.
+    *   **Clarity and Completeness**: Fill in content currently referenced externally (e.g., GitHub issues) and ensure all definitions and protocol flows are self-contained and clearly articulated within the drafts.
+    *   **MLS Focus in Language**: Refine the language in the documents to clearly state the assumption of MLS for key establishment as per the WG's charter, removing any "transitional" or overly abstract language regarding alternative E2E protocols within the core RFC text.
+    *   **Hub Enforcement**: Further elaborate and justify the role of the Hub in enforcing MLS invariants and managing room state, addressing concerns about complexity and adversarial scenarios.
+    *   **Order of Operations for Leaves**: Clarify the specific order of operations for participants leaving a room, potentially introducing an "exiting state" for users to maintain invariants until all their clients are removed from the MLS group.
+    *   **Hub Transfer**: Discuss and propose a mechanism for Hub transfer if the current Hub's user leaves the room.
+    *   **Architecture Document**: The decision on whether to merge the architecture document or keep it separate will be revisited once the other documents are consolidated and their structure is clearer.
+
+## Next Steps
+
+*   The Design Team will work on the action items listed above and prepare revised versions of the documents.
+*   The working group tentatively plans to discuss the revised documents at an interim meeting on **October 19th**. An earlier interim on October 10th will focus on discovery topics.
+*   The chairs encourage all working group members to review the updated drafts once available and provide feedback, particularly those not on the design team.

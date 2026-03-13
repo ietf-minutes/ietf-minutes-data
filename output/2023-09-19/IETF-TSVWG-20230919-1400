@@ -1,0 +1,85 @@
+# [TSVWG](../wg/tsvwg.html)
+
+## Summary
+
+This interim TSVWG meeting focused on the progress and technical considerations for two main work items: DTLS for SCTP and UDP Options. For DTLS for SCTP, two primary approaches were discussed in detail, along with liaison feedback from 3GPP and IPR considerations. A design team was proposed to further refine requirements and security analysis for this work. For UDP Options, an update on the resolution of GitHub issues was provided, indicating readiness for a final Working Group Last Call.
+
+## Key Discussion Points
+
+*   **Administrative and Logistics**
+    *   Gary Fairhurst and Martin Duke (absent) are co-chairs.
+    *   The meeting is covered by the IETF Note Well.
+    *   Notes were taken in the associated HedgeDoc. A participant volunteered to help.
+    *   Meteca hand tool for queuing was used.
+    *   **Status Updates**:
+        *   Final review for ECN encapsulation and shim drafts is underway, to ensure correctness with L4S specs before IESG submission.
+        *   UDP Options has completed its first Working Group Last Call (WGLC), with ongoing discussions.
+
+*   **SCTP and DTLS Work**
+    *   Magnus Westland presented on DTLS for SCTP, aiming for a consensus call on direction.
+    *   **IPR Disclosure**: Ericsson will make a new IPR disclosure to ensure no license is needed to implement the kernel parts of the SCTP Crypto DTLS solution. The formal disclosure is underway.
+        *   A participant raised concerns about testing kernel implementations without IPR clarity.
+    *   **Liaison Statements from 3GPP**:
+        *   **SA3 (Security)**: Confirmed TSVWG's interpretation of architectural security requirements. Stated preference for Solution 2 (DTLS in crypto chunk) due to perceived lower implementation effort compared to Solution 1 (DTLS over SCTP, requiring changes in existing SCTP/DTLS standards and libraries).
+            *   Participants noted that 3GPP's discussion did not delve into kernel vs. user space implementation details or deep comparisons of pros/cons/deployability/threat vectors.
+            *   It was agreed that TSVWG should make its own assessment and, if differing from SA3's preference, clearly communicate the rationale back to 3GPP via a liaison.
+        *   **RAN3**: Reaffirmed that any solution must *not* limit the maximum message size, even beyond previously identified 142KB/500KB theoretical limits.
+    *   **Comparison of Solutions**:
+        *   **DTLS over SCTP (Solution 1)**: Adaptation layer, depends on updated SCTP Auth, pushes keys to auth layer, user message fragmented for DTLS record protection, relies on SCTP Auth for ordering. Uses parallel DTLS connections for re-keying.
+        *   **DTLS in Crypto Chunk (Solution 2)**: Implemented inside SCTP stack, protects each set of SCTP chunks in a packet. DTLS handshakes use data chunks with a specific PPID. Uses SCTP's normal fragmentation.
+        *   **Re-keying Robustness**:
+            *   Solution 2: Initiates new DTLS handshake via SCTP message; new keys can be used immediately upon handshake completion, old keys drained with a simple timer.
+            *   Solution 1: Involves two layers (DTLS and SCTP Auth). Challenges in knowing when all DTLS records protected by old keys are processed/decrypted, potentially requiring deep API integration or draining the SCTP connection (impacting application latency).
+        *   **SCTP Replay Protection**:
+            *   Solution 2: Uses DTLS replay protection, robust against availability attacks.
+            *   Solution 1: SCTP Auth lacks replay protection. Relies on SCTP's TSN wrap-around protection (after 2^32 data chunks) and frequent re-keying to prevent replay for data chunks. No general protection for control chunks without sequence numbers.
+            *   Discussion on whether SCTP implementations should inherently handle replays and if additional DTLS replay protection is strictly necessary, or protection against implementation bugs.
+        *   **Performance Overhead**: Solution 2 (single cipher operation per record) generally has a smaller overhead than Solution 1 (DTLS cipher + SCTP Auth HMAC-SHA256). CPU performance is generally not critical for 3GPP use cases (control/signaling).
+        *   **Trust/Study**: DTLS is a well-studied protocol. SCTP Auth is less widely implemented/studied, raising general trust concerns about potential unknown weaknesses.
+        *   **Message Size Limits**: Both solutions can support very large messages, fulfilling RAN3's requirements.
+        *   **Implementation Impact**:
+            *   Solution 2 (Crypto Chunk): Kernel impact for SCTP stack; requires split DTLS implementation for kernel record protection; new API for crypto context. Expected to be easier for userland stacks.
+            *   Solution 1 (DTLS over SCTP): Requires SCTP Auth update for kernel SCTP stack; potential new API for SCTP data tracking; DTLS implementation updates (connection ID, RFC 8449 for record size negotiation, max 16384 byte records).
+            *   Discussion about the readiness of DTLS implementations for full max record sizes and connection IDs.
+        *   **DTLS 1.3 / Connection ID**: Both aim to support DTLS 1.2 and 1.3.
+            *   Solution 2: No DTLS Connection ID required.
+            *   Solution 1: DTLS Connection ID required, which is not widely supported in current DTLS stacks. Must turn off DTLS connection ID for replay protection due to potential reordering.
+        *   **SCTP Association Restart**:
+            *   Solution 2: Current draft discusses maintaining crypto context or a plaintext init. Plaintext init opens an availability attack vector if an attacker forces a restart. Discussion ensued regarding the severity of this attack (man-in-the-middle capability implies ability to drop packets anyway) and whether current SCTP design principles handle such attackers.
+            *   It was noted that RFC 3873 (SCTP in IPsec) requires maintaining authenticated crypto context for restart.
+    *   **RFC 6083bis (Updating DTLS over SCTP without IPR)**
+        *   Michael Tüscher presented an alternative proposal to update RFC 6083 aiming to avoid IPR encumbrances (specifically Ericsson's).
+        *   **Dependencies**: Generic SCTP authentication fixes (not specific to this work).
+        *   **Regressions from original spec**: DTLS key updates need to be specified; renegotiation limits in DTLS 1.2/1.3 restrict arbitrary long communications; forward secrecy for key updates in DTLS 1.3 is an open issue for the TLS WG.
+        *   **Relaxing limitations**: Draining during re-keying can be mitigated by keeping older keys longer at the SCTP layer. User message type limit can be increased from 16KB to 64KB using RFC 8449 (TLS Flags extension) while maintaining the 1:1 mapping of DTLS record to SCTP message. Larger than 64KB messages would require IPR-protected fragmentation.
+        *   **Goal**: An open-source implementable way to secure SCTP user data.
+        *   The TLS Flags extension is believed to be completed work in the TLS WG.
+        *   It was suggested to gauge interest on the mailing list for progressing this work.
+
+*   **UDP Options Work**
+    *   Joe Touch is revising `draft-ietf-tsvwg-udp-options`, responding to GitHub issues.
+    *   **Issue Review**:
+        *   Issues 1, 2, 3, 9, 11, 13 were identified as closable or resolved.
+        *   **Issue 8 (privacy/exposure)**: Need to add text to the security considerations about the plain text nature of options and potential privacy exploits.
+        *   **Issue 10 (pseudocode)**: Debated, needs decision on the level of complexity for pseudocode in the draft.
+        *   **Issue 12 (Optional Checksum - OCS)**: Ongoing debate regarding OCS (always present vs. optional vs. conditionally absent). Arguments include reducing code branches, checking option space sanity, and performance in tunnels with UDP fragmentation where checksums are off.
+        *   **Issue 14 (clarification)**: Close to being closed.
+        *   **Issue 15 (return options when socket bound)**: Clarified, can be closed.
+        *   **Issue 17 (middleboxes)**: Acknowledged, will be addressed.
+        *   A typo (missing "not") in the latest draft was noted.
+    *   **Plan**: Joe will produce Rev 24 based on these discussions, with the intention for a final Working Group Last Call.
+
+## Decisions and Action Items
+
+*   **Decision**: For the SCTP/DTLS work, a design team will be created to define clear requirements, perform threat analysis, and clarify security aspects in coordination with the TLS WG. This will enable an informed decision on the path forward.
+*   **Action Item**: Gary Fairhurst will speak to the Area Director about creating the SCTP/DTLS design team.
+*   **Action Item**: Individuals interested in participating in the SCTP/DTLS design team should contact Gary Fairhurst or Magnus Westland.
+*   **Action Item**: Michael Tüscher to ask on the mailing list if there is interest in progressing `draft-tuescher-tsvwg-dtls-sctp-bis`.
+*   **Action Item**: All working group members are encouraged to review the `draft-ietf-tsvwg-udp-options` and its GitHub issues, providing comments on the mailing list or GitHub.
+*   **Action Item**: Joe Touch (draft editor) will produce Rev 24 of the UDP Options draft addressing the discussed issues.
+
+## Next Steps
+
+*   The newly formed SCTP/DTLS design team will immediately begin work on requirements and threat analysis, aiming to make progress before the next IETF meeting.
+*   The `draft-ietf-tsvwg-udp-options` (Rev 24) is expected to proceed to a final Working Group Last Call.
+*   All participants are encouraged to read draft comments and attend the TSVWG session at the IETF 118 meeting in November.

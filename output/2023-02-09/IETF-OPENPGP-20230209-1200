@@ -1,0 +1,83 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+The OPENPGP working group met to discuss outstanding issues and proposed changes to the OpenPGP Crypto Refresh draft (4880bis) with the goal of moving it towards Working Group Last Call. Key discussions revolved around version numbering for new packet types, aliasing concerns for signature trailing data, the handling of salt length, and the contentious topic of context parameters for signatures and encryption. Decisions were reached on most technical points, including renaming V5 packets to V6, reverting signature trailer length to 4 octets, binding salt size to hash algorithms, and simplifying ECDH key wrap input. The working group decided *not* to include context parameters in the current draft but recognized the need to revisit this topic in the future. The group aims to finalize the draft soon, with a call for concrete merge requests and mailing list feedback. Discussions also touched upon designated revoker guidance, the inclusion of EAX AAD mode, and plans for an IETF 116 meeting to address rechartering for future work, notably Post-Quantum Cryptography.
+
+## Key Discussion Points
+
+*   **V5 to V6 Renaming:**
+    *   Discussion focused on renaming Key, Signature, and One-Pass Signature packets from V5 to V6 to avoid conflicts with existing GnuPG implementations not compliant with the draft specification.
+    *   A prefix octet change from 9A to 9B (as in Merge Request 231) was also discussed.
+    *   A question was raised about moving PKESK (Public Key Encrypted Session Key) and SKESK (Symmetrically Encrypted Session Key) to V6 to align all new version numbers (except SEIPD V2).
+    *   Jonathan raised a concern as a maintainer of code supporting the V5 format, emphasizing the need for V6 to be a distinct format.
+
+*   **V5/V6 Signature Trailing Data Aliasing:**
+    *   Issue 130 highlighted a potential aliasing risk where V5 (now V6) signatures, using an 8-octet trailer length, could be transformed into subtly different V3 signatures if the trailer length happened to match a V3 timestamp format.
+    *   The proposal (Merge Request 220) was to revert V6 signatures to a 4-octet trailer length, similar to V4, and explicitly forbid/reject signature type 0xFF to prevent aliasing with V3.
+    *   Jonathan inquired about the impact on existing (unspecified) V5 implementations.
+
+*   **Salt Length in V6 Signatures:**
+    *   Aaron Whistler's concern (Merge Request 219) about fixed 16-octet salt length for V6 signatures, which might be insufficient for future Post-Quantum Cryptography algorithms, was discussed.
+    *   The proposal was to bind the salt size to the hash algorithm and include the salt size on the wire. Signatures with mismatched salt sizes and hash algorithms would be rejected.
+    *   Falco suggested that for deprecated hash algorithms (SHA-1, MD5), the salt size could be a minimum of 16 octets or "not applicable".
+    *   Justice supported the change for easier parsing of signatures where the hash algorithm might be unknown and volunteered to add interoperability tests.
+
+*   **Context Parameters for Signatures and Encryption:**
+    *   Marcus Brötzmann's proposal (Merge Request 214) to add context parameters for both signatures and SEIPD V2 encryption was discussed, aiming for domain separation to prevent misuse across applications.
+    *   Daniel argued for explicit context parameters to encourage domain separation, noting existing notation data subpackets for signatures were "hacky," and there's no equivalent for encryption. He suggested application-level definitions for context values.
+    *   DKG expressed concern about potential interoperability failures in non-Greenfield implementations if context parameter values are not standardized or agreed upon.
+    *   Neil and Justice raised usability and API complexity concerns, particularly for end-users verifying signatures manually or for existing applications.
+    *   Falco supported the concept for encryption (due to known attacks) but suggested making it optional or having it travel with the message.
+    *   Jonathan questioned the value over existing notation subpackets if the goal is application cooperation and not cryptographic inability to decrypt.
+
+*   **Simplify V6 ECDH PKESK Key Wrap Input:**
+    *   Merge Request 223 proposed simplifying the V6 ECDH PKESK key wrap input by removing redundant information (symmetric algorithm, checksum, PKCS#1 padding), as ECDH key wrap has an implicit checksum, SEIPD V2 exposes the symmetric algorithm, and session keys are multiples of 8 octets.
+    *   Daniel and Justice supported the simplification, citing better alignment with standards and general improvements.
+
+*   **Document Title:**
+    *   Brief discussion on renaming the draft from "OpenPGP Message Format" to something more encompassing, such as "OpenPGP" or a longer descriptive title.
+
+*   **Designated Revoker Guidance:**
+    *   DKG had posted a draft to the mailing list for designated revoker guidance, seeking feedback.
+
+*   **EAX AAD Mode:**
+    *   Daniel raised a question about the inclusion of EAX AAD mode in a recent draft by Werner, asking if it was necessary given the existing GCM and OCB modes, and the potential difficulty of justifying three AAD modes.
+    *   The chairs emphasized the late stage of the draft and the high bar for any changes, especially deletions, due to the risk of delaying completion.
+
+## Decisions and Action Items
+
+**Decisions:**
+
+*   **V5 to V6 Renaming:** The working group agreed to proceed with renaming V5 packet types (Keys, Signatures, One-Pass Signature) to V6.
+*   **PKESK/SKESK to V6:** The working group agreed to move PKESK and SKESK to V6.
+*   **Prefix Octet:** The prefix octet will be changed from 9A to 9B as part of the V6 transition.
+*   **Signature Trailer Length:** The V6 signature trailer length field will revert from 8 octets to 4 octets to prevent aliasing with V3 signatures.
+    *   *Poll Result:* 7 in favor, 0 opposed.
+*   **Salt Length in V6 Signatures:**
+    *   Salt size for V6 signatures will be bound to the hash algorithm used and indicated on the wire.
+    *   Signatures will be rejected if the salt size on the wire does not match the expected size for the algorithm.
+    *   For deprecated hash algorithms (SHA-1, MD5), the salt size will be specified as "not applicable".
+    *   *Poll Result (Deprecated Hash Salt Size):* 6 for "not applicable", 0 for "16 octets".
+*   **Context Parameters:** The working group decided *not* to add context parameters for V6 signatures or SEIPD V2 encryption in the current draft.
+    *   *Poll Result (Signatures):* 2 for, 7 against.
+    *   *Poll Result (Encryption):* 2 for, 7 against.
+*   **Simplify V6 ECDH PKESK Key Wrap Input:** The working group agreed to simplify the V6 ECDH PKESK key wrap input.
+    *   *Poll Result:* 5 in favor, 0 opposed.
+*   **EAX AAD Mode:** The working group decided not to pursue the removal of EAX AAD mode from the draft at this late stage.
+
+**Action Items:**
+
+*   **DKG (or volunteer):** Create a merge request (MR) to move PKESK and SKESK to V6, building on existing MR 231.
+*   **Daniel:** Update MR 219 (salt length) to reflect the decision to specify "not applicable" for deprecated hash algorithms' salt size.
+*   **Implementers:** Provide feedback on the mailing list once changes are made, particularly confirming that test vectors (if updated) work against their implementations.
+*   **Chairs:** Collate suggestions for rechartering from the mailing list and post them for discussion in the coming weeks, ensuring it does not distract from the 4880bis finalization.
+*   **Participants:** Engage in discussion on the mailing list regarding the designated revoker guidance draft.
+
+## Next Steps
+
+*   **Draft Updates:** The editor is requested to make the agreed-upon changes, ideally via concrete merge requests, to produce a new revision of the OpenPGP Crypto Refresh draft.
+*   **Working Group Last Call Preparation:** After the new draft revision, there will be a short period for implementers and the working group to review and confirm the changes.
+*   **Mailing List Engagement:** Active participation on the mailing list is crucial for confirming consensus on all changes and moving the document towards publication.
+*   **IETF 116 Yokohama Meeting:** The working group plans to meet at IETF 116 to discuss potential rechartering for future work, with Post-Quantum Cryptography being a primary area of interest. Topics for rechartering should be sent to the chairs via email.
+*   **Context Parameters Future Work:** The working group explicitly agreed to revisit the topic of context parameters in the future, after the current 4880bis document is complete, recognizing its importance despite the decision not to include it in the current draft.

@@ -1,0 +1,96 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ working group held a virtual interim meeting to discuss the object model and the roles and functionality of intermediaries (relays). Key discussions centered on defining tracks and objects, how groups of objects are organized and synchronized, and the architectural implications for layered encodings and relay capabilities, particularly regarding media transparency and authorization. The group aimed to gain consensus on major architectural points to inform draft updates for Yokohama.
+
+## Key Discussion Points
+
+### Logistics and Agenda
+
+*   **Scribes**: The chairs requested a scribe and backup scribe, emphasizing that IETF minutes focus on decisions rather than verbatim transcription. Martin Duke volunteered as scribe.
+*   **Audio Issues**: Initial audio clipping issues were noted for the chair, but later resolved.
+*   **Agenda Bashing**: Spencer Dawkins proposed adjusting the agenda to include planning for Yokohama, specifically to address evolving terminology and the potential need for an architecture draft. This time was reallocated from the issue discussion.
+*   **Goals for the Meeting**: To achieve consensus on major architectural components (object model, relays) to enable authors to publish drafts for adoption before Yokohama, with a view towards eventual interoperability testing.
+
+### Object Model (Christian Huitema's Presentation)
+
+*   **Tracks as Building Blocks**: There was an almost consensus to use "tracks" as the fundamental building block, defined as a specific encoding of a media stream. Selection and composition of tracks (e.g., language, video format, multiple participants) are left to user agents and application-level catalogs, not MOQ.
+*   **Objects within Tracks**: Tracks are composed of a series of "objects," which carry content (e.g., a video frame). Objects are typically encrypted and opaque to relays, but carry metadata for transmission management. Object granularity can vary (e.g., single video frame, a layer of an encoding, a group of blocks).
+*   **Track Naming and Authorization**:
+    *   **Proposition**: Track names should be opaque URLs, parsable like HTTP URLs to identify the authority/provider, but with application-defined internal structure.
+    *   **Discussion on Authorization**: Authorization is envisioned to occur at the track access level, similar to HTTP (client/relay asks origin for access). Spencer Dawkins raised the point about authorization tags at the object level, which was acknowledged as an overlooked area.
+    *   **Action Item**: Christian Huitema agreed to open an issue for further discussion on fine-grained (per-object) authorization.
+*   **Emissions/Broadcasts (Group of Tracks)**:
+    *   **Proposition**: Introduce a concept like "emissions" or "broadcasts" to represent multiple tracks from the same publisher that are requested and authorized together (e.g., a video game with multiple audio/video/event tracks). This would allow a single authorization transaction for a bundle of tracks.
+    *   **Discussion**: Spencer Dawkins sought clarification on the relation to "emitter" from intermediary discussions. Luke suggested that emissions should imply synchronized tracks and define a prioritization domain, crucial for congestion control (e.g., audio before video). Ted Hardie noted the need to distinguish between unrelated and interrelated track collections from the same origin, especially for layered encodings.
+*   **Groups of Objects**:
+    *   **Proposition**: Objects within a track are organized into "groups," which serve as synchronization points where a client can start receiving and safely play media without external state. Groups could also allow relays to drop entire groups during congestion.
+    *   **Discussion**: Mo asked for clarification on "stateless" groups – it means they can be accessed independently without importing state from outside. Will Law suggested renaming "synchronization point" to "Track Access Point" (TAP) and assigning numeric IDs to groups for sequencing and allowing clients to request the "last group." Jody asked if groups were strictly necessary, or if flags on objects would suffice; Christian noted the robustness benefits of a hierarchical structure over flags (if a flag-carrying object is lost).
+*   **Congestion Response and Layered Encodings**:
+    *   **Discussion**: Relays need metadata to make intelligent dropping decisions during congestion without accessing media content. This requires understanding dependencies between objects.
+    *   **Layered Encodings**: Extensive discussion on the complexity of layered codecs (temporal and spatial dependencies) and how they should be represented (single track with rich object metadata vs. multiple tracks). This was identified as a complex area needing focused effort.
+    *   **Action Item**: Chairs (Ted Hardie, Alan Frindell) will identify a group for focused discussion on layered encodings, and volunteers should contact them.
+    *   **Receiver-Driven vs. Sender-Driven**: Bernard Aboba highlighted the importance of clarifying whether the architecture is sender-driven (sender knows all layers) or receiver-driven (receiver only knows what it's receiving). Christian indicated a largely sender-driven model but noted receiver subscription for specific layers.
+
+### Intermediaries Design Team Report (Spencer Dawkins' Presentation)
+
+*   **Roles**: The design team started by defining roles: Publishers, Subscribers, Media Sources, Media Sinks. More recently, concepts like "Catalog Creators" and "Emitters"/"Receivers" have emerged.
+*   **Mock Endpoints**: Defined as entities that are a source/sync for media, publisher/subscriber, trusted with encryption keys, able to modify object headers/payloads, parse catalog/object messages, and originate subscribe/publish messages.
+    *   **Clarification**: Ted Hardie emphasized that not all endpoints will have all these capabilities or trust levels; this defines the *set* from which endpoint classes are drawn.
+*   **Mock Relays - Core Principle**: Relays fundamentally **do not require access to unencrypted media payloads**. Spencer also noted a more restrictive emerging view that they ideally don't require access to *unencrypted media metadata* either.
+*   **Relay Functionality (What they *do* do)**:
+    *   Replication (1:1 forwarding).
+    *   Fan-out (1:N forwarding).
+    *   Hop-by-hop reliability (acknowledgements, retransmissions).
+    *   Caching (for rewind/replay functionality).
+    *   Validation of authorization credentials.
+*   **Relay Restrictions (What they *don't* do)**:
+    *   Not parsing catalog messages.
+    *   Not parsing object message payloads.
+    *   Not originating subscribe messages.
+    *   Not originating publish messages (initially, this point was debated).
+*   **Discussion on Relay Functionality**:
+    *   **Originating Subscribe/Publish**: Ellen and Suhas questioned the restriction on relays originating subscribe/publish messages, citing use cases like pre-subscribing or forwarding. Will Law argued that if relays don't read catalogs, they don't know *what* to subscribe to; more complex actions make them back-to-back endpoints, not simple relays. Tim added a use case for relays originating publish messages for fragmentation/repacking due to mixed MTUs.
+    *   **Encryption and Relays**: Martin Duke raised a fundamental question: if content is 1:1 end-to-end encrypted, what is the role of a relay? Will Law, James and Suhas explained benefits: improved routing (CDNs), privacy (obscuring sender IPs), many-to-many conferencing (group keys managed outside MOQ, e.g., MLS), consistent edge for NAT/firewall traversal, regional data requirements.
+    *   **Relation to Origin**: Christian Huitema highlighted a distinction between relays acting on behalf of a client and those acting on behalf of an origin (e.g., CDN with a contract), which influences authorization and routing.
+    *   **Rate Adaptation**: Spencer noted that the design team concluded that rate adaptation (changing codec rates, encoding qualities) is likely *not* a minimal relay function, but rather a back-to-back endpoint function.
+    *   **Key Management**: Ted Hardie stressed that while key management is out of scope for MOQ, the protocol *must not presume* that relays have access to the media. Any information relays need to do their job must be in transport metadata accessible to them.
+
+### Issue Resolution (Issue #66: Relaxed Catalog Definition)
+
+*   **Catalog as a Track**: Will Law summarized the emerging idea that a catalog could be treated as another track. It would have "groups" where an independent catalog (full catalog) forms a group, and subsequent updates could be "delta objects" within that group. Clients would request the latest full group plus deltas.
+*   **Catalog in WebTransport URL**: Will also proposed merging catalog definition into the WebTransport URL to carry information about desired content.
+*   **Discussion**:
+    *   Suhas supported treating catalogs as tracks with group properties.
+    *   Luke discussed challenges with delta updates for catalogs (e.g., in large conferences), suggesting that the frequency of full vs. delta updates would depend on change rate. He also noted the need to negotiate catalog formats.
+    *   Ted Hardie and Alan Frindell suggested that while the core protocol can treat catalogs opaquely, a separate document defining common catalog formats will be necessary for interoperability.
+    *   **Emerging Consensus**: There was emerging consensus that a WebTransport session should be scoped to a single "emission," and there would be one catalog per emission. This simplifies scope and aligns with authorization and routing concerns.
+    *   Christian Huitema reinforced that the discussion about catalog structure and scope must be grounded in routing (multiple connections for multiple origins) and authorization (per connection vs. per track).
+
+## Decisions and Action Items
+
+### Decisions
+
+*   **Agenda Adjustment**: Time was reallocated from issue discussion to "Wrap up and planning for Yokohama" to address terminology and architectural discussion needs.
+*   **Object Model Basics**: Tentative consensus on tracks as fundamental building blocks and objects as content carriers within tracks.
+*   **Group Semantics**: Tentative consensus on "groups" as synchronization/access points for tracks, supporting stateless access and having numeric identifiers. The term "Track Access Point" (TAP) was suggested for synchronization points.
+*   **Relay Transparency**: Relays primarily operate without access to unencrypted media payloads, and ideally also without access to unencrypted media metadata.
+*   **Catalog Scoping**: Emerging consensus that a WebTransport session is scoped to a single "emission," and there is one catalog per emission.
+
+### Action Items
+
+*   **Per-Object Authorization**: Christian Huitema to open an issue for further discussion on the feasibility and implications of per-object authorization.
+*   **Layered Encodings Discussion Group**: Chairs (Ted Hardie, Alan Frindell) to identify and form a dedicated group to focus on the specifics and complexities of representing and handling layered encodings within MOQ. Volunteers should contact the chairs.
+*   **Requirements Draft Submission**: Spencer Dawkins and James to submit the `-04` version of the requirements draft before the Yokohama deadline, to initiate a working group adoption poll.
+*   **Data Model PR Update**: Suhas to update the data model Pull Request on GitHub based on feedback from the meeting, focusing on clarity and conciseness.
+*   **Draft Authors**: All presenters and relevant draft authors are to incorporate feedback from this meeting into their respective drafts before the Yokohama draft deadline (early next week).
+*   **Yokohama Agenda Call**: Chairs to send out a call for agenda items for the Yokohama meeting.
+
+## Next Steps
+
+*   **Draft Updates**: Authors will work to incorporate feedback and submit updated drafts by the upcoming IETF Yokohama draft deadline.
+*   **Layered Encodings**: The newly identified group will begin focused discussions on how to best model and manage layered encodings within MOQ.
+*   **Terminology and Architecture**: The design team will continue to refine terminology and architectural concepts, potentially leading to discussions about a formal architecture draft or expanding the requirements document.
+*   **Mailing List Discussion**: Further discussions on the catalog definition, its relation to WebTransport URLs, and the implications for routing and authorization will continue on the working group mailing list.
+*   **Yokohama Planning**: The chairs will begin planning the agenda for the Yokohama meeting, taking into account the identified areas needing more discussion time (e.g., layered encodings, catalog details, intermediary roles/trust models).

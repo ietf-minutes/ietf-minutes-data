@@ -1,0 +1,66 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI working group met to discuss the architecture and scope of proposed protocols, particularly focusing on the "transport versus delivery service" presented by Rafael Robert. Key areas of discussion included existing points of consensus and divergence among the three main drafts (`linearized-matrix`, `mimi-protocol`, `mimi-delivery-service`), the implications of MLS for client-server and server-to-server interactions, and a deep dive into the `mimi-delivery-service` and `mimi-over-https` drafts. A significant portion of the meeting was dedicated to understanding the challenges and approaches to metadata privacy, especially in the context of consumer versus enterprise messaging, leading to a new action item for threat modeling.
+
+## Key Discussion Points
+
+*   **Agenda Review:** The planned discussion on "transport requirements" (Eric Rescorla's deck) was postponed as Eric was unable to attend. The group proceeded with Rafael Robert's presentation on "transport versus delivery service."
+*   **Overview of Current Drafts:** Rafael introduced three main drafts: `linearized-matrix` (Travis Ryerson), `mimi-protocol` (Jonathan Rosenberg), and `mimi-delivery-service` (Rafael Robert, Conrad Sheer).
+*   **Points of Consensus Identified:**
+    *   A group/conversation/room is owned by a single provider.
+    *   Other providers in a federated environment are considered "guest providers" or "participants."
+    *   APIs are generally RESTful, with the exception of long polling in `mimi-protocol`.
+*   **Points of Divergence/Unclarity:**
+    *   Fundamental choice between a server-to-server or client-to-server protocol.
+    *   Scope of the protocol: specific operations, data transfer, server state.
+    *   Fan-out mechanism: `mimi-protocol` proposes long polling, `mimi-delivery-service` proposes push.
+    *   Distinction and implications of consumer versus enterprise messaging, particularly regarding metadata.
+*   **Draft Summaries (Rafael's perspective):**
+    *   `linearized-matrix`: Moves away from peer-to-peer, but has dependencies on the broader Matrix ecosystem and isn't clear on metadata.
+    *   `mimi-protocol`: A "batteries included" approach combining application and transport layers, potentially blurring abstraction, and uses long polling for fan-out, raising questions about open Federation compatibility.
+    *   `mimi-delivery-service`: Aims for a narrow scope, describing messages between client and owning provider, agnostic to specific transport or client/server roles, and supporting core MLS functionalities. Two updated versions were recently uploaded.
+*   **Discussion on Protocol Scope:**
+    *   Travis Ryerson expressed a preference for a "batteries included" approach to avoid excessive modularity.
+    *   Ron sounded a note for clear examples, especially regarding MLS specifics, emphasizing the importance of the `mimi-delivery-service` draft.
+    *   Rafael clarified that `mimi-delivery-service` aims to extract common MLS-dependent elements, pushing higher-level application concerns (like cleartext usernames) to layers above, to leverage MLS cryptographic guarantees.
+*   **MLS and Access Control:**
+    *   Tim asked about MLS's role in enforcing policies. Ron clarified that MLS guarantees all members in an "epic" see the same policy document, ensuring cryptographic agreement on the policy itself, but not necessarily its enforcement by clients or servers.
+    *   Rafael added that this allows for guarantees like a server not adding an admin without clients noticing, or guest providers being restricted from adding/removing members.
+*   **Deep Dive into `mimi-delivery-service-00`:**
+    *   **Flow:** Client-to-owning provider (request-response), followed by a server-to-server fan-out phase (where push vs. long polling is debated).
+    *   **Authentication:** Clients authenticate to the delivery service using their MLS-derived cryptographic key material (e.g., signing key from a leaf node), allowing the owning provider to verify membership.
+    *   **Message Structure:** Uses `c-structs` serialized with TLS codec, mirroring MLS practices.
+    *   **Core Operations (MLS-level):** Covered group creation/deletion, joining groups (via welcome or external commit, leveraging server-side tree updates), adding/removing users (via key packages), adding/removing clients (distinct from users, allowing for fine-grained control), updating client key material for post-compromise security, and "resyncing" clients (recovering from out-of-sync states by effectively leaving and rejoining the group).
+    *   **"Resyncing Clients" Terminology:** A participant suggested renaming "resyncing clients" to "rejoin" to avoid connotations of recovering lost history. Rafael agreed this was a good idea, clarifying the scope is purely about cryptographic group membership recovery.
+    *   **Queuing Service:** The fan-out phase, involving the delivery service determining where to send messages. Ron called for input from individuals with experience in message bus architectures, highlighting the need for an IETF-standardized approach if possible. Rafael noted that the scope for interop (full protocol vs. message structure, interactive feedback) is still to be determined.
+*   **Deep Dive into `mimi-over-https-00`:**
+    *   This draft proposes a thin wrapper for `mimi-delivery-service` messages over HTTP.
+    *   It defines endpoints for client-originated requests (`process_group_message`) and handling fan-out.
+    *   Also includes endpoints for retrieving welcome/external commit info, server verification keys, and different categories of key packages (e.g., for one-to-one connections vs. group additions).
+    *   **Rate Limiting:** The architecture supports granular rate limiting based on group IDs and member-specific leaf indices, which is crucial for abuse prevention.
+*   **Metadata Privacy:**
+    *   Rafael emphasized metadata privacy's importance for consumer messaging, while acknowledging it's less critical for enterprise.
+    *   MLS primarily protects content; private proposals/commits offer some message-level metadata protection (encrypted headers), but it's not a complete solution.
+    *   Metadata includes "who is messaging whom," "channel membership," and "contact lists."
+    *   Rafael's research with Conrad suggests a "pseudonymous groups" variant of the delivery service, where servers manage group state without knowing real-world member identities. This reduces metadata exposure but introduces challenges (e.g., more encryption, complex rate limiting, requiring concepts like privacy pass tokens).
+    *   **Interoperability:** Ron questioned how systems with different metadata philosophies (metadata-loving vs. metadata-phobic) would interoperate. Rafael suggested interop occurs at the group level, dictated by the owning server's policies, potentially requiring capability negotiation.
+    *   Manually proposed defining a "bare minimum" metadata requirement for interoperability, with additional metadata tied to optional features.
+    *   Tim raised concerns about the feasibility of a single protocol capturing both consumer and enterprise models given their divergent expectations around privacy and metadata visibility (e.g., iMessage vs. Microsoft Teams). Ron cited the Digital Markets Act (DMA) and use cases like stockbrokers using WhatsApp for customer interactions as examples of demand for interop between consumer and enterprise contexts.
+    *   Travis suggested designing for minimum metadata first, as adding is easier than removing, and aiming for a dynamic protocol. Rafael agreed with starting from security/privacy but stressed that *some* metadata is essential for routing, spam, and abuse prevention, making the challenge about achieving pseudonymity rather than zero metadata. He highlighted the increased complexity for rate limiting and abuse prevention in pseudonymous systems.
+    *   Ron asked about specific spam/abuse prevention for consumer services, especially re-correlating pseudonymous sessions. Rafael explained that while initial interaction might be pseudonymous, a user can report/block, revealing identity to the system, which can then use mechanisms like privacy pass tokens to limit future abuse.
+    *   The need for formal threat modeling of abuse scenarios to benchmark metadata-minimizing approaches was identified.
+
+## Decisions and Action Items
+
+*   **Decision:** The agenda was reordered to prioritize Rafael Robert's presentation due to Eric Rescorla's absence.
+*   **Decision (Consensus to rename):** The terminology "resyncing clients" in the `mimi-delivery-service` draft will be updated to "rejoin" to avoid confusion with historical data recovery.
+*   **Action Item:** Rafael Robert (with Conrad Sheer) will start a new draft focused on threat modeling for abuse scenarios in messaging systems, specifically to benchmark and evaluate the metadata-minimizing version of the delivery service.
+*   **Action Item:** Travis Ryerson and Tim will assist Rafael and Conrad with contributions to the new threat modeling draft.
+
+## Next Steps
+
+*   The next interim session is scheduled for Wednesday, May 31st.
+*   The chairs will work with the community to populate the agenda for the upcoming interim.
+*   Work will commence on the new threat modeling draft.

@@ -1,0 +1,71 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group met to discuss the status of active working group documents and, primarily, to receive a tutorial and engage in a detailed discussion about the CoAP Explicit Flow Measurement (EFM) document (draft-ietf-core-coap-ippm-*) based on IPPM methodologies. Key discussions revolved around the applicability of EFM in various CoAP scenarios, particularly with non-collaborating proxies, leading to clarification on the "safe to forward" behavior for the proposed CoAP option. Implementation details from Telecom Italia were also presented.
+
+## Key Discussion Points
+
+### Document Status Update
+
+*   **draft-ietf-core-yang-seed**: Design team meetings have been held. One more round of feedback is planned before producing a revision for a working group last call right after the cutoff, aiming for processing at IETF 116.
+*   **draft-ietf-core-webdoc-for-coap** and **draft-ietf-core-oscore-involving**: Working Group Last Call (WGLC) for both documents started yesterday and will conclude on February 28th. Feedback is requested via the mailing list or GitHub.
+*   **draft-ietf-core-contact-attribute-registry**: Also in WGLC, ending February 28th.
+
+### CoAP EFM (Explicit Flow Measurement) Tutorial and Discussion
+
+Giuseppe P. presented an overview of draft-ietf-core-coap-ippm-* outlining motivations, methodologies, and CoAP applicability. Massimo A. and Fabio M. from Telecom Italia followed with details on their implementation.
+
+*   **Motivations for CoAP EFM**:
+    *   Need for simple network diagnostics on constrained nodes.
+    *   Minimal collaboration between endpoints to conserve resources (no complex sequence numbers or timestamp storage).
+    *   Leverages "Explicit Flow Measurement" (EFM) techniques from IPPM, originally for encrypted protocols like Quick/TCP, by using a few marking bits in packet headers for loss and delay measurements.
+*   **Spin Bit**:
+    *   Optional in Quick (RFC 9000, RFC 9312).
+    *   Creates a square wave signal between client and server; the length of the square wave indicates Round Trip Time (RTT) for an on-path observer.
+    *   **Discussion**: Assumes continuous traffic; irregular traffic affects measurement accuracy.
+*   **Square Bit**:
+    *   Based on RFC 9341 (Alternate Marking).
+    *   Measures one-way packet loss by counting packets within marked blocks.
+*   **Proposed CoAP Option**: The draft proposes a new CoAP option to carry one or two bits for spin/square bit measurements, with additional event bits for probes that may not fully support EFM.
+*   **CoAP Applicability Scenarios**:
+    *   **Non-proxied Endpoints**: Straightforward end-to-end measurement with on-path observers (probes, gateways). Segmented measurements are possible with multiple observers.
+    *   **OSCORE**: EFM option needs to be sent as an *outer option* to be visible on-path. Discussion suggested it could also be an *inner option* to cover end-to-end measurements while remaining an outer option for on-path observation.
+    *   **Collaborating Proxies**: The scenario involves three separate sessions (client-proxy1, proxy1-proxy2, proxy2-server), allowing independent measurements for each segment.
+    *   **Non-Collaborating Proxies (Crucial Discussion)**:
+        *   **Initial Assumption**: The draft assumed the option could be "safe to forward," allowing non-collaborating proxies to forward it without understanding.
+        *   **Christian A.'s Example**: Demonstrated how generic non-collaborating proxies (which might interleave traffic from multiple clients, or utilize caching) would break the EFM signal for an on-path observer by mixing or omitting packets, making meaningful measurement impossible.
+        *   **Conclusion**: A generic, non-collaborating proxy cannot reliably "safely forward" this option if it's performing typical proxy functions (e.g., caching, multiplexing client traffic).
+*   **Other EFM Methods (for context)**: Delay bit, TB round trip packet loss, loss event bit, reflection square bit were briefly mentioned as additional methodologies described in the IPPM EFM draft, offering improved accuracy or different measurement capabilities.
+*   **On-board Probe Implementation**: Proposal to implement EFM probes directly on user devices or servers for scalability, precision, and to set alarm thresholds.
+*   **Implementation Details (Telecom Italia)**:
+    *   Overview of existing EFM implementations: IETF hackathons (Quick measurements), Ericsson, Orange/Akamai (CDN probes), academic collaborations (Aachen University, Politecnico di Torino, Technion).
+    *   **Mobile Implementation**: Android smartphone client with alternate marking capability, generic server, and an on-device observer measuring end-to-end RTT and loss.
+    *   **Simplicity**: Spin and square bit implementations require few lines of code and have a very small computational footprint, suitable for constrained environments.
+    *   **Demo Screenshots**: Illustrated client-side marking configuration and observer application showing live connection details (RTT min/max/avg, packet loss percentage).
+*   **Further CoAP-specific Interactions**:
+    *   **"Observer" vs. "Probe"**: "Probe" might be more familiar to CoAP community, simple word replacement is fine.
+    *   **CoAP Observe**: The effectiveness of EFM could be reduced with CoAP Observe notifications, especially unconfirmed ones, as they lack paired packets. One-way measurement might still be possible for notifications. This scenario needs explicit consideration in the draft.
+    *   **CoAP Flow Patterns**: Standard CoAP typically uses a lock-stepping request/response model (one request, wait for response/ACK, then next request), making multi-packet flows in one direction rare without extensions. This impacts assumptions about continuous traffic for EFM.
+    *   **Empty ACKs**: Cannot carry CoAP options, limiting EFM to upstream measurement if an empty ACK is the only response.
+    *   **Utilizing Existing RTT Estimates**: End devices often have internal RTT estimates (e.g., from flow control). These could be used for comparison or validation of EFM measurements on the client side.
+
+## Decisions and Action Items
+
+### Decisions
+
+*   **Proxy Handling for EFM Option**: The proposed CoAP EFM option is **not** "safe to forward" for generic, non-collaborating CoAP proxies if the proxy performs functions like caching, multiplexing traffic from multiple clients, or other behaviors that could break the EFM signal.
+*   **Recommended Definition**: The option should be defined as "not safe to forward" by default. However, deployments in controlled environments where proxies are configured to respect certain conditions (e.g., only one client making measurements through the proxy, no caching for this option, specific bypass rules) *may* treat it as if it were safe to forward. This would require a minimum level of understanding and explicit configuration by the proxy operator.
+
+### Action Items
+
+*   **Authors (Giuseppe P.)**: Review the "safe to forward" definitions in relevant CoAP/HTTP RFCs (e.g., RFC 7252, RFC 7641) to ensure the draft's language aligns with CoAP option processing rules, especially regarding the nuanced proxy behavior discussed.
+*   **Authors (Giuseppe P.)**: Revise draft-ietf-core-coap-ippm-* to explicitly clarify the interaction with non-collaborating proxies, incorporating the decision that it is not universally "safe to forward" and detailing conditions under which it *can* be treated as such in controlled environments. This may include specifying minimum proxy support requirements.
+*   **Authors (Giuseppe P.)**: Add a new section or subsection to the draft to discuss the applicability and limitations of EFM in CoAP scenarios involving **CoAP Observe** and **Empty ACKs**, detailing how these affect one-way vs. two-way measurements.
+*   **Authors (Massimo A.)**: Submit the presentation slides to the IETF datatracker.
+*   **Christian A.** (co-chair): Provide a detailed review of draft-ietf-core-coap-ippm-*.
+
+## Next Steps
+
+*   The authors plan to submit a revised version of draft-ietf-core-coap-ippm-* before the next IETF cutoff, incorporating the feedback and decisions from this meeting.
+*   Further discussion and potential presentation of the updated draft are expected at IETF 116.

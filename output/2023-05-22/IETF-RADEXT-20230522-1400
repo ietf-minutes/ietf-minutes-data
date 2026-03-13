@@ -1,0 +1,129 @@
+# [RADEXT](../wg/radext.html)
+
+## Summary
+
+The RADEXT working group held an interim meeting to discuss the status of adopted working group documents and candidates for adoption. Key discussions centered on the future structure of RADIUS over TLS/DTLS specifications, the `radius-version-1-1` ALPN extensions, RADIUS TLS PSK, and the deprecation of insecure RADIUS uses. An informational presentation was given on BLE RADIUS extensions. The group also discussed the schedule for upcoming meetings.
+
+## Key Discussion Points
+
+### Working Group Status Update
+*   Three documents have been adopted as WG documents since IETF 116:
+    *   `draft-ietf-radext-rfc6614-bis` (RADIUS over TLS)
+    *   `draft-ietf-radext-radius-version-1-1` (RADIUS ALPN extensions)
+    *   `draft-ietf-radext-tls-psk` (RADIUS TLS PSK)
+*   `draft-ietf-radext-deprecating-insecure-radius` (formerly deprecating RADIUS UDP/TCP) is a candidate for adoption.
+*   `draft-grayson-radext-ble-radius-extensions` was presented for review.
+*   `draft-ietf-radext-reverse-coa` has expired; an update is expected.
+
+### `draft-ietf-radext-rfc6614-bis` (RADIUS over TLS)
+*   **Editor's Proposal**: Jan Frederick proposed merging RFC 6613 (RADIUS over TCP), RFC 6614 (RADIUS over TLS), and RFC 7360 (RADIUS over DTLS) into a single `rfc6614-bis` document.
+*   **Arguments for Merging**:
+    *   6613 contains TLS specifications (e.g., Watchdog mechanism).
+    *   Avoids down-references to experimental RFCs.
+    *   Simplified implementation: one document to read for all related specifications.
+    *   7360 (DTLS) largely consists of diffs to 6614, suggesting close coupling.
+    *   TLS and DTLS share significant overlap, making a unified specification logical.
+*   **Potential Downsides of Merging**:
+    *   Resulting document would be longer.
+    *   Could lead to ambiguity for implementations only supporting TLS or DTLS if not clearly specified.
+    *   Some sections might not apply to all implemented protocols (e.g., DTLS specific text for a TLS-only implementation).
+*   **Discussion**:
+    *   A sense of those present indicated support for merging all three documents.
+    *   Participants acknowledged the benefits of a single, unified document for implementers, especially for new implementations.
+    *   Concern was raised that the merged document must clearly distinguish compliance for TLS, DTLS, or both, and avoid a "hood off" mentality that could invalidate existing implementations.
+    *   It was suggested not to force implementations to support both TLS and DTLS.
+    *   The relevance of 6613 (TCP) was noted as minimal, mainly for connection handling.
+
+### `draft-ietf-radext-radius-version-1-1` (RADIUS ALPN Extensions)
+*   **Overview**: Introduces ALPN for RADIUS 1.1 over TLS, allowing fallback to 6614 if not negotiated. Suggests configuration flags (forbid/allow/require).
+*   **Packet Header Changes**: Identifier field is reserved and replaced with a token. Authenticator is a 4-octet token, 12 octets reserved, allowing 2^32 packets per connection.
+*   **Attribute Encoding**: Obfuscated attributes are encoded as their underlying data. CHAP/MS-CHAP remain opaque. Recommendations focus on direct data encoding instead of MD5.
+*   **Authentication Methods**: Unaffected by the transport; proxies still use MD5 for encryption/decryption, but end-to-end data is unchanged.
+*   **Cryptographic Primitives**: Document forbids *further hop-by-hop cryptographic primitives* in RADIUS, encouraging the use of TLS/IPsec. This clarifies that end-to-end cryptography would be permitted.
+*   **Implementation Status**: An implementation exists but is not enabled by default.
+*   **Future Standards**: This document describes how to transform any RADIUS construct into the v1.1 transport profile. New standards must use existing attribute data types and obfuscation methods.
+*   **Discussion**:
+    *   Clarification sought on the "forbid" ALPN negotiation option.
+    *   Question on forbidding *all* future cryptographic primitives in RADIUS; clarified to mean hop-by-hop rather than end-to-end.
+    *   Publishing order (experimental vs. standards track) was discussed, noting the charter sequence.
+    *   A participant suggested removing the "must support TLS PSK" text, as it's not directly relevant to this draft.
+    *   Discussion on the trend to move away from per-application cryptography towards TLS/IPsec.
+    *   The "sep" (secure endpoint proxy) flag and its utility were briefly discussed, with analogies to Diameter's experience.
+
+### `draft-ietf-radext-tls-psk` (RADIUS TLS PSK)
+*   **Problem Statement**: Previous documents (6614, 7360) stated TLS PSK could be used but lacked administrative details.
+*   **Key Proposals**:
+    *   Require an explicit identity in addition to the PSK (source IP is insufficient).
+    *   Recommend *not* using the same shared secret for RADIUS UDP and TLS PSK to prevent cross-protocol attacks.
+*   **Discussion**:
+    *   General support for keeping it a separate document, acting as an advisory on how to safely expose and use TLS PSK.
+    *   A participant suggested merging it into the main TLS document due to anticipated common usage.
+    *   A compromise was proposed: publish an experimental version linked to experimental 6614, then merge into the `6614-bis` standards track document later.
+    *   Concerns raised about TLS 1.2 vs. TLS 1.3 PSK security implications and the complexity of integration.
+
+### `draft-ietf-radext-deprecating-insecure-radius` (Deprecating Insecure Uses of RADIUS)
+*   **Motivation**:
+    *   MD5 weakness (shared secret cracking).
+    *   Sensitive data sent in the clear (device info, location).
+    *   Tunnel-Password security issue in COA packets (12 bits entropy).
+*   **Proposal**: Use TLS or IPsec. IPsec has historical usage in large deployments.
+*   **Open Questions**:
+    *   Should this document be standards track? It updates existing standards-track RFCs, so standards track or BCP status should be considered.
+    *   Impact of Microsoft NPS not implementing TLS/DTLS.
+    *   Historical bug in FreeRADIUS TLS implementation (now resolved).
+*   **Clarification**: The document deprecates *insecure uses* of RADIUS/UDP/TCP, not the protocols themselves, allowing for use in secure, private networks.
+*   **Discussion**:
+    *   Agreement that it should normatively reference a standards-track TLS document.
+    *   The document's track (Standards Track vs. BCP) for updating existing standards will be discussed with the AD.
+    *   The importance of this document for cloud RADIUS providers was emphasized due to their current reliance on insecure UDP.
+    *   The value of IPsec as an alternative to TLS was reiterated.
+    *   A participant highlighted the loss of debugging insight with TLS 1.3 encryption and stressed the need for robust application-level debugging information.
+
+### `draft-grayson-radext-ble-radius-extensions` (Informational Presentation)
+*   **Background**: Addressing mobility in Bluetooth Low Energy (BLE) using virtual MAC addresses and secure bonding that can migrate between APs. Current solutions are proprietary.
+*   **Use Cases**: Multi-vendor interoperability and multi-domain roaming for BLE peripherals.
+*   **Non-IP Data**: Proposed use of MQTT (via WebSocket Secure) for forwarding non-IP BLE data between domains; likely to move to a separate document.
+*   **RADIUS for BLE**: Need to deliver Bluetooth keying material to BLE Centrals.
+    *   Leverages Bluetooth Privacy: identity resolving key (IRK), private random address (PRAND), and hash.
+    *   Proposal to use PRAND in Username and Hash in Password attributes.
+    *   Concern about 24-bit hash entropy for denial-of-service or brute-force attacks on the IRK lookup.
+    *   Spoofing concern: using a branded hash to impersonate a device; clarified that this only addresses privacy, not secure communication.
+*   **Proposed RADIUS Attributes**:
+    *   New NasPort-Type for Wireless BLE.
+    *   Get-Service-Profile: for Bluetooth advertisement attributes.
+    *   BLE-Keying-Material: for delivering Bluetooth keying material (should be opaque blob).
+    *   Broker-URI, Token: for MQTT signaling.
+*   **Discussion**:
+    *   Minor comments on textual clarity ("attribute is unchanged").
+    *   Concern about defining data structures in RADIUS attributes, suggesting BLE keying material should be an opaque blob (referencing RFC 6929).
+    *   Confirmation of the 24-bit hash entropy as an issue to address (e.g., denial of service).
+    *   Suggestion to leverage existing RADIUS obfuscation for protecting BLE keying material (e.g., like MPPE keys).
+
+### Next Meeting
+*   Discussion on whether to hold another interim meeting before IETF 117 (late July).
+*   Arguments for an interim: Jan Frederick might not attend IETF 117 in person; early discussion of the merged TLS document.
+*   Arguments against an interim: Paul noted the mailing list is active enough for progress; US holidays in early July; Chair vacation.
+
+## Decisions and Action Items
+
+*   **Decision**: The working group agrees with the editor's proposal to merge RFC 6613, RFC 6614, and RFC 7360 into a single `draft-ietf-radext-rfc6614-bis` document. This will be confirmed on the mailing list.
+    *   **Action Item**: Jan Frederick to proceed with merging the three documents into `draft-ietf-radext-rfc6614-bis`.
+*   **Decision**: For `draft-ietf-radext-radius-version-1-1`, further updates are needed before WG Last Call.
+    *   **Action Item**: Alan DeKok to clarify the text regarding forbidding cryptographic primitives (specifying "hop-by-hop").
+    *   **Action Item**: Alan DeKok to remove the "must support TLS PSK" comment from `draft-ietf-radext-radius-version-1-1`.
+    *   **Action Item**: After these updates, the document will be proposed for WG Last Call on the mailing list.
+*   **Decision**: For `draft-ietf-radext-tls-psk`, the document will be updated and initially published as experimental, dependent on RFC 6614. It can be merged into the `rfc6614-bis` standards track document later.
+    *   **Action Item**: Alan DeKok to update `draft-ietf-radext-tls-psk`.
+    *   **Action Item**: Chairs and Alan to seek early security review, possibly from the TLS WG or SECDIR, on the implications of using PSK with TLS 1.2 vs. TLS 1.3.
+*   **Decision**: For `draft-ietf-radext-deprecating-insecure-radius`, the document will be updated to link normatively to a standards-track TLS document.
+    *   **Action Item**: Alan DeKok to update `draft-ietf-radext-deprecating-insecure-radius`.
+    *   **Action Item**: Chairs and Alan to discuss the appropriate document track (Standards Track vs. BCP) with the AD.
+*   **Decision**: No interim meeting will be scheduled before IETF 117.
+    *   **Action Item**: Working group will meet next at IETF 117 in San Francisco.
+
+## Next Steps
+
+*   Document authors will continue to revise their drafts based on the discussions and action items.
+*   The mailing list will be used for continued discussion and to confirm decisions made in the interim meeting.
+*   Further interim meetings will be decided after IETF 117, if necessary, based on document progress and open discussion points.
+*   The chairs will request a session at IETF 117 for RADEXT.

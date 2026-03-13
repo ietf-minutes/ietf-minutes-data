@@ -1,0 +1,120 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group meeting discussed the status and next steps for several key documents: `draft-ietf-core-coset` (COSE-T), `draft-ietf-core-comi` (CoMI), `draft-ietf-core-target-attributes` (CoRE Target Attribute), and `draft-ietf-core-profiling-edhoc-oscore` (Profiling EDHOC for CoAP and OSCORE). Significant progress was reported on all, with `core-target-attributes` moving towards submission to the IESG, and `profiling-edhoc-oscore` addressing a comprehensive set of Working Group Last Call comments. Key discussions focused on payload formats, error handling, web linking attributes, application profiles, and credential type registries, leading to several decisions and actions.
+
+## Key Discussion Points
+
+### COSE Configuration Documents (`carconf`)
+
+#### `draft-ietf-core-coset` (COSE-T)
+*   **Status**: `draft-ietf-core-yang-cbor` (RFC 9254) has been published. `draft-ietf-core-cose-c` is in IESG review. `draft-ietf-core-yang-library` has passed Working Group Last Call (WGLC) but may need revisiting due to its broad ecosystem implications.
+*   **Rob Wilton's DISCUSS**: An outstanding DISCUSS comment from Rob Wilton has led to many discussions and edits. Authors submitted `draft-ietf-core-coset-20` which is believed to address these concerns, but Rob's feedback is still awaited.
+*   **Main Changes in -20**:
+    *   Introduction of a per-SID `fire` status (unpublished/published).
+    *   Introduction of a per-item `sid-item` status (unstable/stable/obsolete, where obsolete is a deprecation mark).
+    *   Transitioned from Yang data to a structured Yang future, which currently lacks tool support for validation.
+    *   Fixed an incorrect Yang JSON representation for unsigned 64-bit integers.
+*   **Discussion on Next Steps**: The co-chair Marco suggested initiating a third WGLC for `core-coset` soon, in parallel with seeking Rob Wilton's feedback. This would ensure sufficient time for review ahead of the next IETF meeting.
+*   **Validation Tooling (Amusement)**: Carson mentioned writing a `sid.cdl` tool and defining a CSV version of a SID file for easier validation, as existing tools for structured Yang future are lacking.
+
+#### `draft-ietf-core-comi` (CoMI)
+*   **Status**: The working group will proceed assuming `core-coset` issues are under control.
+*   **Implementation Experience**: Simplifications based on implementation experience gained at a hackathon will be incorporated into the document.
+*   **Shepherd/Author List**: The current editor (Carson) will finish the document. This requires a new shepherd and modifications to the author list to comply with the five-person limit.
+
+### `draft-ietf-core-target-attributes` (CoRE Target Attribute)
+*   **Status**: Working Group Last Call (WGLC) has passed. `draft-ietf-core-target-attributes-02` was submitted, addressing all WGLC comments.
+*   **Changes in -02**:
+    *   Added an Acknowledgments paragraph.
+    *   Referenced the `core-parameters` mailing list for discussions between registrants, the designated expert, and the wider community regarding the registry.
+    *   Removed Internet Draft-based registrations.
+*   **Further Comments**: Christian provided additional feedback, for which a pull request has been made.
+*   **Discussion on Attribute Flags**: Christian raised a point about attributes used in specific contexts (e.g., resource directory, where `base`, `etd`, `ep` are used). It was clarified that if an 'a' flag (indicating a specific property) were to be added to an existing attribute, it would be treated as a new registration requiring expert review. Conflicts with existing widely-used non-'a' flagged versions of the attribute would prevent the 'a' flag addition. Christian explained how conflicts are managed in the Resource Directory context.
+
+### `draft-ietf-core-profiling-edhoc-oscore` (Profiling EDHOC for CoAP and OSCORE)
+*   **Status**: Working Group Last Call comments from Christian and Jon Madison are being addressed. Editorial comments have been integrated into the editor's copy.
+*   **Christian's Comment 1: Payload Format for EDHOC OSCORE Request**
+    *   **Current**: CIBOR sequence of two CIBOR byte strings (EDHOC Message 3 and OSCORE ciphertext).
+    *   **Proposed**: EDHOC Message 3 as a CIBOR byte string, followed by the OSCORE ciphertext as raw bytes (not CIBOR-wrapped). This saves 2-3 bytes and has precedent (e.g., RFC 9277's "CIBOR header" concept).
+    *   **Discussion**: A sense of those present indicated support for the proposal.
+*   **Christian's Comment 2: Server-side Error Handling**
+    *   **Current**: Responds with an error if a decrypted OSCORE request includes the `edhoc-oscore` option without the `edhoc-oscore` option also being present.
+    *   **Proposed**: The language should be more future-proof, avoiding strict normative statements about what *cannot* happen. An alternative text suggests that if the `edhoc-oscore` option is present in a decrypted request, it must be regarded as an unprocessed critical option unless processed by a "further mechanism" (e.g., nested OSCORE).
+*   **Christian's Comment 3: Web Linking - Missing Target Attributes**
+    *   **Current**: Defines target attributes for EDHOC methods, cipher suites, etc.
+    *   **Issue**: Lacks attributes to indicate support for forward/reverse EDHOC message flows and initiator/responder roles.
+    *   **Proposal**: Define four new non-repeatable target attributes, without values (presence indicates support), for forward flow, reverse flow, initiator, and responder support.
+    *   **Discussion**: Christian questioned if the flow direction attributes (`flow-forward`, `flow-reverse`) imply the role attributes (`initiator`, `responder`), potentially making some redundant from a server's perspective. Carson suggested using flag bits for groups of related attributes to avoid an excessive number of individual attributes. Authors agreed to internally discuss redundancy and alternative representations.
+*   **Christian's Comment 4: Application Profile Target Attribute**
+    *   **Idea**: Introduce a target attribute to indicate support for a specific EDHOC application profile (e.g., `my-edhoc-P1`), assuming the EDHOC draft defines such profiles.
+    *   **Discussion**: Carson expressed strong reservations based on past IETF experience (e.g., HTTP, HTML profiles) where profiles often failed to gain traction because implementations couldn't guarantee knowledge of all possible profile values, necessitating fallback to more explicit signaling. While it could be an optimization to save a round trip, functionality should not hinge on profile understanding. The introduction of such an attribute is contingent on the EDHOC draft defining an application profile registry.
+*   **Christian's Comment 5: Web Linking Example - `/.well-known/edhoc`**
+    *   **Current**: Example uses custom EDHOC resources like `/edhoc/sa` and `/edhoc/rs`.
+    *   **Proposed**: Revert to using `/.well-known/edhoc` in examples. The original shift away was based on the idea that `/.well-known/edhoc` implies client knowledge, but this does not extend to knowledge of specific application profiles. Using `/.well-known/edhoc` provides a cleaner, well-defined path.
+    *   **Discussion**: A sense of those present supported reverting to `/.well-known/edhoc`.
+*   **Christian's Comment 6: Well-known EDHOC Application Profile**
+    *   **Idea**: Should a `/.well-known/edhoc` application profile be defined? Should it be a default profile?
+    *   **Authors' View**: Defining a specific `/.well-known/edhoc` application profile (in the EDHOC draft) and registering it could be beneficial, providing a known baseline. However, it should *not* be a *default* profile for `/.well-known/edhoc` as this could inadvertently create mandatory implementation requirements beyond the EDHOC specification itself.
+    *   **Discussion**: Christian suggested a default profile could state "obvious things" implied by CoAP use rather than imposing new mandatory features. Authors will discuss if a very minimal profile would provide sufficient guidance without being overly prescriptive, and whether such a profile would be defined in the EDHOC document.
+*   **Jon Madison's Comment 1: Document Title**
+    *   **Current**: "Profiling EDHOC for CoAP and OSCORE".
+    *   **Proposed**: "EDHOC with CoAP and OSCORE". The term "profiling" might be misleading as the document does not technically profile EDHOC.
+    *   **Discussion**: A sense of those present indicated support for the proposed title change.
+*   **Jon Madison's Comment 2: Server-side Error Handling (OSCORE Protection)**
+    *   **Question**: Can EDHOC error messages be protected with OSCORE?
+    *   **Authors' Proposal**: EDHOC error messages are always sent unprotected. The server must not establish a new OSCORE security context for sending such an error.
+    *   **Discussion**: Carson raised concerns about potential disclosure of sensitive information in unprotected error messages and suggested making them "frugal." Malisa suggested clarifying that unprotected errors should not give sensitive details. Christian raised a critical issue regarding ambiguity if error messages *were* protected: a client receiving a protected response would have difficulty distinguishing an EDHOC error message from a valid resource representation (e.g., in pub/sub where arbitrary content formats are allowed), leading to potential misinterpretation. The working group agreed that making error messages consistently unprotected simplifies error handling and avoids this ambiguity.
+*   **Jon Madison's Comment 3: Retransmission of EDHOC+OSCORE Request**
+    *   **Question**: What happens if an EDHOC+OSCORE request is retransmitted?
+    *   **Authors' View**: This document inherits from the EDHOC specification, which states that different instances of the same message must not be processed in one session. Relying on EDHOC's error handling (sections 5.3 and 6.2 of the EDHOC draft) should be sufficient.
+    *   **Discussion**: A sense of those present indicated agreement with relying on the EDHOC specification.
+*   **Jon Madison's Comment 4: EAD Target Attributes**
+    *   **Issue**: Clarification is needed that EDHOC External Authorization Data (EAD) target attributes (e.g., `ed-ead1`) use values from the EDHOC External Authorization Data registry.
+    *   **Proposal**: Clarify the text to state that these attributes use integers registered in that registry and add a concrete example illustrating this.
+*   **Jon Madison's Comment 5: `cred` Target Attribute Registry**
+    *   **Idea**: A `cred` target attribute indicates the supported credential type. Jon suggested creating a new IETF registry for EDHOC credential types (e.g., `cwt`, `x509`, `rpk`), possibly in this document or the EDHOC draft.
+    *   **Authors' View**: This is a good idea. For consistency, the registry should be created in the EDHOC draft, as other EDHOC-specific target attributes also derive their values from registries defined in EDHOC.
+    *   **Discussion**: Christian questioned the value of knowing the credential type without knowing the issuer, suggesting the issuer might be more relevant. Marco countered that knowing the type is still valuable, and issuer information could be orthogonal or conveyed via web linking. Carson suggested adding a private-use range for experimental credential types.
+*   **Extra Point: Prefixing Target Attributes**
+    *   **Proposal**: Prefix all EDHOC-specific target attributes with "ed-" (e.g., `ed-method`, `ed-ead1`) for clearer clustering.
+    *   **Discussion**: Re-evaluated the proposed flow/role attributes. A sense of those present indicated that `ed-flow-forward` and `ed-flow-reverse` might be redundant given the server's role. It was suggested to drop these and instead use `ed-initiator` and `ed-responder` (or `ed-i`/`ed-r`) if roles are to be indicated. The addition of an `ed-prof` attribute is contingent on decisions made in the EDHOC draft regarding application profiles.
+
+### Any Other Business (AOB)
+*   Christian mentioned he is reviewing `draft-ietf-art-msync` (Multicast Synchronization) for the ART WG, noting its relevance to multicast notifications, which may also be a topic in HTTP.
+
+## Decisions and Action Items
+
+### `draft-ietf-core-coset` (COSE-T)
+*   **Decision**: A third Working Group Last Call will be initiated soon for `draft-ietf-core-coset`, running in parallel with efforts to obtain feedback from Rob Wilton.
+*   **Action**: Marco (co-chair) will coordinate with Jari (Jaime) regarding the WGLC timing.
+*   **Action**: Authors will incorporate Rob Wilton's feedback and prepare the document for the WGLC.
+
+### `draft-ietf-core-comi` (CoMI)
+*   **Action**: Authors will incorporate simplifications based on implementation experience.
+*   **Action**: Marco and Francesca will manage the process of finding a new shepherd for the document and adjusting the author list to meet the five-person limit.
+
+### `draft-ietf-core-target-attributes` (CoRE Target Attribute)
+*   **Action**: Carson will incorporate Christian's latest changes into the document.
+*   **Action**: Generate `draft-ietf-core-target-attributes-03`.
+*   **Decision**: Submit `draft-ietf-core-target-attributes-03` to the IESG. Marco confirmed he will be the shepherd for this document.
+
+### `draft-ietf-core-profiling-edhoc-oscore` (Profiling EDHOC for CoAP and OSCORE)
+*   **Decision**: Adopt the proposed payload format for EDHOC OSCORE requests (EDHOC Message 3 as CIBOR byte string, OSCORE ciphertext as raw bytes).
+*   **Decision**: Adopt the alternative text for server-side error handling as suggested by Christian (regarding `edhoc-oscore` option as an unprocessed critical option unless handled by a further mechanism).
+*   **Decision**: Change the document title to "EDHOC with CoAP and OSCORE".
+*   **Decision**: EDHOC error messages are always sent unprotected. Section 3.3 will be elaborated to clarify that the server must not establish a new OSCORE security context for sending error responses.
+*   **Decision**: Rely on the EDHOC specification for handling retransmission of EDHOC+OSCORE requests.
+*   **Decision**: Clarify in the text and add an example for EAD target attributes, indicating they use integers from the EDHOC External Authorization Data registry.
+*   **Decision**: Prefix all EDHOC-specific target attributes with "ed-". The specific names for role attributes (e.g., `ed-initiator`, `ed-responder`) will be finalized, dropping the `ed-flow-*` attributes.
+*   **Action**: Authors to internally discuss the redundancy of flow vs. role attributes and Carson's suggestion of using flag bits for grouped attributes.
+*   **Action**: Authors to further discuss with the EDHOC draft authors regarding the definition and registration of an application profile and a credential type registry in the EDHOC document. The decisions in `profiling-edhoc-oscore` for related attributes (`ed-prof`, `cred`) will follow those made in the EDHOC draft.
+*   **Action**: Authors to clarify that unprotected error messages should not contain sensitive details. Further discussion on generic encryption of error messages to be taken up by the EDHOC document authors.
+
+## Next Steps
+
+*   **`draft-ietf-core-coset`**: Initiate a third WGLC.
+*   **`draft-ietf-core-comi`**: Incorporate changes, new shepherd, modified author list.
+*   **`draft-ietf-core-target-attributes`**: Submit `draft-ietf-core-target-attributes-03` to the IESG.
+*   **`draft-ietf-core-profiling-edhoc-oscore`**: Address remaining WGLC comments, submit version 7 before the upcoming cutoff. The pull request to `core-target-attributes` regarding renaming/addition of attributes is now largely irrelevant due to recent updates in `core-target-attributes`.

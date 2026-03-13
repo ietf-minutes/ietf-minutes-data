@@ -1,0 +1,77 @@
+# [TOOLS](../wg/tools.html)
+
+## Summary
+
+This TOOLS team meeting covered a wide range of ongoing technical initiatives, including the progress of the DNS infrastructure migration to Cloudflare and modern DNSSEC. Significant discussion took place on the long-term archiving strategy for IETF meeting wikis, with an operational recommendation to utilize web archiving services rather than internal preservation. A detailed technical explanation was provided for the ongoing DMARC failures affecting IETF mail aliases, stemming from an outdated mail forwarder, prompting discussion on short-term fixes versus a full rewrite. The migration of the IAB website to a Wagtail instance was reviewed, along with discussions on Trust-initiated changes concerning wiki content attribution and licensing. Updates were also provided on the Django 4 migration for the DataTracker, the RPC tooling refresh, PostgreSQL migration and replication, and various other development projects.
+
+## Key Discussion Points
+
+*   **Tools Team Retreat Outcomes**: A retreat in Montreal focused on preparing for IETF IT infrastructure changes, interactions with CDN, and automating releases into cloud services. Strategic paths will be documented and shared for community feedback.
+*   **DNS Infrastructure Migration**:
+    *   Rapid progress on moving DNS to Cloudflare and revising DNSSEC with modern algorithms.
+    *   `irtf.org` migration is complete; `rsceditor.org` to follow, `ietf.org` last (this week/next week).
+    *   Many dormant domains are also being migrated, encountering difficulties with "losing registrars."
+*   **Meeting Wiki Archiving Strategy**:
+    *   Discussion on preserving older meeting wikis from Trac, DokuWiki, and modern Wiki.js instances.
+    *   The current approach results in carrying separate artifacts for meeting wikis linked by RFCs.
+    *   An operational recommendation was made to transition to using web archiving services (e.g., archive.org) for wiki preservation and drop internal versions once meetings are finalized.
+    *   A participant noted that web archiving is a complex and thorough process requiring significant lead time (1-2 months for crawls and QA).
+*   **DMARC Failure for IETF Aliases**:
+    *   John explained that mail sent to IETF aliases (e.g., `draft.all`) frequently disappears, especially for Gmail users, due to DMARC failures.
+    *   The issue arises because the mail forwarder's ancient, messy Python 2.7 code uses a MIME parsing library that reformats headers, breaking DMARC signatures, and mail originates from the forwarder's IP, not the authorized source.
+    *   A quick fix (1 day of work) is possible by patching the code, but there's reluctance to invest significantly in the deprecated module.
+    *   The problem also affects mailing lists, but a "band-aid" involving `From:` line rewriting is in place there.
+    *   The longer-term solution involves rewriting the forwarder in Python 3, potentially coinciding with the Mailman 3 transition later this year, but the timing is uncertain pending an RFP process.
+*   **IAB Website Transition**:
+    *   The IAB website is being moved from WordPress to a Wagtail instance similar to `www.ietf.org`.
+    *   IAB minutes and statements are being extracted and modeled for the DataTracker.
+    *   Discussions are ongoing for modeling appeals, which have a different structure (appeal/response correspondence).
+    *   The new Wagtail implementation will be a multi-site setup using a single codebase but hosted in two different instances to prevent content spillover.
+    *   Most development is complete, with some bugs to fix, aiming for production in a couple of weeks.
+*   **Trust-Initiated Tools Changes**: Jay presented concerns from the Trust regarding:
+    *   **Content Attribution for Wikis**: Contributions via GitHub to wikis are seen as not sufficiently attributable under the Note Well. A proposed technical solution (automated check of GitHub user registration in DataTracker) was accepted by the Trust, but community discussion is now questioning the basic premise of whether GitHub contributions are sufficient.
+    *   **Content Licensing for Wikis**: Blanket CC BY 4.0 licensing for wikis is problematic as wikis contain content (e.g., RFC excerpts) that must be licensed under the Trust Legal Provisions (TLP). A proposed technical solution involves building a wiki macro to flag exceptions to a chosen blanket license (TLP or CC BY 4.0). This has not yet been raised for community discussion.
+*   **DataTracker & IT Infrastructure Updates**:
+    *   **RFP for IT Infrastructure**: Preparation for RFPs for the change to IETF's IT infrastructure is underway.
+    *   **Cloudflare Tools**: New tools are being built to manage Cloudflare access rules (IP whitelists/blacklists) due to UI limitations.
+    *   **IMAP/DataTracker Integration**: IMAP interaction with the DataTracker credential base has been refactored, separating dependencies into a proper API.
+    *   **RPC Tooling Refresh**: Significant progress with the RPC, focusing on workflow management. User stories and initial designs are emerging, with wireframing expected soon. Implementation will follow the Django 4 upgrade.
+    *   **Roadmap**: The roadmap has been published and is receiving positive feedback. Community members are encouraged to review and provide input.
+    *   **PostgreSQL Migration**: Completed the DataTracker PostgreSQL migration. Performance is anecdotally improved for sensitive pages, and efforts are underway to improve instrumentation.
+    *   **PostgreSQL Replication**: Replication between DataTracker instances at ITFA and ITFC is being set up within the next several days to improve failover capabilities, with performance monitoring planned.
+    *   **Draft Submission Email Outage**: A brief outage in early May, where asynchronous draft submissions lost email capability, was traced to an unexpected Docker network change. The issue was resolved, affected submitters were notified, and future resilience is being discussed.
+    *   **Trac Decommissioning**: Trac has been turned off, with some redirect issues still being resolved.
+    *   **Consistent Font Families**: A consistent font set has been chosen for IETF sites; the next DataTracker release will use them, followed by other web properties.
+    *   **`static.ietf.org`**: Now being used for static content delivery, starting with fonts in the next DataTracker release, then for unchanging artifacts like Internet Drafts.
+    *   **Django 4 Transition**: DataTracker is in the process of migrating to Django 4, currently at Django 3.2. A development test server is available, and community testing is requested to find issues, particularly with forms.
+    *   **Future DataTracker Work**: Repairing reference relationships (currently broken by XML includes not being expanded), regenerating `bibxml3` with modern author extraction, and supporting Nomcom, meeting scheduling, and the meeting itself.
+    *   **`bibxml` Service**: A few main bugs need fixing, with a fix for one particular bug already upstreamed.
+    *   **`xml2rfc` Tools**: Major developments include comparing XML or Nroff files without text conversion. `rfcdiff` is now used by default on the authors' comparison tool.
+    *   **`xml2rfc` Releases**: Recent releases (3.17.1) have caused installation issues for some users due to setup file changes; upgrading system tools is recommended. A GitHub repository is being compiled for `xml2rfc` fonts, as current instructions reference outdated Google fonts.
+    *   **`ietf.org` Website**: Apart from IAB migration, upcoming features include type tables for rich content and a widget to display the Note Well from the IETF GitHub repository.
+    *   **Mail Archiver / IMAP Server Username Mapping**: Work is ongoing to allow mapping of DataTracker usernames to IMAP usernames, supporting users who have changed their primary login and can use any known email address to log in.
+
+## Decisions and Action Items
+
+*   **Meeting Wiki Archiving**: The operational recommendation is to use web archiving services (e.g., archive.org) for meeting wiki preservation and to stop maintaining internal copies once meeting wikis are finalized.
+*   **DMARC Failure for Aliases**: John and Robert will continue offline discussion to scope a potential small fix for the DMARC issue in the current Python 2.7 mail forwarder, weighing it against the larger Mailman 3 transition.
+*   **IAB Website Migration**: Target production deployment within the next couple of weeks, following bug fixes.
+*   **Trust Initiated Changes (Wikis)**: Jay will continue to facilitate discussions on the mailing lists regarding content attribution and licensing for wikis, encouraging direct engagement from the Trust on the discussed premises.
+*   **PostgreSQL Replication**: Replication between the DataTracker PostgreSQL instances at ITFA and ITFC will be set up within the next several days, with a plan to monitor for significant performance impact.
+*   **Django 4 Migration**: The community is encouraged to test the development test server for the DataTracker Django 4 branch and report any issues, particularly with forms.
+
+## Next Steps
+
+*   **DNS Infrastructure**: Complete the migration of `rsceditor.org` and `ietf.org` to Cloudflare.
+*   **DMARC Issue**: Decide on the scope and implementation of a short-term fix for DMARC failures, or prioritize the full rewrite with Mailman 3.
+*   **IAB Website**: Finalize bug fixes and deploy the IAB website to its new Wagtail instance.
+*   **Trust Discussions**: Continue engagement with the community and the Trust on wiki content attribution and licensing.
+*   **RPC Tooling**: Progress with detailed design and wireframing for the RPC workflow management tool, awaiting Django 4 deployment for implementation.
+*   **DataTracker Django 4**: Complete the Django 4 migration for the DataTracker and deploy it to production.
+*   **PostgreSQL**: Monitor the performance impact of PostgreSQL replication between ITFA and ITFC.
+*   **DataTracker Future Work**:
+    *   Repair existing reference relationships.
+    *   Regenerate `bibxml3` using modern author extraction tools.
+    *   Implement features to support Nomcom, meeting scheduling, and the IETF meeting itself.
+*   **Mail Archiver / IMAP**: Continue work on the IMAP server username mapping feature.
+*   **IETF Liaisons**: Warren and Mallory Norman are serving as IESG and IAB liaisons, respectively, to the TOOLS team.

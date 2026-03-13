@@ -1,0 +1,46 @@
+# [KITTEN](../wg/kitten.html)
+
+## Summary
+
+The KITTEN Working Group held an interim meeting to gauge interest in several authentication-related topics, including an "Extensible SASL Profile" (dubbed "SASL 2") developed within the XMPP Software Foundation (XSF), shared key derivation from SASL secrets, an update on the SCRAM Two-Factor Authentication draft, and faster re-authentication mechanisms using SASL HT. A significant portion of the meeting focused on the features and potential adoption of the extensible SASL profile and the need for robust, fast re-authentication solutions, especially in mobile and multi-connection environments. The chair indicated plans to poll the mailing list to assess interest in adopting drafts related to these topics.
+
+## Key Discussion Points
+
+*   **XMPP Extensible SASL Profile ("SASL 2") Presentation:** Matthew Wild from the XSF presented on work initiated by Dave Quinlan (Zep 388) to create an extensible SASL framework.
+    *   **Key Features Discussed:**
+        *   **After-authentication tasks:** Allowing the server to request additional authentication steps (e.g., Multi-Factor Authentication like OTP) after the initial SASL exchange but before authentication completion.
+        *   **Bi-directional task flow:** A flexible model for tasks where either client or server can await information, accommodating diverse scenarios like SMS codes or push notifications.
+        *   **Structured XML payloads:** Using XML for task data, providing more structure than base64-encoded payloads. The question of mandating XML or allowing flexible payload types for IETF adoption was raised.
+        *   **Client Identifiers:** Optional pre-authentication client identification for server statistics (e.g., tracking old SASL mechanism usage) and a stable unique identifier per client device, useful for token management.
+        *   **Password Upgrade Tasks:** A mechanism to allow upgrading stored credentials (e.g., from SCRAM-SHA-1 to SCRAM-SHA-256) without requiring a user-initiated password reset, improving user experience and security.
+        *   **Channel Binding Negotiation:** Addressing interoperability issues with `SCRAM-*-PLUS` where clients might choose an unsupported channel binding method. The proposed solution involves the server advertising its supported channel binding methods.
+    *   **Discussion on SASL 2:**
+        *   Ben Kadak inquired about specific issues with TLS exporter channel binding, noting that TLS 1.2 implementations might not support TLS exporter. Tilo and Dave Quinlan highlighted the need for negotiation due to varied server capabilities (e.g., early TLS termination needing TLS server endpoint binding) and client environments (e.g., web clients with no channel binding data).
+        *   Dave Quinlan reiterated the long history and heavy usage of channel binding in XMPP, emphasizing the need for negotiation due to diverse deployment scenarios. He also mentioned a past idea of a "nested SASL profile" within SASL1 to introduce SASL 2 features without major breaking changes.
+
+*   **Shared Key Derivation from SASL Secrets:** Rick van Rein presented an idea to extract symmetric key material from shared secrets established during SASL authentication.
+    *   **Motivation:** This could provide additional entropy for transport security, potentially bolstering post-quantum security for TLS (even if post-quantum algorithms are being developed for TLS directly).
+    *   **Example Applications:** Secure realm crossovers (E2EE tunnels) and enhanced Wi-Fi security where SASL authentication could derive a key for local connection security and traffic tunneling.
+    *   Alexi noted a specific use case of generic authentication tokens for key derivation.
+
+*   **SCRAM Two-Factor Authentication Draft Update (`draft-melnikov-scram-2fa`):** Alexi Melnikov provided an update.
+    *   The draft now includes support for TOTP (Time-based One-Time Password) and FIDO2/WebAuthn.
+    *   It also proposes a **re-authentication token** attribute, allowing a server to return a token after initial (possibly 2FA) authentication. This token could then be used with SASL-HT mechanisms for faster, single-round-trip re-authentication, bypassing repeated 2FA prompts.
+    *   Dave Quinlan expressed concerns about the security risks of re-authentication tokens (e.g., session token stealing), emphasizing the need for robust token tracking, management, and revocation, linking it to the client identifiers discussed in the SASL 2 presentation.
+
+*   **Faster Authentication Mechanism (`draft-weimer-kitten-sasl-ht`):** Florian Weimer presented on SASL HT, initially motivated by XMPP's "instant stream resumption" (ISR) to reduce reconnect delays for mobile devices.
+    *   **SASL HT:** A simple bearer token mechanism using HMAC for obfuscation, supporting mutual authentication and optional channel binding (to accommodate web clients).
+    *   **TLS 1.3 Early Data/PSK Integration:** Discussion around using TLS 1.3 early data or pre-shared keys (PSK) with SASL HT for extremely fast re-authentication. While early data requires a PSK, a PSK from a previous handshake or a SASL-derived token used with SASL EXTERNAL could be viable. Ben Kadak noted that server-side integration of SASL tokens with TLS PSK could be complex, and that using early data for application-level authentication requires careful protocol specification.
+
+## Decisions and Action Items
+
+No formal decisions were made to adopt any specific drafts. The chair conveyed a sense of interest among those present for the following:
+
+*   **Action Item:** The chair, Alexi Melnikov, will poll the KITTEN mailing list to formally assess interest in:
+    1.  Working on re-authentication mechanisms (including concepts from `draft-melnikov-scram-2fa` and `draft-weimer-kitten-sasl-ht`) within the working group for adoption.
+    2.  Starting a "SASL 2 type" draft (a generic, extensible SASL profile, building on XSF's work) for adoption in KITTEN.
+
+## Next Steps
+
+*   The KITTEN chair will initiate mailing list discussions and potentially calls for adoption for drafts related to re-authentication mechanisms and a generic, extensible SASL profile.
+*   Further discussion on the OPAQUE SASL mechanism was deferred due to time constraints.

@@ -1,0 +1,77 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+This CBOR working group meeting focused on two main technical topics: the development of a CBOR Path specification and a proposed module/import system for CDDL 2.0. For CBOR Path, the discussion centered on extending JSON Path to support CBOR's unique data model (bytes, non-string map keys, tags) and an initial Rust implementation that uses structured CBOR for path definition. The primary agenda item was a detailed presentation and discussion of a "spike" implementation for CDDL 2.0 module features, including `include` and `import` directives, namespacing (`as` clause), and mechanisms for resolving external CDDL (e.g., from RFCs, IANA registries, Internet Drafts). The proposed approach involves a CDDL 2.0 processor that transpiles to CDDL 1.0 for backward compatibility and inspectability. Participants were encouraged to experiment with the prototype and provide feedback.
+
+## Key Discussion Points
+
+### CBOR Path
+*   **Motivation**: An adaptation of JSON Path is needed for CBOR to fully leverage its data model, which includes bytes, non-text string map keys, and tags, none of which are directly accessible via standard JSON Path.
+*   **Initial Implementation**: Michael (different Michael from the CDDL 2.0 presenter) has developed a Rust implementation that uses structured CBOR itself for defining the path, rather than a text-based URI-like syntax. This CBOR Path could be shown in diagnostic notation.
+*   **Future Use**: CBOR Path is seen as a potential mechanism for attaching predicates to CDDL data models, similar to how Schematron is used with Relax-NG.
+*   **Tooling**: Discussion touched upon the desire for tools similar to JQ for CBOR data, and how a CBOR Path could facilitate such capabilities.
+*   **Action Requested**: Participants are encouraged to review the GitHub issue on the CBOR GitHub page and the linked Rust implementation, and provide feedback on the mailing list.
+
+### CDDL 2.0 Module/Import Spike
+The presentation detailed a prototype implementation in the `cdsc` tool to address three core requirements for CDDL 2.0:
+1.  **Constructing CDDL from Multiple Files**: Allowing developers to organize large CDDL projects across several files, treating each file as a module.
+2.  **Referencing Existing CDDL as a Library**: Enabling selective import of specific rules from established CDDL specifications (e.g., from RFCs) without including the entire document.
+3.  **Namespacing**: Providing a mechanism to prevent rule name collisions when combining CDDL from various sources.
+
+*   **Implementation Approach**:
+    *   The `cdsc` tool (CDDL compiler) is being extended to act as a CDDL 2.0 processor.
+    *   It operates by taking CDDL 2.0 input and converting it into CDDL 1.0, treating CDDL 2.0 as a superset of CDDL 1.0. This ensures backward compatibility with existing CDDL 1.0 tools and makes the processing inspectable.
+    *   The prototype functionality is accessible via the `-2 -t cddl` flags in `cdsc`.
+
+*   **`include` Directive**: (`#; include "file.cddl"`)
+    *   Performs a "wholesale inclusion" of another CDDL file.
+    *   It is intended for development contexts where awareness of unused rules is important.
+
+*   **`import` Directive**: (`#; import "library.cddl"`)
+    *   Intelligently imports only the necessary rules from a specified CDDL module.
+    *   It works by analyzing an "undefined list" of rules needed by the current module and recursively resolving them from the imported library and its transitive dependencies (e.g., RFC 1953 importing what it needs from RFC 1952).
+    *   **Isolation**: Referenced modules are processed in isolation, ensuring their meaning is not affected by the importing context. Indirectly imported rules are present in the imported module's closure.
+
+*   **`as` Clause for Namespacing**: (`#; import "RFC1952" as cozy`)
+    *   Allows prefixing all imported rule names with a specified namespace (e.g., `cozy.`) to avoid naming conflicts.
+    *   Discussion on the trade-offs between automatic namespacing and having "uncluttered" names. The `as` clause offers explicit control over naming.
+    *   An `except` clause (e.g., `import X as Y except Z`) was proposed as a potential future extension to allow specific names to remain un-namespaced.
+    *   The use of `.` in namespaced rules leverages an existing CDDL 1.0 feature.
+
+*   **Module Target Resolution (`CDDL_INCLUDE_PATH`)**:
+    *   The `CDDL_INCLUDE_PATH` environment variable, similar to Unix PATH variables, defines directories where CDDL modules are sought.
+    *   The empty string `""` in the path refers to a "batteries included" directory containing CDDL from published RFCs.
+    *   Future considerations include an IANA registry for standardizing these "batteries included" and supporting imports from the web (e.g., GitHub, GitLab).
+
+*   **Exporting CDDL from Documents**:
+    *   **RFCs/Internet-Drafts**: The default extraction process concatenates all `sourcecode` elements with `type="cddl"`.
+    *   **Conventions Needed**: A convention for using the `name` attribute in `sourcecode` elements is required to enable finer-grained selection and extraction of separate modules from documents.
+    *   **IANA Registries**: A `.iana` operator was proposed to directly reference values from IANA registries (e.g., `cozy-algorithms.value`) within CDDL, potentially including transformations or projections.
+    *   **Internet Drafts**: Referencing specific revisions (e.g., `draft-name-rev`) versus the latest revision needs to be specified.
+    *   **Other Sources**: Future need to scrape CDDL from other SDOs.
+
+*   **ABNF Integration**: The principles of modularity and namespacing discussed could largely apply to ABNF, though a separate ABNF-aware processor would be needed due to different naming rules (e.g., ABNF does not allow `.` in rule names).
+
+*   **`cdsc -r` Output**: A brief query regarding the stability and documentation of the `cdsc -r` output (an AST with resolved generics) for programmatic use was raised, with the presenter confirming it is more useful for internal processing but currently undocumented.
+
+## Decisions and Action Items
+
+### Decisions
+*   The working group will pursue the general approach of CDDL 2.0 as a superset of CDDL 1.0, with a processor that can transpile CDDL 2.0 to CDDL 1.0.
+*   The proposed `include` and `import` directives, including the `as` clause for namespacing, are the current direction for the module system spike.
+*   Module discovery will primarily rely on the `CDDL_INCLUDE_PATH` environment variable.
+
+### Action Items
+*   **All Participants**: Review the CBOR Path GitHub issue and the linked Rust implementation, and provide feedback on the CBOR mailing list.
+*   **All Participants**: Experiment with the `cdsc` tool's CDDL 2.0 features (using `cdsc -2 -t cddl`) and provide feedback on its functionality and usability to the mailing list.
+*   **Presenter**: Define a convention for exporting CDDL from RFCs and Internet-Drafts using the `name` attribute in `sourcecode` elements.
+*   **Presenter**: Document the `cdsc -r` output (AST with resolved generics) to facilitate programmatic interaction with the CDDL processor.
+
+## Next Steps
+
+*   Continue the discussion on the CBOR mailing list regarding both CBOR Path and the CDDL 2.0 module system.
+*   Further refine the CDDL 2.0 module system based on practical feedback from those experimenting with the `cdsc` tool.
+*   Explore use cases for annotating numeric values with labels derived from IANA registries in CDDL.
+*   Consider the implications of importing modules with commonly named rules (e.g., "label") and how `as` or `except` clauses can best manage these.
+*   Future considerations include formalizing the "batteries included" list and addressing web-based module sources.

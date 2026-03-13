@@ -1,0 +1,67 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI working group held an interim session focused on user Discovery. The session began with a recap of previously agreed-upon definitions for Service Specific Identifiers (SSIs) and Service Independent Identifiers (SIIs), along with open questions regarding trusted authorities, scalability, and privacy. Two solution proposals were presented: one advocating for a Federated Resolver Service utilizing Private Information Retrieval (PIR), and another proposing a separation between Application Providers (APs) and Discovery Providers (DPs) to manage trust and validation. Key discussions revolved around the cardinality and trust relationships between various actors, the specifics of the threat model, and how to handle identity verification and preferred service settings across multiple providers.
+
+## Key Discussion Points
+
+*   **Discovery Problem Recap:**
+    *   **Definitions:**
+        *   **Service Specific Identifier (SSI):** Uniquely identifies a user within a single service provider. Includes service provider information.
+        *   **Service Independent Identifier (SII):** Uniquely identifies a user, independent of a specific service. Does not contain resolution information.
+        *   **Current Reality:** Work with existing SSIs like E.164 phone numbers and email addresses (not assumed to be at a messaging service domain). New SII formats are not on the table.
+        *   **User Discovery:** The process of resolving an SII into one or more SSIs for a given user.
+    *   **Open Questions:**
+        *   Which actors act as trusted authorities for SII-SSI mappings (e.g., CAs, service providers)?
+        *   How should the system scale (tens, hundreds, or thousands of service providers)?
+        *   What are the privacy risks of discovery (e.g., social graph leakage)? Can rate limiting prevent database scraping?
+        *   How to handle multiple SSIs for a single SII? Should requesters learn all, and how would this flow (client fan-out, service fan-out, or out-of-band resolution)?
+
+*   **Giles and Femi's Proposal: Federated Resolver Service with PIR**
+    *   **Core Assumptions:** No single entity should be financially responsible for all queries; costs should be proportional to user count; low QPS (once a day per client).
+    *   **Rejected Approaches:** Client fan-out (bandwidth, privacy leakage) and a single centralized hub (economic, political viability).
+    *   **Proposed Architecture:** Each messaging service runs its own server-side resolver, which can either cache mappings from other services or query them in real-time.
+    *   **Privacy using PIR:** Private Information Retrieval (PIR) is used to prevent the leakage of the user's social graph to services not involved in the conversation.
+    *   **Sequence of Discovery:** A client (mobile phone) sends a PIR query to its own service backend. The backend (or its name server) resolves the SII to one or more SSIs using cached records or by querying authoritative name servers of other platforms. Once SSIs are identified, key material is retrieved from the relevant Key Distribution Services (KDS) for message sending.
+    *   **Preferred Service:** If an SII maps to multiple SSIs, a "preferred service" bit, signed by the user's private key, can be used to indicate preference. Timestamps on preferred service registrations can resolve conflicts.
+    *   **PIR Implementation Details:** Femi detailed lattice-based PIR for keyword queries (SIIs/SSIs). Clients would download a one-time, offline metadata package (e.g., 40MB for a 10 billion record database split into 10K shards) to efficiently send PIR queries (e.g., 2KB upload, 21KB download per query).
+    *   **Discussion Points:**
+        *   Clarification: The proposal distinguishes between SII-SSI mapping (discovery) and key distribution, though both are shown in the sequence diagram.
+        *   Threat Model: Eric raised concerns about the specific threat model for PIR, noting that if a client's own provider is trusted, PIR could occur server-to-server, reducing client load.
+        *   Complexity: Alyssa noted that the deep dive into PIR schemes might be premature without a clearer architectural and trust model consensus.
+
+*   **Jonathan's Proposal: Separate Application Providers (AP) and Discovery Providers (DP)**
+    *   **Core Assumptions:**
+        *   **Separation:** A strong distinction between APs (messaging services, enterprise SaaS) and DPs (trusted third parties).
+        *   **Cardinality:** Many APs (hundreds), but fewer DPs (e.g., <10, potentially geo-distributed for regulatory compliance). DPs are highly trusted and mediate between APs.
+        *   **Trust Problem:** APs can be untrusted/malicious, requiring DPs to validate mappings.
+    *   **Foundational Model:** Users always interact with APs, never directly with DPs.
+    *   **Basic Protocol:** A user queries their AP for an SII. If the AP doesn't recognize it, it queries a GP (DP) for the SSI mapping.
+    *   **Registration and Validation (Addressing Trust):**
+        *   When a new user registers with an AP using an SII (e.g., phone number), the AP requests the GP to create a mapping between a user ID and the SII.
+        *   **The GP performs Mobile Number Verification (MNV):** Sends an SMS with a code to the SII. The user enters this code into the AP, which passes it to the GP.
+        *   The GP validates the code, thus confirming the SII's association with the user/AP, and stores the mapping. This prevents malicious APs from falsely claiming ownership of an SII.
+    *   **Discussion Points:**
+        *   **Rationale for Multiple DPs:** Jonathan argued that GDPR and other data localization requirements make a single global DP unfeasible, leading to multiple DPs.
+        *   **Trust vs. Distribution:** Richard Barnes and Eric suggested separating the authentication of mappings (handled by CAs or trusted entities) from the distribution of that information, akin to DNS + TLS. Jonathan agreed that a CA separation is a valid alternative but chose to combine for simplicity of actors.
+        *   **Conflation of Concerns:** Watson and Eric noted that the proposal conflates ownership authentication (SII to user) with discovery (SII to service), arguing for clearer separation, perhaps with the DP acting as a CA.
+        *   **Time Constraints:** Jonathan's further details on "Bloom Filter Routing Protocol" were deferred due to time.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group will design discovery solutions that work with existing Service-Independent Identifiers (SIIs) such as E.164 phone numbers and email addresses (where the domain is not necessarily that of a messaging service provider). No new SII formats are to be invented.
+*   **Action Item:** Giles and Femi are requested to update their draft or provide a list post that clarifies:
+    *   The specific threat model for their Federated Resolver Service, detailing who is protected from whom (e.g., is the client protected from its own provider?).
+    *   The role and interaction points for the one-time metadata download required for PIR.
+    *   Refinements to actor definitions and trust relationships in their diagrams.
+*   **Action Item:** Jonathan is requested to update his draft or provide a list post that clarifies:
+    *   The specific cardinality and trust relationships between Application Providers (APs) and Discovery Providers (DPs).
+    *   Further details on the separation of concerns regarding identity validation and information distribution, particularly in light of discussions about DPs acting as CAs.
+
+## Next Steps
+
+*   The discussion on Discovery will continue at the upcoming IETF meeting in Prague.
+*   The next MIMI interim session will focus on the other design track for the working group.
+*   Presenters are encouraged to update their draft documents to reflect the technical discussions and clarifications by the upcoming draft deadline (approximately two weeks).
+*   Participants are encouraged to continue detailed technical discussions on individual issues via the mailing list.

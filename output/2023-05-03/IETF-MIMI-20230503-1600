@@ -1,0 +1,62 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The first MIMI interim session focused on continuing discussions from IETF 116 regarding transport requirements, group management modalities, room administration, group portability, and the critical relationship between MLS (Messaging Layer Security) state and transport state. Key discussions revolved around the necessity of supporting various messaging modes, simplifying group types, defining a minimum set of administration functionalities, and ensuring the protocol doesn't preclude future portability. A significant part of the session addressed the security implications of integrating access control lists (ACLs) with MLS, leading to a decision that ACLs should be expressed as an MLS extension. The group agreed to hold bi-weekly interim sessions to continue progress.
+
+## Key Discussion Points
+
+*   **Transport Requirements - Messaging Modalities**
+    *   Discussion on three conceptual modes for sending messages:
+        1.  **Fire-and-forget (e.g., SMS)**: Messages sent immediately without prior consent.
+        2.  **Consent-based**: Sender requests to join a network or contact, receiver must accept.
+        3.  **Quarantined**: Messages can be sent, but are held until receiver accepts membership (appears like mode 3 to receiver, but mode 1 to sender).
+    *   **Anti-spam mechanisms** were a key consideration when deciding which modes to support.
+    *   An inventory of how existing systems implement these modes was suggested as useful.
+    *   **Rough consensus**: The protocol should support modes 2 and 3. Mode 1 could be achieved by clients auto-accepting consent requests, implying that stronger anti-spam mechanisms might be needed if such auto-acceptance is prevalent.
+    *   Group membership addition for existing contacts: A separate consent mechanism was deemed unnecessary for individuals already in one's contact list.
+
+*   **Group Management - Modalities (One-to-one, Ad-hoc, Named Groups)**
+    *   Existing messaging systems show no consistent behavior for "ad-hoc" or "group DM" conversations (e.g., what happens when the same set of people create multiple group DMs, or join/leave).
+    *   Proposed simplification to a single primitive ("named group" or "room") at the protocol level, with one-to-one and ad-hoc groups as specializations.
+    *   Discussion on the "uniqueness problem": Should a group of the exact same participants always resolve to the same conversation, or can multiple distinct conversations exist? This is critical for interoperation with systems like iMessage and Slack.
+    *   The importance of deterministic group naming (e.g., hashing participants) and immutability properties for defining one-to-one and ad-hoc groups was highlighted.
+
+*   **Room Management & Moderation (Ownership, Kick/Ban, Naming)**
+    *   Current MIMI charter language was raised as potentially prohibiting the definition of complex room management features beyond basic functionality.
+    *   Concerns were voiced that defining these features solely at the service level would lead to inconsistent client experiences across interoperating systems and hinder future decentralization.
+    *   It was emphasized that a minimum set of capabilities, particularly for expressing rejection due to lack of authorization, is crucial for interop.
+    *   The distinction between "naming a group" (seen as in scope) and complex moderation (potentially out of scope) led to a need for clearer boundaries.
+
+*   **Room Portability & Decentralization**
+    *   Discussion on whether a group chat must "live" on a single service or if it can be portable/decentralized (e.g., moving between owning systems, or no single owner).
+    *   General agreement to design the protocol in a way that *does not preclude* future portability and decentralization, even if full support isn't a day-one requirement.
+    *   It was noted that if basic administration semantics are codified, it inherently facilitates portability.
+
+*   **MLS State vs. Transport State - Access Control and Policy**
+    *   Exploration of the coupling between MLS cryptographic state (keys, group members) and transport-level roster/policy.
+    *   A key question: Should access control policies (ACLs) be enforced purely by the service, or cryptographically tied to the MLS state and enforced by clients?
+    *   Jonathan raised a security concern: A malicious provider could hand a client an ACL that allows an eavesdropper, and if clients are not aware or cannot verify, they might unknowingly sign and accept this malicious policy into the MLS group state.
+    *   The counter-argument was that while the initial ACL might be negotiated between a client and its local vendor/service, once an MLS group is created, that ACL should be cryptographically signed as part of the MLS state, ensuring end-to-end authenticity and client agreement. Any disagreement would break decryption.
+    *   It was clarified that ACLs do not necessarily imply arbitrary user-defined policies, but could be a few well-defined, simple modes (e.g., "anyone can join," "only admins can add," "any member can add").
+
+## Decisions and Action Items
+
+*   **Messaging Modalities**:
+    *   **Decision**: Support consent-based (Mode 2) and quarantined (Mode 3) messaging. Fire-and-forget (Mode 1) can be a client-side auto-accept implementation.
+*   **Group Management**:
+    *   **Action Item (Rowan)**: Draft a proposal on how to model different group types (one-to-one, ad-hoc, named groups) as specializations of a single primitive, including how to handle uniqueness and immutability.
+    *   **Action Item (All)**: Take an inventory of how existing systems handle different group behaviors to inform requirements.
+*   **Room Management & Moderation**:
+    *   **Action Item (Matthew)**: Provide a grid outlining various room management functions and their proposed in-scope/out-of-scope status relative to the MIMI charter.
+*   **Room Portability**:
+    *   **Decision**: Do not design the protocol in a way that precludes future room portability, even if it's not an immediate requirement.
+*   **MLS State vs. Transport State & ACLs**:
+    *   **Decision**: Access control policies (ACLs) should be expressed as an MLS extension and cryptographically enforced by clients to ensure strong agreement and prevent malicious injection from services. The specifics of these policies (e.g., number of allowed modes, language) need further definition.
+    *   **Action Item (Ecker)**: Draft an MLS extension for access control lists/policies to provide a concrete basis for further discussion.
+
+## Next Steps
+
+*   **Meeting Cadence**: The MIMI working group will hold bi-weekly interim sessions to continue working through these and other outstanding topics.
+*   **Draft Development**: Volunteers will develop the assigned drafts (group modeling, room management scope, MLS ACLs) for discussion at upcoming interims.
+*   **Charter Review**: Further discussion on charter scope, particularly for room management and moderation features, may be necessary as drafts clarify proposed functionalities.

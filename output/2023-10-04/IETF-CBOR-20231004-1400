@@ -1,0 +1,70 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR Working Group discussed three main topics: an update on the CBOR Time Tag, progress on CBOR Extended Diagnostic Notation (EDN) and CDDL grammar updates, and the latest on CBOR DNS message format. Key decisions included the IANA registry location for Time Tag parameters, proceeding with Working Group Last Calls (WGLC) for both the EDN Literals and CDDL Grammar Updates drafts, and a request for significant working group review on these drafts.
+
+## Key Discussion Points
+
+### DNS CBOR Message Format Update
+
+*   **Objective:** Reduce DNS query/reply packet size to avoid fragmentation, especially in constrained link layers (e.g., 802.15.4, CoAP). Achieved through CBOR encoding for conciseness and optional address/name compression.
+*   **Updates (since IETF 117, draft-03):**
+    *   Provided format description for EDNS OPT pseudo record.
+    *   Simplified CDDL.
+    *   Removed DNS transaction IDs, assuming underlying transport handles request-response mapping.
+*   **Evaluation Findings:**
+    *   An evaluation using a 2019 corpus of IoT device DNS traffic (1.2M queries, 2.74M responses) showed most messages were compressed.
+    *   Identified outliers where unpacked format was shorter than packed, and cases of poor compression due to the lack of name compression in the base CBOR format, especially with duplicate names in responses.
+*   **Proposed Name Compression:**
+    *   **DNS Wire Format-like:** Encode domain names as components, referencing them with a `uint` (e.g., offset in CBOR binary or string in CBOR object). Raises questions about detecting name termination.
+    *   **CBOR Pack Light:** Reference components in a predefined table, similar to packed CBOR, but introduces overhead.
+    *   Discussion on whether the base format should incorporate packed CBOR concepts.
+*   **Other Considerations:**
+    *   **Flag Rotation:** Proposed rotating extended flags in DNS OPT records to reduce encoding from 3 bytes to 1 byte (current IANA MSB definition leads to 3-byte encoding). Concern raised about potential implementer errors and suggestion for pseudo-code in an appendix or a CDDL control operator.
+    *   **Corpus Realism:** The corpus used for evaluation was noted to have similar name curves to real-world DNS data, though differences exist in extremes.
+    *   A poll of the room was taken for feedback on the DNS CBOR updates, and further investigation into name compression options (including packed CBOR) and runtime analysis of different compression algorithms was requested.
+
+### CBOR Time Tag Update
+
+*   The draft was submitted to the IESG on August 23rd and received an AD review with good points. A pull request addressing these comments has been generated.
+*   **IANA Registry Arrangement Discussion:**
+    *   **Option 1 (Current Draft):** Create a new registry group "CBOR time tag parameters" containing registries for time scales and map keys, separate from the existing "CBOR tags" group.
+    *   **Option 2 (Proposed):** Use the *existing* "CBOR tags" registry group for time tag parameters. This would consolidate CBOR-centric registries and prevent "top-level space littering" at IANA. Registries would need more specific names (e.g., "time tag map keys").
+    *   **Decision:** A sense of those present indicates a preference to use the existing "CBOR tags" IANA registry group for CBOR-central parameters, aligning with practices in other WGs like IPP.
+*   Working group members are requested to review the pull request, especially regarding referencing PTP 2.1 (IEEE 1588) for clock accuracy.
+
+### CBOR Associated Languages: EDN & CDDL
+
+*   **Extended Diagnostic Notation (EDN) Literals (`draft-ietf-cbor-edn-literals`):**
+    *   **Updates:** Addressed end-of-line comments, hex floating point syntax, clarity on float vs. integer interpretation, fractional time examples, and Unicode fixes. These changes are implemented in the `edn-abnf` tool.
+    *   **Encoding Indicators:** Discussion on whether to support encoding indicators for application prefix data. It was determined that while general encoding indicators should be preserved (a Rust implementation exists), specific syntax for app prefix data is not necessary due to potential complexity.
+    *   **IANA Considerations for Application Prefix Registry:** A proposal was made to adopt IANA policy similar to JSON Path's "Function Extensions," using an "Expert Review" policy with specific instructions for experts to guide registrants towards providing specifications and to curate the namespace. This approach was well-received as it allows for early registration while still encouraging documentation.
+    *   The document's title in the data tracker will be improved to "CBOR Extended Diagnostic Notation (EDN) application-oriented literals and ABNF."
+*   **CDDL Grammar Updates (`draft-ietf-cbor-cddl-grammar-updates`):**
+    *   This draft addresses errata reports on RFC 8610, correcting fictional or inaccurate ABNF definitions.
+    *   The document is considered ready for a Working Group Last Call.
+*   **Parallel Working Group Last Calls (WGLCs):** A proposal was made to run WGLCs for both the EDN Literals and CDDL Grammar Updates drafts in parallel to incentivize working group members to review both sets of ABNF definitions simultaneously. Working group members are urged to read and comment on these drafts to avoid delays.
+
+## Decisions and Action Items
+
+*   **DNS CBOR:**
+    *   **Action Item:** Martin to further investigate name compression approaches (including comparing packed CBOR variants) and conduct runtime analysis of different compression algorithms.
+    *   **Action Item:** Martin to consider adding pseudo-code or exploring CDDL control operators for flag rotation to assist implementers.
+*   **CBOR Time Tag:**
+    *   **Decision:** The working group will proceed with updating the draft to define its IANA registries within the existing "CBOR tags" registry group.
+    *   **Action Item:** Working group members are requested to review the pull request for `draft-ietf-cbor-time-tag` by the end of tomorrow (Sept 22nd) to facilitate early IESG telechat scheduling.
+*   **CBOR Associated Languages (EDN & CDDL):**
+    *   **Decision:** For EDN Literals, general encoding indicators will be retained, but no special syntax will be added for application prefix data.
+    *   **Decision:** The proposed IANA policy for the EDN application prefix registry, based on JSON Path's "Expert Review" with detailed instructions, is accepted.
+    *   **Decision:** The working group will proceed with a Working Group Last Call for `draft-ietf-cbor-edn-literals`.
+    *   **Decision:** The working group will proceed with a Working Group Last Call for `draft-ietf-cbor-cddl-grammar-updates`, aiming for parallel with the EDN Literals WGLC.
+    *   **Action Item:** Carsten to generate `draft-ietf-cbor-edn-literals-05` and `draft-ietf-cbor-cddl-grammar-updates-00` for WGLC.
+    *   **Action Item:** Working group members are urged to read and comment on the `draft-ietf-cbor-edn-literals` and `draft-ietf-cbor-cddl-grammar-updates` drafts before or during their respective WGLCs.
+
+## Next Steps
+
+*   Carsten will prepare `draft-ietf-cbor-edn-literals-05` and `draft-ietf-cbor-cddl-grammar-updates-00` for Working Group Last Call this week, targeting submission by Monday, September 25th, to allow for a 14-day WGLC before the IETF 118 deadline.
+*   Working group members to provide feedback on the `draft-ietf-cbor-time-tag` pull request.
+*   Continue discussions and investigations on name compression for the DNS CBOR message format.
+*   Begin collecting agenda items for the next IETF meeting in Prague.

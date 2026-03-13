@@ -1,0 +1,56 @@
+# [ALTO](../wg/alto.html)
+
+## Summary
+
+This interim meeting focused on reviewing the current status and open issues for the ALTO OAM YANG and ALTO New Transport drafts, which have both undergone initial Working Group Last Call (WGLC) and director reviews. Discussions primarily revolved around addressing specific technical comments from YANG doctors and various IETF Area Directors, particularly regarding data model design, server push mechanisms, and connection/session binding in the new transport.
+
+## Key Discussion Points
+
+### ALTO OAM YANG Draft
+
+*   **YANG Doctor Review Comments:** Jason reported that most YANG doctor review comments have been addressed in the latest draft version, often by adding references and clarifying patterns.
+*   **ID Pattern Design (Source ID, Resource ID):**
+    *   Discussion arose regarding the pattern definition for IDs like `Source ID` and `Resource ID`. Jason explained the current pattern.
+    *   A participant (Richard) questioned the pattern's rationale, suggesting it may allow all zeros and doesn't specify Unicode, unlike typical IETF practices.
+    *   It was suggested to align more closely with RFC 7285's `PIDName` definition (Section 10.1), which uses derived types, specifies a maximum length (64 characters), and considers DNS label compatibility. The principle of defining common types for reuse was emphasized.
+*   **`meta-list` Key Encoding:** A significant issue was identified regarding the encoding of keys in `meta-list`, where RFC 7285 defines the key as a `string` but the use case involves arbitrary binary data. Proposed solutions (binary encoding or `anydata` statement) both require server-side validation or definition of translation, leading to a decision to discuss this on the mailing list.
+*   **`typedef` Suggestions:** Andy's suggestion to use `typedef` to simplify extension modules was generally accepted for appropriate cases, with authors providing justification for instances where it does not make sense.
+*   **Open Issues:** Currently, 25 open issues remain for the OAM draft.
+
+### ALTO New Transport Draft
+
+*   **Review Status Overview:** Kai presented an overview of the six director reviews received. Some comments have been resolved, some have proposed changes awaiting reviewer confirmation, and some represent "blockers".
+    *   **SEC Dr Early Review:** Mostly "needs" (clarifications) which have been fixed, and the reviewer confirmed resolution.
+    *   **ART Early Review (Spencer):** Updates were made to correctly reflect HTTP/3 server push initialization (from `settings_enable_push` to `max_push_frame_id`). Clarifications were also made regarding the use of "SHOULD" vs. "MUST" in examples, with explanations for client tolerance of performance/consistency issues. Awaiting Spencer's feedback.
+    *   **TSV-ART Review:** Transport requirements and backward compatibility justification were added. Examples were modified to demonstrate that incremental updates can occur between non-neighboring versions (e.g., n to n+2) and that various encoding mechanisms are server-specific options, with the document only requiring stepwise updates.
+*   **HTTP Dr Early Review (Martin Thompson) - Major Roadblocker:**
+    *   **Issue 1: Use of HTTP/2 and HTTP/3 Server Push:**
+        *   Martin argued against the use of server push due to a perceived lack of implementation support and that it might not align with the intended use of server push.
+        *   Authors are considering two options: 1) Splitting the HTTP/2 and HTTP/3 aspects into a separate document (though this previously led to redundancy), or 2) Providing stronger justification for the current design.
+        *   It was suggested that server push's benefits (reduced Round-Trip Time (RTT), reduced server load) should be explicitly stated in the document's introduction or architecture section. It was noted that server push is already an optional feature in the current draft.
+        *   The need to consider "future-proofing" (as previously raised by AD Martin Duke) was also mentioned, especially if server push eventually fades from HTTP.
+    *   **Issue 2: Session and Updates Bounded to a Single Persistent Connection:**
+        *   Martin strongly opposed the tight coupling, arguing that HTTP-based protocols should be request-based, not connection-based.
+        *   Authors are considering: 1) Adjusting the protocol to allow multiple connections for the same user while recommending a single one for performance, or 2) Justifying the current design with examples from other working groups or protocols.
+        *   The benefits of binding state to a connection (e.g., Zookeeper's session-based design, automatic state clearance upon disconnect, improved fault tolerance, and support for "Read Your Own Writes" consistency models) were highlighted as a "philosophical" design choice.
+        *   Conversely, concerns about this design being too restrictive and the potential for greater flexibility by allowing multiple connections were raised.
+        *   It was suggested that similar design considerations might exist in Netconf, which could provide useful references.
+
+## Decisions and Action Items
+
+*   **ALTO OAM YANG:**
+    *   Jason to send an email reply to Andy (YANG doctor reviewer) addressing his comments soon.
+    *   Jason to upload the new draft version (v8) to the datatracker by tomorrow, after fixing minor issues affecting the abstract.
+    *   Jason to share the `meta-list` key encoding issue on the mailing list for broader discussion.
+*   **ALTO New Transport:**
+    *   Kai and Lachlan to follow up with Martin Thompson (HTTP Dr review) and Spencer (ART review) regarding the justification for server push and its optionality.
+    *   Kai and Lachlan to add paragraphs in the introduction/architecture overview of the document to justify the benefits of server push (e.g., reduced RTT, server load).
+    *   Kai and Lachlan to create an open issue and post to the mailing list for discussion on bounding session/updates to a single persistent connection.
+    *   Tim (Chair) to send Netconf design examples (relevant to session/connection binding) offline to Richard and Kai.
+    *   Kai and Lachlan to incorporate all addressed comments into a new draft revision (v8).
+
+## Next Steps
+
+*   Continue to follow up on all WGLC and director review comments for both drafts.
+*   Finalize new revisions for both ALTO OAM YANG and ALTO New Transport drafts incorporating the latest changes and justifications.
+*   Engage with reviewers and the mailing list on outstanding technical issues to build consensus on proposed solutions.

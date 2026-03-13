@@ -1,0 +1,124 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI Working Group held an interim session focused on establishing clear requirements for user discovery, preceding any detailed solution proposals. Discussions revolved around potential architectural models, the cardinality and trustworthiness of various application providers, the integrity and privacy of identity mappings, and the challenges of network effects and incentivizing data population. Key disagreements emerged regarding the necessity of a separate "Discovery Provider" entity, the extent to which the mapping database can or should be protected from enumeration, and the practicality of introducing new, native MIMI-specific identifiers. The session concluded with a call for continued detailed discussion on the mailing list to consolidate requirements.
+
+## Key Discussion Points
+
+*   **Welcome and Logistics:**
+    *   The chairs welcomed attendees to the MIMI interim.
+    *   The standard IETF Note Well policy was highlighted.
+    *   Ecker volunteered to serve as note taker for the session.
+    *   The agenda focused on requirements for user discovery, with presentations from Jonathan, Ecker, Giles, and Vittorio, before moving to solution proposals.
+    *   A warning was given about potential DataTracker unreliability due to a bot attack.
+
+*   **Jonathan's Presentation (draft-jonathan-mimi-discovery-reqs-00): Requirements for Discovery**
+    *   **Proposed Architecture:** Jonathan presented a framework featuring App Providers interacting with Discovery Providers, which could also interact with other Discovery Providers. The goal was to map service-independent identifiers (e.g., phone number, email) to service-specific identifiers (user ID + provider name).
+    *   **Discussion on Architecture vs. Requirements:**
+        *   A sense of those present indicated that this diagram might be too prescriptive, bleeding into architectural solutions before requirements were fully established.
+        *   Ecker suggested starting with user experience problems rather than a predefined architecture, questioning whether multiple Discovery Providers or even a separate Discovery Provider entity were necessary. He raised a "straw man" of a globally synchronized directory.
+        *   Ryan expressed less interest in the multi-provider discovery problem at this stage, preferring to defer it.
+        *   Charles agreed with the actors but questioned the specific connection lines, suggesting the user might connect directly to a Discovery Provider.
+        *   Jonathan argued that a reference architecture is necessary for protocol work, as different architectures imply different trust and authentication models (e.g., user direct query vs. App Provider query). He found direct user-to-Discovery Provider interaction impractical due to critical mass and business relationship requirements.
+        *   Vittorio echoed the sentiment that the presentation felt more like a solution than a problem definition, suggesting starting with use cases and requirements to naturally derive an architecture.
+        *   Ecker highlighted implicit requirements in Jonathan's architecture, particularly the assumption that a mapping database should not be public, contrasting with prior assumptions from other presentations. He suggested debating who asserts identities and under what administrative control.
+        *   **Decision:** The group pivoted to focus on architectural-independent requirements, with Jonathan agreeing to move past the initial architecture diagram.
+    *   **Cardinality of App Providers & Use Cases:** Jonathan categorized App Providers:
+        *   Consumer Over-the-Top (e.g., WhatsApp, Wire)
+        *   Consumer Operator Aligned (e.g., Google Messages)
+        *   Enterprise Cloud (e.g., RingCentral, Zoom)
+        *   On-prem Enterprise (e.g., large businesses hosting their own systems)
+        *   On-prem Consumer (e.g., individuals self-hosting)
+        *   **Discussion:**
+            *   Ecker praised the taxonomy but stressed the implication of "untrusted" providers. He argued that if anyone can join, systems relying on rate-limiting for privacy are vulnerable to enumeration via fake App Providers. He challenged the premise that mapping databases *must* be concealed, citing email as an example where spam is addressed by content analysis and sender reputation, not secrecy of identifiers.
+            *   Ryan raised concerns about the last two categories ("On-prem Enterprise," "On-prem Consumer") significantly increasing cardinality, making bilateral agreements difficult for gatekeepers. He suggested these might not be "first order" use cases.
+            *   Jonathan agreed to eliminate "On-prem Consumer" as a primary use case, but advocated for "On-prem Enterprise" due to potential cost savings and B2C needs. He favored "defense in depth" for trustworthiness, acknowledging gatekeeper federation but desiring protocols that handle less-than-perfect behavior.
+            *   Vittorio stressed designing for flexibility, not preempting business models, and supporting *any* number of services, akin to email. He opposed building for a centralized model.
+            *   Ecker supported designs that don't exclude solutions for the general case. He also emphasized the issue of *who* is allowed to assert identities, not just the database's privacy.
+    *   **Core Requirements:** Jonathan presented four core requirements:
+        *   Functional mapping (lookup).
+        *   Valid and trustable mappings (integrity) – identified as the "bulk of the problem."
+        *   Address network effect / cold start problem (avoiding past failures like ENUM).
+        *   Incentives to populate mappings (e.g., regulatory obligation).
+    *   **Discussion:**
+        *   The group generally agreed with points 3 and 4 often being driven by regulatory mandates on gatekeepers.
+        *   On point 1 (functional mapping), there was agreement.
+        *   On point 2 (integrity), Ecker argued that while untrustable providers are an issue, it doesn't automatically mean the database must be private. Richard Burns stated that major messaging providers already make their identity keys public, protected by rate limiting, not secrecy. Jonathan clarified he opposes solutions enabling trivial enumeration attacks.
+        *   Giles added that the privacy of the *lookup query itself* (the querying user's communication graph) is a critical, separate privacy requirement.
+
+*   **Ecker's Presentation (draft-eckersley-mimi-discovery-requirements-00): Discovery Requirements**
+    *   **Recap:** Described the basic need for Alice's App to map Bob's SI to an SSI and retrieve associated material. Noted the undecided question of whether Bob gets one or multiple mappings.
+    *   **Intuition Pump (Straw Man Architecture):** Ecker presented a simple model (CA + Public Directory) to provoke discussion on its deficiencies.
+    *   **Integrity of SI-SSI Mapping:** Focused on "who's allowed to assert what" for integrity.
+        *   **Discussion:**
+            *   Jonathan suggested a split-trust model: a small set of trusted App Providers (e.g., for bootstrapping) and for everyone else, a trusted Discovery Service verifies ownership (e.g., via SMS challenge) and generates the mapping.
+            *   Ecker questioned if the Discovery Service verifies for the *user* or the *AP*, and whether the AP can staple on its own key.
+            *   Charles suggested that if Discovery Services are not separate, App Providers would be responsible for their own verification, with minimum standards agreed upon by a federation (like CAs).
+            *   Basel questioned if MIMI needs to solve this problem, as native apps already have this issue (e.g., WhatsApp's internal lookup).
+            *   Richard Burns used the CA metaphor, agreeing that some trusted authorities are needed, whether external or the providers themselves adhering to standards. He emphasized that without integrity, impersonation is a major risk.
+            *   Jonathan reiterated his view that the cardinality and diversity of App Providers (including enterprises) make it impossible to apply stringent trust standards to all, necessitating a separate, highly trusted Discovery Service entity. Basel countered that this problem exists outside of MIMI and should be solved holistically across the industry.
+            *   Rowan clarified that while identity agreement is needed for peering, broad public internet discovery of identity might not be. He also questioned Jonathan's "Discovery Provider" term conflating authority and information source, preferring the CA analogy where the authority asserts but doesn't necessarily distribute.
+
+*   **Giles' Presentation (draft-giles-mimi-discovery-requirements-00): Discovery Requirements**
+    *   **User Journey:** Primary requirement is sending a message (needs public key and delivery point).
+    *   **Recipient Choice:** User with multiple clients/services should be able to specify preferred reception.
+    *   **Identifier Namespace:** Identifiers for lookup must be globally unique.
+    *   **Verification:** Way to verify association between public key and user ID (P1 priority), suggesting out-of-band methods (QR code) or CT-like architectures.
+    *   **Privacy Requirements:**
+        *   Privacy of the social graph (query recipient).
+        *   Discovery service should not learn querying user identity (if possible).
+        *   Discovery service should not learn timing of messages.
+        *   **Discussion:**
+            *   Jonathan sought clarification on social graph privacy: is it protecting against revealing the querying user, the recipient, or both? Giles confirmed both but noted differing solution approaches. He emphasized protecting the *query target* (recipient).
+            *   Ecker noted that App Providers *will* learn which numbers their users are querying.
+            *   Giles clarified that privacy concerns exist for Discovery Services where the querying user doesn't have an account, as those services would learn the user's identity. He envisioned a "forking query" model.
+            *   Elisa suggested a "matrix of privacy requirements" specifying *who* is being disclosed *to whom*. She also stated that hiding the sender's identifier (including IP) should be left open as a possibility.
+            *   Rowan suggested users could do direct lookups to multiple services, pushing the problem to the user, but Giles noted this would still leak query information to services where the user doesn't have an account.
+    *   **Privacy Non-Requirements:**
+        *   Not a goal: directory is secret (rate limiting exists).
+        *   Not a goal: hiding existence of a particular phone number/public key.
+        *   Not a goal: hiding association between public key and user ID.
+        *   Not a goal: looking up contacts by name.
+        *   **Discussion:**
+            *   Ecker pushed on "directory not secret," asking if it means *no attempt* to conceal or just a *limited* attempt. He reiterated that an open system with only rate-limiting for APs is vulnerable to large-scale enumeration.
+            *   Giles believed preventing scraping is out of scope for MIMI, or only concerns economic incentives for rate limiting, not technical implementability.
+            *   Jonathan re-emphasized that a core requirement is *not* allowing trivial full database copies, noting this rules out "distribute the database everywhere" solutions. Charles countered that individual service providers managing queries on their own shards (with rate limiting) is a viable model.
+
+*   **Vittorio's Presentation (draft-vittorio-mimi-id-discovery-00): MIMI Identity and Discovery Requirements**
+    *   **Problem Abstraction:** Converting a service-independent, human-friendly user identifier into one or more account identifiers for connection establishment. Emphasized one-to-many, non-exclusive, unidirectional relations.
+    *   **Use Cases:** User desires to be contacted via:
+        *   New native MIMI-specific identifier.
+        *   Existing email address or telephone number.
+        *   Existing identifier on another service (migration).
+    *   **Requirements on Identifiers:**
+        *   Users should *not* be forced to be reachable by existing email/phone numbers to avoid spam and future-proof the system.
+        *   MIMI identifiers should be simple, human-friendly, and *user-owned* (for portability across providers).
+        *   Identifiers should not be easily guessable unless intended.
+    *   **Requirements on Solution:** Scalability, decentralization (for privacy), end-to-end privacy, self-hosting support, open standards, low barriers to deployment.
+    *   **Non-Tech Requirements:** No IPR/regulatory nightmares, economically viable.
+    *   **Key Proposal: Native MIMI-specific Identifiers:** Vittorio advocated for exploring MIMI-specific identifiers (e.g., DNS-based) as an alternative to existing phone numbers/email, offering greater user control and independence from legacy systems. He acknowledged that existing identifiers would still need support.
+    *   **Discussion:**
+        *   Jonathan strongly opposed a new global identifier, deeming it impractical for billions of users and suggesting that privacy concerns could be addressed without it. He noted the difficulty of making new identifiers "routable" and verifiable outside MIMI.
+        *   Vittorio clarified that it wouldn't be mandatory but an *option* for users who prioritize ownership and portability, and for new services.
+        *   Ecker agreed with Jonathan on the impracticality of new global identifiers, stating that E.164 numbers will persist. He noted that existing designs assume globally unique and resolvable identifiers.
+        *   Charles suggested a service identifier + arbitrary string (e.g., phone number) provides a globally unique namespace compatible with existing systems.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group will prioritize defining requirements before delving into specific architectural solutions.
+*   **Decision:** The "On-prem Consumer" use case for App Providers is considered out of scope for primary MIMI development.
+*   **Action Item:** Participants are encouraged to continue detailed discussions on specific technical topics (e.g., rate limiting, database scraping, social graph privacy, native MIMI identifiers) on the mailing list.
+*   **Action Item:** The chairs will instigate mailing list discussions if they don't start organically.
+*   **Action Item:** The chairs will work towards a consolidated list of MIMI discovery requirements, potentially including options where consensus is not yet reached.
+*   **Action Item:** The chairs will send out a Doodle Poll to schedule additional interim meetings in October, aiming for a regular cadence to avoid future polls.
+
+## Next Steps
+
+The primary next step is to transition the rich discussion from this interim session to the MIMI mailing list. Specific threads should be initiated to hash out disagreements and clarify requirements around:
+1.  The scope and nature of "trust" in identity assertions and mappings.
+2.  The exact privacy requirements for social graphs, specifying which entities can learn what information and when.
+3.  The feasibility and necessity of protecting identity mapping databases from enumeration, and the role of rate-limiting versus other technical solutions.
+4.  Further exploring the benefits and challenges of native MIMI-specific identifiers compared to relying solely on existing service-independent identifiers (e.g., E.164, email).
+
+The chairs will consolidate these discussions towards a single, comprehensive list of discovery requirements. More interim meetings will be scheduled to continue this critical foundational work.

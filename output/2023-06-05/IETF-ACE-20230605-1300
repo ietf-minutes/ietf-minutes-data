@@ -1,0 +1,74 @@
+# [ACE](../wg/ace.html)
+
+## Summary
+
+The ACE Working Group held an interim meeting to discuss the latest updates and progress on several drafts, including the rebook token notification, Pub Sub profile, OSCORE GM Admin, EST OSCORE, and Ad Hoc OSCORE profile. Key discussions revolved around message flows, security considerations for server-generated keys, terminology consistency, and the handling of group configuration changes. Several decisions were made regarding the Pub Sub profile, OSCORE GM Admin, and EST OSCORE, along with associated action items for draft authors.
+
+## Key Discussion Points
+
+*   **Rebook Token Notification**
+    *   Version 6 of the draft was submitted after addressing shepherd's review comments from AD Eron. Publication has been requested.
+
+*   **Pub Sub Profile**
+    *   A revised message flow was presented, incorporating KDC Discovery. The client first makes an unauthorized request to the broker for topic discovery and AS information, then approaches the AS to obtain a token for the KDC, and finally interacts with the KDC to join a security group linked to topics.
+    *   The previous strict one-to-one matching between topic names and security group names was relaxed; the security group name can now be discovered during KDC Discovery.
+    *   It was agreed that unauthorized subscribers or publishers should not be able to discover the KDC and associated security groups, nor join topic conversations. Authorization is required for these steps.
+    *   **Scope Definition:**
+        *   Renamed "roles" to "permissions" (e.g., publish, read, delete) to better reflect the scope's purpose.
+        *   An "admin" permission was proposed for future profiles dealing with administrative operations.
+        *   A "group type" flag was suggested for the scope to differentiate between application groups and security groups, especially when entities like the KDC and broker are co-located, helping the AS apply correct policies.
+    *   The "join response" needs to be clarified to include the signature algorithm and related parameters, not just `cose-key`.
+    *   Future work includes exploring additional group re-keying schemes and KDC policies.
+
+*   **OSCORE GM Admin**
+    *   The document split is complete, with core content extracted into a separate "GM Admin Coral" document. The current document (GM Admin v9) focuses on the main interface protocol with CBOR and Link format.
+    *   The default mode for group managers should consider pairwise mode by default if not explicitly specified by the administrator.
+    *   Clarifications were added regarding what happens when group members learn of group configuration changes.
+    *   **Open Point 1: Configuration Overwriting and Sender IDs.** Discussed scenarios where an administrator changes encryption algorithms at runtime, potentially leading to smaller maximum sender ID sizes. If a group member's current sender ID is too large for the new configuration, the proposal is for the group manager to evict that member. There was a sense of those present indicating agreement with this approach.
+    *   **Open Point 2: Terminology Consistency.** A proposal was made to align algorithm and parameter names with Group OSCORE for consistency. An editor's note will be added to highlight this alignment with future Group OSCORE versions.
+
+*   **EST OSCORE**
+    *   Revision 01 was published, resolving comments and issues raised by Marco.
+    *   **Open Issue: Server-Generated Private Keys.** Discussion focused on whether EST OSCORE should support server-generated private keys, as RFC 9148 does. Michael Richardson argued against it, citing modern RNG capabilities. Shahid Raza (co-author) argued for keeping it, referencing issues with poor hardware RNG implementations in IoT, especially with bare-metal programming.
+    *   A poll of the room indicated a preference to keep the option for server-generated keys, but with a "big fat warning" in the security considerations section explaining the pitfalls and when they might be necessary. This approach maintains compatibility with RFC 9148.
+    *   **Resolved Issues from Last Interim:**
+        *   Message flow explicitly defines Ad Hoc client as EST client and Ad Hoc initiator as EST server.
+        *   Channel binding clarified to be specific to the case when Ad Hoc is used.
+        *   Added an informative statement explaining why PKCS objects are not transported in EAD Ad Hoc items (due to re-enrollment potentially not using Ad Hoc).
+        *   Mandated the `osc` attribute in links to EST resources when OSCORE is used with DTLS.
+        *   For server-generated keys, mandated that the EST client must *not* include S/MIME capabilities in the CSR, resulting in an unencrypted PKCS#8 object in the response.
+        *   Content format identifiers: added a summary of supported formats and a table for SKC/SKG responses.
+        *   Restatement anti-pattern: converted normative "recommendations" into informative text.
+        *   Block 1 and Block 2 implementation requirements were specified (servers must implement both, clients must implement Block 2, may implement Block 1).
+        *   An informative reference was added for using OSCORE to establish secure associations between EST client and CoAP/HTTP proxy.
+        *   Clarified the translation scheme to `coaps+oscore` when DTLS is additionally used.
+    *   An editorial comment was made to clarify the source of "it is recommended" statements in the draft.
+
+*   **Ad Hoc OSCORE Profile**
+    *   No update was presented for this meeting due to upcoming vacation time. Updates are expected at the IETF meeting in San Francisco.
+
+## Decisions and Action Items
+
+*   **Rebook Token Notification**
+    *   **Decision:** Draft version 6 submitted and publication requested.
+*   **Pub Sub Profile**
+    *   **Decision:** The draft will be updated to require authorization for KDC discovery and joining conversations.
+    *   **Decision:** "Roles" will be renamed to "permissions" in the scope definition.
+    *   **Decision:** A "group type" flag will be added to the scope to differentiate group types.
+    *   **Action Item:** Update the join response to include signature algorithm and related parameters.
+    *   **Action Item:** Implement the discussed changes, clarify KDC Discovery, and finalize the scope before the next cutoff.
+*   **OSCORE GM Admin**
+    *   **Decision:** If an encryption algorithm change results in a sender ID size mismatch for current group members, the group manager should evict those members. This will be stated in section 6.6.2.
+    *   **Action Item:** Implement terminology and naming changes for consistency with Group OSCORE.
+    *   **Action Item:** Finalize GM Admin v9 for working group last call, then follow up immediately with GM Admin Coral v0.
+*   **EST OSCORE**
+    *   **Decision:** The option for server-generated private keys will be retained but must be accompanied by a strong warning in the security considerations section.
+    *   **Action Item (Marisa):** Explore and editorially change the text regarding the recommendation on IP fragmentation.
+    *   **Action Item:** Expand the security considerations section to cover server-generated keys, channel binding using Ad Hoc, and the triple shake attack. A new version will be published before the next cutoff.
+
+## Next Steps
+
+*   **Pub Sub Profile:** Authors will implement the discussed changes, clarify KDC Discovery, finalize scope, and refine the join response.
+*   **OSCORE GM Admin:** The authors plan to resubmit the Group OSCORE document in the Core WG in the coming weeks, then finalize GM Admin v9 for a working group last call, followed by the submission of GM Admin Coral v0.
+*   **EST OSCORE:** Authors will expand the security considerations section and publish a new version before the next IETF cutoff.
+*   **Ad Hoc OSCORE Profile:** Updates are expected to be presented at the next IETF meeting in San Francisco.

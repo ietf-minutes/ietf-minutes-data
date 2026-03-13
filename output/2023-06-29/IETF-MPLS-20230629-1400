@@ -1,0 +1,60 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+This interim meeting of the MPLS Working Group focused on two key technical discussions: the handling of multiple In-Stack Data (ISD) instances when pushing labels onto an MPLS stack, and an analysis of the limitations of ISD compared to Post-Stack Data (PSD). Joel Halpern presented proposed default behaviors for managing hop-by-hop Multi-Application (mNA) sub-stacks during label push operations, generating significant discussion on the scope of application and implementation complexity. Jimmy Deng then presented an analysis highlighting ISD limitations related to size, encoding, and processing in the context of legacy hardware and specific applications, suggesting scenarios where PSD might be more suitable. Consensus was not reached on several technical points, with further discussion expected on the mailing list.
+
+## Key Discussion Points
+
+### Multiple ISD Instances and Label Pushing (Joel Halpern)
+
+Joel Halpern presented a two-slide overview summarizing a proposal sent to the mailing list regarding the behavior of an mNA-aware node pushing labels onto a stack that already contains one or more hop-by-hop mNA sub-stacks.
+
+*   **Problem Statement:** The current `draft-ietf-mpls-ma-header` (formerly `draft-ietf-mpls-inband-oam`) does not specify what an mNA-aware node must do when pushing labels onto a stack that already contains visible hop-by-hop mNA sub-stacks.
+*   **Proposed Default Behaviors:**
+    *   If a node is pushing labels *without* adding its own hop-by-hop mNA sub-stack, and an existing hop-by-hop mNA sub-stack would be pushed outside the visible label range, the node *must* copy the existing hop-by-hop mNA sub-stack into the newly pushed labels to preserve its visibility.
+    *   If a node *is* pushing its own hop-by-hop mNA sub-stack and sees an incoming hop-by-hop mNA sub-stack, it *must* copy the content (but not necessarily the mNA indicator label) of the incoming sub-stack into its own new sub-stack. This ensures that a subsequent node only needs to examine one hop-by-hop mNA sub-stack.
+*   **Discussion on Copying Content vs. Indication:** Jiafeng Chen questioned whether copying content was necessary, suggesting an indication might suffice. Joel argued for copying content to avoid requiring nodes to "dive deeper" into the label stack, which was an aim of the mNA design. He noted that the recursive nature of hop-by-hop mNA means only the immediately visible one needs to be copied.
+*   **Scope and Tunnel Modes (Matthew Bocci):** Matthew Bocci raised concerns about the applicability of hop-by-hop mNA in hierarchical LSP scenarios (e.g., LDP over RSVP, BGP-LU over SR-TE). He questioned whether the mNA sub-stack from an inner LSP should apply to the LSRs of an outer tunnel, arguing that an LSR of the outer tunnel is not necessarily an LSR for the inner LSP. Joel argued that, by definition, hop-by-hop mNA applies to all LSRs along the path and masking it would break functionalities like No Further Reroute (NFFR). He expressed a preference for a consistent default behavior over case-by-case (e.g., inter-domain vs. intra-domain) or policy-driven approaches, which complicate implementation and diagnosis. Joel acknowledged Matthew's point raises an interesting question that requires further analysis regarding tunnel modes.
+*   **Default Behavior vs. Action-Specific Behavior (Jiafeng Chen, Tony Li):** Jiafeng Chen asked if different behaviors should be allowed for different use cases. Joel reiterated that the proposed behaviors are default requirements in the absence of overriding actions. If a specific action requires a different behavior (e.g., copying content into *all* lower sub-stacks), that action's definition should specify it. Tony Li expressed a view that new actions might require amending all hop-by-hop headers if their semantics apply throughout the label stack. Joel disagreed with this as a default.
+*   **Label Stack Depth Impact (Loa Andersson):** Loa Andersson questioned the impact of copying on label stack growth. Joel acknowledged it but stated that it would grow less than copying entire stacks. He also suggested an alternative solution: an action that indicates "go look for the next mNA sub-stack," which could reduce stack growth but would require deeper inspection by nodes.
+*   **NFFR "Stickiness" (Stuart Bryant):** Stuart Bryant brought up the fundamental importance of NFFR being "sticky" (applying throughout the path, even after recovery actions) in IP fast reroute, referencing discussions from ~20 years ago about "abandoning all hope" on second failures. He requested a write-up of the specific cases to enable the group to make an informed decision.
+*   **Affected Document:** Joel identified `draft-ietf-mpls-ma-header` as the document requiring updates. He agreed to work with the document editor (David Black) once consensus on the list is reached.
+
+### ISD Limitations Analysis (Jimmy Deng)
+
+Jimmy Deng presented an analysis of limitations of ISD, suggesting scenarios where Post-Stack Data (PSD) might be a more suitable solution.
+
+*   **Purpose:** To highlight potential limitations of ISD in its current design and suggest scenarios where PSD might be needed, not to claim ISD is not useful.
+*   **Limitation 1: Size of ISD (due to Legacy Hardware):**
+    *   **Argument:** A primary purpose of ISD is to make mNA information readily accessible for legacy devices near the top of the stack. This implies a relatively small ISD size (e.g., 3-5 RSEs after tunnel/SR labels). If ISD exceeds this, it negates the benefit for legacy devices, potentially requiring encapsulation as PSD.
+    *   **Counter-arguments (Tony Li, Greg Mirsky):** Tony Li stated that "typical" doesn't equate to a limitation. Greg Mirsky argued that legacy hardware capability is a "business decision" for implementers and operators, not a technical limitation of ISD itself. He emphasized that the design should focus on technical issues, and if a platform has limited capacity, it may not be suitable for mNA ISD.
+*   **Limitation 2: Encoding:**
+    *   **Argument:** Current ISD encoding has separate opcodes for flags and data, which can be inefficient. The S-bit position and other fields in RSE formats constrain the design of variable-length data fields or TLV formats, introducing complexity. Consistency with existing application data formats (e.g., IOAM defined for IPv6) is also challenging.
+    *   **Counter-arguments (Tony Li, Greg Mirsky):** Tony Li clarified that the action definition specifies its ancillary data format, which can include TLVs or variable lengths described by the NAL field. Greg Mirsky argued that while commonality of encoding is beneficial, it's not mandatory to use IPv6 formats in MPLS; different data planes have different constraints.
+*   **Limitation 3: Processing (Mutability):**
+    *   **Argument:** The draft states that the first 20 bits of an RSE (including the label) must not change to avoid impacting traffic forwarding/balancing, leaving limited writable space. Modifying RSEs not at the top of the stack requires new hardware behavior. If multiple ISD copies exist and a node can only modify some, they could become out of sync.
+    *   **Discussion:** This point tied back to Joel Halpern's earlier discussion about the default behavior for managing multiple ISD instances.
+*   **Conclusions (Jimmy Deng):**
+    *   ISD is useful and friendly to some legacy devices due to its accessibility in the packet.
+    *   Working Group participants should understand ISD limitations regarding data size, encoding, and processing.
+    *   For applications that break these limitations (e.g., some IOAM modes requiring large or variable data, DevNet, NFFR requiring complex processing), PSD might be a more suitable solution.
+*   **Responses to Conclusions (Greg Mirsky, Tony Li, Loa Andersson, Tarek Saad):**
+    *   **DevNet:** Greg Mirsky stated that DevNet analysis shows PSD is *not* a good fit; direct export is preferred for on-path information.
+    *   **PSD for Legacy Devices:** Tony Li and Greg Mirsky pointed out that PSD would be even less accessible to legacy devices than ISD, as they can typically only see the top of the label stack. PSD is not a solution for legacy device capability issues.
+    *   **General Applicability:** The discussion highlighted that if a "legacy device" cannot process a specific application's data, regardless of whether it's in ISD or PSD, then its capabilities should not be a deciding factor for *that* application's placement. The choice then depends on other factors like extensibility and processing requirements for new hardware. Loa Andersson suggested that the "limitation of ISD" is often a "limitation of the device" when discussing legacy hardware.
+
+## Decisions and Action Items
+
+*   **Action Item: Investigate existing PS features for mNA/ISD interaction (WG).** No update, postponed to a future meeting.
+*   **Action Item: Greg Mirsky to present on DevNet intersection with mNA.** Confirmed for July 6th.
+*   **Action Item: Owners of WG IDs/drafts to track updates for multiple ISDs.** This was the focus of today's discussion; further work is needed on the mailing list.
+*   **Action Item: Stuart Bryant** to provide a write-up on the historical context and technical necessity for "sticky" NFFR behavior for discussion on the mailing list.
+*   **Action Item: Joel Halpern** to work with David Black (editor of `draft-ietf-mpls-ma-header`) to incorporate updates regarding the handling of multiple ISD instances once consensus is reached on the mailing list.
+
+## Next Steps
+
+*   Continue the discussion on the MPLS mailing list regarding Joel Halpern's proposed default behaviors for pushing labels onto a stack with existing hop-by-hop mNA sub-stacks, especially concerning the scope of applicability and impact on label stack depth.
+*   Stuart Bryant will provide a detailed write-up on the NFFR sticky behavior to inform further discussions.
+*   Greg Mirsky will present on DevNet's intersection with mNA at the next interim meeting (July 6th).
+*   The working group will continue to evaluate the technical merits of ISD versus PSD for various applications, considering the implications for both legacy and modern hardware capabilities.

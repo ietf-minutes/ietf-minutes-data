@@ -1,0 +1,63 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+This interim session focused on a presentation of the updated "Linearized Matrix" (LM) draft-ietf-mimi-linearized-matrix-01, which removes external dependencies on `spec.matrix.org`. The discussion centered on the core architecture of Linearized Matrix, its event model, room versions, and a key question regarding the handling of "Channel State"—specifically, whether it should be primarily managed server-side or client-side, and the implications for MLS message encryption. A general sense emerged favoring a server-side model with public MLS commits for group state, balanced with strong cryptographic guarantees where possible. The session concluded with a call for the working group to review the LM draft, a gatekeeper comparison document, and to synthesize requirements to inform a decision on adopting a transport protocol.
+
+## Key Discussion Points
+
+*   **Linearized Matrix Architecture**:
+    *   Comprises a Hub server (tracking conversations) and multiple Participant servers (holding users, proxying to Hub).
+    *   Rooms hold "events" (text, images, membership changes), which are called Persistent Data Units (PDUs) over the wire.
+    *   Room behavior (ACLs, algorithms, power levels) is defined by a "room version," identified by a string, which is frozen once defined.
+    *   The initial LM draft intends to specify a baseline room version (`i.1`) capturing Linearized Matrix capabilities. Room versions are not strictly linear; "upgrading" means creating a new room.
+    *   The updated LM draft ensures history is strictly append-only, resolving a previous concern about potential rewrites from DAG-capable Matrix.
+*   **Events and State**:
+    *   Events are either State events (metadata like membership, name, join rules, power levels) or Room events (messages, images).
+    *   State events are keyed by an (event type, state key) tuple, with the most recent overriding previous states.
+    *   Event IDs are cryptographic hashes (e.g., SHA-256) of the event itself, rather than UUIDs, to prevent malicious collision attacks.
+    *   The Hub server is required to track current state; participant servers may act as store-and-forward nodes.
+*   **Access Control Lists (ACLs) and Power Levels**:
+    *   ACLs are defined by the room version, providing a framework for how events are authorized.
+    *   Specific power level thresholds for actions (e.g., requiring power level 50 to ban a user) are set dynamically within the room's state, but their enforcement logic is part of the immutable room version.
+*   **Channel State Models (Server-side vs. Client-side)**:
+    *   **Server-side Model**:
+        *   MLS handles only device key membership, with servers informing clients about room state changes (e.g., user joins).
+        *   Servers reject events based on permissions, power levels, or malformation.
+        *   A key security concern is the server's ability to maliciously inject devices into an MLS group. This would require specific rules or cryptographic proof (e.g., cross-signing) to prevent.
+        *   Discussion highlighted the need for mechanisms for users to cryptographically sign the room roster to prevent server manipulation of membership.
+    *   **Client-side Model**:
+        *   Servers only check basic syntax of encrypted payloads. All state management, event acceptance/rejection, and user/device changes run within MLS groups on clients.
+        *   Downsides include increased client complexity, conflict resolution challenges, and "data waste" as servers lack knowledge of the true room state.
+        *   There was a general sense that the client-side model, as proposed, is not viable for MIMI's requirements.
+*   **MLS Message Encryption (Public vs. Private Commits)**:
+    *   The discussion indicated a strong preference for MLS commits (especially for membership changes) to be transmitted as *public* messages.
+    *   This allows servers to track membership, assist with external joins, perform verification, and mitigate malformed messages, avoiding the need to re-implement such logic outside of MLS.
+    *   The general aspiration remains to encrypt as much as possible, but pragmatic compatibility with existing systems and required server-side functions points to public commits for group state.
+*   **Linearized Matrix as a Foundation**:
+    *   The advantages of LM include its existing implementation as an extract from the Matrix specification, its mature authorization rules, and its proven interop with traditional Matrix Home Servers (via `eigen-server`).
+    *   Challenges include adapting Matrix's server-side-oriented security assumptions to an MLS context (e.g., preventing server injection of devices), which requires defining new rules.
+    *   LM handles network partitions differently than full-mesh Matrix; if the Hub is offline, no communication occurs, but issues like "key gossiping" during splits are avoided.
+*   **Implementation and Interoperability**:
+    *   An example LM server (`eigen-server`) has been implemented, demonstrating functionality and interop with traditional Matrix servers.
+    *   Existing Matrix compliance suites (site test, complement) could be adapted for LM.
+    *   A strong desire was expressed for independent, clean-room implementations of LM based solely on the IETF draft, without relying on existing Matrix knowledge or code. This would validate the spec's clarity and suitability.
+*   **API Terminology**:
+    *   The "blue links" between provider servers in the LM architecture are based on the Matrix Federation (server-to-server) API, not the Client-Server API.
+    *   While functionally similar in some ways, the S2S API is optimized for synchronizing full message backlogs between servers, whereas the CS API is highly optimized for lazy-loading partial views for client responsiveness. The LM transport mechanism is deliberately simple.
+
+## Decisions and Action Items
+
+*   **Decision**: The discussion indicated a strong preference for a **server-side channel state model** for Linearized Matrix, with MLS commits for group state being publicly visible to servers to enable necessary functionality and verification. The extent of cryptographic binding for overall room state (beyond MLS membership) remains an open question.
+*   **Action Item (Chairs)**: Synthesize the technical requirements discussed during this and previous meetings, including insights from the gatekeeper comparison document, and distribute this consolidated requirements document to the MIMI working group mailing list for review and feedback.
+*   **Action Item (WG Participants)**:
+    *   Review the latest "Linearized Matrix" draft (draft-ietf-mimi-linearized-matrix-01).
+    *   For those interested and able, explore initiating independent implementations of Linearized Matrix based on the draft and conducting interop testing.
+    *   Review the "gatekeeper comparison" document shared by Matthew, considering its implications for the functional and security requirements of MIMI's transport protocol.
+    *   Send any reactions, questions, or thoughts regarding the LM draft, interop experiences, or the gatekeeper comparison (especially concerning the desired subset of requirements for MIMI) to the mailing list.
+
+## Next Steps
+
+*   The working group will continue discussions on the mailing list based on the new LM draft and the consolidated requirements.
+*   Further interim meetings will be scheduled, including one prior to IETF 117, to advance the discussion.
+*   The goal is to gather sufficient information and input to enable the working group to decide on the adoption of a specific transport protocol (Linearized Matrix or other proposals like MTP) that meets the identified requirements.

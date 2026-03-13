@@ -1,0 +1,34 @@
+# [GNAP](../wg/gnap.html)
+
+## Summary
+
+The GNAP Working Group met to discuss recent changes implemented in the latest draft, primarily focusing on updates to token management and key rotation mechanisms. All known outstanding issues have been closed. The co-chair outlined the plan to solicit final feedback on the mailing list before preparing the document for review by the IESG.
+
+## Key Discussion Points
+
+*   **Meeting Logistics:** The co-chair noted a lack of full quorum, emphasizing the need for subsequent discussions and formal confirmation on the mailing list to move the document forward to the IESG.
+*   **Token Management API Updates:**
+    *   The latest draft introduces a significant change to token management. Previously, it relied on a `manage_uri`. It now aligns with the continuation response pattern, providing a `manage` object containing both a `uri` and a dedicated `access_token` structure.
+    *   This specific `access_token` is mandatory within the `manage` object and is solely for managing the primary access token, not for accessing resources.
+    *   This revision addresses pushback received during the last call, where participants expressed difficulty implementing a system that used the same token value for both resource access and management. The separation simplifies implementation for several parties.
+    *   The management `access_token` adheres to similar constraints as continuation tokens: it must be bound to the client's key, must not be a bearer token (i.e., the `flags` array must not contain "bearer", and the `key` field must be omitted).
+    *   To prevent infinite recursion, the token management access token cannot itself have a token management access token.
+    *   Returning the `manage` field is optional, allowing simpler implementations where tokens merely expire without specific management capabilities.
+    *   The token management API specification was updated to consistently use this dedicated token management access token, simplifying the Authorization Server's logic by removing complex conditional handling for token states.
+*   **Key Rotation Updates (due to HTTP Message Signatures Security Report):**
+    *   A security report on how GNAP was applying HTTP message signatures for key rotation, specifically signing the signature value itself, led to a re-evaluation. This issue also impacted the FAPI profile of HTTP signatures.
+    *   The fix for HTTP signatures did not involve protocol changes but revised the application advice.
+    *   For GNAP, key rotation now requires signing the *entire request*, including both the signature and signature input. This ensures the signature is properly tied to the whole message, as the previously assumed transitive signature property was not effectively achieved.
+    *   This change is not expected to introduce significant implementation hardship, as clients already process the entire request for the initial signature.
+*   **Outstanding Issues:** All previously identified open issues on the specification have been addressed and closed. One specific issue regarding interaction responses and bundling finish methods was discussed with the author and closed with the understanding that it could be explored as an extension.
+
+## Decisions and Action Items
+
+*   The co-chair will send an email to the GNAP mailing list summarizing the recent changes and soliciting any final comments within a one-week period.
+*   If no further comments are received, the document will be prepared for submission to the IESG for review.
+
+## Next Steps
+
+*   The working group aims to move the GNAP core document into at least AD review space, and potentially IESG review, before the IETF 119 meeting in San Francisco.
+*   The Resource Server (RS) draft will be updated to include the new token management token in its token model section. A new version of the RS draft will be published.
+*   A long meeting for GNAP during IETF 119 in San Francisco is not anticipated to be necessary.

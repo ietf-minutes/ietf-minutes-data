@@ -1,0 +1,64 @@
+# [TIGRESS](../wg/tigress.html)
+
+## Summary
+
+This inter-meeting focused on presenting and discussing two alternative proposals for the TIGRESS solution. Eric and Brad presented their draft (draft-ietf-tigress-rest-http-00), which leverages standard HTTP verbs and capability URLs. Dimitri and Yogesh presented an update to their original draft (draft-ietf-tigress-solution-01), emphasizing a seamless user experience and the need for secure provisioning even when the initial communication channel is insecure. The core discussion revolved around the fundamental security assumptions of the initial channel used to bootstrap the secure exchange, with no consensus reached on this critical architectural point.
+
+## Key Discussion Points
+
+*   **Introduction of Proposals**:
+    *   The meeting served as a forum to discuss two solution proposals:
+        *   `draft-ietf-tigress-rest-http-00` by Eric and Brad.
+        *   `draft-ietf-tigress-solution-01` by Dimitri and Yogesh (original proposal with updates).
+    *   The chairs noted that no consensus check would be performed during this meeting, but rather it was for discussion and clarifying questions.
+
+*   **Eric and Brad's Proposal (`draft-ietf-tigress-rest-http-00`)**:
+    *   **Core Idea**: Utilizes standard HTTP verbs (PUT, GET, DELETE) for message exchange, instead of a custom API or RPC. Access control is primarily achieved by concealing resource addresses, similar to capability URLs.
+    *   **Mechanism**:
+        *   Alice generates a random secret `R` and sends it to Bob via an initial channel.
+        *   Alice posts the first message (M0) to a server location `L0`, which is a deterministic function of `R`.
+        *   Bob, knowing `R`, computes `L0`, GETs M0, and then DELETEs it.
+        *   Subsequent messages follow a similar pattern, with each location `Ln+1` derived deterministically from `R` and all previous messages.
+    *   **Server Requirements**: A standard HTTP server supporting PUT, GET, DELETE, which does not allow resource enumeration (a common configuration).
+    *   **Security Model**: Relies on the secrecy of `R` and the URLs derived from it. Prompt deletion of messages by the recipient is crucial to prevent an attacker from re-calculating subsequent message locations if `R` is revealed later.
+    *   **Race Condition**: A race condition exists if `R` is disclosed to an attacker concurrently with the legitimate receiver. If the attacker reads and deletes M0 first, they could impersonate the receiver.
+    *   **Deficiencies**: The current design does not provide notification; clients would need to poll. This could be supplemented by mechanisms like Web Push.
+    *   **Deletion Mitigation**: An additional mechanism using session cookies was proposed to "lock" a URL after two cookies are issued, providing a safeguard against improper deletions or `R` disclosure.
+    *   **Feedback**:
+        *   Christopher praised the design for its simplicity and composability with various HTTP technologies for tailored security.
+        *   Discussion on the time delta between GET and DELETE, emphasizing the need for an explicit acknowledgement from the receiver to ensure "at most one" message semantics.
+        *   An open issue regarding versioning mechanisms for the protocol was noted.
+
+*   **Dimitri and Yogesh's Proposal (`draft-ietf-tigress-solution-01`)**:
+    *   **Clarified Terminology**: Defined "digital credential," "vertical" (e.g., car, home, hotel standards), "provisioning," and "provisioning information."
+    *   **Use Cases**: Focused on sharing credentials like car or hotel keys, where the recipient may not be online simultaneously, implying potential long delays between interactions. A seamless user experience, similar to sharing photos or documents, is a key goal.
+    *   **Unique Requirements**:
+        *   Multiple round trips required without user interaction after the initial share/accept.
+        *   The first recipient device to claim an invitation should be the sole recipient of the provisioning information.
+        *   Initial invitation can go over any existing communication method (e.g., SMS, chat), with no assumptions about its security or privacy properties.
+        *   Security and privacy of the *provisioning information* in transit is paramount, *even if the initial communication method is insecure*.
+    *   **Proposed Solution for Insecure Initial Channel**: The draft proposes that TIGRESS provides a secure transfer channel for the provisioning information. If the initial communication method is insecure, the solution would involve a *separate channel* for delivering an encryption key and possibly a second factor enforced by the "vertical" (e.g., car manufacturer, hotel).
+    *   **Relay Server**: The proposal uses an intermediary relay server, based on HTTP (GET, POST, DELETE), utilizing cookies to link sender and receiver to a mailbox, ensuring uninterrupted data exchange between only those two parties.
+    *   **User Experience**: Features like preview information in the mailbox and push notifications are incorporated for a smooth user experience. The URL itself can carry information about the credential type (vertical).
+    *   **Existing Deployments**: Mentioned existing deployments for both the relay server and clients.
+
+*   **Core Architectural Debate: Initial Channel Security**:
+    *   A significant part of the discussion focused on the assumption that the initial communication channel (e.g., SMS for sharing `R` or the initial URL) might be insecure.
+    *   **Aaron's Concern**: Raised that designing for an insecure initial channel opens a "huge can of worms" that TIGRESS may not be able to solve in isolation, suggesting a more fundamental design approach is needed.
+    *   **Eric's Stance**: Argued that this is the "most important discussion" and protocol design is downstream from it. He stated that the IETF's role is to solve the *entire problem*, not push crucial security aspects to verticals. He questioned how a secure "second channel" (for keys or secrets) would be established if the first is insecure, highlighting the challenges of both low- and high-entropy secure channels in this context. Eric emphasized the need to clearly define the use environment and channel properties.
+    *   **Yogesh/Dimitri's Response**: Maintained that TIGRESS aims to provide a secure *transfer channel* for provisioning information, irrespective of the initial channel's security. They also stated that establishing identities (e.g., via MTLS or end-to-end encryption like Signal/WhatsApp) is outside the scope of TIGRESS.
+    *   **Tommy's Suggestion**: Proposed decomposing the problem:
+        1.  A core protocol for scenarios where the initial channel is *assumed secure* (e.g., iMessage, WhatsApp).
+        2.  A *separate bootstrapping problem* for establishing a secure channel when the initial posting is insecure (e.g., SMS, public web post). This would involve extra bespoke mechanisms.
+        He recommended against muddling these different problems into one protocol.
+
+## Decisions and Action Items
+
+*   No consensus was taken on either proposal during the meeting.
+*   **Action Item**: Yogesh is to initiate a discussion thread on the TIGRESS mailing list to clarify the fundamental security assumptions regarding the initial communication channel and the scope of TIGRESS. Aaron is requested to contribute to this discussion.
+
+## Next Steps
+
+*   Continue the architectural discussion on the TIGRESS mailing list, focusing on the security model, initial channel assumptions, and the division of responsibility between the TIGRESS protocol and other mechanisms (e.g., verticals, out-of-band key delivery).
+*   The chairs will summarize the meeting discussions and circulate the meeting minutes.
+*   The chairs will explore the idea of forming a "design team" to consolidate different perspectives and work towards a unified solution before IETF 118.

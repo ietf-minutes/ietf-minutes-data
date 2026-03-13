@@ -1,0 +1,171 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE virtual interim meeting covered updates and discussions on several working group drafts and open issues. Key topics included the IANA RTP payload type registry, a proposed RTP payload format for JPEG 2000, specific issues related to the HEVC profile for WebRTC, the RTP payload format for Skip (Secure Internet Protocol), and ongoing work on RTP over QUIC. The meeting concluded with an update on the SFrame RTP Payload format. Several decisions were made regarding the HEVC profile, and calls for adoption were initiated for JPEG 2000 and SFrame drafts.
+
+## Key Discussion Points
+
+### IANA RTP Payload Type Registry
+
+*   **Problem:** There are two IANA registries for RTP payload types: one for `media types` (complete) and another specifically for `RTP payload types` (incomplete). Widely deployed RTP payload formats are missing from the latter, leading to confusion and potential issues with discovery.
+*   **Impact:** Participants looking for usable RTP payloads might consult the incomplete registry and conclude formats are unregistered.
+*   **Proposed Solutions:**
+    *   Fix the incomplete registry by adding missing widely deployed types.
+    *   Tell IANA to abandon the incomplete registry.
+    *   Harmonize by adding a flag to one registry (e.g., "usable for RTP"). This would require changing negotiation procedures.
+*   **Discussion:**
+    *   Harold Alvestrand noted the issue stemmed from W3C discussions on WebRTC.
+    *   Stefan Schindler questioned the effort required to fix past vs. future registrations. He offered to draft a document for pragmatic fixes for modern codecs, avoiding "boiling the ocean" with old/obscure formats.
+    *   The issue affects new codecs like EVC, which have registrations limited in scope to RTP to avoid media type discussions.
+*   **Decision:** Chairs will follow up with IANA to clarify best practices for registering RTP payload types and ensure completeness across relevant registries.
+
+### RTP Payload Format for JPEG 2000 (draft-demir-avtcore-jpeg2000-rtp-00)
+
+*   **Presentation by Pierre Anthony Demir:**
+    *   Introduced a new draft for an RTP payload format for JPEG 2000 with HT block coder (Part 15) for high throughput, low latency streaming.
+    *   Highlighted features: sub-code stream latency, resolution/quality scalability (at RTP packet level), high-precision clock recovery (optional), and code block caching for static content.
+    *   Payload structure involves main packets (header info) and body packets.
+    *   Media type proposed: `video/jpeg2000-scl`.
+*   **Discussion:**
+    *   **Syntax Description:** Stefan Schindler noted the draft uses an ascified version of JPEG syntax diagrams, recommending alignment with IETF's traditional packet protocol syntax description.
+    *   **Sending Time Offset:** Jonathan Lennox suggested using the existing RTP header extension for transmission time offsets (RFC 5450) instead of a new field in the payload header, especially given the 64-bit header goal. Pierre Anthony Demir will investigate.
+    *   **Code Block Caching and Error Resilience:**
+        *   Jonathan Lennox raised concerns about handling lost packets that contain cached content, potentially leading to incorrect references if a cache entry is wrong or missed.
+        *   David Tobin (co-author) clarified that JPEG 2000 is inherently error-resilient and robust to missing pieces, so the caching mechanism leverages this for efficiency rather than relying on strict reliability.
+        *   Stefan Schindler suggested checksums over the current cache in the payload header for detection of inconsistencies, but acknowledged added complexity.
+    *   **IETF Patent Policy:** Stefan Schindler reminded authors of IETF's patent policy and disclosure obligations, which the authors confirmed awareness of.
+*   **Next Steps:**
+    *   Work with chairs to set up a GitHub for issue tracking.
+
+### HEVC Profile for WebRTC (draft-ietf-avtcore-hevc-webrtc-profile-01)
+
+*   Discussion focused on resolving GitHub issues for the draft.
+*   **Issue 2: Out-of-Band SPS/PPS/VPS (PR10)**
+    *   **Problem:** RFC 7742 (WebRTC video) mandates in-band signaling and disallows SPS/PPS in SDP for H.264. This draft took a similar approach for HEVC.
+    *   **Discussion:** Srinivas inquired about the rationale, noting potential delays for WebRTC clients. Jonathan Lennox explained that frequent resolution changes in interactive video often require fresh parameter sets, and updating SDP frequently is problematic. Incorrect parameter sets can cause decoding chaos. Sending them with every IDR frame (in-band) is common practice and more robust.
+    *   **Decision:** The approach of RFC 7742 (in-band parameter sets, not in SDP) is upheld. PR10 was accepted to clarify that IDR frames must be preceded by relevant parameter sets with the same RTP timestamp.
+*   **Issue 3: TX Mode (PR9)**
+    *   **Problem:** The draft didn't specify guidance for the `tx-mode` parameter. RFC 7798 says receivers must support all TX modes.
+    *   **Proposed Resolution (PR9):** Do not include `tx-mode` in SDP. If present, `srst` (single RTP stream transport) must be inferred.
+    *   **Remaining Question:** Should a WebRTC browser fail `setRemoteDescription` if it receives an offer with `mrst` or `mrmt` (multi-stream modes), typically from a gateway?
+    *   **Discussion:** John Lin preferred `setRemoteDescription` to fail. Jonathan Lennox noted `mrmt` is rarely implemented for H.265. For VVC/EVC, only `srst` was defined.
+    *   **Decision:** The sense of those present is that it is acceptable for `setRemoteDescription` to fail if `tx-mode` is `mrst` or `mrmt`.
+*   **Issue 4: Max CPB and Max DPB (PR8)**
+    *   **Problem:** These parameters are additional constraints on top of the level ID.
+    *   **Proposed Resolution (PR8):** Remove Max CPB and Max DPB as parameters WebRTC implementations are expected to support, assuming level ID is sufficient.
+    *   **Discussion:** Jonathan Lennox deferred to implementers, suspecting hardware codecs' level IDs are sufficient. John Lin agreed.
+    *   **Decision:** No objections to removing Max CPB and Max DPB.
+*   **Issue: Max FPS and Max BR (PR15)**
+    *   **Problem:** Similar to CPB/DPB, additional constraints on top of level ID. While VP8 had these as required in RFC 7742, HEVC's profile/tier/level negotiation is different.
+    *   **Proposed Resolution (PR15):** Remove Max FPS and Max BR as parameters.
+    *   **Discussion:** John Lin was okay with removal due to overlap with level negotiation.
+    *   **Decision:** No objections to removing Max FPS and Max BR.
+*   **Issue: PACSI / TSCI (PR16)**
+    *   **Problem:** Temporal scalability control information (TSCI) can be duplicated in PACSI (payload type 50) and RTP header extensions (e.g., frame marking, dependency descriptor).
+    *   **Proposed Resolution (PR16):** If RTP header extensions for TSCI are negotiated, they take precedence, and the implementation must ignore TSCI in PACSI.
+    *   **Discussion:** Jonathan Lennox expressed concern about consistency across different receivers (e.g., SFUs) and existing payload formats. He suggested senders should *not* send TSCI in the payload if a header extension is negotiated. John Lin agreed with a preference for DD extension.
+    *   **Decision:** If a header extension for TSCI is negotiated, senders should not send TSCI in the payload. PR16 will be modified accordingly.
+*   **Issue: RPSi (Reference Picture Selection Indication)**
+    *   **Problem:** Question arose whether HEVC profile should support RPSi, which deals with alternative reference frames.
+    *   **Existing Guidance:** RFC 7798 (Section 8.3) defines RPSi support for HEVC. RFC 8834 says receivers *should* generate and act on RPSi. RFC 8082 clarifies RPSi with layered codecs.
+    *   **Practical Issues:** LibWebRTC removed RPSi support in 2017 due to problems. H.264 implementations don't support it. AV1 payload spec doesn't mention it. However, an in-progress CL for libWebRTC aims to add H.265 RPSi support.
+    *   **Discussion:** Harold Alvestrand noted hardware can designate reference frames, but driver support is limited. Stefan Schindler highlighted RPSi's efficiency for error resilience in media coding, and HEVC's minimal metadata makes it theoretically feasible. He recommended leaving the door open for future implementation.
+    *   **Decision:** Keep existing RFC guidance recommending RPSi support. The working group encourages efforts to land the libWebRTC CL.
+*   **Overall Call for Adoption Status:** Jonathan Lennox will review the comments and proceed with issuing a working group adoption call.
+
+### RTP Payload Format for Skip (draft-dan-avtcore-skip-rtp-06)
+
+*   **Update by Dan Wing and Mike Kalla:**
+    *   Version 06 includes a key points section summarizing the tunneling nature of Skip.
+    *   Emphasized Skip as an application protocol using RTP as transport, with reliable transport handled by Skip control messages at the application layer.
+    *   Added an example of Skip preference in SDP.
+    *   Provided a link to an older public version of the Skip 2.10 specification to address reviewer feedback on document access.
+*   **Discussion:**
+    *   **Ossification Concerns:** The chairs noted that providing the Skip specification (even informatively) has led reviewers to ask deep, implementation-specific questions about Skip's state machine (e.g., video security transitions). This is problematic because Skip is a tunneling protocol, and intermediaries should treat the payload as opaque. Parsing or acting on this internal Skip knowledge by middleboxes would break the protocol.
+    *   **Addressing Reviewers:** The challenge is to respond to detailed questions without validating that such analysis by middleboxes is appropriate or helpful for the RTP payload format. The goal is to inform middlebox developers not to interfere with the protocol.
+    *   **IDSG Feedback:** Still outstanding discuss positions from the IESG. Stefan Schindler suggested direct conversations with IESG members (e.g., in Prague, via Slack) as email hasn't been effective.
+*   **Next Steps:**
+    *   Chairs will review the draft's language to emphasize the tunneling nature and discourage ossification by middleboxes.
+    *   Another IESG review request will be issued.
+    *   Chairs will follow up with IESG members directly to address discuss positions.
+
+### RTP over QUIC (draft-ietf-avtcore-rtp-over-quic-06)
+
+*   **Update by Maddison (presenting for authors):**
+    *   Version 06 includes background on quick streams vs. datagrams, clarification on application rate adaptation, and moves large parts of RTCP analysis to an appendix.
+*   **Discussion on Stop Sending / Reset Stream:**
+    *   **Problem:** A receiver can send `STOP_SENDING`, requiring the sender to send `RESET_STREAM`. The draft states the sender *should* continue sending media frames on *new* quick streams, starting from the first frame *not yet transmitted* on the previous quick stream.
+    *   **Media Dependencies:** What if a new frame (B) depends on a previous frame (A) that was affected by `STOP_SENDING`?
+    *   **Proposed Resolution:** Applications are in charge of handling media dependencies. Options: drop B, create a new independent frame, or transmit B knowing it might not be decodable. The draft explicitly discourages retransmitting A on a new stream to avoid loops.
+    *   **Concern:** Bernard Aboba noted that interpreting quick-layer feedback (like `STOP_SENDING`) as specific RTCP feedback (like PLI) could be problematic.
+    *   **Decision:** The draft will maintain the current boundary (restart with new frames not previously sent) and add hints for applications on handling media dependencies, without mandating specific interpretations of QUIC signaling as RTCP feedback.
+*   **Partially Reliable Streams (Extended Reset Stream/Stop Sending):**
+    *   **Problem:** These QUIC extensions allow specifying an offset for reliable retransmission.
+    *   **Discussion:** These extensions are not yet finished and their practical utility for RTP media streams is questioned. For media, if a frame is unwanted, full cancellation (`RESET_STREAM`) is typically preferred over partial reliability. Bernard Aboba noted potential use for control channels, but not media. Jonathan Lennox agreed, emphasizing RTP/RTCP's design for unreliable networks.
+    *   **Decision:** Remove mentions of these extensions from the main document, keep as informative references in the appendix.
+*   **RTCP Multi-Hop Topologies:**
+    *   **Problem:** If an RTP over QUIC participant connects to a non-RTP over QUIC participant via a middlebox, the latter might expect more RTCP feedback than the former provides (as it uses QUIC state info).
+    *   **Proposed Resolution:**
+        *   Basic RTCP receiver reports will still be sent.
+        *   Middleboxes could add expected RTCP (e.g., NACKs).
+        *   Signaling could tell the RTP over QUIC participant to provide full RTCP.
+    *   **Discussion:** Jonathan Lennox stated that RTCP mechanisms have negotiation in SDP, so if specific RTCP features are needed, they should be negotiated.
+*   **Other Issues:** Authors are focusing on error codes and new issues raised by Bernard Aboba, while deferring issues like multicast. Bernard Aboba also noted the emerging L2S/L4S work in QUIC implementations as relevant.
+*   **Next Steps:**
+    *   Continue working on open issues in GitHub.
+
+### SFrame RTP Payload (draft-thatcher-avtcore-sframe-rtp-01)
+
+*   **Update by Peter Thatcher:**
+    *   Incorporated feedback to allow media format-specific packetization to output multiple RTP packets before SFrame-specific packetization.
+    *   Renamed the draft in GitHub in anticipation of adoption.
+*   **Discussion:**
+    *   **Call for Adoption:** Jonathan Lennox apologized for not issuing the call yet.
+    *   **Implementation Status:** Jonathan Lennox asked about implementation plans, suggesting running code would be beneficial.
+*   **Next Steps:**
+    *   Jonathan Lennox will issue a call for adoption.
+    *   If adopted, Peter Thatcher will submit the renamed draft to the IETF data tracker.
+    *   Investigate implementation plans.
+
+## Decisions and Action Items
+
+**Decisions:**
+
+*   **HEVC Profile for WebRTC:**
+    *   The document will retain the requirement for in-band signaling of SPS/PPS/VPS, similar to RFC 7742. (Related to PR10)
+    *   It is acceptable for a WebRTC browser's `setRemoteDescription` to fail if it receives an offer with `tx-mode` set to `mrst` or `mrmt`. (Related to PR9)
+    *   The `Max CPB` and `Max DPB` parameters will be removed as expected WebRTC implementation requirements. (Related to PR8)
+    *   The `Max FPS` and `Max BR` parameters will be removed as expected WebRTC implementation requirements. (Related to PR15)
+    *   If RTP header extensions for Temporal Scalability Control Information (TSCI) are negotiated, senders should not send TSCI in the payload. (Related to PR16)
+    *   Existing RFC guidance for RPSi support will be maintained, encouraging implementation efforts.
+*   **RTP over QUIC:**
+    *   The draft will not allow interpreting QUIC `STOP_SENDING` or `RESET_STREAM` as specific RTCP feedback types (e.g., PLI).
+    *   References to "partially reliable streams" (extended reset stream/stop sending) will be moved from the main document to the appendix as informative references, as they are not deemed practical for media streams.
+
+**Action Items:**
+
+*   **Chairs (Jonathan Lennox & Bernard Aboba):**
+    *   Follow up with IANA regarding the completeness and clarity of the RTP payload type registries.
+    *   Issue a call for adoption for `draft-demir-avtcore-jpeg2000-rtp`.
+    *   Issue a call for adoption for `draft-thatcher-avtcore-sframe-rtp`.
+    *   Send a summary of the HEVC profile for WebRTC call for adoption feedback to the mailing list.
+    *   Review `draft-dan-avtcore-skip-rtp-06` to ensure language clearly addresses ossification concerns and the tunneling nature of the protocol.
+    *   Request another IESG review for `draft-dan-avtcore-skip-rtp`.
+    *   Engage directly with IESG members (e.g., via Slack, in-person meetings in Prague) to address outstanding discuss positions on `draft-dan-avtcore-skip-rtp`.
+*   **Maddison (for RTP over QUIC authors):**
+    *   Modify PR16 for the HEVC profile to reflect the decision on PACSI/TSCI.
+    *   Add hints to `draft-ietf-avtcore-rtp-over-quic` regarding what applications can do when media dependencies are affected by `STOP_SENDING`/`RESET_STREAM`.
+*   **Pierre Anthony Demir (JPEG 2000 author):**
+    *   Address feedback on syntax description formatting.
+    *   Investigate RFC 5450 (Transmission Time Offsets RTP Header Extension) as an alternative for high-precision clock recovery.
+    *   Work with chairs to set up a GitHub repository for the JPEG 2000 draft.
+*   **Peter Thatcher (SFrame author):**
+    *   Submit the renamed `draft-thatcher-avtcore-sframe-rtp` to the data tracker once the call for adoption is complete.
+
+## Next Steps
+
+*   The working group chairs will manage the adoption calls and IESG interactions for the respective drafts.
+*   Authors will continue to iterate on their drafts based on the discussions and action items, addressing open issues in GitHub.
+*   Further discussions on `draft-ietf-avtcore-rtp-over-quic` will focus on the remaining open issues.
+*   Implementers are encouraged to provide feedback and indicate their plans for the SFrame RTP payload format.

@@ -1,0 +1,82 @@
+# [ACE](../wg/ace.html)
+
+## Summary
+
+The ACE Working Group held an interim meeting to discuss the status of several active drafts. The primary focus of the meeting was an in-depth review of `draft-ietf-ace-est-oscore` based on feedback received. Extensive discussion took place on various technical points raised in a review, leading to several agreed-upon actions for clarifying and improving the document. Updates were also provided for `draft-ietf-ace-revoke-token-ntf`, `draft-ietf-ace-oscore-profile`, and `draft-ietf-ace-oscore-gm-admin`.
+
+## Key Discussion Points
+
+### Revoke Token Notification (`draft-ietf-ace-revoke-token-ntf`)
+
+*   **Status:** An update addressing reviews from the working group last call (WGLC) has been submitted. Authors will reply to the mailing list.
+*   **Next Steps:** The draft is ready for shepherd review and write-up.
+
+### OSCORE Profile (`draft-ietf-ace-oscore-profile`)
+
+*   **Status:** No updates from the authors in time for this interim meeting.
+*   **Next Steps:** Planned updates will be worked on after the shepherd write-up for `draft-ietf-ace-revoke-token-ntf` is complete, targeting the next interim or IETF meeting.
+
+### OSCORE GM Admin (`draft-ietf-ace-oscore-gm-admin`)
+
+*   **Status:** Work has begun on splitting the draft. A new repository has been created on the ACE GitHub organization for the new document. Content is being pulled from the main draft.
+*   **Next Steps:** Once complete, `gmn` and `gm-admin-core` will be published as version 0 drafts.
+
+### CoAP EST OSCORE (`draft-ietf-ace-est-oscore`)
+
+Malisa presented updates and discussed remaining comments from a review by Marco.
+
+*   **EST Client Role in Ad-hoc Flow:**
+    *   **Discussion:** The draft implicitly assumes the EST client is the Ad-hoc initiator. A question was raised about whether a reverse flow (EST client as Ad-hoc responder) could be ruled out. No use cases were identified for such a reverse flow.
+    *   **Decision:** The document will explicitly specify in Section 3 that the EST client must play the role of the Ad-hoc initiator. There was a sense of those present indicating approval for this.
+*   **Channel Binding with Pre-shared OSCORE Key Material:**
+    *   **Discussion:** The draft specifies Ad-hoc exporter-based channel binding, mimicking RFC 9148's approach to TLS 1.3 exporter. A question arose if channel binding is possible or required when OSCORE key material is pre-shared and Ad-hoc was not executed. It was clarified that the intention to counter TLS 1.2 triple shake is from RFC 9148, not directly applicable here as Ad-hoc is used for authentication. For pre-shared OSCORE, if no interactive protocol establishes the material, channel binding might not be applicable.
+    *   **Decision:** The draft will specify that Ad-hoc exporter-based channel binding is applicable only when Ad-hoc is executed and not for cases where pre-shared OSCORE context is used.
+*   **Transport of PKCS#10 Request/Response in EAD Fields:**
+    *   **Discussion:** A suggestion was made to transport PKCS#10 requests and responses in EAD3 and EAD4 items of Ad-hoc messages, particularly for message 4. The authors' rationale for not doing so is to maintain homogeneity with re-enrollment flows, where Ad-hoc is not required and EST payloads are carried within OSCORE-protected messages.
+    *   **Action Item:** Further clarification will be provided on the mailing list regarding this choice, particularly concerning re-enrollment and potential optimizations.
+*   **Mandating `osc` Attribute in Links:**
+    *   **Discussion:** RFC 8613 states the `osc` attribute is optional. The question was whether it should remain optional for EST resources. An example was given where not mandating it could lead to ambiguity, e.g., accessing a resource over DTLS might signal EST CoAP-s instead of EST OSCORE.
+    *   **Decision:** The `osc` attribute in links to EST resources will be mandated to explicitly signal the use of EST OSCORE. This received support from those present.
+*   **Server-Side Generation of Keys (Unencrypted Private Key):**
+    *   **Discussion:** Unlike RFC 9148 where the private key is encrypted, it was questioned if `draft-ietf-ace-est-oscore` could return an *unencrypted* PKCS#8 private key, given that OSCORE provides end-to-end encryption for the entire EST payload. This would open up a new content format pair.
+    *   **Decision:** The draft will specify that an unencrypted PKCS#8 private key can be returned, and a new content format pair for this will be used, due to the end-to-end OSCORE protection. There was a sense of those present indicating approval.
+*   **Content Format Support:**
+    *   **Discussion:** The draft intends to support content formats similar to RFC 9148 but did not explicitly state this.
+    *   **Decision:** The draft will explicitly state the supported content formats and include a table summarizing them, similar to Table 3 in RFC 9148.
+*   **CoAP Options in Section 4.4 (Normative Language):**
+    *   **Discussion:** Section 4.4 uses "it is recommended that" for several requirements (e.g., delayed responses, support for CoAP options like `oscore`, `URI-Host`, `Block1`, `Block2`, and HTTPS-to-CoAP/CoAPs translation). A reviewer suggested these should be "must" requirements. During the discussion, concerns were raised about the "restatement anti-pattern" if these were presented as new normative requirements. Instead, it was suggested they are logical consequences of using the protocol.
+    *   **Decision:** The language in Section 4.4 will be rephrased to use informative language, such as "Note that...", rather than normative keywords (e.g., "must," "required"), to indicate these are natural consequences of implementing the protocol.
+*   **CoAP vs. CoAPs Scheme for HTTPS Translation:**
+    *   **Discussion:** A sentence stated that "EST URLs based on HTTPS are translated to co-op but with mandatory use of the co-op Oscar option." It was pointed out that the scheme is `coaps` if DTLS is also used.
+    *   **Decision:** The draft will explicitly mention that if DTLS is used, the translation scheme is `coaps`.
+*   **Mandating Block 1 and Block 2 (follow-up on Section 4.4):**
+    *   **Discussion:** Following the decision for Section 4.4 to use informative language, the implication for `Block1` and `Block2` support was discussed. Concerns were raised about potential interoperability issues if `Block1` and `Block2` support were optional, especially when dealing with large certificates. Reference was made to RFC 9148, which *mandates* `Block1` and `Block2` for servers, and `Block2` for clients (and `Block1` for clients sending large requests).
+    *   **Action Item:** Malisa will review all CoAP options and their normative requirements in RFC 9148 and ensure consistent and normative mapping for `draft-ietf-ace-est-oscore` where appropriate.
+*   **Secure Association Between EST Client and CoAP-HTTP Proxy:**
+    *   **Discussion:** Section 5 describes a secure association (e.g., TLS) between the EST client and a CoAP-to-HTTP proxy. A suggestion was made to also reference OSCORE as an alternative for this leg, citing an individual draft on OSCORE-capable proxies. The figure might also need clarification.
+    *   **Decision:** A paragraph will be added to the text to explain that both DTLS and OSCORE can be used for establishing a secure association between the EST client and the CoAP-to-HTTP proxy.
+
+## Decisions and Action Items
+
+*   For `draft-ietf-ace-est-oscore`:
+    *   **Decision:** Explicitly specify in Section 3 that the EST client must play the role of the Ad-hoc initiator.
+    *   **Decision:** Specify that Ad-hoc exporter-based channel binding is applicable only when Ad-hoc is executed, not for pre-shared OSCORE context.
+    *   **Action Item:** (Malisa) Provide clarification on the mailing list regarding why PKCS#10 requests/responses are not transported in EAD fields for homogeneity with re-enrollment.
+    *   **Decision:** Mandate the `osc` attribute in links to EST resources.
+    *   **Decision:** Specify that the private key can be returned as unencrypted PKCS#8 (due to OSCORE E2E protection) and define a new content format pair for it.
+    *   **Decision:** Explicitly state content format support and include a summary table similar to RFC 9148 Table 3.
+    *   **Decision:** Rephrase Section 4.4 to use informative language ("Note that...") rather than normative keywords for general CoAP option requirements.
+    *   **Decision:** Explicitly mention that if DTLS is used, the scheme for HTTPS translation is `coaps`.
+    *   **Action Item:** (Malisa) Review all CoAP options in the document, particularly `Block1` and `Block2`, and ensure their normative requirements align consistently with RFC 9148.
+    *   **Decision:** Add a paragraph explaining that both DTLS and OSCORE can be used for secure association between the EST client and a CoAP-to-HTTP proxy.
+    *   **Action Item:** (Malisa) Respond to Marco's review on the mailing list and release a new version of `draft-ietf-ace-est-oscore` by mid-next week incorporating these changes.
+*   For `draft-ietf-ace-revoke-token-ntf`:
+    *   **Action Item:** (Yoron, Shepherd) Complete the shepherd write-up within the next two weeks.
+
+## Next Steps
+
+*   `draft-ietf-ace-est-oscore` will see a new version addressing the discussed review comments and clarifications.
+*   The shepherd write-up for `draft-ietf-ace-revoke-token-ntf` is expected to be completed soon.
+*   Work on splitting `draft-ietf-ace-oscore-gm-admin` will continue, with version 0 drafts (`gmn` and `gm-admin-core`) expected for publication.
+*   Discussions on `draft-ietf-ace-website-profile` will resume in the second half of May between the authors.
+*   Updates for `draft-ietf-ace-oscore-profile` are planned for the next meeting or IETF.

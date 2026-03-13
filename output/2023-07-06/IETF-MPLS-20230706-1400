@@ -1,0 +1,40 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+This interim session of the MPLS Working Group focused primarily on the interaction of MPLS Network Actions (MNA), specifically Post-Stack Data (PSD) MNA, with Deterministic Networking (DetNet) over MPLS. Greg presented on DetNet's characteristics, its use of pseudo-wire like mechanisms with specific control words and Associated Channel Headers (ACHs), and the challenges these present for the placement and processing of PSD MNA. The discussion highlighted potential conflicts with existing DetNet specifications regarding the immediate placement of DetNet control information after the label stack.
+
+## Key Discussion Points
+
+*   **Welcome and Logistics**: The chairs welcomed attendees, noted the IETF Note Well, and reviewed the short agenda.
+*   **Action Item Review**:
+    *   **AI1**: Investigate the intersection of MNA with existing MPLS features (Owner: Working Group). No update was provided since the last meeting; the item remains open for community investigation.
+    *   **AI2**: Greg's presentation on MNA from a DetNet perspective (covered in this meeting).
+    *   **AI3**: Update MNA working group drafts to capture discussions about in-stack data or multiple substacks for in-stack data (Owners: Draft Editors). No update was provided. A sense of those present indicated that an email to the working group would be beneficial to refresh this action item, especially in preparation for the next IETF meeting.
+*   **MNA from a DetNet Perspective (Greg)**:
+    *   **DetNet Fundamentals**: DetNet leverages pseudo-wire (PW) and MPLS TE techniques to achieve extremely low data loss rates and bounded latency, reserving data plane resources for flows, including OAM.
+    *   **DetNet Service Sub-layer**: Employs packet replication, duplicate elimination, and order preservation functions, often resembling a multi-segment PW, but with per-packet arbitration (not per-LSP) using sequence numbers.
+    *   **MPLS DetNet Encapsulation**: The label stack includes forwarding labels, a service label (S-label), immediately followed by a DetNet Control Word. This control word is a variant of the generic PW MPLS control word (RFC 4385) and includes a sequence number for DetNet service sub-layer functions.
+    *   **Immediate Follower**: A crucial point is that the DetNet Control Word is expected to *immediately follow* the bottom of the stack (S-label). This sparked discussion about where a potential PSD MNA indicator would be placed, noting a likely conflict if it also needed to immediately follow the label stack. This issue is generalizable to any non-IP payload using a control word.
+    *   **DetNet Header Processing**: DetNet headers (control word, ACH) are processed at Ingress/Egress PEs (DetNet service sub-layer) but not by intermediate P-nodes (DetNet forwarding sub-layer).
+    *   **DetNet Associated Channel Header (ACH)**: DetNet OAM uses an extended PW Associated Channel Header. Like the DetNet Control Word, it is also expected to *immediately follow* the bottom of the stack (S-label) and includes a sequence number, channel type, and node ID.
+    *   **OAM Scope**: DetNet service sub-layer OAM utilizes the DetNet ACH. Transport OAM (acting on forwarding labels) might use regular ACH or a GAL label.
+    *   **Multiple ACHs**: A question was raised regarding the possibility or implication of carrying both a transport ACH and a DetNet ACH in the same packet. This has not been explicitly covered in existing DetNet specifications and warrants further investigation.
+    *   **DetNet MPLS Aggregation**: DetNet allows for aggregation of flows, where both aggregated and individual DetNet flows can have packet replication, duplicate elimination, and order preservation functions applied. This implies multiple 'S' bits (bottom-of-stack indicators) in the label stack, resembling peeling an onion.
+    *   **PSD MNA Location Options**:
+        *   **Option 1**: DetNet Control Word (or ACH) immediately follows the bottom of the stack, and then any PSD MNA follows the DetNet Control Word/ACH. This is more aligned with the DetNet service sub-layer MNA.
+        *   **Option 2**: PSD MNA follows the bottom of the stack, and then the DetNet Control Word/ACH. This option is problematic as it would break backward compatibility with existing DetNet specifications and implementations that assume the control word is the immediate next field.
+    *   **Implications for PSD MNA**: Any PSD MNA solution must clearly define its location relative to existing control words (like DetNet's) and provide mechanisms (e.g., explicit offset indicators) to parse the packet correctly, especially given potential "first nibble" ambiguities across different header types. Modifying the "immediate follow" rule for DetNet would require an update to existing DetNet RFCs and could impact implementations.
+    *   **DetNet Data Plane Enhancements**: While there are individual contributions in the DetNet WG discussing enhanced data planes for features like bounded latency, there is currently no working group consensus on specific solutions. The MPLS WG should remain aware of these discussions, especially for proposals relevant to MPLS.
+
+## Decisions and Action Items
+
+*   **Action Item (AI1 - Ongoing)**: The working group continues to be tasked with investigating the intersection of MNA with existing MPLS features. No updates were provided at this meeting.
+*   **Action Item (AI3 - Refreshed)**: The chairs will send an email to the working group and draft editors to refresh the action item for updating the MNA working group drafts (requirements and framework) to explicitly capture discussions around in-stack data and multiple substacks for in-stack data.
+*   **Key Finding**: The discussion highlighted a significant architectural conflict between the current DetNet MPLS specification (which mandates the DetNet Control Word/ACH to *immediately* follow the bottom of the stack) and any Post-Stack Data (PSD) MNA proposal that would also seek to be placed immediately after the label stack. Any future PSD MNA solution must explicitly address this interaction, particularly for non-IP payloads using control words.
+
+## Next Steps
+
+*   The MPLS Working Group will continue to analyze the implications of MNA, especially PSD, for existing MPLS services and encapsulations, with a specific focus on non-IP payloads and control word usage.
+*   The DetNet Working Group's ongoing discussions on data plane enhancements should continue to inform the MPLS Working Group, particularly for any proposals that would affect the MPLS data plane.
+*   Further detailed analysis is required to determine viable placement options for PSD MNA in the presence of DetNet Control Words and ACHs, and to define mechanisms for indicating the presence and offset of PSD MNA without breaking existing implementations.

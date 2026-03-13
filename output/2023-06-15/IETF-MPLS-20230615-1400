@@ -1,0 +1,67 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+The MPLS Working Group interim session covered a review of open action items, an update on IETF mail aliases, and a detailed technical discussion on questions related to MPLS MA (Measurement and Analysis). Specifically, the group discussed the hardware capabilities required for modifying in-stack data, with a "No More Fast Reroute" (NFRR) use case presented by Tarek. The session also touched on how P-routers can unambiguously identify MA post-stack data. A scheduled presentation was postponed to a future meeting due to time constraints.
+
+## Key Discussion Points
+
+### Housekeeping
+*   **Audio Issues**: Initial minutes of the meeting were spent addressing persistent low-level hum on the audio and Greg Mirsky's difficulties with connecting audio, which led to him having to re-join.
+*   **Note Well**: The IETF Note Well was presented.
+*   **Meeting Logistics**: Reminders were given for automatic blue sheets, collaborative note-taking via a provided link, and action item tracking on the MPLS wiki.
+
+### Review of Action Items
+*   **Investigation of MA with existing MPLS features**:
+    *   Discussion from a previous meeting regarding the intersection of MA with existing MPLS features (e.g., OAM for pseudo-wires, BIER packets with MA header, ordering in the stack) was recalled.
+    *   The action item, with the Working Group as owner, remains open for further investigation. No updates were provided.
+*   **First nibble in MPLS payload**:
+    *   Previously, the group discussed the first nibble in the MPLS payload and BIER's use of value 5. Questions were raised about the reliability of this value on transit nodes and why BIER chose it.
+    *   The action item, with the Working Group as owner, remains open.
+    *   **Action Item**: Tarek to send a mail to the BIER Working Group or chairs to inquire about their reliance on the value 5 for the first nibble.
+*   **DETNET perspective on MA**:
+    *   Loa informed the group that Greg Tariq would provide an update on the DETNET perspective on MA at the July 6th meeting. This was captured as an agenda item for that future meeting.
+
+### IETF Mail Aliases
+*   Loa provided an update on issues with IETF mail aliases (e.g., `mpls-chairs`, `pals-chairs`). Participants sending email to Working Group chairs were advised to use individual email addresses directly, as alias forwarding is currently experiencing bouncing issues. This problem is known and will be fixed, but the timeline is uncertain.
+
+### Discussion on Stewart's Questions on MPLS MA
+
+#### Question 1: Hardware capability for modifying in-stack data
+*   **Concern**: Is the current/likely deployed hardware capable of modifying a field in an MPLS Label Stack Entry (LSE) *below* the Top-of-Stack (ToS) without significant performance impact or undue implementation burden?
+*   **Background**: Stewart highlighted that some in-stack data (ISD) use cases (e.g., IP Fast Reroute (FRR) and recording total queuing time for latency determination) require P-routers to update fields within an LSE that may not be known a priori. This implies the forwarder needs to perform arbitrary modifications to deeper LSEs, not just pre-prepared values. The question aims to understand if forwarder designers have considered this viability.
+*   **Joel's comment**: Joel expressed concern that the question presupposes an agreement on the *need* for modifying data deeper in the stack, which the Working Group has not yet reached. He noted that existing proposals for ISD or PSD do not necessarily depend on such a capability, and research use cases don't automatically create demand for standardization.
+*   **Matthew's comment**: Matthew preferred designing for generality to support future use cases but emphasized that proponents of such use cases should detail how they work. He mentioned the existing Residence Time RFC as a potential candidate for binding into MA.
+*   **Tarek's Use Case: No More Fast Reroute (NFRR)**:
+    *   Tarek presented a simplified NFRR use case to illustrate the technical challenges, involving an LSR1 (PLR) affected by a failure needing to activate an NFRR MA action and impose an FR label. The incoming packet already contains an MA SPL and ISD1.
+    *   **Case 1**: LSR1 modifies the existing ISD1 to `ISD1 Prime` (by setting the NFRR action) and then imposes the FR label.
+        *   **Questions raised**: Is the original LER still responsible for `ISD1 Prime`? Can LSR2 (merge point) disable the NFRR action, or does it persist downstream?
+        *   **Tony's input (via chat/Dave)**: The *scope* of ISD1 (e.g., I2E vs. Hop-by-Hop) is critical. If `ISD1` is I2E, Case 2 (inserting a new ISD) might be more appropriate. If `ISD1` is Hop-by-Hop, Case 1 might combine NFRR with existing `ISD1`. Tony suggested injecting NFRR with a "select scope" label.
+        *   **Stewart's comment**: This NFRR scenario represents a common problem (node failures, micro-loops). He argued that NFRR should ideally be a global, sticky flag within the domain to prevent collateral damage from multiple failures and to maintain policy enforcement. He found Case 1 more robust for policy maintenance.
+        *   **Loa's comment**: Case 2 would likely require a "select scope" for the new ISD.
+        *   **Joel's comment**: LSR2 (merge point) *must* remove any ISD that becomes ToS. If `ISD2` is pushed and becomes ToS, LSR2 removes it. Joel personally found Case 2 more generally applicable, but couldn't stop an implementation of Case 1.
+        *   **Stewart's concern on Case 2**: Case 2 adds more labels, potentially exacerbating the maximum stack depth problem. He argued Case 1 is "unconditionally correct" if the target LER is confirmed to support the `ISD1 Prime` functionality.
+        *   **Tarek's follow-up**: How does the PLR (LSR1) know if the ultimate LER (egress) supports the specific new action (e.g., NFRR) it's setting in `ISD1 Prime`? PLRs don't typically know the ultimate target's capabilities.
+        *   **Greg (via Dave) comment**: If a node doesn't have information about which node will dispose of an ISD, it should not add that ISD. This principle should be documented.
+        *   **Rakesh's comment**: The current draft states only one MA per scope is processed. If `ISD1` and `ISD2` have the same scope in Case 2, it could lead to policy issues. This strongly pushes towards Case 1.
+    *   **Consensus/Discussion Summary**: While no major objections were raised to the *technical possibility* of modifying `ISD1` (Case 1), concerns remain regarding how the PLR confirms LER capabilities for new actions, the persistence/disabling of actions, and the implications of multiple ISDs with the same scope. There was a sense that the fundamental framework and requirements documents need to clearly address these aspects.
+    *   **Next Steps**: It was agreed that these fundamental issues should be summarized and discussed at a future chairs' meeting to assign action items to editors of framework and requirements documents.
+
+#### Question 2: P-router identification of MA Post Stack Data (PSD)
+*   **Concern**: How can a P-router unambiguously determine that data immediately below the Bottom-of-Stack (BoS) is MA Post Stack Data (PSD), without a specific hint in the label stack, while avoiding aliasing with other services (e.g., Ethernet)?
+*   **Background**: Stewart explained that a P-router must be able to process *any* LSP, regardless of payload, and cannot rely on understanding service labels or their associated services (as these are "random 20 bits" to a P-router). Unambiguous identification is crucial.
+*   **PE Router Context**: A PE router has more context (e.g., IP, pseudo-wire, VPN, DETNET, BIER) and can make more informed decisions. Stewart suggested that a PE could refuse MA PSD for Ethernet pseudo-wires without a control word. He also noted that a service label with a suitable first nibble *could* help distinguish MA PSD at a PE.
+*   **P-router Challenge**: Stewart's core question is how a P-router, lacking service context, can unambiguously identify MA PSD. He doesn't see a way to do this if solely relying on the first nibble (as implied by some past discussions from Tony), given the potential for aliasing.
+*   **Discussion Conclusion**: Due to the absence of key participants (Tony, Matthew) who had previously contributed to this topic, a full discussion could not be held. It was deemed critical and needing further attention.
+
+## Decisions and Action Items
+
+*   **Decision**: The presentation by Huayong Zhang and Loa Andersson, "Extension to S-PW for MA", is postponed to the next interim meeting (Thursday, July 6th) and will be placed first on the agenda.
+*   **Action Item**: Tarek to send an email to the BIER Working Group or chairs to inquire about their reliance on the value 5 for the first nibble in the MPLS payload and its intended use.
+*   **Action Item**: The chairs will summarize the technical discussion on in-stack data modification and PSD identification, and discuss at a future chairs' meeting to assign specific action items to the editors of the MPLS MA framework and requirements documents to ensure these fundamental considerations are captured.
+
+## Next Steps
+
+*   The Working Group will continue discussions on Stewart's questions, particularly the P-router's ability to identify MA PSD, with the aim of clarifying requirements for the MA framework.
+*   The postponed presentation on "Extension to S-PW for MA" will be the first agenda item at the next interim meeting on July 6th.
+*   Greg Tariq will present on the DETNET perspective on MA at the July 6th meeting.

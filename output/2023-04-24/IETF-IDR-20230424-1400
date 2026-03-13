@@ -1,0 +1,87 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR working group held an interim meeting to cover several drafts that did not fit into prior IETF session slots. Key topics included proposals for improving BGP session robustness through enhanced timer mechanisms (both TCP-layer and BGP application-layer), defining a BGP session type for single administrative domains spanning multiple ASes, and extensions to BGP Flow Specification and BGP-LS for traffic steering and route distribution with constraints. Significant discussion occurred around the BGP timer proposals, with participants debating the scope and completeness of each approach.
+
+## Key Discussion Points
+
+*   **Applying TCP User Timeout Parameters to BGP Sessions (Presented by Ankur)**
+    *   **Problem:** Stalled BGP sessions occur when application data (BGP messages) is not delivered for extended periods, leading to stale routing information. Current BGP keepalive/hold timers may not always detect these specific conditions.
+    *   **Proposed Solution:** Leverage the `TCP_USER_TIMEOUT` socket option (defined in RFC 0793, updated by RFC 9293). This option allows the application (BGP) to terminate a TCP connection if transmitted or buffered data is not acknowledged within a specified duration.
+    *   **Benefits:** Offers a more deterministic and precise detection mechanism as TCP has full visibility into the transport state. Requires minimal changes to BGP implementations.
+    *   **Recommendations:** Default timeout of five times the BGP Hold Timer (but not less than two minutes), configurable; enable after End-of-RIB (EOI) is received; follow Graceful Restart (GR) procedures for error handling; log events and coordinate with peer administrators for resolution.
+    *   **Discussion:**
+        *   Randy Bush affirmed the approach: "TCP provides this, don't further complicate BGP?"
+        *   Jeff Tantsura questioned the core use case, suggesting that while it addresses TCP misbehavior, it might not cover all cases where the BGP application itself is misbehaving despite TCP working correctly. He noted personal experience with BGP application issues that TCP timers would not resolve.
+        *   Ankur contended that scenarios where BGP's own timers fail are likely corner cases or implementation bugs, and that a TCP-layer solution would be more comprehensive.
+        *   Claudio Jeker raised that the TCP user timer might not cover all cases compared to the send-hold timer, especially if the remote system is emptying its TCP buffer but not processing the data.
+
+*   **BGP Send Hold Timer (Presented by Job Snijders)**
+    *   **Problem:** BGP speakers can advertise a TCP receive window of zero for extended periods, preventing the local speaker from sending keepalives. Some implementations don't disconnect in this "broken" state, leading to outdated routes, blackholing, and routing loops.
+    *   **Proposed Solution:** Introduce an application-level "send hold timer." This timer would start when the remote peer advertises a zero receive window AND the local system's outbound write buffer fills up. If the timer expires, the BGP session is disconnected.
+    *   **Updates:** The draft has been revised to describe desired outcomes rather than prescriptive Finite State Machine (FSM) changes, adopting a less "alarmist" tone, and clarifying what the mechanism does *not* solve.
+    *   **Implementation Status:** OpenBGPD, FRRouting, and NeoBGP have implemented similar logic.
+    *   **Next Steps:** Request working group adoption, gather more implementation experience, and seek an IANA registration for a `sendhold timer expired` error code.
+    *   **Discussion:**
+        *   Ankur argued this is a partial solution, as it only triggers when the *local TCP buffer* is full, not just when an important BGP update is stuck. He believes `TCP_USER_TIMEOUT` offers a more complete solution by not relying on the local buffer state.
+        *   Job clarified that the two drafts address slightly different problem spaces. His proposal covers cases where the remote peer might still send keepalives but signals a zero receive window, preventing *outbound* data flow.
+        *   Claudio Jeker stated that the BSD network stacks do not implement `TCP_USER_TIMEOUT`, making the send-hold timer a necessary and effective solution for openBGPD. He also emphasized that the crucial goal is to detect and address the issue, regardless of the specific implementation.
+        *   Jeff Tantsura reiterated that the send-hold timer addresses "black sockets" where acknowledgments might still be flowing (keeping the TCP user timeout from triggering), but the receive window is zero, effectively blocking data transmission. The discussion around timer mechanisms was deferred to the mailing list for further detailed technical exchange.
+
+*   **BGP One Administrative Domain (OAD) (Presented by Alvaro Retana)**
+    *   **Problem:** Many operator or enterprise networks manage multiple Autonomous Systems (ASes) under a single administrative domain. Current eBGP rules restrict the exchange of certain attributes (e.g., Local Preference) across AS boundaries, even when these ASes are part of the same administrative entity.
+    *   **Proposed Solution:** Define a new BGP session type, `eBGP OAD` (One Administrative Domain). This session would generally follow eBGP rules but would *optionally*, controlled by policy, allow the exchange of attributes typically restricted to iBGP or not transmitted across eBGP (e.g., Local Preference).
+    *   **Updates:** Draft version 01 has enumerated more attributes and clarifies their behavior within an `eBGP OAD` session, excluding some like Originator_ID and Cluster_List. The mechanism is currently configuration-driven, with consideration for capability negotiation.
+    *   **To-Do List:**
+        *   Complete enumeration of all BGP attributes and their behavior.
+        *   Consider the application of existing BGP roles (RFC 9364) or the need for new roles.
+        *   Address configuration requirements and operational considerations, including the impact of widespread `eBGP OAD` deployment.
+        *   Document interaction with the RPKI BGP Prefix Announcement draft.
+        *   Specify expected behavior for future non-transitive attributes within `eBGP OAD` sessions.
+        *   Clarify that scenarios with disjoint ASes (separated by another administrative domain) are out of scope.
+    *   **Discussion:**
+        *   Claudio Jeker supported the use of BGP roles to ensure mutual agreement between peers on the session type.
+        *   Randy Bush requested additional security text to reassure readers that the mechanism cannot be used to inadvertently leak internal data or attributes. Alvaro acknowledged this and committed to adding such text.
+        *   Alvaro referenced the "Confederation concept" (RFC 10757) as a historical point of reference for similar challenges.
+    *   **Next Steps:** Address outstanding comments, publish an updated draft, and then request working group adoption.
+
+*   **Flowspec Redirect Load Balancing Group Community (Presented by Zhixian Sun)**
+    *   **Problem:** Existing BGP Flow Specification redirection actions (e.g., redirect to IP, SRv6 tunnel) do not natively support Equal-Cost Multi-Path (ECMP) or Unequal-Cost Multi-Path (UCMP) to a group of destinations with specified ratios.
+    *   **Proposed Solution:** Introduce a new `Redirect Load Balancing Group Community` as an extension to the BGP Community container attribute (a wide community). This community contains a list of sub-TLVs, each representing a redirection action (e.g., an IP address or SRv6 SID), along with an associated weight for UCMP.
+    *   **Updates:** Renamed "atoms" to "sub-TLVs" for clarity; added text on interaction with other redirection actions (precedence configurable); and included validation procedures for each sub-TLV within the group.
+    *   **Flowspec V2:** The mechanism is primarily designed for Flowspec V1 but does not conflict with Flowspec V2.
+    *   **Discussion:**
+        *   Jeff Tantsura recommended including a more detailed discussion of interactions with BGP Flowspec V2 actions within the current draft.
+
+*   **BGP-LS Extensions for CATS and Flowspec (Presented by Huanxi Hou and Xijin Song)**
+    *   **Context:** The CATS (Computing-Aware Traffic Steering) working group needs mechanisms to steer traffic based on computing metrics (e.g., latency, capacity) of service instances deployed in different sites.
+    *   **Proposed Solution:**
+        1.  **Metric Collection (Egress to Controller):** Reuse the service metadata definitions (site preference, capacity index, node measurement) from an existing IDR draft. These metrics would be collected from egress routers to a controller using BGP-LS, with an added "color attribute TLV" for service level indication.
+        2.  **Metric Distribution (Controller to Ingress):** Extend BGP Flow Specification to distribute these computing metrics from the controller to ingress routers. This can be done by referencing the original service metadata path attribute or by aggregating and describing metrics using numerical values within the Flowspec extension.
+    *   **Next Steps:** Seek further discussion and feedback.
+
+*   **Constrained RT for BGP-LS and BGP Flowspec (Presented by Xi Jin Song and Zhixian Sun)**
+    *   **Problem:** When a controller distributes SR policies or Flowspec routes to a Route Reflector (RR), the RR reflects these routes to *all* its clients/peers. Ingress policies are then used by clients to filter unwanted routes, which can lead to wasted bandwidth and network congestion.
+    *   **Proposed Solution:** Utilize Route Target (RT) constraints to enable RRs to generate *egress* policies for filtering. Peers (P1, P2 in the example) advertise their RT membership using a new NLRI. The RR, upon receiving Flowspec/SR policy routes (which carry RT extended communities), would reflect them only to peers whose RT membership matches.
+    *   **Proposed Format:** An IPv4 Address Specific Extended Community is used as the Route Target. The global administrator field is the router ID, and the local administrator field is reserved (set to 0).
+    *   **Discussion:**
+        *   Jeff Tantsura questioned the terminology "Flowspec ORF" (Outbound Route Filter) and suggested that the "Node to Target Community" draft might be a better fit for this purpose. The presenter clarified that the Flowspec route would carry an RT extended community for this mechanism.
+
+## Decisions and Action Items
+
+*   **BGP Timer Drafts (Ankur's TCP User Timeout & Job's Send Hold Timer):**
+    *   **Action:** Ankur, Job, Jeff, and Claudio are requested to continue their detailed technical discussion on the mailing list, specifically on the distinct scenarios each draft covers and their respective completeness. This should clarify the perceived overlaps and differences.
+*   **BGP One Administrative Domain (OAD) (Alvaro Retana):**
+    *   **Action:** Alvaro to address the comments raised, particularly regarding the use of BGP roles and the need for security text. An updated draft is expected before requesting working group adoption.
+*   **Flowspec Redirect Load Balancing Group Community (Zhixian Sun):**
+    *   **Action:** Incorporate a more detailed discussion on interactions with BGP Flowspec V2 actions into the current draft.
+*   **Constrained RT for BGP-LS and BGP Flowspec (Xi Jin Song and Zhixian Sun):**
+    *   **Action:** Consider the "Node to Target Community" as an alternative or complementary mechanism to the proposed RT constraint method.
+
+## Next Steps
+
+*   The working group awaits further updates and clarity on the BGP timer drafts based on the mailing list discussions.
+*   Alvaro's BGP OAD draft will be updated, after which working group adoption will be sought.
+*   The Flowspec redirect and BGP-LS/Flowspec extensions drafts will continue to be refined based on feedback.
+*   The chairs will monitor the mailing list for progress and new developments on these topics.

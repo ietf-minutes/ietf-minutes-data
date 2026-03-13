@@ -1,0 +1,89 @@
+# [ALTO](../wg/alto.html)
+
+## Summary
+
+This interim meeting focused on preparing the `ALTO New Transport` (now renamed `Transport Information Publication Service - TIPS`) and `ALTO OM JSON/YANG` documents for Working Group Last Call. Discussions centered on incorporating recent reviews, refining technical designs, and resolving open issues for both drafts. The ALTO New Transport document's design for incremental updates over HTTP/2/3 and its ephemeral state model were reviewed in detail. For ALTO OM, recent changes for client-side modeling, resource-level access control, and monitoring were presented. Both documents are nearing completion, with minor editorial changes and some open discussion points to be addressed on the mailing list before initiating their respective Working Group Last Calls.
+
+## Key Discussion Points
+
+### ALTO New Transport (TIPS) Update
+*   **Renaming**: The document's service name has been changed to "Transport Information Publication Service" (TIPS).
+*   **Motivation**: Addresses limitations of existing ALTO transports:
+    *   HTTP/1.1 SSE (RFC 8895) requires separate control connections and lacks concurrency for multiple monitoring streams.
+    *   RFC 7285 is client-pull only.
+    *   Goal is efficient incremental updates, supporting both client pull and HTTP/2/3 native server push within a single transport protocol.
+    *   This new design is not intended to replace RFC 7285 for simple requests but could potentially replace RFC 8895.
+*   **Core Concept - Incremental Transfer over Representation (ITR)**:
+    *   Resources are represented as a sequence of incremental updates, forming a graph where nodes are data versions and edges are operations (full replacement or JSON/merge patch).
+    *   The server determines the structure of this graph and which incremental transfers are available.
+    *   The transfer model maps base resource IDs to update IDs (e.g., `0-101`, `101-102`).
+    *   Supports client pull (using `GET`) and server push (using URIs).
+*   **Design Decision: Ephemeral State**: A view for incremental updates is created when a client opens a session (`POST`) and removed when closed (`DELETE`). This simplifies server-side state management.
+*   **Protocol Structure**:
+    *   **Information Resource Directory (IRD)**: Announces TIPS service capabilities, including supported media types for incremental changes and server push support.
+    *   **Open/Close Mechanisms**: `POST` to `/tips/cars` to open a session (creating a stateful view), with parameters for `resource-id` and optional `tag` (client's current version). `DELETE` on the `transport-state-view-root` URI closes the session.
+    *   **Metadata and Directory Access**: Clients use `GET` on `transport-state-view-root/uq` to retrieve the directory structure (adjacency list of updates). `POST` with a filter can request incremental updates to the directory itself (e.g., using merge patch based on a client's known directory version).
+    *   **Consistency Requirements**: The server must maintain "continuity" (no gaps in version numbers), "feasibility" (a direct path from version 0 to the smallest maintained version `NS`), and "right shift only" (versions only progress forward in time).
+    *   **Raw Data Transfer**: Clients `GET` individual updates using URIs like `tips-view-root/uq/I/J`. Server policies allow proactive fetching of future updates (`I` to `I+1`).
+    *   **Error Conditions**: Defined error codes for specific scenarios: 410 Gone (update no longer available), 415 Unsupported Media Type (for requested update type), 425 Too Early (prefetch window exceeded), 429 Too Many Requests (too many pending prefetch requests).
+    *   **Server Push**: When enabled, the server selects a "push path" (shortest path from the client's current version to the latest, minimizing data size). It can manage dependencies across different resources.
+*   **Remaining Issues**:
+    *   **Co-location of Services**: The current design collocates the front-end (open/close), directory, and data services on a single server for simplicity. Discussion considered separating the front-end to allow finer-grained application layer load balancing, potentially using HTTP redirects. The consensus was to maintain the current simpler design for now, noting that operators could use external mechanisms (e.g., DNS-based routing, HTTP redirects).
+    *   **Metadata Naming**: A minor point on whether `transport-state-view-root/uq` for directory access is optimal or if `transport-state-view-root/uq-meta` would be clearer. The draft sticks with `/uq` for now.
+*   **Next Steps**: Authors plan a final pass on the document this week, followed by submission for Working Group Last Call. A demonstration of the TIPS implementation is planned for the IETF 116 hackathon.
+
+### ALTO OM (Operational Management) JSON/YANG Update
+*   **Co-authorship**: Cheka Tan has joined as a co-author.
+*   **Status**: The latest version is `draft-ietf-alto-om-json-yang-05` (not yet in the datatracker, available in the WG GitHub repo). Authors are working on version 07.
+*   **Closed Open Issues**:
+    *   **YANG Module Naming**: No new element modules are introduced; the base `ietf-alto` module is used.
+    *   **Inter-server Communication**: Limited to equal-domain server discovery.
+    *   **Implementation Strategy**: Focus is on modeling ALTO data sources, not device models.
+*   **New Open Issue**: Resource-level Access Control needs further discussion.
+*   **Current Changes in the Draft**:
+    *   Introduced a base model for the ALTO client side, including resource-level access control and failure monitoring.
+    *   Completed security considerations for YANG.
+    *   Added more examples for extending data models.
+*   **Reference Models**: Outlined common ALTO client-server architecture components (client config, server-level manager, information resource manager, status listeners, monitoring).
+*   **Data Model Components**:
+    *   **Client-Side Configuration**: Minimal configuration to discover base ALTO services.
+    *   **Server-Level Configuration**: Includes Protocol Operation Parameters (POP) for HTTP/TLS, server discovery (reverse DNS based, extensible), logging, and metadata.
+    *   **Security Configuration**: Covered by TLS parameters.
+    *   **Information Resource O&M**:
+        *   **Data Source Listeners**: Defines common configurations for data sources (Source ID, update policies: reactive/proactive, push/pull). Extensible for specific implementations (e.g., BGP-LS, YANG datastore).
+        *   **Information Resources**: Common parameters include accepted roles for access control and dependent information resources. Specific parameters for network/cost maps allow configuration of algorithms used to generate results.
+*   **Discussion on Resource-Level Access Control (Richard/Jason)**:
+    *   Richard raised a point that access control might need to be more granular than just resource ID, extending to resource ID *plus input parameters* (e.g., specific client IP addresses for endpoint properties). This aligns with the `resource + input` model used in ALTO SSE and the new transport.
+    *   Jason acknowledged the conceptual point and suggested this could be handled via PID-specific configurations or as extensible parameters. This will be continued on the mailing list.
+*   **Monitoring**: The document includes server status monitoring and ALTO-specific performance monitoring. Application impact metrics are currently out of scope.
+*   **Extensibility**: The model is designed to be extensible for various aspects like server discovery mechanisms, client authentication approaches, data source listeners, and algorithms for creating information resources.
+*   **Client Authentication**: Yuichi suggested supporting mutual TLS for the client to authenticate the server, similar to server-side TLS configuration. Jason agreed to consider this.
+*   **Role-Based Access Control**: Jason clarified that a client can belong to multiple roles (many-to-many mapping).
+*   **Next Steps**: The authors aim to post a new version (v07) by the weekend, incorporating feedback, and continue discussion on resource-level access control on the mailing list.
+
+### General Working Group Items
+*   **IETF 116 (Yokohama) Meeting Plan**: One hour slot requested. Focus will be on concluding WG Last Calls for TIPS and OM, and introducing ALTO deployment updates (multi-domain scenarios, network computing exposure).
+*   **Document Shepherds**: Chairs requested volunteers for document shepherds for both ALTO New Transport and ALTO OM.
+*   **ALTO Deployments Wiki**: Richard and Luis were thanked for populating the Wiki page, and others were encouraged to review it.
+*   **External Review (ALTO New Transport)**: Richard will send an email to Mark Nottingham (AD) to give a heads-up that the TIPS document is nearing WG Last Call, inviting further review during that phase.
+
+## Decisions and Action Items
+
+*   **Decision**: The ALTO New Transport document's current design for co-locating front-end, directory, and data services on a single server will be maintained for simplicity, with flexibility for external application-layer load balancing.
+*   **Action Item**: Richard (TIPS author) to make a final pass on the ALTO New Transport document this week, incorporating recent changes and submitting for WG Last Call.
+*   **Action Item**: Richard (TIPS author) to send an email to Mark Nottingham (AD) to inform him that the ALTO New Transport document is nearing WG Last Call and invite further review.
+*   **Action Item**: Jason (OM author) to post a new version of the ALTO OM JSON/YANG document (v07) this weekend.
+*   **Action Item**: Jason (OM author) to add an example for BGP-LS data collection to the ALTO OM appendix.
+*   **Action Item**: Richard (TIPS co-author) and Jason (OM author) to continue the discussion on resource-level access control (specifically granular access control down to resource ID + input parameters) on the mailing list.
+*   **Action Item**: Jason (OM author) to consider supporting mutual TLS for the ALTO client to authenticate the ALTO server in the ALTO OM document.
+*   **Action Item**: Chairs to initiate Working Group Last Call for ALTO New Transport and ALTO OM documents in parallel once the authors confirm readiness, and to solicit YANG doctors' reviews for ALTO OM.
+*   **Action Item**: Working Group members are encouraged to review the ALTO Deployments Wiki page.
+*   **Action Item**: Volunteers for Document Shepherds for ALTO New Transport and ALTO OM documents are requested to contact the chairs.
+
+## Next Steps
+
+*   Complete final edits and submit ALTO New Transport and ALTO OM drafts.
+*   Initiate parallel Working Group Last Calls for both documents.
+*   Continue discussion on resource-level access control for ALTO OM on the mailing list.
+*   Prepare for ALTO New Transport demonstration at IETF 116 hackathon.
+*   Plan ALTO deployment updates for the Yokohama meeting agenda.
