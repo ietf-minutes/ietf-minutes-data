@@ -1,0 +1,105 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+The OPENPGP Working Group held an interim meeting to discuss the status of three active drafts: `draft-ietf-openpgp-crypto-refresh-pq` (Post-Quantum Cryptography), `draft-ietf-openpgp-key-replacement` (Key Replacement), and `draft-ietf-openpgp-symm-key-material` (Persistent Symmetric Keys).
+
+The Post-Quantum Cryptography draft is deemed ready for Working Group Last Call (WGLC), though a specific issue regarding normative key selection text was raised for further refinement. The Key Replacement draft requires more discussion on the mailing list, particularly concerning an "optional fallback encryption" mechanism and general trust model implications. The Persistent Symmetric Keys draft will undergo minor tweaks based on feedback before being considered for WGLC, potentially after the PQC draft.
+
+## Key Discussion Points
+
+### Post-Quantum Cryptography Draft (draft-ietf-openpgp-crypto-refresh-pq)
+
+*   **Changes from draft-06 to -07:**
+    *   Assigned code points for all signature algorithms.
+    *   Aligned the CAM combiner with LAMPS construction, which automatically dropped CCA conversion for X25519/X448.
+    *   Switched to the SLH-DSA-H variant, which is default in most libraries and more secure against side-channel attacks.
+    *   Regarding the seed key format: While LAMPS's technical committee decided to allow both expanded and seed formats, the draft currently maintains the seed format for OpenPGP. Reasons include reduced complexity, ability to derive expanded from seed (but not inverse), and common use in libraries. Stephen queried whether LAMPS's internal discussions might diverge in a way that affects OpenPGP. Aaron indicated that supporting both would mean libraries shared with LAMPS would need to support both.
+*   **CAM Combiner:**
+    *   Updated and aligned with LAMPS, using a "kitchen sink" construction. This includes additional data (cipher, secret, ciphertext, public keys, algorithm ID, domain separation).
+    *   Achieves FIPS compliance (NIST SP 800-56C and SP 800-127).
+    *   The construction uses SHA3-256 concatenation of various data.
+    *   Test vectors are available and interoperable across Go crypto and bp-js implementations.
+*   **Trust Model and Key Selection (Section 8.1):**
+    *   Usus raised concerns that Section 8.1 "veers into trust model and key selection," suggesting a single PQC subkey and precluding HSM usage. Usus argued that adding such recommendations without a proper discourse on implications (e.g., economics) is problematic.
+    *   Aaron clarified that the current text recommends "should" encrypt with PQC if available to avoid losing PQC security, but is not a "must."
+    *   Daniel (Proton) agreed that these discussions are "orthogonal to PQC" and suggested postponing normative requirements about using multiple subkeys or one subkey to a separate document or consideration.
+    *   Daniel (dkg) agreed, suggesting removing any such normative text from this draft to avoid shoehorning revocation/key selection discussions into it.
+    *   It was agreed that a more explicit issue/PR should be opened to address this text and avoid normative statements about key selection strategy.
+*   **Working Group Last Call (WGLC):**
+    *   The authors expressed readiness for WGLC.
+    *   The chairs asked if anyone felt the WGLC should not start. No objections were raised. A sense of those present indicated it was acceptable to proceed with a WGLC, understanding that the open issue on key selection could be addressed during that period.
+
+### Key Replacement Draft (draft-ietf-openpgp-key-replacement)
+
+*   **Recent Changes:**
+    *   The target format now includes both fingerprint and imprint, simplifying parsing despite some duplication.
+    *   The "new replacement" bit has been deprecated (merged with revocation reasons).
+    *   The "referred key server" subpacket is no longer mentioned.
+    *   Minor cleanups regarding undefined bits and UX guidance.
+*   **Outstanding Question: Optional Fallback Encryption:**
+    *   Andrew explained a question raised by Johannes regarding making fallback encryption optional. An equivalence binding currently means seamless failover in both directions (original to replacement, and replacement to original if algorithms are not supported).
+    *   A key holder might not want this fallback (e.g., if the original secret key material is lost and cannot be revoked).
+    *   Two main options were presented: a global flag in the class octet (no wire format change) or per-target flags (requires wire format change).
+    *   **Discussion:**
+        *   Daniel (Proton) felt this was a very specific scenario, suggesting existing or future revocation mechanisms (designated revoker, revocation certificate) should ideally handle lost keys.
+        *   Daniel (dkg) echoed concerns about adding complexity for a narrow use case, suggesting it "smells like a revocation mechanism" and could delay the draft. He preferred a narrow scope for this draft.
+        *   Usus felt this discussion relates to further restricting key selection and that a broader "key selection" discussion (potentially using Usus's explicit key selection proposal) should precede such decisions.
+*   **Neil's Proposal (Key Equivalence through Key Material Reuse):**
+    *   Andrew briefly mentioned Neil's idea for key equivalence by sharing secret key material between original and replacement keys. Andrew expressed skepticism about its general applicability beyond specific transitions (e.g., V4 to V6) and algorithm changes.
+*   **Straw Poll on Optional Fallback Encryption:**
+    *   A poll was taken asking, "Would you prefer replacement key allows a statement of no fall back?" (Yes = prefer options 1, 2, or 3; No = prefer option 0, no change).
+    *   The results were split (5 Yes, 5 No), indicating no clear preference from those present and thus requiring more discussion on the mailing list.
+*   **Implementation & Trust Models:**
+    *   Stephen (in chat) suggested this was not the right meeting for a decision on Neil's proposal.
+    *   Usus reiterated concerns that the draft started before a conversation about trust models, calling it a "shoddy foundation." Usus also noted that sections 5 and 6 seem to imply trust in WKD and prioritize security over ergonomics, potentially leading to unencrypted emails for users. Usus suggested explicit key selection would address this.
+    *   Daniel (Proton) understood the concern but viewed the draft as defining an "equivalence class" providing more keys to choose from, orthogonal to the *how* of key selection.
+    *   Daniel (dkg) agreed on the need to discuss subkey selection and trust models separately. He appreciated the draft's focus on the primitive of "equivalence of two OpenPGP certificates" as a building block for trust models, rather than dictating one. He advocated for pruning any parts of the draft that assume specific trust models to keep its scope narrow.
+    *   Andrew committed to developing test vectors once the wire format is stable.
+    *   Andrew agreed with Daniel (dkg) on maintaining a narrow scope for this draft.
+
+### Persistent Symmetric Keys Draft (draft-ietf-openpgp-symm-key-material)
+
+*   **Changes since last discussion:**
+    *   Reduced the number of reserved algorithm IDs for future symmetric algorithms (originally reserved half the space, now a smaller block).
+    *   Restricted the use of persistent symmetric keys to Version 6 or later keys.
+*   **Proposed Algorithms and ID Allocation:**
+    *   The table in the draft includes AAD and HMAC, with blocks for reserved future algorithms and private/experimental algorithms.
+    *   Usus suggested allocating algorithm ID buckets in powers of 2 (e.g., blocks of 16) for easier matching. Daniel (author) agreed to try to align this. Andrew noted past issues with the private/experimental range size.
+*   **Public Key Material Derivation from Private Key:**
+    *   Daniel (author) discussed whether public key material should be derivable from private key material. He suggested that for cases where it's needed (e.g., fingerprint computation), the public key material could simply be stored alongside the secret key material, especially as public keys for these symmetric algorithms are not directly used for encryption.
+    *   Usus raised concerns about smart card storage, where space for "additional metadata" is limited.
+    *   Andrew referred to the `external-secrets` draft, which assumes public key material is used to find matching hardware tokens. He wondered if this bidirectional mapping assumption needs to be considered.
+    *   Aaron proposed storing an encryption of a block to verify the private key on a token.
+    *   It was suggested to explicitly document the security justification (collision risk for a large number of keys) for not including a hash of the key material for verification in the draft, possibly in Security Considerations.
+*   **Working Group Last Call (WGLC):**
+    *   Daniel (author) asked if the working group was approaching satisfaction with the draft's wire format and content.
+    *   He suggested a WGLC sometime after the PQC draft, to avoid distraction. Test vectors are already in the interoperability test suite.
+
+## Decisions and Action Items
+
+### Post-Quantum Cryptography Draft
+
+*   **Decision:** The chairs will initiate a Working Group Last Call (WGLC) for `draft-ietf-openpgp-crypto-refresh-pq` in approximately one week.
+*   **Action:** Usus to open an issue or pull request to refine the normative text regarding key selection strategy in Section 8.1 of the draft, reflecting the discussion to avoid overly prescriptive language.
+
+### Key Replacement Draft
+
+*   **Decision:** No consensus was reached at this meeting on whether to include a mechanism for "optional fallback encryption." Further discussion on this topic is required on the mailing list.
+*   **Action:** Andrew to incorporate feedback, especially on "optional fallback encryption" and Neil's proposal for key equivalence, for continued discussion on the mailing list.
+*   **Action:** Usus to open an issue regarding concerns about the clarity and implications of trust models and key selection in sections 5 and 6 of the draft.
+
+### Persistent Symmetric Keys Draft
+
+*   **Action:** Daniel (author) to:
+    *   Review and potentially adjust the algorithm ID allocation to align with Usus's suggestion of powers of two (e.g., buckets of 16).
+    *   Add text to clarify how public key material derivation and storage should be handled, particularly concerning hardware tokens.
+    *   Explicitly document the security justification (e.g., collision risk) for not including a hash of the key material for verification in the draft (e.g., in Security Considerations).
+*   **Decision:** Aim for Working Group Last Call (WGLC) consideration for `draft-ietf-openpgp-symm-key-material` after the Post-Quantum Cryptography draft's WGLC, following the minor tweaks and further discussion on the list.
+
+## Next Steps
+
+*   The Working Group Last Call for the Post-Quantum Cryptography draft will begin shortly.
+*   Continued discussion on the Key Replacement draft and Persistent Symmetric Keys draft on the mailing list.
+*   Chairs will be remote for IETF 122 in Brisbane, and encourage anyone attending in person to inform them if they are willing to provide in-room support for the session.
+*   All participants are encouraged to engage in the mailing list discussions and review the updated drafts.

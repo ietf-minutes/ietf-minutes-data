@@ -1,0 +1,48 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+This inter-meeting session presented an integrated architecture for distributed DNSSEC multi-signer operations and automated delegation management. The discussion covered the evolution of several related drafts, new EDNS options for state management, and a proposed HSYNC record type for horizontal synchronization between DNS providers. Key themes included automating critical configuration across organizational boundaries and defining a distributed multi-signer agent (MSA) architecture to manage zone delegation and signing, minimizing the zone owner's operational burden. The presenters also highlighted open questions regarding the role of DNS vs. APIs, signer requirements, and authorization models.
+
+## Key Discussion Points
+
+*   **Motivation for the Integrated Architecture:** A series of related drafts (Generalized Notification, Delegation Management via DDNS, Key State, Distributed Multi-signer) have been developed over three years. This session aimed to present them in context, demonstrating how they interconnect to solve the challenge of automating DNS configuration and DNSSEC management when responsibilities are distributed across multiple organizations.
+*   **Definition of Multi-Signer:** The working definition for these drafts is having multiple signers where not all are run by the same organization, as standardization is primarily needed for interoperability between distinct entities.
+*   **Evolution of Drafts:**
+    *   **Initial "Music" project:** A monolithic, centralized multi-signer implementation failed to gain adoption due to the unpalatability of an external controller inserting data into a customer's zone. This led to a rethink towards a distributed model.
+    *   **Generalized Notification (DNC record):** Started from the need for signers to be aware of new DNSKEYs introduced by other signers. The draft focused on notify CDS and CSYNC initially due to broader interest.
+    *   **Delegation Management via DDNS (DSYNC record):** Realized the limitations of blunt notifications for parent-child delegation synchronization. Leveraging RFC 2136 Dynamic Update, this draft proposes a fourth attempt at automated delegation synchronization, specifically addressing where to send updates and avoiding direct updates to the parent's authoritative name servers. This has been fully implemented.
+    *   **Key State Draft (New EDNS option):** Identified a need for robust state maintenance and verification between child and parent, especially for DNSSEC keys. This bi-directional EDNS option allows querying bootstrapping policies, key status, and re-uploading keys. It has been implemented.
+    *   **Distributed Multi-Signer (HSYNC record):** The core of the distributed model. Addresses how a zone owner designates signing providers and how these providers discover and securely communicate with each other without a central controller. A new EDNS option for HSYNC is proposed for signaling transport mode, synchronization models, and heartbeat messages.
+*   **Distributed Multi-Signer Agent (MSA) Architecture:**
+    *   Introduces the **MSA** (Multi-Signer Agent) as a secondary to the signer, responsible for detecting zone changes (e.g., DNSKEY rollovers) and coordinating with other MSAs.
+    *   Introduces the **Combiner:** A specialized zone transfer engine that acts as an injection point for updates originating from MSAs (e.g., DNSKEY, CDS, CSYNC, NS records at the Apex). It combines the zone owner's data with these managed RR sets before sending to the signer. This isolates the zone owner from operational complexity.
+*   **Source of Truth:** The distributed model introduces three potential "sources of truth": the Zone Owner (for unsigned data), the Signer (for DNSSEC data), and the MSA (for managed Apex RR sets like DNSKEY, CDS, CSYNC, NS).
+*   **HSYNC RR Set:**
+    *   Published by the Zone Owner to signal how the zone should be handled by multi-signer entities.
+    *   Fields: `State` (on/off for the entire scheme), `NS Management` (Zone Owner or MSA manages NS RRset), `Sign` (MSAs sign the zone or not), and `Provider Identity`.
+    *   Examples for various configurations were shown: two full signers, signer + pure distribution provider, zone owner signs own zone, unsigned zone for NS synchronization only. The design allows for gradual enrollment.
+    *   Security concerns: Trust between entities, detecting invalid configurations, and potential information disclosure (believed not sensitive).
+    *   Secure MSA communication: MSAs discover each other via HSYNC records, look up URI/SVCB/KEY records, and establish secure communication (DNS-based "notify hello" or HTTP/API for heartbeats and synchronization).
+*   **Common Theme & Solutions:** The overarching theme is the automation of critical DNS configuration across organizational boundaries. Solutions involve new DNS record types (DSYNC, HSYNC), new EDNS options (Key State, HSYNC EDNS), and reliance on DNSSEC (60) for securing communications, deemed acceptable due to the infrequent nature of these updates.
+*   **Open Questions & Challenges:**
+    *   **Why DNS vs. API?** The presenters argued for DNS due to loose coupling, rare communication, excellent representation of desired actions within the DNS protocol, and solving state maintenance and bi-directional trust with EDNS options and message signing. API hooks are provided as an alternative.
+    *   **Signer Requirements:** Signers must be able to keep incoming DNSKEYs from other providers and Zone Signing Key (ZSK) rollovers must require an external synchronization pulse, similar to Key Signing Key (KSK) rollovers.
+    *   **MSA 60 Keys for Parent Updates:** How MSAs (whose keys reflect their provider identity) can securely update the parent for a customer zone name. A potential solution is for each MSA to generate a new key named after the customer zone.
+    *   **Authorization Models:** Is explicit zone owner authorization required for MSAs to use DDNS updates for delegation management, or is it covered by existing delegation of CDs/CSYNC management?
+*   **Q&A Highlights:**
+    *   A suggestion was made to use "sign/no sign" for HSYNC flags for better mnemonic clarity.
+    *   The model is functionally similar to a multi-signer controller but distributed among MSAs.
+    *   While human coordination (RFC 8483) is possible, automation is preferred for complex, cross-organizational scenarios.
+    *   HSYNC allows for gradual enrollment, including no-op configurations, before activating signing or NS management.
+    *   The protocol for MSA-to-MSA content synchronization (e.g., agreeing on DNSKEY sets) is still under development but will build on existing multi-signer controller drafts.
+    *   The mechanism for the unsigned zone transfer from the owner to the initial provider is left to external contracts/configuration, not to be publicly revealed for security reasons.
+    *   SOA synchronization: While full SOA sync isn't required (e.g., serial numbers can differ), specific fields like the technical contact email should remain consistent or be managed carefully. The SOA itself relates to zone content, not necessarily the multi-signer metadata.
+    *   Zone transfers should be secured (e.g., with TLSA, VPN, or TSIG).
+
+## Next Steps
+
+*   Further discussion and review of the drafts are encouraged on the DNSOP mailing list.
+*   The working group will need to discuss the logistics of progressing multiple drafts that constitute an integrated architecture. The chairs noted that the working group, not the chairs, ultimately decides when a draft is ready for Last Call, requiring significant technical discussion.
+*   The delegation synchronization work is considered "cooked," but the distributed multi-signer architecture is still in its initial stages.
+*   Further discussions on these drafts are tentatively scheduled for the DNSOP sessions at IETF Bangkok.

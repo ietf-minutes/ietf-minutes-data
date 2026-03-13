@@ -1,0 +1,56 @@
+# [LSVR](../wg/lsvr.html)
+
+## Summary
+
+The LSVR Working Group held an interim meeting to discuss the liaison statement received from IEEE 802.1 concerning Layer 3 Discovery (L3DL) and consider the technical merits of using LLDPv2 as an alternative for LSVR's discovery and configuration requirements. Presentations were given on the LLDPv2 multi-frame approach, a comparison of L3DL and LLDP, and open issues in the L3DL draft. The discussion highlighted the need for further technical analysis and collaboration on the mailing list, particularly regarding potential gaps in the LLDP-based approach and the implications of L3DL's Layer 2 aspects.
+
+## Key Discussion Points
+
+*   **Liaison Statement from IEEE 802.1 (Russ W.)**
+    *   IEEE 802.1 continued work on LLDP, resulting in LLDPv2, which is widely deployed.
+    *   They prefer an LSVR solution that is backward compatible with LLDPv2.
+    *   The liaison implied that using LLDP for neighbor discovery, followed by an L3 protocol, would address their concerns.
+
+*   **LLDP-based Approach for LSVR Discovery (Presented by Paul B., proxied by Paul B.)**
+    *   **Protocol Overview**: LLDP is a simple database exchange protocol, widely deployed. LLDPv2 enhances it to send multiple frames, addressing the LSVR requirement for larger databases. Information flow is sharing database state, triggered by changes or periodic refresh.
+    *   **Discovery**: LLDP can run at LSVR logical link endpoints using a nearest router group multicast address. LSVR Logical Link Identifiers (LLIs) can be encoded in LLDP chassis ID/port ID. Organizationally Specific TLVs (OS-TLVs) can be used to advertise and discover Layer 3/2.5 encapsulations and BGP SPF parameters.
+    *   **Liveness**: LLDP's Time-to-Live (TTL) can provide liveness (configurable down to 1 second, though 10 seconds is suggested as comparable to L3DL). Other Layer 2 protocols like Connectivity Fault Management (CFM) can also be used for L2 liveness. For multi-frame updates, a digest PDU indicates changes, allowing receivers to request missing PDUs (receiver-based reliability).
+    *   **Security**: MACsec is the default Layer 2 security mechanism.
+    *   **Incremental Updates**: LLDP sends updates immediately upon changes; typically, the entire database is refreshed, but with multi-frame, a digest TLV can describe changed PDUs, allowing selective updates.
+    *   **IETF TLVs**: IETF can define its own OS-TLVs using its OUI and manage subtype numbers.
+
+*   **L3DL vs. LLDP Comparison (Kire G.)**
+    *   **L3DL Fundamentals**: Builds a stateful transport (akin to TCP at Layer 2) which eliminates periodic flooding, supports incremental restart, and simplifies MAC move handling in EVPN fabrics by enabling correct announcement and withdrawal.
+    *   **Features**: Supports routing to loopbacks and interfaces behind endpoints (e.g., for IBGP), massive PDU scaling, built-in security, and tunable liveness for faster session deactivation and improved convergence.
+    *   **Incremental Updates**: Due to stateful nature and reliable transport, L3DL sends updates only when changes occur, similar to BGP, rather than periodic full database refreshes.
+    *   **Loopback Routing**: L3DL allows PDUs to describe the availability of loopbacks or other interfaces behind the directly connected L2DL session termination points, necessary for IBGP.
+
+*   **Open Issues in L3DL Draft (Randy B.)**
+    *   **Architectural Issues**: Concerns were raised about MLS (Multi-Layer Switching, poorly defined in the document) and microservices examples (use case, not in scope for standard).
+    *   **Security**: MD5/TCPAO secrets for BGP are currently in clear text; working on a solution. Algorithm suites for security mechanisms are not specified, proposing to reference RPKI algorithms.
+    *   **Checksums**: Question regarding SBOX-based checksums for jumbo frames; need a checksum mechanism that works well with jumbo frames.
+
+*   **General Discussion**
+    *   **IETF/IEEE 802.1 Scopes**: A concern was raised that L3DL's specification of a new Layer 2 protocol (hello PDU as an Ethernet frame with specific MAC addresses) falls outside the LSVR charter, which focuses on Layer 3 discovery. This also touches upon the long-standing "gentleman's agreement" where IETF works on Layer 3 and IEEE 802.1 on Layer 2. While the intent is L3 discovery, the implementation on L2 was flagged as a significant point.
+    *   **Value of L3DL**: A working group member (AC) noted that L3DL has value beyond LSVR due to its stateful nature and security features, and it would be a "shame to lose that."
+    *   **Industry Preference**: The liaison statement emphasized that for the benefit of the industry, one widely deployed solution (LLDP) is preferable to a new protocol for the same purpose, to avoid implementation burden.
+    *   **Multicast Address**: L3DL uses a multicast address assigned to switches by 802.1. It was discussed whether a new multicast address for L3DL speakers is needed to avoid interference or if LLDP's mechanism could be adapted.
+    *   **EtherType**: If an LLDP-based route is taken, a new EtherType is not needed. There was general agreement that using an experimental EtherType for L3DL is not a suitable long-term solution.
+    *   **Gaps in LLDP Approach**: It was suggested to identify any specific requirements of LSVR that cannot be met by an LLDP-based approach, to be discussed on the mailing list.
+
+## Decisions and Action Items
+
+**No formal decisions were made** on the protocol choice for LSVR discovery. The discussion led to the following action items:
+
+*   **Action Item (Chairs)**: G and AC will initiate a discussion on the LSVR mailing list to continue addressing the points raised during the interim, particularly concerning the LLDP vs. L3DL approaches.
+*   **Action Item (Paul B.)**: To dig out and share the previously created table/spreadsheet that compared LSVR requirements against LLDP's capabilities, to facilitate further mailing list discussion on potential gaps.
+*   **Action Item (WG)**: Continue the technical discussion on the mailing list to identify any specific gaps of an LLDP-based approach for LSVR discovery and liveness.
+*   **Action Item (WG)**: Discuss how to formulate a formal reply to the IEEE 802.1 liaison statement.
+*   **Action Item (Chairs/WG)**: Explore the possibility of a joint meeting with IEEE 802.1 in Madrid, potentially during the week following the IETF plenary, leveraging a special one-day registration offer for IETF attendees. Details of this offer will be circulated via email.
+
+## Next Steps
+
+1.  **Mailing List Discussion**: The primary next step is to continue the in-depth technical discussion on the LSVR mailing list, focusing on the comparative analysis of LLDP and L3DL, and specifically identifying any LSVR requirements that an LLDP-based solution might not fulfill.
+2.  **Liaison Reply**: Based on the mailing list discussion, the working group will formulate a comprehensive reply to the IEEE 802.1 liaison statement.
+3.  **Potential Joint Meeting**: A joint meeting with IEEE 802.1 in Madrid will be considered if further in-person discussion is deemed necessary after the mailing list exchange.
+4.  **Protocol Decision**: Following these discussions and considerations, the working group will aim to make a decision on the mechanism for LSVR discovery and liveness.

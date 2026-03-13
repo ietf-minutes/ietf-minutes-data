@@ -1,0 +1,59 @@
+# [SCONE](../wg/scone.html)
+
+## Summary
+
+The third SCONE interim virtual meeting focused primarily on the "TRONE" combined protocol proposal, examining open issues and pull requests in its GitHub repository. Key discussions revolved around the protocol's scope, privacy considerations, security implications of network state changes, and its interaction with congestion control. The working group also reviewed an updated requirements and applicability document. A strong sense of support was indicated for adopting the TRONE proposal as a working group document, with a formal adoption call planned after integrating recent changes.
+
+## Key Discussion Points
+
+*   **Working Group Status:** The SCONE WG is progressing with two work streams: semantic and context (applicability statement) and framing and syntax (TRONE protocol). Most of the meeting was dedicated to the TRONE protocol.
+*   **Merged Pull Requests (PRs) on TRONE:**
+    *   **Version-dependent logarithmic rates:** A PR reflecting discussions from IETF118 Bangkok, specifying two versions of the protocol using the low six bits of the first byte for the rate signal field and defined exponents, was merged. This reshapes the document to reflect the two-version approach.
+    *   **Removal of datagram expansion text:** Text regarding network elements expanding datagrams, which caused significant discussion previously, was removed from the document, and the topic was converted into an open issue for further discussion.
+*   **Open Issues Discussion (TRONE):**
+    *   **TRONE with other protocols (Issue #1):** Currently, TRONE is specified for QUIC. The discussion highlighted interest in applying it to other protocols (e.g., ICE). The sense of those present was that the working group is chartered primarily for QUIC and should focus there, ensuring extension points for future use cases. This issue will remain open, not gating adoption.
+    *   **Client-side explicit ACK for receipt of TRONE packet (Issue #10):** This requirement stemmed from the desire for network administrators to transition from generic limiters to SCONE-specified limiters. Arguments were made for and against an explicit ACK, with concerns about its value versus the complexity added, and the ultimate reliance on measurement regardless of an ACK. Christian raised concerns about statefulness and potential attacks if unauthenticated packets change network state. This issue will remain open, not gating adoption, with further discussion on the mailing list encouraged, particularly regarding Dan's efficiency argument.
+    *   **Time window for suggested bit rate (Issue #7):** The current TRONE protocol does not explicitly communicate an average window. Discussion centered on what a reasonable fixed window should be (e.g., 20 seconds vs. longer for different application types). It was suggested to start with 20 seconds in the adopted document, keeping the issue open for future iteration and potential experimentation.
+    *   **Privacy considerations when sending different TRONE protocol versions (Issue #14):** The draft recommends alternating between TRONE v1 and v2, which could leak information about the application's bit rate range if only one is consistently sent. Kazuho suggested a simpler approach: the sender always sends TRONE v2 (higher bandwidth), and middleboxes rewrite it to v1 if the rate is low, unifying the range from the sender's perspective. This idea was well-received.
+*   **New Pull Requests (TRONE):**
+    *   **Early TRONE indication (PR #23):** A proposal to include a TRONE indication at the end of the first datagram of a QUIC connection (e.g., in a first initial packet) to signal potential TRONE support. This would allow network elements to identify interested flows efficiently without deep packet inspection. The general idea was accepted and deemed suitable for merging soon.
+    *   **DOS attacks against network elements (PR #21):** Christian submitted text outlining potential DOS attacks when unauthenticated TRONE packets induce state changes in network elements and proposed mitigations. This was considered a critical and very important discussion. The text was accepted for merge as a good starting point, with further expansion and discussion anticipated. Christian emphasized the principle that unauthenticated communication should not change network state due to ease of forging packets.
+    *   **Interaction between congestion control and TRONE (PR #20):** This PR discusses the relationship between TRONE and congestion control mechanisms (e.g., ECN). It was acknowledged as an important, long-lived discussion. It was agreed to merge only the factual introductory paragraph, moving more speculative content into an issue for continued discussion, to ensure clarity on their separation from the outset.
+*   **Requirements and Applicability Document (draft-sanjay-scone-requirements-01):**
+    *   Sanjay presented updates to the document, including new co-authors and editorial changes.
+    *   **Client-initiated protocol (REQ-1):** Changed to MUST; aligns with PR #23.
+    *   **UPF/P-gateway sending throughput advice (REQ-2):** Struck out as redundant, as the TRONE protocol itself addresses this.
+    *   **Client endpoint explicit ACK (REQ-3):** Watered down from SHOULD to MAY, reflecting ongoing debate.
+    *   **No CSP changes (REQ-4):** Unchanged, SCONE signaling should not require changes to CSP's video policy.
+    *   **Dynamic update (REQ-5):** Unchanged. Clarified that networks need a way to update advisory throughput, not necessarily by creating TRONE packets themselves, but by ensuring timely transmission of advice from endpoints.
+    *   **Applications may self-adapt (REQ-6):** Changed from SHOULD to MAY, reflecting that endpoints decide whether to use or ignore advice.
+    *   **Extensibility (REQ-7):** Unchanged.
+    *   Discussion arose regarding the purpose and disposition of this requirements document. There was a sense among some participants (Marcus, Christian, Michael Richardson) that the requirements should be tracked as issues on the protocol document itself to avoid divergence, while the applicability and manageability aspects could form a separate document. Sanjay expressed that the document also provides valuable context, defines network elements, and outlines use cases, which are distinct from just requirements.
+    *   An IPR disclosure was noted for an out-of-band API interface for maximum bit rate.
+
+## Decisions and Action Items
+
+*   **Decision:** The TRONE protocol document will initially focus on QUIC use cases, ensuring potential extension points for other protocols.
+*   **Decision:** The issue of client-side explicit ACKs (Issue #10) will remain open for further discussion and is not considered a blocker for working group document adoption.
+*   **Decision:** For the time window of the suggested bit rate (Issue #7), the adopted TRONE document will start with a value of 20 seconds. The issue will remain open for ongoing discussion and potential future refinement based on experimentation.
+*   **Decision:** The general idea of an "early TRONE indication" (PR #23) for signaling potential TRONE support was accepted and is planned for merging into the document soon.
+*   **Decision:** The text on DOS attacks against network elements (PR #21) was accepted for merging into the document. This topic will be revisited and expanded upon.
+*   **Decision:** For the interaction between congestion control and TRONE (PR #20), only the factual introductory paragraph will be merged. The more speculative content will be extracted and moved into a GitHub issue for continued discussion.
+*   **Decision:** The question of the protocol's name (TRONE vs. SCONE) will be taken to the mailing list for broader discussion, including input from Martin Thompson.
+*   **Decision:** A poll of those present indicated strong support for adopting the current TRONE protocol draft (with recent merges) as the basis for a working group document (13 Yes, 0 No, 4 No Opinion). A formal call for adoption will be initiated on the mailing list after the necessary PRs are merged and a new document version is submitted to the data tracker.
+*   **Decision:** The requirements currently in draft-sanjay-scone-requirements will be tracked as issues on the TRONE protocol document's GitHub repository. The applicability, use case, and manageability aspects of the document will be separated and potentially reworked into a distinct document for future consideration.
+
+*   **Action Item (Kazuho):** Add a comment to GitHub issue #14 (Privacy considerations) detailing the suggestion for senders to always transmit TRONE v2 packets and allow middleboxes to rewrite to v1 if the bit rate is lower.
+*   **Action Item (Christian):** Extract the speculative parts from PR #20 (Congestion control interaction) and move them to a new or existing GitHub issue on the TRONE protocol repository.
+*   **Action Item (Brian):** Initiate a discussion on the SCONE mailing list regarding the official name of the protocol (TRONE vs. SCONE) and explicitly ping Martin Thompson for his input.
+*   **Action Item (Sanjay):** File GitHub issues against the TRONE protocol document for each of the requirements currently listed in draft-sanjay-scone-requirements. Additionally, rework draft-sanjay-scone-requirements to focus on applicability, use cases, and manageability, separating out the requirements.
+
+## Next Steps
+
+*   Merge the accepted PRs (early TRONE indication, DOS attacks text, and the factual paragraph on congestion control interaction) into the TRONE protocol document.
+*   Submit a new revision of the TRONE protocol document to the IETF data tracker.
+*   Initiate a formal Working Group Last Call for adoption of the TRONE protocol document on the SCONE mailing list.
+*   Continue discussions on outstanding issues, including client-side ACKs, the precise time window for bit rate advice, and further details on DOS attack mitigations and congestion control interactions.
+*   Address the protocol naming discussion on the mailing list.
+*   Sanjay will rework the requirements document to focus on applicability, use cases, and manageability, with the requirements tracked as GitHub issues on the protocol document.
+*   The next interim meeting (planned for two weeks from now) will proceed as scheduled, given the amount of remaining work and discussion points.

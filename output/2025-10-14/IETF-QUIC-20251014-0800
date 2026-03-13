@@ -1,0 +1,117 @@
+# [QUIC](../wg/quic.html)
+
+## Summary
+
+This QLog interim meeting was a working session focused on resolving a backlog of open GitHub issues and Pull Requests related to the QUIC Log specification. Significant progress was made on several long-standing issues, including the scope of capsule protocol logging, QVis tooling updates, consistency of length fields, packet header flag definitions, path ID semantics, and aspects of TLS/0-RTT logging. While some issues were closed with clear action items for editorial changes or PR updates, others (notably the streaming JSON format) require further discussion and input from the broader working group, likely at the upcoming Montreal meeting. Authors reiterated the need for prompt reviews on proposed changes.
+
+## Key Discussion Points
+
+*   **QLog Scope: Capsule Protocol (Issue 9297)**
+    *   The current HTTP/3 QLog spec references RFC 9297, which defines HTTP/3 datagrams (already in scope) and the Capsule Protocol.
+    *   An email from 2022 explicitly stated that the capsule protocol was *out of scope* for QLog.
+    *   However, emerging usage by MASQUE and WebTransport makes logging capsules potentially beneficial.
+    *   Discussion revolved around whether to revisit this past decision and bring the capsule protocol into the HTTP/3 QLog schema, or to define it in a separate extension document.
+    *   The sense of those present indicated a preference for Martin to propose text for inclusion in the current documents as a basis for further discussion, rather than immediately spinning up a new document due to overhead. The decision will be taken to the mailing list and Montreal.
+
+*   **QVis Tooling Update**
+    *   Robin provided an update on QVis, the QLog visualization tool.
+    *   The tool is being updated to support the latest QLog drafts, including a full JavaScript framework migration.
+    *   An initial release supporting the sequence diagram (showing basic packet flow) is targeted for this month, with other visualizations by Christmas. This is crucial as QVis has been a blocking factor for QLog implementers.
+
+*   **Length Field Duplication (Issues 483, 484)**
+    *   Discussed the redundancy of `length` fields, where some events (e.g., `HTTP3_FRAME_CREATED`, `HTTP3_FRAME_PARSED`) have an explicit `length` field as well as `raw_info.length`.
+    *   The consensus was to remove the explicit `length` and `raw_info` fields from `HTTP3_FRAME_CREATED` and `HTTP3_FRAME_PARSED` events, relying on `raw_info.length` for wire-level length information where relevant.
+    *   Martin will prepare a PR to address these specific events.
+
+*   **Packet Header Flags (Issue 471)**
+    *   The `QUIC_PACKET_HEADER` currently logs flags as a raw byte. The proposal is to log actual semantic values (e.g., spin bit, key phase).
+    *   Discussion centered on whether to include reserved bits (which must be zero in QUIC v1) and the fixed bit.
+    *   The sense of those present was to remove the explicit logging of fixed and reserved bits, adding a prose note to clarify they should be zero. This reduces clutter while ensuring extensibility through future extensions if needed.
+    *   Martin will update the existing PR accordingly.
+
+*   **Path Probing Packets / Path ID (Issue 456)**
+    *   This issue concerned logging path probing and the `path_id` concept used for multipath.
+    *   It was clarified that `path_id` can be included as a common field in any event and its meaning is defined by the `path_assigned` event.
+    *   The current mechanism was deemed sufficient for logging path probing.
+
+*   **Rename Path ID to Tuple ID**
+    *   A related discussion identified potential confusion with the term "path ID" due to its different meaning in Multipath QUIC drafts (where "tuple" is used).
+    *   Consensus to rename `path_id` to `tuple_id` in QLog to avoid terminology clash. Robin will create a new issue for this.
+
+*   **JSON-SEC vs. Newline-Delimited JSON (Issue 440)**
+    *   This long-standing issue concerns the standardized streaming format for QLog. JSON-SEC is currently specified but is complex to implement and parse.
+    *   Newline-delimited JSON is simpler but not an IETF standard.
+    *   Concerns were raised about IETF process pushing for a standardized format vs. defining a simple one within QLog, and the effort involved in defining a robust custom format.
+    *   Robin expressed strong opposition to JSON-SEC, while Kazuo noted that dropping the streaming option entirely might be an option.
+    *   No consensus was reached, and this issue will be explicitly taken to the Montreal meeting for broader working group input. Lucas will own this issue.
+
+*   **Extensibility Usage (Issue 416) & Extension Examples (Issue 405)**
+    *   These issues relate to clarifying how QLog's extensibility points should be used and providing more examples.
+    *   Robin will address these with editorial text and examples, without requiring further group discussion.
+
+*   **Transport Parameters / Negotiated State (Issue 391)**
+    *   Discussed whether QLog should explicitly log *negotiated* or *applied* transport parameter values, or only those *sent* and *received*.
+    *   The conclusion was that implementations could add custom events or parameters if they needed to log this distinction explicitly. No design change to the core spec is required for this.
+    *   Robin will add editorial prose to the document to advise on this approach.
+
+*   **Stream and Datagram Frame Payload Logging (Issue 347)**
+    *   This issue concerned how to log the raw payload of stream and datagram frames. The `raw_info` field logs the entire frame (header + payload).
+    *   Consensus was to keep `raw_info` as the full frame but clarify that the payload can be derived by subtracting the known header length from `raw_info.length`.
+    *   The issue was closed with no design changes, but with the understanding that clarifying prose might be added.
+
+*   **Lost Timer Updates (Issue 316)**
+    *   The `LOST_TIMER_UPDATED` event was discussed regarding its scope and name.
+    *   There are multiple timers in QUIC (recovery, idle, pacing, keep-alive, etc.), not just "lost" timers.
+    *   Consensus emerged to make this a more generic `TIMER_UPDATED` event, move it out of the recovery section, and make the `timer_type` field extensible to accommodate various timer types.
+    *   Robin will draft a PR for this change.
+
+*   **TLS Specifics / Session Ticket Contents (Issue 121)**
+    *   Discussion on logging the contents of TLS session tickets.
+    *   Concerns about delving too deep into TLS specifics (encryption, obfuscated fields) and expanding QLog scope.
+    *   A suggestion was made to log only the *QUIC blob* portion within the session ticket (e.g., transport parameters for 0-RTT), keeping it at the QUIC layer. This was well-received.
+    *   Martin will draft a PR for this.
+
+*   **Add More TLS Specifics (Issue 71)**
+    *   This issue was closed as a duplicate of Issue 121, reinforcing the decision not to add general TLS specifics to QLog.
+
+*   **0-RTT Logging (Issue 27)**
+    *   This six-year-old issue aimed to ensure QLog could log all necessary information for 0-RTT.
+    *   A specific gap was identified: logging 0-RTT *rejection* by the server, and potentially 0-RTT *acceptance*.
+    *   Martin will propose an event (possibly with a boolean flag for acceptance/rejection) to address this gap.
+    *   Client-side implementers (e.g., browser teams) will be consulted for further input.
+
+*   **Packet Number Space Discussion**
+    *   During the 0-RTT discussion, the concept of packet number spaces (Initial, Handshake, 0-RTT, 1-RTT, Multipath) was raised as a potentially useful logging context.
+    *   Mirja agreed to open a new issue to track this discussion separately.
+
+*   **Length Field Consistency Across Frames (PR 481, PR 480)**
+    *   Revisiting the earlier discussion, the group decided to apply the consistency principle more broadly:
+        *   Always rely on `raw_info.length` (and `raw_info.payload_length` if provided) for length information.
+        *   Remove redundant explicit `length` fields from frame definitions (e.g., `PacketHeader.length`, `StreamFrame.length`).
+        *   Lucas will prepare a single, comprehensive PR to implement this consistency across the documents.
+        *   The importance of *always* providing the `raw_info.length` field was emphasized and will be encouraged in the prose.
+
+## Decisions and Action Items
+
+*   **Capsule Protocol Logging (Issue 9297)**: Martin will prepare candidate text for including capsule protocol logging within the HTTP/3 QLog schema. The decision on its inclusion will be made at Montreal and on the mailing list.
+*   **QVis Tooling Update**: Robin provided an update; no specific action for the WG.
+*   **Length Field Duplication (Issues 483, 484)**: Martin to prepare a PR to remove explicit `length` and `raw_info` fields from `HTTP3_FRAME_CREATED` and `HTTP3_FRAME_PARSED` events.
+*   **Packet Header Flags (Issue 471)**: Martin to update the existing PR to remove logging of fixed and reserved bits from `QUIC_PACKET_HEADER` fields, adding prose to note they should be zero.
+*   **Path ID Renaming**: Robin to create a new GitHub issue to discuss renaming `path_id` to `tuple_id` in QLog.
+*   **JSON-SEC vs. Newline-Delimited JSON (Issue 440)**: Lucas will continue to own this issue. It will be a key discussion point at the Montreal meeting to gather broader WG input.
+*   **Extensibility Usage and Examples (Issues 416, 405)**: Robin to add clarifying editorial text and examples to the QLog documents.
+*   **Transport Parameters / Negotiated State (Issue 391)**: Robin to add editorial prose to the QLog documents advising implementers on how to log negotiated/applied transport parameters using custom events/parameters if needed. The issue itself will be closed with no design change.
+*   **Stream and Datagram Frame Payload Logging (Issue 347)**: Close issue with no design change. Clarifying prose may be added regarding inferring payload length from `raw_info.length` and `raw_info.payload_length`.
+*   **Lost Timer Updates (Issue 316)**: Robin to draft a PR to rename `LOST_TIMER_UPDATED` to a generic `TIMER_UPDATED` event, move it from the recovery section, and make the `timer_type` field extensible.
+*   **TLS Specifics / Session Ticket Contents (Issue 121)**: Martin to draft a PR to log the QUIC-specific blob within TLS session tickets, keeping the logging at the QUIC layer.
+*   **Add More TLS Specifics (Issue 71)**: Closed as a duplicate of Issue 121.
+*   **0-RTT Logging (Issue 27)**: Martin to propose a new event for logging 0-RTT acceptance/rejection. Client-side implementers will be consulted.
+*   **Packet Number Space Discussion**: Mirja to open a new GitHub issue to discuss logging packet number spaces more broadly.
+*   **Length Field Consistency (PR 481, PR 480 related)**: Lucas to prepare a single PR to consistently use `raw_info.length` (and `raw_info.payload_length`) for all frame length reporting, removing redundant explicit `length` fields from frame definitions. The prose will strongly encourage providing these `raw_info` length fields.
+
+## Next Steps
+
+*   **PR Preparation**: Authors (Martin, Robin, Lucas) will prepare the agreed-upon Pull Requests and editorial changes.
+*   **Review Solicitation**: The working group chairs encourage all attendees and asynchronous followers to review the upcoming PRs and proposed changes.
+*   **Montreal Discussion**: The JSON-SEC format (Issue 440) and initial proposal for capsule protocol logging (Issue 9297) are prioritized for further discussion at the upcoming Montreal IETF meeting to gather broader consensus.
+*   **New Issues**: Mirja and Robin will open new issues as agreed.

@@ -1,0 +1,74 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This interim meeting focused on a newly identified security vulnerability in the Private Key JWT client authentication method. The vulnerability stems from ambiguities in the `aud` (audience) claim definition across several OAuth and OpenID Connect specifications, potentially allowing an attacker to replay client assertions. The discussion covered the technical details of the attack, its preconditions, proposed mitigations, and the necessary updates to affected specifications. Key points of debate included the scope of a proposed "bis" document for RFC 7523 and whether to incorporate this vulnerability into the already-published `oauth-security-bcp`.
+
+## Key Discussion Points
+
+*   **Vulnerability Disclosure and Sensitivity:**
+    *   The vulnerability was discovered during a security analysis of OpenID Federation by the University of Stuttgart (Bedem, Tim, Ralph).
+    *   While initially found in OpenID Federation, it has wider ecosystem impact beyond Federation.
+    *   No live ecosystems are currently known to be vulnerable, but responsible disclosure is being pursued.
+    *   Participants were asked to exercise caution in publicizing detailed exploit information to allow time for mitigation implementation. The session itself is public and recorded.
+    *   A link to the full academic paper describing the exploit was shared in the chat, with a request not to share it publicly to limit actionable exploitation.
+
+*   **Historical Ambiguity of `aud` Claim in Private Key JWT:**
+    *   RFC 7523 (OAuth 2.0 JWT Bearer Token Usage) defines the `aud` value vaguely, stating it "must be a claim containing a value that identifies the authorization server as an intended audience." It allows multiple values and suggests the token endpoint URL "may be used."
+    *   OpenID Connect Core is similarly vague, suggesting `aud` "should be the authorization server's token endpoint."
+    *   This ambiguity has led to inconsistent interpretations and implementations, creating the vulnerability.
+
+*   **The Attack (Replay Vulnerability):**
+    *   An attacker controls an Authorization Server (AS) within an ecosystem (e.g., Open Banking).
+    *   The attacker-controlled AS advertises its token endpoint URL as the `issuer` URL of a legitimate AS.
+    *   A legitimate client, when interacting with the attacker-controlled AS (e.g., via PAR), sends a Private Key JWT assertion.
+    *   Due to the ambiguous `aud` definition, the client might set the `aud` claim to the *real* AS's issuer URL (which the attacker advertised as their token endpoint).
+    *   The attacker captures this assertion.
+    *   The attacker can then replay this captured assertion to the *real* AS's token endpoint, authenticating as the legitimate client, because the `aud` claim matches the real AS's issuer identifier.
+
+*   **Preconditions for the Attack:**
+    *   Lack of mTLS (Mutual TLS) binding the client certificate to the client ID, as mTLS would prevent replay.
+    *   The attacker needs to control an AS that is trusted by the legitimate client, implying a high bar for the attacker (e.g., infiltrating a regulated ecosystem).
+    *   At least two endpoints with client authentication (e.g., PAR and Token endpoint) are required to create the `aud` mismatch.
+    *   The client ID needs to be the same across both AS (attacker-controlled and legitimate), or the attacker must influence client ID issuance.
+
+*   **Proposed Mitigation Strategy:**
+    *   The consensus among the initial ad-hoc group was to require the Authorization Server's **issuer identifier** (as defined in RFC 8414) to be the *only* `aud` value for JWTs sent to the AS.
+    *   This aligns with more recent OAuth/OpenID Connect specifications (e.g., FAPI 2, OpenID Federation) and the `iss` parameter usage.
+    *   Explicit typing (e.g., using the `typ` JWT header) was suggested by Philip Skogen as a mechanism for AS to distinguish between old and new clients for compatibility during transition.
+
+*   **Affected Specifications and Proposed Updates (via `7523bis` or Errata):**
+    *   **RFC 7523 (`oauth-jwt-bearer`):** Proposed "bis" document (`7523bis`) would replace it, requiring the AS issuer identifier as the *only* `aud` value.
+    *   **RFC 7521 (`oauth-assertion-framework`):** `7523bis` would update this by replacing a paragraph.
+    *   **RFC 7522 (`oauth-saml-bearer`):** `7523bis` would tighten the `aud` language.
+    *   **OpenID Connect Core:** Proposed errata to update `aud` from token endpoint URL to AS issuer identifier.
+    *   **FAPI 1:** Proposed errata to make AS issuer identifier the *only* `aud` value (currently allows multiple).
+    *   **FAPI 2:** Already requires the AS issuer identifier as the *only* `aud` value.
+    *   **OpenID Federation:** Already updated to tighten `aud`.
+    *   **CIBACore (OpenID Foundation):** Already updated by Joe Deak to tighten `aud`.
+    *   **`oauth-jar`:** `7523bis` would change the `should` requirement for `aud` (AS issuer) to a `must`.
+    *   **`oauth-par`:** `7523bis` would change it from mandating acceptance of three `aud` values to accepting only the AS issuer identifier.
+    *   **`oauth-security-bcp`:** Discussion on whether to insert a new clause describing this vulnerability and its mitigation before the BCP is published as an RFC.
+
+*   **Discussion on Security BCP and Scope of `7523bis`:**
+    *   **Security BCP:** Justin Richer and Daniel Fett argued that pausing the `oauth-security-bcp` for new additions would indefinitely delay its publication. They suggested publishing it as is and addressing new vulnerabilities in a subsequent revision. The sentiment was to publish the BCP now.
+    *   **Scope of `7523bis`:** Brian Campbell expressed concern that the proposed `7523bis` is too broad, touching specifications (e.g., JAR, assertion grants) that are not directly related to the vulnerability and could cause significant churn, discussion, and interoperability issues. He advocated for a much narrower scope. Mike Jones argued for consistency in `aud` validation rules across all token types for simplicity.
+
+*   **Client vs. Server Fix:**
+    *   Philip Skogen emphasized that the *fundamental fix* lies with clients implementing the correct behavior (i.e., sending the AS issuer identifier as the `aud`).
+    *   Authorization server changes that reject incorrect `aud` values are valuable for "flushing out" misconfigured clients but do not directly prevent the attack if clients are still sending incorrect `aud` values to an attacker-controlled endpoint.
+
+## Decisions and Action Items
+
+*   **Decision:** The `oauth-security-bcp` will **not** be held back or amended for this vulnerability. It will proceed to publication. New security issues will be addressed in a future revision of the BCP.
+*   **Action Item:** Mike Jones to publish the `7523bis` draft as an individual submission.
+*   **Action Item:** Mike Jones to push the `7523bis` draft to the OAUTH mailing list to facilitate discussion on its scope and specific changes before a working group adoption call is made.
+*   **Action Item:** Mike Jones to publish a draft of the OpenID Connect Core errata update after the call.
+*   **Action Item:** Mike Jones to consult with the MANNA working group editors and chairs regarding publishing the CIBACore update.
+
+## Next Steps
+
+*   The OAUTH working group will engage in detailed discussion on the mailing list regarding the scope and contents of the proposed `7523bis` document.
+*   The chairs will schedule a future meeting to conduct a postmortem analysis on how to avoid similar issues in specification development.
+*   IETF leadership is supportive of potentially accelerating the publication of these "bis" documents once their scope and content are finalized.
+*   The upcoming IETF meeting in Bangkok will feature two OAUTH working group sessions, reduced from the typical three due to this series of interims.

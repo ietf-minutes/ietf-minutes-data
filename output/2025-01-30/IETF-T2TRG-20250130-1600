@@ -1,0 +1,109 @@
+# [T2TRG](../wg/t2trg.html)
+
+## Summary
+
+This T2TRG interim meeting focused on various aspects of data modeling for IoT interoperability, building on previous work from the IAB's IoT workshop and the Wishy activity. The session included three presentations: an update on the use of SDF in NIPY (Non-IP Control for IP-based Access), a discussion on the relationship and potential convergence of SML (Sensor Measurement List) with YANG and SDF, and a presentation on model evolution, derivation, and instantiation within SDF. Key themes included leveraging SDF for cross-ecosystem interoperability, addressing technical challenges in data model conversions and efficiency, and understanding the nuances of managing model changes over time.
+
+## Key Discussion Points
+
+### Administrative Remarks and Context Setting
+
+*   **Note Well**: The chairs (Carsten Bormann, Ari Keränen) presented a condensed Note Well, covering recording, professional conduct, IPR guidelines, and the IETF Code of Conduct.
+*   **T2TRG Mandate**: Emphasized that T2TRG focuses on longer-term research issues, not standardization, with an aim to hand off mature concepts to IETF working groups.
+*   **Data Modeling Background**: The work started from the observation of many IoT device types requiring machine-readable information for application-layer interoperability across ecosystems. SDF (Semantic Definition Format) emerged from this need.
+*   **SDF Goals**: Evaluate SDF's performance in applications, identify requirements not yet covered, and determine next steps (experiments, specifications).
+*   **Layered Approach**: Highlighted three critical levels for interoperability:
+    1.  **Information Model**: Semantics, vocabulary, taxonomy.
+    2.  **Data Model**: Structure into which the information model is mapped.
+    3.  **Serialization**: Format for transmitting data.
+*   **Interaction Models**: Differentiated between interaction semantics, structural modeling, and wire-level interaction.
+
+### NIPY: Leveraging SDF Models in Non-IP IoT (Bart Brinkman)
+
+*   **Problem Statement**: Non-IP IoT protocols (e.g., Bluetooth LE, Zigbee) often lead to proprietary, vertically integrated "stovepipes."
+*   **NIPY Solution**: A Gateway protocol/API to provide IP access to non-IP IoT devices, offering:
+    *   **Provisioning**: Using SKIM (System for Cross-domain Identity Management), extended with a device schema, for onboarding devices.
+    *   **Control**: NIPY APIs for operations on properties (read/write), actions, and events.
+    *   **Telemetry**: CBOR-based streaming over MQTT or HTTP.
+*   **SDF's Role in NIPY**: SDF models are used to register a complete "thing" including its properties, actions, and events, with protocol mappings to non-IP affordances.
+    *   **Protocol Mapping**: An extension point in SDF that links an SDF affordance (e.g., "heart rate" property) to a protocol-specific identifier (e.g., a BLE service ID and characteristic ID). Designed to be extensible for new protocols (e.g., EnOcean, Z-Wave).
+*   **Deployment Models**:
+    *   Direct application-to-network gateway (both SKIM and NIPY server).
+    *   Application-to-middleware-to-network gateway (e.g., cloud middleware).
+*   **Registration API**: NIPY has APIs to register SDF models for device or group IDs. SDF models can also be referenced in SKIM objects.
+*   **Real-World Deployments**: Implementations (open source and vendor-based) are in use for asset/people tracking, patient vital sign monitoring, industrial processes, access control, and smart buildings. NIPY scales to tens, hundreds, thousands of nodes and 100K+ devices.
+*   **SDF Experience**: Most current deployments use individual affordance registration. SDF model-based registration is anticipated to significantly simplify integration and is a focus for future work.
+*   **Discussion**:
+    *   Clarified that "non-IP devices" was a typo and should refer to non-IP *protocols*.
+    *   Anticipated public availability of NIPY/SDF models in 2025.
+    *   Discussed the inclusion of Thread and Wi-Fi in the ecosystem diagram for provisioning services even if NIPY operations are not strictly needed for them.
+    *   Rationale for including ID as the first element in API paths: facilitates proxying across multiple gateway instances in scaled deployments.
+    *   Broadcast/multicast handling: Modeled as an event an application can subscribe to for device-to-infrastructure communication. An inverse broadcast API exists for infrastructure-to-device communication.
+
+### The Relationship between SML, YANG, and SDF (Manoj Kumar)
+
+*   **Motivation**:
+    *   **Efficiency**: SML CBOR encoding is similar to CoRCON CBOR, offering potential for further compression (e.g., using CBOR Template or CBOR Packed concepts that separate static structure from dynamic values). Demonstrated an example where CoRCON CBOR (with module ID) was more efficient than SML CBOR.
+    *   **Yang's Advantages**: A Yang model for SML allows leveraging Yang's mature ecosystem for defining and enforcing constraints (e.g., using `pyang` for validation), ensuring data compatibility.
+    *   **SDF Interoperability**: If SML has a Yang data model, it can be converted to SDF (using existing tools) and then interoperate with other SDF-compatible data models (e.g., Matter), enabling richer applications beyond simple sensor measurements.
+*   **Issues Encountered**:
+    *   **Yang Identifiers vs. SML Labels**: Manual mapping required when representing SML in CoRCON, as tools don't automatically align Yang identifiers with specific SML CBOR labels.
+    *   **CoRCON `sid=0` Restriction**: CoRCON CBOR cannot have a Delta of value `0`. SML uses label `0` for the `name` field, which is a "deal-breaker" for direct conversion.
+    *   **SML Yang Model Constraints**: The current SML Yang model (in the draft) can be improved to add more constraints (e.g., units, `ident-refs` for efficiency, conditional presence of fields).
+*   **Workarounds for `n=0` Issue**:
+    1.  Keep `n` as is (breaks SML CBOR spec).
+    2.  Use a non-zero CBOR label for `n` (breaks backward compatibility).
+    3.  Use `basename` instead of `name` (less efficient, but compatible).
+*   **Request to Community**:
+    *   Assess the impact of SML backward compatibility issues.
+    *   Understand current SML usage and implementations (list of implementations available).
+    *   Seek better solutions for the `n=0` issue.
+    *   Build consensus towards an SDF-centric model for sensor data representation.
+*   **Discussion**:
+    *   Emphasized the benefit of a common vocabulary for compression and cross-ecosystem translation.
+    *   Agreed that fixing backward compatibility on the SML/Yang/SDF side (a newer proposal) is likely easier than updating all existing SML implementations.
+    *   Noted that while SML is for simple measurements, applications are no longer simple and require richer models.
+
+### Model Evolution, Derivation, and Instantiation (Carsten Bormann)
+
+*   **SDF Context**: SDF models describe class-level interaction opportunities (affordances) and their input/output data. They do not contain device instance information.
+*   **Model Evolution in SDF**:
+    *   **Versioning**: SDF's `version` field is a simple label. It lacks semantic structure (e.g., lineage, subrange referencing) or defined processes for control, unlike Yang's elaborate (and sometimes overly strict) backward compatibility rules. An ecosystem might impose semantic versioning, but it's not inherent in the base SDF spec.
+    *   **Derivation (`SDFref`)**: A structural mechanism to reference and modify existing models.
+        *   **Pros**: Simple to implement, covers many use cases (e.g., adding features).
+        *   **Cons**:
+            *   **Lack of Control**: The base model has no way to control or support derivations from it.
+            *   **Fragility**: Semantic-preserving structural changes in the base model can unintentionally break derived models.
+            *   **Literal Binding**: Requires exact structural representation, hindering model translations before derivation.
+*   **SDFref vs. Subclassing**: `SDFref` is a structural mechanism, not semantic subclassing. Concepts like the Liskov Substitution Principle (where a subclass object can replace a base class object) are relevant for digital interfaces but can be complicated by physical realities (e.g., replacing an on/off switch with a dimmer).
+*   **Use Cases for Derivation**:
+    *   **Device Variants**: Adapting to different voltages (110V vs. 220V).
+    *   **Adding Features**: Expanding functionality.
+    *   **Revisions**: Fixing bugs, modernizing interfaces.
+    *   **Adaptations**: Adding ecosystem-specific identifiers (LwM2M object IDs, BLE characteristics).
+*   **Base Model Evolution with `SDFref`**:
+    *   Current approach references a specific revision (controlled, no surprises).
+    *   Alternatives (referencing newest, subranges with semantic versioning) are dangerous without stronger semantic detection in `SDFref`.
+*   **Instance Information**:
+    *   Typically includes device identity, supplementary asset management/digital twin data, purpose, physical aspects (location, settings).
+    *   This information usually resides in external systems (twin, asset management) and needs to be available during instantiation.
+    *   **Instantiation as an Affordance**: The process of "instantiating" a digital interface (even if the physical device exists) needs to be modelable, including required parameters, security interactions, and outcome information. This is not well-supported by current SDF.
+    *   **Current "Cheat"**: Describing an instance using a derived model with constant properties. This is often insufficient and lacks control.
+*   **Messages**: SDF provides an information model but not a data model or serialization format, leading to potential interoperability gaps.
+*   **Discussion**:
+    *   Clarified that SDF's `version` field does not enforce semantic versioning in the base specification; it's up to an ecosystem to define and apply such rules.
+    *   Briefly discussed the Web of Things (WoT) relationship: WoT is seen as a relevant ecosystem with similar concepts (Thing Description, Thing Model, derivation) but serves as an ecosystem from the T2TRG perspective rather than the central "red star."
+
+## Decisions and Action Items
+
+*   **Manoj Kumar**: Continue the discussion on the SML Yang model, particularly the `n=0` issue and strategies for backward compatibility, on the T2TRG mailing list.
+*   **Bart Brinkman (and NIPY team)**: Aim to make NIPY/SDF models publicly available in 2025 to facilitate broader experimentation and integration.
+
+## Next Steps
+
+*   **Upcoming Meetings**:
+    *   A security-focused T2TRG meeting is planned for approximately one month from now.
+    *   Another data model meeting, possibly a more "hands-on" and unrecorded session, is being planned.
+    *   The next face-to-face meeting will likely be a summary meeting in Madrid, as attendance in Bangkok is expected to be low.
+*   **Continued Discussion**: Participants are encouraged to continue discussions on the T2TRG mailing list regarding SML/YANG/SDF integration, model evolution, and instantiation challenges.
+*   **Hands-on Session**: A "hacking session" around data models is being planned to delve into more details on topics like instantiation.

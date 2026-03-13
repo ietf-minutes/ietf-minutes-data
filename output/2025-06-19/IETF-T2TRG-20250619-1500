@@ -1,0 +1,89 @@
+# [T2TRG](../wg/t2trg.html)
+
+## Summary
+
+The T2TRG meeting commenced with administrative reminders and an overview of upcoming activities. The session featured a comprehensive demonstration of SDF-informed bridging between Matter and Lightweight M2M (LwM2M) devices, highlighting data model mapping and live interaction translation. This was followed by a conceptual discussion on model evolution, focusing on derivation, instantiation, and the distinction between SDF class-level models and device instances.
+
+## Key Discussion Points
+
+### Administrative and Logistics
+
+*   **Note Well**: The IETF Note Well applies to all meeting participants.
+*   **IRTF Goals**: Reminder that IRTF focuses on long-term research issues related to the internet, distinct from IETF's standards development, though collaboration is common.
+*   **Resources**: Interactive notes, mailing list, and GitHub repository are available for ongoing activities.
+*   **Upcoming Meetings**:
+    *   **Madrid Face-to-Face (end of July)**: Will include an overview of ongoing activities, deep dives on selected topics (e.g., security), and remains open for additional agenda items.
+    *   **Hackathon**: Proposed projects include SDF/NIPY and the LwM2M-Matter bridging demo presented in this session. Participants were encouraged to propose other topics within T2TRG scope.
+
+### SDF Informed Bridging between LwM2M and Matter (Nicholas Meyer)
+
+Nicholas Meyer presented a proof-of-concept for bridging Matter and LwM2M devices using Semantic Definition Format (SDF) as an intermediate.
+
+*   **Matter Overview**: Matter is an IP-based smart home connectivity standard with a hierarchical data model (Nodes > Endpoints > Clusters > Attributes/Commands/Events).
+*   **LwM2M Overview**: LwM2M is an IoT communication protocol supporting CoAP, MQTT, HTTP, with a hierarchical data model (Objects > Resources).
+*   **SDF Mapping**:
+    *   Matter Node $\rightarrow$ SDF Model $\rightarrow$ LwM2M Device
+    *   Matter Endpoint $\rightarrow$ SDF Thing $\rightarrow$ LwM2M Device (with caveat for expressiveness)
+    *   Matter Cluster $\rightarrow$ SDF Object $\rightarrow$ LwM2M Object
+    *   Matter Attributes/Commands/Events $\rightarrow$ SDF Property/Action/Event $\rightarrow$ LwM2M Resources
+*   **Bridging Concept**: The bridge performs two main functions:
+    1.  **Initial Conversion**: Translating device definitions (Matter to LwM2M, LwM2M to Matter) using SDF.
+    2.  **Bidirectional Communication**: Providing live translation functions for interactions between Matter and LwM2M devices.
+        *   On the Matter side, a new endpoint is generated for the LwM2M device.
+        *   On the LwM2M side, a CoAP server resource is deployed, and a CoAP client communicates with the LwM2M device.
+*   **Demonstrator**:
+    *   **Setup**: Four microcontrollers (Matter switch, Matter light, LwM2M node (switch+light), and the Bridge) connected via Thread and Wi-Fi, with a Raspberry Pi hosting a CoAP server for conversion files.
+    *   **Process**: The bridge loads SDF configuration files, converts them to Matter and LwM2M representations, deploys custom Matter endpoints, and sets up LwM2M CoAP server resources using generated ID mappings for live translation.
+    *   **Interaction Demo**:
+        *   A Matter switch was shown attempting to toggle an LwM2M light (communication was successful, but the physical LED on the LwM2M device had an implementation issue).
+        *   An LwM2M switch successfully toggled a Matter light, demonstrating bidirectional communication including read/write attribute operations.
+*   **Limitations & Future Improvements**:
+    *   **Matter C++ SDK Flexibility**: The Matter C++ implementation used requires device functionality to be known at compile time, posing challenges for dynamic bridging, though workarounds were implemented.
+    *   **High Resource Demand**: The current microcontroller-based bridge experienced memory consumption limits, particularly with XML/JSON parsing for even simple device models.
+    *   **Future Work**: Mechanisms for auto-bridging, complete on-device conversion (requires an LwM2M-SDF converter), or outsourcing conversion to an external "Conversion as a Service" are considered.
+*   **Q&A Highlights**:
+    *   The "bridge" functions as a bidirectional "gateway."
+    *   Fitting the conversion logic onto a microcontroller for the bridge is technically possible but resource-intensive; outsourcing conversion to a more capable service (e.g., Conversion as a Service) is generally more advisable.
+    *   The idea of converting SDF models into micro-Python or Lua scripts for mapping logic on resource-constrained devices was proposed as an interesting alternative.
+    *   The demo focused on simple on/off/toggle functionality, not advanced features like dimming, due to the scope of the Bachelor's thesis and Matter's maturity at the time.
+    *   The bridge software can be run virtualized (e.g., on Linux), but the IoT endpoint devices still require physical hardware.
+    *   SDF's specification was found to be clear, particularly compared to other specifications. SDF was confirmed to be well-suited for modeling complex IoT data models like Matter (which is based on Zigbee).
+    *   Information about the LwM2M/CoAP server is currently hardcoded in the bridge, which is identified as an area for future improvement.
+
+### Derivation and Instantiation (Part 2) of Model Evolution (Carson Borman)
+
+Carson Borman provided an update on the conceptual framework for model evolution, focusing on derivation and instantiation.
+
+*   **SDF's Role**: SDF acts as an intermediate "red star" for model translation between different ecosystems, focusing on structural interoperability to enable data translation, not just parsing. SDF primarily models at the "data model" level, abstractly describing interactions.
+*   **SDF Base**: Focuses on an interaction model comprising properties, actions, and events. It defines the data models for input and output data for these interactions. SDF describes class-level information (e.g., "all refrigerators of this type have a temperature sensor"), not specific instances.
+*   **Need for "Plumbing"**: Beyond SDF Base, there's a need to describe how different components and systems interact, including information that might be hardcoded in current implementations (as seen in the SDF bridge demo).
+*   **SDF and Instances**:
+    *   A **device instance** adds physical presence, identity, addressing (e.g., IP address), and purpose.
+    *   **Support systems** (e.g., asset management, digital twin, SCIM protocol) also manage aspects of device instances, sometimes external to the device itself.
+    *   **Instance Information**: Can include identity, purpose, and physical attributes (location, wiring diagrams, manual settings) that the device itself may not understand. It must be possible to associate a device instance with its SDF model.
+*   **"Proofshot" Concept**: A snapshot of a device's status or state, not necessarily perfectly exact but descriptive, often with context like a timestamp. These consist of the current values of properties. A preliminary YAML structure for an `SDFInstance` was presented, including context and property values.
+*   **Derivation**: Simply taking an SDF model and removing variability to define a "constant" state for an instance is not ideal, as it's still a model and doesn't handle dynamic updates or non-device-resident instance information effectively. Models and instances should be distinguished.
+*   **Life Cycle and Instantiation**:
+    *   **Instantiation** is a multi-step process for creating a physical device with its functional data interface and all necessary components.
+    *   Interactions during instantiation (e.g., setting up security keys) are messages that need modeling.
+    *   **Open Question**: Can instantiation be modeled as an existing SDF affordance (e.g., an Action, akin to a constructor) or does it require a new type of affordance?
+*   **Beyond SDF Base (Non-Affordance Information)**:
+    *   Could refer to interactions with off-device environments (e.g., SCIM system, digital twin).
+    *   May include static or slowly changing information (e.g., manufacturer model number), distinguishing between design-time, commission-time, and runtime data.
+    *   Could involve interactions requiring managed properties (e.g., ensuring global uniqueness for serial numbers, assigning IP addresses).
+*   **Conclusion**: The simple affordance idea (Property, Action, Event) remains powerful. Further work is needed to define a "litmus test" to determine if architectural differences necessitate new affordance types for concepts like instantiation or non-affordance information, or if existing types can be extended.
+*   **Q&A Highlights**:
+    *   Modeling instantiation as an affordance is challenging because it implies interacting with a device *before* it's fully instantiated and has a stable "handle." A survey of how different ecosystems handle the creation and bootstrapping of devices is needed.
+    *   Using an SDF Action for instantiation is plausible, as Actions are general and accept input/output data. The decision to create a new affordance type would depend on whether its architectural differences are significant enough to warrant it.
+
+## Decisions and Action Items
+
+*   **Call for Agenda Items**: Participants are encouraged to propose agenda items for the upcoming Madrid Face-to-Face meeting.
+*   **Hackathon Participation**: Individuals are invited to participate in the upcoming hackathon, particularly on topics related to SDF/NIPY and the LwM2M-Matter bridging demonstration.
+
+## Next Steps
+
+*   **Madrid F2F Meeting**: Continued discussions on ongoing activities, deep dives into selected topics, and further exploration of model evolution concepts will take place at the Madrid meeting at the end of July.
+*   **Hackathon**: Practical exploration of SDF-related projects, including the Matter/LwM2M bridging, is encouraged.
+*   **Mailing List Discussion**: Further conceptual discussions on model evolution, derivation, instantiation, and instance modeling will continue on the T2TRG mailing list.
+*   **Nicholas Meyer's Work**: The presenter indicated potential participation in the hackathon to further develop the bridging solution and explore virtualizing the bridge component. The hardcoding of LwM2M/CoAP server information in the bridge is an area for future improvement.

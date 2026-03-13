@@ -1,0 +1,47 @@
+# [SCONE](../wg/scone.html)
+
+## Summary
+
+The SCONE working group held its sixth virtual interim meeting to discuss two fundamental open issues: the optimal time window for measuring suggested bitrates and the mechanism for client-initiated signaling. Anoop presented lab experiment results recommending a 120-second averaging window for bitrate conformance. The discussion on client-initiated signaling continued, focusing on whether an early indication should be video-specific or generic, and the practicalities for both network operators and client implementations. No formal decisions were reached, but the meeting generated valuable technical input and identified areas for further exploration.
+
+## Key Discussion Points
+
+*   **Time Window for Suggested Bitrate (GitHub Issue #20):**
+    *   Anoop (Meta) presented lab experiment results on the duration of the time window for network elements (NEs) to measure application endpoint (AE) conformance to an advised bitrate.
+    *   **Context:** Video services, especially short-form Video on Demand (VoD), are inherently bursty for optimal Quality of Experience (QoE), RAN scheduling efficiency, and UE power saving.
+    *   **Problem Statement:** The previously discussed 20-second window was deemed too low and restrictive, curtailing burstiness. The ideal window duration is a function of the advised bitrate and is application-specific.
+    *   **Experiment Design:** A lab setup simulating a mobile network (real UE, eNodeB, packet core) was used with top 4 short-form VoD applications. PCAPs were captured on the SGI/N6 interface, and average bitrates were calculated using different averaging window values (block and sliding).
+    *   **Key Observations:**
+        *   Lower advised bitrates require longer time windows for conformance.
+        *   Application-specific behaviors were observed.
+        *   Little significant difference was found between block and sliding window averaging methods.
+        *   For advised bitrates around 2 Mbps, a 120-second window proved reasonable for all tested applications. For 1 Mbps, a window greater than 120 seconds would be needed.
+    *   **Recommendation:** 120 seconds is proposed as a reasonable minimum time window duration. This value is also consistent with NAT UDP timeout recommendations (2 minutes), which account for bursty traffic with idle periods.
+    *   **Discussion:** Participants acknowledged the usefulness of the data. Questions arose regarding the need for Network Operators (CSPs) to specify their exact bitrate measurement mechanisms (e.g., per-flow vs. aggregate, specific window start points) in the applicability and manageability document, as this influences further experiment design and policy enforcement. The rationale for longer windows at lower bitrates was attributed to the ability to prefetch longer content segments, allowing for more spaced-out data requests.
+
+*   **Client-Initiated Signaling:**
+    *   Marcus summarized the ongoing discussion about client-initiated signaling to provide early indications to the network, aiming to incentivize SCONE deployment by reducing reliance on costly DPI (Deep Packet Inspection).
+    *   **Core Disagreement:** What should this early indication imply?
+        *   Some argued for it to clearly signify an ABR (Adaptive Bitrate) video flow, enabling NEs to skip DPI.
+        *   Others expressed concern that a dedicated "video flag" could become a new fingerprint, potentially misused to trigger throttling.
+    *   **Proposed Compromise:** Allow early indications but encourage *all flows* (video and non-video) to utilize them. This approach could mitigate fingerprinting concerns and reduce the incentive for operators to use the signal solely for throttling.
+    *   **Discussion:**
+        *   The chair noted that the SCONE charter defines network-to-endpoint signaling, making endpoint-to-network signaling a departure from the initial scope. However, acknowledging the wire image (that a SCONE-compliant application will react to rate information) is distinct from explicitly specifying assumptions based on the signal.
+        *   Participants debated whether the signal should imply specific traffic types (e.g., ABR video) or a general willingness to adapt. The difficulty for clients to definitively know the traffic type at connection establishment was highlighted.
+        *   The 120-second averaging window discussed in Anoop's presentation was seen as potentially making a more generic early indication safer, as it could accommodate a wider range of traffic types without adverse effects.
+        *   It was clarified that the existing SCONE transport parameter is embedded in encrypted Quick initial messages, requiring NEs to perform DPI-like work to access it. An early indication aims to provide this information more conveniently to NEs.
+        *   Operators would likely fall back to existing DPI mechanisms for flows not carrying the early indication.
+        *   Concerns were raised about coalescing different traffic types (e.g., ABR video and other data) onto a single connection, and the need to avoid unwanted throttling of non-video traffic.
+
+## Decisions and Action Items
+
+*   **Action Item:** The working group will request CSPs (or members representing their perspective) to specify the overall mechanism they intend to use for bitrate measurement (e.g., per-flow vs. aggregate, window definition) in the SCONE applicability and manageability document.
+*   **Action Item:** Martin requested that a new GitHub issue be filed to discuss whether SCONE should signal if the network element is measuring on a per-flow or aggregate basis. (This was not explicitly assigned but encouraged).
+*   **Action Item:** Working group participants are encouraged to consider and propose experiments or discussion topics related to bitrate measurement windows and generic flow enforcement for the upcoming Madrid IETF Hackathon.
+
+## Next Steps
+
+*   Continue discussions on GitHub regarding the time window for suggested bitrate, with particular attention to CSP measurement mechanisms.
+*   Continue discussions on client-initiated signaling, including the semantics of the early indication (generic vs. specific) and the practicalities of its implementation by clients and network elements.
+*   The chairs will plan for SCONE-related activities (discussion, potential experimentation) at the Madrid IETF Hackathon.
+*   The next SCONE interim meeting is scheduled for July 2nd.

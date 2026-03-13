@@ -1,0 +1,51 @@
+# [T2TRG](../wg/t2trg.html)
+
+## Summary
+
+The T2TRG interim meeting focused on "composable code" for constrained IoT devices, specifically exploring WebAssembly (Wasm) and containerization as foundational technologies. Three presentations showcased research on using Wasm for sandboxing on sensors, composing real-world smart control systems, and enabling multi-tenant microcontrollers for TinyML-as-a-service. Key themes included managing software updates on long-lived devices, achieving isolation and security with limited resources, inter-component communication models, and the challenges and opportunities in moving towards more flexible, evolving, and reliable distributed applications on edge and IoT. The discussion highlighted crucial research questions regarding stable interfaces, operational considerations, and the comparison of different runtime technologies.
+
+## Key Discussion Points
+
+*   **Composable Code**: The concept of "composable code" acknowledges that software on IoT devices will come from diverse sources, necessitating mechanisms for secure assembly, authorization, isolation, and dynamic reconfiguration, especially in constrained environments.
+*   **WebAssembly as a Solution**:
+    *   **Merlijn Sebrechts** presented Wasm as a solution for managing software updates and ensuring forward compatibility on long-lived devices (e.g., cars with 18-year lifespans).
+    *   **Benefits**: Wasm offers a single binary for diverse devices, sandboxing on small devices, language interoperability, and a hardware abstraction layer (WASI). It allows recompiling existing C/C++ codebases and offers near-native execution efficiency (e.g., ~8% overhead on Raspberry Pi, but higher on microcontrollers).
+    *   **WASI and Component Model**: WASI (WebAssembly System Interface) is critical for efficient I/O on Wasm, separating it from JavaScript engines, enabling small runtimes (e.g., Wamr at ~30KB). The WASI Component Model (Preview 2) enables sandboxed, polyglot, componentized software with type-safe interfaces, seen as isolated Java classes or microservices without network overhead. WIT (WebAssembly Interface Type) aids in interface description.
+    *   **Challenges**: The Component Model is new and not yet fully supported in all small runtimes (e.g., Wamr currently supports WASI Preview 1 only, while Wasmedge supports Preview 2). Memory overhead for Wasm remains a significant concern, often ~5 times that of native code.
+*   **Composing Smart Control Systems**:
+    *   **Carolina Skrivankova** presented research on building reliable, stable, and distributed control applications on IoT infrastructure, particularly microcontrollers like ESP32.
+    *   **Problem Context**: Industrial automation suffers from ossified ecosystems, high costs, and difficulty in scaling/evolving systems over decades.
+    *   **CHAOS System**: A FreeRTOS-based operating system for microcontrollers that provides lifetime management for WebAssembly containers. It uses signed manifests for permitted capabilities.
+    *   **Communication Channels**: Inter-task communication is handled via OS-hosted message-passing channels (get/put with type checks) rather than direct RPC, which helps limit fate-sharing and ensures data retention during container migration or failure.
+    *   **Semantic Addressing**: Containers are identified by a "semantic address" (service ID + semantic information) rather than device location, allowing for dynamic reconfiguration.
+    *   **Security & Network Access**: Control tasks are restricted from direct network primitive access, only communicating through managed channels. This limits attacker capabilities.
+    *   **Unresolved Issues**: WAMR's resource handling might be heavy for microcontrollers; WASI interfaces lack control-application-specific considerations; defining execution scheduling models and meeting timing constraints; ensuring provenance and verifying container behavior for secure open ecosystems.
+*   **Multi-tenant Microcontrollers for TinyML**:
+    *   **Bastien Roucaries** discussed enabling TinyML-as-a-service on class 3 microcontrollers (~200KB RAM) using WebAssembly-based containerization.
+    *   **Servitization**: Allows third parties to deploy services, offering customization and monetization, with TinyML inference (for privacy and data filtering) as a key use case.
+    *   **Architecture**: Cloud platform compiles ML models to Wasm. A trusted container management platform (e.g., Orange Tiny Container) performs Ahead-Of-Time (AOT) compilation and deploys the Wasm TinyML model.
+    *   **Performance**: Interpreter mode Wasm was too slow (x96 execution time). AOT compilation on a cloud platform, then deploying the compiled code, achieved near-native performance.
+    *   **WAMR Limitations**: Found limitations in WAMR regarding fine-grained memory control, global nature of native function permissions, lack of hardware isolation for memory, and built-in restoration mechanisms.
+    *   **CS4WAMR**: A proposed framework to use one WAMR instance per model to achieve more precise configuration and isolation.
+*   **Research Agenda & Next Steps Discussion**:
+    *   **Stable Interfaces**: Identify a stable set of interfaces for hardware/bus access (with required granularity for multi-tenancy) and communication (considering internet primitives, abstractions for on-device/distributed parity, and external protocols like BACnet/KNX/Modbus).
+    *   **Operational Considerations**: How to handle different update velocities for base software vs. applications; accommodating safety-critical components; managing trust in offloaded computation; dynamic reconfiguration strategies; addressing and routing for numerous container instances; and leveraging existing networking infrastructure vs. new models (e.g., ICN).
+    *   **Pub/Sub**: Discussed as a potential intermediate communication technology. While MQTT often relies on central brokers, research into decentralized pub/sub models (like CoAP-Observe or constrained GRASP) could be relevant.
+    *   **Granularity of Isolation**: Questions were raised about the appropriate granularity for isolation with physical interfaces (e.g., USB, I2C) and how to balance flexibility with overhead and complexity when dividing firmware into Wasm containers.
+    *   **Alternative Technologies**: Emmanuel Baccelli mentioned prior work on eBPF adapted for microcontrollers as an alternative to Wasm, offering a smaller footprint with different isolation aspects. A comparison between Wasm and eBPF in this context was suggested as a valuable research question.
+
+## Decisions and Action Items
+
+*   **Hackathon Focus**: If participants are interested in a T2TRG-focused hackathon at IETF 124 in Montreal (November 1-2), they are encouraged to voice their interest via chat or email.
+*   **Side Meeting at IETF 124**: A side meeting is planned for Monday, November 3, 08:00 local time (13:00 UTC) in the McGill room at IETF 124 in Montreal. This will be an opportunity for informal discussion, building on topics from this interim. Remote participation will be available.
+*   **Next Interim Meeting**: Tentative plans for another interim meeting in November/December/January timeframe, potentially focusing on AI agent topics following discussions from the Madrid IETF meeting. The mailing list will be used to discuss and decide on this.
+*   **Publication of CHAOS**: Carolina Skrivankova's work (CHAOS) is being prepared for publication and is expected to be open source by the end of November.
+*   **Research Contribution**: The group aims to produce proofs of concepts, starter sets (configurations, software, board recommendations), benchmarks, and challenges to foster research and allow others to quickly experiment with proposed solutions.
+
+## Next Steps
+
+*   Engage on the mailing list to discuss and refine the research questions and "domains of inquiry" identified during the meeting.
+*   Consider contributing to the IETF 124 hackathon in Montreal with T2TRG-related projects or experiments.
+*   Participate in the T2TRG side meeting at IETF 124 to continue informal discussions and collaboration.
+*   Chairs to follow up on planning the next interim meeting, potentially on AI agent topics, or to further explore the "composable code" space with specific prototypes or comparisons (e.g., Wasm vs. eBPF).
+*   Encourage community members to contribute "starter sets" to allow others to quickly get systems running and conduct experiments.

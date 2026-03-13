@@ -1,0 +1,74 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group held an interim meeting to discuss the status of `more-control`, and delve into significant open issues with the `EDN` (CBOR Extended Diagnostic Notation) and `Literal` drafts, specifically regarding character escaping, parsing strategies for application-prefixed strings, the role of optional commas, and encoding indicators. Key technical proposals for `EDN` string handling were presented and discussed, and immediate decisions were made regarding optional commas.
+
+## Key Discussion Points
+
+### more-control
+
+*   The `more-control` draft is currently in the IESG telechat queue for review.
+*   The document has gone through a relatively uneventful directorate and IESG review phase so far.
+*   A new draft version (`-08`) is planned to incorporate recent GitHub pull requests. Participants were encouraged to review the GitHub repository for these changes.
+
+### EDN and Literals
+
+*   The `EDN` draft is in Working Group Last Call.
+*   **Process for PRs and Updates:** A participant noted that pull requests (PRs) should remain open for a sufficient period (e.g., 24 hours) to allow for comments, especially for substantial changes, before being merged. Similarly, presentation slides and document updates for interim meetings should be provided well in advance.
+*   **Over-escaping and Parsing Complexity:**
+    *   The current `EDN` ABNF allows Unicode escapes (`\uXXXX` or `\u{XXXX}`) for every possible character in application-prefixed strings (e.g., `h'0'`) which can make the grammar very large and output of tools like `ABNF-frob` difficult to read.
+    *   The current approach envisions a two-pass parsing process: Unicode conversions in the first pass, then a new parser instance for the app-string format with the unescaped version.
+    *   **Joe's Proposal ("Raw Mode"):**
+        *   Use a "raw mode" for all prefixed single-quoted strings.
+        *   In raw mode, the content between the quotes is passed directly to the application's grammar without modification for Unicode escapes.
+        *   Existing escaping mechanisms for double-quoted strings and unprefixed single-quoted strings would remain unchanged.
+        *   ABNF building blocks (e.g., for comments) would be provided for use by application-specific grammars (e.g., `h` and `b64`).
+        *   This avoids the need for a second parser pass and keeps error offsets correct relative to the original text.
+        *   A constraint for app-string grammars in raw mode would be that they cannot accept unescaped single quotes or backslashes.
+    *   **Carsten's Design Invariants/Constraints:**
+        *   `EDN` must be usable in various environments beyond direct machine interchange (e.g., pasting into documents, handling by revision control systems).
+        *   It must be possible to use a minimal source character repertoire (ASCII printables plus newline) and express any character using escape sequences. This is a design constraint for `EDN`.
+        *   The design should account for "mangling" by text processing environments, particularly for control characters.
+        *   It should be possible to machine translate between `EDN` using full Unicode and `EDN` using a minimal ASCII repertoire.
+    *   **Unicode Escapes in App-String Data:**
+        *   Joe argued Unicode escapes are generally undesirable in `h` or other app-string data formats as they hinder readability and are not needed for the defined formats.
+        *   Carsten and Christian countered that they are useful for diagnostic notation, especially when representing non-ASCII characters in an ASCII-only document context (e.g., an Internet-Draft).
+        *   A participant noted that `JSON`'s lineage means `EDN` should be able to process any legal `JSON` double-quoted string, but app-strings (like `h`, `b64`) don't need the same restrictions.
+    *   **Carsten's Alternative ("Cooked Mode"):**
+        *   A previous proposal suggested using raw mode only for `h` and `b64`, with other prefixed app-strings (like `date`, `ip`) remaining in "cooked mode" (meaning Unicode escapes are processed by `EDN` itself).
+        *   Joe objected, noting this would still require `ABNF-frob` processing for `date` and `ip`, which he wants to avoid.
+    *   **Christian's Proposal (Restricted Single-Quoted Cooked Mode):**
+        *   Always use "cooked mode" (as in the current document) for single-quoted strings, but modify the single-quoted syntax to disallow Unicode escapes for `sq-printable` characters.
+        *   This would make `ABNF-frob` output more manageable.
+    *   **Need for Examples:** Participants requested concrete examples comparing the different proposals, particularly for embedding other languages, IDNA domain names, international names, and Unicode emojis, to better understand trade-offs. Christian took an action item to set up a shared pad for examples.
+
+### Optional Commas
+
+*   Carsten's proposal aimed to clarify parsing ambiguities by requiring a space and/or a comma in all places where JSON needs a comma. This change, while seemingly complex, involves relatively simple ABNF modifications and improves usability by preventing unreadable/ambiguous constructs (e.g., `_0_0` being parsed as `_0` and then `_0`).
+*   A participant (Joe) expressed concern about allowing commas where they would be illegal in JSON (e.g., immediately after an encoding indicator). Carsten clarified that the proposal *does not* allow commas after an encoding indicator; it uses `MS` (Mandatory Space) there, not `MSC` (Mandatory Space or Comma).
+*   **Comments as Separators:** A discussion ensued on whether a comment alone, without an intervening space, should be considered a separator between lexical items (e.g., `[0//comment0]`). Carsten argued this should be allowed, drawing parallels to how lexers in programming languages treat comments. While some participants expressed readability concerns, there was a sense of those present to allow this behavior.
+
+### Encoding Indicators
+
+*   A participant expressed concern that if unrecognized encoding indicators (e.g., `_Foo`) result in an error, it would hinder extensibility.
+*   The intention is for unrecognized encoding indicators to be ignored. The document needs to explicitly state this behavior and include corresponding test strings.
+
+## Decisions and Action Items
+
+### Decisions
+
+*   There was a sense of those present to adopt Carsten's proposal to require a space and/or a comma in places where JSON syntax would mandate a comma, improving parsing clarity and preventing ambiguous expressions in `EDN`.
+*   A sense of those present indicated that comments, even without an intervening space, should be allowed to act as separators between lexical items in `EDN`.
+
+### Action Items
+
+*   **Christian:** Incorporate earlier nudges for presentation slides and document updates into meeting preparation.
+*   **Christian:** Create a shared pad for concrete examples illustrating the `EDN`/Literal proposals, inviting Carsten and Joe to contribute.
+*   **Carsten:** Provide examples of the `ABNF-frob` output for the current `EDN` ABNF to the mailing list, as Ruby environment issues prevent some participants from generating it.
+*   **Editors:** Explicitly clarify in the `EDN` document that unrecognized encoding indicators should be ignored, and add corresponding test strings.
+
+## Next Steps
+
+*   Further discussion on the `EDN` and Literal escaping/parsing proposals will continue on the mailing list, informed by the generated examples.
+*   Unresolved items will be carried over for discussion at the next interim meeting or on the mailing list.

@@ -1,0 +1,48 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC Working Group held an interim meeting to discuss upcoming IETF 123 logistics, review errata for the RFC 8824 update, and delve into SCHC rule management. Key discussions revolved around proposals for atomic rule set manipulation using CoAP/CoAP-Conf, including managing synchronization challenges like delayed packets and inconsistent rule states. An alternative perspective on rule management, tailored for extreme environments such as interplanetary communication, was presented, focusing on immutable and idempotent rules, and partitioned rule ID spaces. Error handling and transactional integrity for rule management were also explored.
+
+## Key Discussion Points
+
+*   **IETF 123 Logistics:** An interim meeting was held on July 1st, 2025. The upcoming IETF 123 meeting will take place on Wednesday afternoon in the Segovia room. A separate side meeting, open to all, is scheduled for Monday to conduct a deep dive into the SCHC architecture document, with results to be presented on Wednesday.
+*   **Protocol Numbers Document Status:** The document currently faces a strong pushback against defining well-known UDP ports due to transport expert feedback. The discussion will continue on the mailing list, specifically addressing a recent use case for UDP ports brought up by a participant, to determine if UDP definitions should be removed or adapted to use negotiated ports.
+*   **RFC 8824 Update Errata Review:**
+    *   **Erratum 7001 (OSCORE K sub-field calculation):** A proposed correction for the OSCORE option K sub-field calculation was discussed, suggesting the MSB should be `48 - 4` bits, not `48 + 4`.
+    *   **Erratum 7002 (Missing Length Prefix in OSCORE Partial IV):** A correction was presented regarding a missing length prefix for variable field length data in the residue, specifically for the partial IV sub-field in OSCORE compression examples. The latest draft text already incorporates this correction.
+*   **SCHC Rule Management (Lauron's Presentation):**
+    *   A CoAP-Conf based approach was proposed for atomic manipulation of rule sets between SCHC points.
+    *   "Management rules" were introduced as a new rule type, distinct from compression/decompression rules, with privileges to access and modify the rule set.
+    *   Dedicated IPv6 addresses (F8::1, F8::2) and port numbers were proposed for management traffic.
+    *   Synchronization challenges were highlighted, particularly the risk of delayed packets being processed with an outdated rule set. A "gap period" for modified rules (transitioning to a "candidate" state) was suggested, during which related packets would be discarded.
+    *   An optimization for rule creation was presented, where the successful reception of a packet compressed with a newly created rule could act as an implicit acknowledgement.
+    *   The use of CoAP iPatch and custom Remote Procedure Calls (RPCs), such as `duplicate rule` for efficient rule modification, was explored as potentially more flexible than direct iPatch/fetch.
+    *   Error management across CoAP-Conf, YANG data model validation, and SCHC-specific errors was discussed, noting the need for clearer definitions, especially for constrained devices.
+    *   The potential application of transactional protocols (e.g., rollback mechanisms, two-phase commit) for robust rule management was suggested, though concerns were raised about complexity in high-latency or constrained environments.
+*   **Rule Management for Interplanetary Communication (Alex's Presentation):**
+    *   An extreme scenario (Earth-Moon/Mars links with RTTs up to 45 minutes) was used to drive design principles for rule management.
+    *   **Immutable Rules:** Rules should be created or deleted, not modified. Any "modification" would involve creating a new rule with a new ID and then deleting the old one.
+    *   **Idempotent Operations:** Rule creation and deletion operations should be idempotent, meaning repeating them multiple times has the same effect, simplifying error recovery.
+    *   **Partitioned Rule ID Space:** The rule ID space could be divided into "eternal" (pre-configured, fixed), "endpoint A-managed," and "endpoint B-managed" segments to prevent conflicts and streamline management in point-to-point links.
+    *   Scenarios were presented illustrating how these principles, combined with rule lifetimes and repeated transmission of management messages (without waiting for acknowledgements), could enable robust and continuous traffic compression over long-RTT links.
+    *   The concept of unidirectional rule application (e.g., A's rules for uplink only, B's rules for downlink only) was suggested to further reduce state inconsistency.
+*   **General Discussion on Rule Management:**
+    *   The restrictiveness of rule ID space partitioning (e.g., fixed ranges) was questioned, with suggestions for more flexible approaches like binary tree prefixes or tie-breaking mechanisms for collisions.
+    *   The practicality of fixed rule lifetimes was debated against dynamic deletion, especially given variable traffic patterns. Opportunistic rule creation with adaptable lifetimes was proposed as a compromise.
+    *   Strong emphasis was placed on designing mechanisms that inherently avoid desynchronization rather than relying on complex recovery procedures.
+    *   The use of CoAP Non-confirmable (Non) messages for rule management, combined with idempotency and message repetition, was suggested for high-loss environments.
+
+## Decisions and Action Items
+
+*   **Action Item:** Lauron agreed to validate Erratum IDs 7001 and 7002 for the RFC 8824 update and confirm the corrections on the mailing list before IETF 123.
+*   **Action Item:** Pascal will engage the mailing list to reconsider the removal of UDP port definitions from the protocol numbers document, specifically in light of Carlos's recently raised use case and the transport experts' feedback regarding negotiated vs. hardcoded ports.
+*   **Action Item:** SCHC Working Group participants are reminded to reply to agenda item requests and submit their slides for the IETF 123 meeting by the specified deadlines.
+*   **Action Item:** The working group will continue discussions on various SCHC rule management approaches, focusing on synchronization models, rule immutability, rule ID space partitioning, and error handling strategies, especially for high-RTT and lossy environments.
+
+## Next Steps
+
+*   Lauron to complete the validation of the RFC 8824 update errata.
+*   The working group chairs to facilitate discussion on UDP port number definitions for the protocol numbers document.
+*   Working group members to prepare for IETF 123, including the scheduled SCHC architecture deep dive side meeting.
+*   Authors of the rule management draft to continue evolving the specification, taking into account the diverse requirements and challenges highlighted during the discussion (e.g., terrestrial vs. interplanetary deployment scenarios).

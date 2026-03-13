@@ -1,0 +1,68 @@
+# [NETMOD](../wg/netmod.html)
+
+## Summary
+
+This was the second virtual interim meeting focused on reviewing requirements for Yang Templates. The session continued from the previous interim, reviewing the remaining requirements from the GitHub issue tracker (starting with #10). All identified requirements (up to #21) were discussed, and a sense of those present was taken via show-of-hands polls for each. While many requirements received unanimous or near-unanimous support, some critical points, particularly regarding the representation of expanded/unexpanded templates in data stores, were identified as needing further discussion. The meeting concluded by outlining next steps for drafting a solution.
+
+## Key Discussion Points
+
+### Requirement 10: Living Templates - configuration with both unexpanded and expanded templates is able to be returned
+*   **Discussion**: Participants discussed that "living templates" imply a persistent relationship where template modifications are automatically applied. There was a general understanding that both the unexpanded (template definition) and expanded (applied configuration) forms of the template should be visible/returnable in some manner, though the specific data store (running vs. intended) was subject to further requirements. Jason Stern (Nokia) noted this requirement broadly overlaps with issues 12, 13, and 15, which are more granular. Robert Pesci (Nokia) requested clarification on "living templates," which Kent Watsen (Chair) described as persistent/connected templates where configuration in running is attached to the template, and modifications are automatically applied to template consumers.
+*   **Show of Hands**: Unanimous support for the ability to see both expanded and unexpanded templates.
+
+### Requirement 11: Possibility to reorder some user-ordered list or leaf-list entries defined by a template
+*   **Discussion**: Shifa (Huawei) presented this as a "nice to have" or "optional to implement" feature, acknowledging that ordering (e.g., in Access Control Lists) can be meaningful. Jason Stern (Nokia) suggested keeping the base specification simple and potentially deferring such advanced functionality to future work or an augmenting RFC. Rob Wilton (Cisco) agreed, stating it's not a core requirement unless it "fell out" of a solution without added complexity. The Chair noted that "no" votes might mean "not now" rather than "opposed."
+*   **Show of Hands**: A sense of those present indicated this requirement was not well supported at the moment, with many leaning towards deferring it. It was noted that defining how user-ordered items are handled by templates (e.g., where new entries are added) would still be necessary in the solution.
+
+### Requirement 12: The running data store contains the unexpanded template
+*   **Discussion**: This was generally considered a foundational requirement, inherent to the concept of templates as configurable entities.
+*   **Show of Hands**: Unanimous support.
+
+### Requirement 13: The intended data store contains the expanded template
+*   **Discussion**: Initial wording suggested the intended data store returns the expanded template "by default." Rob Wilton (Cisco) argued against "by default" as it implies other options, which could violate RFC 8342 on NMDA's definition of intended. The requirement was clarified to specify "for NMDA," stating that the intended data store returns the expanded template. Robert Pesci (Nokia) raised the point that the template solution should also work for non-NMDA deployments. While this was acknowledged as desirable, making it a strict requirement for all non-NMDA implementations was seen as potentially too complex or costly.
+*   **Show of Hands**: Unanimous support for the refined requirement: "for NMDA, the intended data store returns the expanded template."
+
+### Requirement 14: Offbox template expansion of running containing templates must be possible, enabling offbox validation
+*   **Discussion**: This requirement centered on the client's ability to understand and perform template expansion outside of the network device itself. Rob Wilton (Cisco) clarified that while clients should be able to *perform* template expansion, fully validating the configuration off-box might not always be possible due to dependencies on system configuration or hardware capabilities. The intent was to ensure the RFC provides sufficient detail for clients to reproduce the server's template expansion logic.
+*   **Show of Hands**: Unanimous support.
+
+### Requirement 15: For NMDA, the intended data store returns the unexpanded template
+*   **Discussion**: This was a contentious point. Robert Pesci (Nokia) argued that templates are part of the configuration "contemplated" by the device, suggesting they might be present in the intended data store. Kent Watsen (Chair) and Jason Stern (Nokia) countered that from a client's perspective, a `get-config` on intended should yield only the flattened, expanded view. Jason also distinguished between "management layer templates" (this spec) and "app layer templates" (e.g., QoS policies, BGP groups), noting the latter are often carried through to intended but are out of scope. Rob Wilton (Cisco) was ambivalent, suggesting it might depend on the specific solution. There was discussion about whether their presence in intended serves any value for clients and if not returning them aligns with existing implementations (e.g., Juniper, Nokia). The requirement was framed as "for NMDA, the intended data store Returns the unexpanded template," allowing for a "no" vote to mean they should not be returned.
+*   **Show of Hands**: A poll indicated 2 individuals thought the intended data store should return the unexpanded templates, while 8 thought it should not. This indicated no strong consensus and a need for further discussion.
+
+### Requirement 16: Common data nodes - every data node must be templatized while avoiding duplication copying of data tree
+*   **Discussion**: Shifa (Huawei) explained this as avoiding redundant schema definitions (e.g., through groupings) when multiple template consumers inherit from a template. Robert Pesci (Nokia) clarified that templates and consumers operate on the same data nodes, and the schema should reflect this without explicit copying. Rob Wilton (Cisco) and the Chair found the requirement difficult to interpret as a concrete requirement, seeing it as potentially too tied to specific implementation approaches rather than a functional need.
+*   **Decision**: Due to lack of clarity, Kent Watsen (Chair) closed this issue. Jason Stern (Nokia) raised a related discussion point about whether implementations should publish a Yang model for their templates, potentially leading to schema duplication, which might need separate consideration.
+
+### Requirement 17: The operational data store returns unexpanded template configuration
+*   **Discussion**: Jason Stern (Nokia) introduced this as a corollary to requirement 15, questioning why the operational data store would be aware of unexpanded templates. Rob Wilton (Cisco) suggested that if templates carry through to intended, they might logically appear in operational as the "applied" template. Similar to issue 15, it was viewed as a property of the solution rather than a strict requirement. The issue was discussed in the context of NMDA (where operational is defined) and non-NMDA deployments.
+*   **Show of Hands**: A poll indicated 1 individual thought the operational data store should return the unexpanded templates, while others voted no. This indicated a leaning towards *not* returning them, but not a unanimous decision.
+
+### Requirement 18: Support limited regex in template config for template consumer application
+*   **Discussion**: Kent Watsen (Chair) explained this requirement as enabling templates to use simple wildcards (e.g., `eth*`, `*0`) to target subsets of descendant nodes in a template consumer, rather than full, complex regular expressions. Jason Stern (Nokia) agreed that some level of wildcarding is necessary, with further discussion needed on the specific standardized syntax. The requirement was clarified to specify "limited regex."
+*   **Show of Hands**: Unanimous support for supporting limited regex in template configuration.
+
+### Requirement 19: Precedence: When multiple templates are applied (e.g., `apply-template yellow red blue`), the list order defines precedence (yellow highest).
+*   **Discussion**: Jason Stern (Nokia) proposed that in an ordered list of applied templates, the later-listed template (e.g., "yellow" in the example `yellow red blue`) should have the highest precedence, overriding values from earlier ones. He noted this is a common approach in several major implementations (e.g., Juniper, Nokia, iOS XR). Rob Wilton (Cisco) agreed that a precedence rule *must* be defined by the standard, but questioned whether this *specific* order should be mandated as a strict requirement, as it dictates a solution. After discussion, the sentiment leaned towards adopting a common existing practice for interoperability, with the understanding that the standard would explicitly define *the* order.
+*   **Show of Hands**: Unanimous support for defining a precedence order for multiple templates applied to a node, reflecting common implementations.
+
+### Requirement 20: Precedence: When templates applied at several ancestor nodes, the innermost (most specific) takes precedence
+*   **Discussion**: Jason Stern (Nokia) explained this rule, stating that a template applied at a child node (e.g., `blue` on `baz`) takes precedence over a template applied at an intermediate parent (e.g., `yellow` on `bar`), which in turn takes precedence over a template at a grandparent (e.g., `red` on `foo`). Rob Wilton (Cisco) found this rule "obvious" and the "only semantics that makes sense."
+*   **Show of Hands**: Unanimous support.
+
+### Requirement 21: The solution enables non-NMDA servers to return the expanded data
+*   **Discussion**: Shifa (Huawei) highlighted the need for non-NMDA deployments to access the expanded configuration, proposing state data or an extended `get-config` RPC. Rob Wilton (Cisco) suggested the requirement should focus on enabling non-NMDA support *if it's not overly complex*. Jason Stern (Nokia) argued that server work is already required to implement templates (part 1) and that providing visibility (part 2) via an RPC extension might be less complex than replicating data in state. Kent Watsen (Chair) noted that an implementation could choose to support the "intended" data store without full NMDA operational. The requirement was refined to focus on the capability without prescribing the specific mechanism (e.g., an RPC parameter).
+*   **Show of Hands**: Unanimous support for the refined requirement.
+
+## Decisions and Action Items
+
+*   **Decision**: Requirement 16 ("Common data nodes - every data node must be templatized while avoiding duplication copying of data tree") was closed due to unclear wording and concerns about it being too solution-specific rather than a core requirement.
+*   **Action Item**: Kent Watsen (Chair) will provide a 10-minute presentation slot at IETF 122 to the working group on the outcome of the template requirements discussion.
+*   **Action Item**: Robert Wills (Nokia) volunteered to write a "stake in the ground" draft for the Yang Templates solution.
+*   **Action Item**: Jason Stern (Nokia) and Rob Wilton (Cisco) volunteered to co-author the Yang Templates solution draft.
+*   **Action Item**: Kent Watsen (Chair) will send an email to the NETMOD mailing list with minutes of this meeting and invite others interested in co-authoring the solution draft to contact Robert Wills.
+
+## Next Steps
+
+*   A presentation on the outcomes of the template requirements discussion will be given at IETF 122.
+*   Robert Wills, Jason Stern, and Rob Wilton, along with any other interested contributors, will begin work on a "stake in the ground" solution draft for Yang Templates. The goal is to have a solid draft available, possibly for adoption, by IETF 123.

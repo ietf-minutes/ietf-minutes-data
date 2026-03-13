@@ -1,0 +1,54 @@
+# [PPM](../wg/ppm.html)
+
+## Summary
+
+The PPM Working Group held an interim meeting to discuss the current status and future directions of the DAP protocol, including its extensibility, alignment with HTTP best practices, and potential new features. Key discussions included a review of DAP's design philosophy and rejected features, proposals for consistent handling of long-running operations, and the introduction of a bulk submission mechanism. Additionally, the meeting included a presentation on the ECDH-PSI protocol and its potential relevance to the working group's charter.
+
+## Key Discussion Points
+
+*   **DAP Extensibility and Design Philosophy (Chris Patton)**
+    *   Chris Patton presented an overview of DAP's core features, its security goals (privacy with one honest aggregator, robustness against malicious clients, task agreement, replay protection), and non-goals (differential privacy, Sybil attack resistance).
+    *   The presentation highlighted various extensibility points: defining new Verifiable Distributed Aggregation Functions (VDAs) like Pine (for Federated Learning) and Mastic (for grouped metrics), new batch modes, report extensions (e.g., binding task configuration to task ID), and new APIs.
+    *   Chris argued against removing existing features such as multi-round VDAs, the aggregation parameter, and different batch modes, citing their potential future utility and relatively minor added complexity.
+    *   A history of rejected features was provided, including general-purpose Multi-Party Computation (MPC), multiple helpers, multiple collection jobs per batch, and batched VAF preparation, with reasons ranging from complexity to performance.
+    *   A sense of those present indicated agreement to retain the current feature set of DAP.
+
+*   **Aligning DAP with RFC 9205 and Consistent Long-Running Operations (Tim Gagen)**
+    *   Tim Gagen outlined the goal of moving the DAP draft towards Working Group Last Call and aligning it with RFC 9205 (Building Protocols on top of HTTP).
+    *   Recent changes to DAP, specifically the introduction of asynchronous handling for aggregation jobs due to observed production issues (long processing times, database contention), were recapped.
+    *   Proposed editorial and non-functional changes include using non-normative HTTP request/response examples, adopting broader HTTP status codes (200, 400, 500) with problem documents for specific errors, and referencing RFC 9110 for HTTPS server authentication.
+    *   A key proposal was to define unified semantics for potentially long-running operations across DAP interactions (aggregation job initialization/continuation, collection jobs, aggregate share requests) by consistently allowing both asynchronous and synchronous handling (except for uploads). This would involve using empty response bodies for asynchronous processing and ensuring resources are uniquely identified by path.
+    *   Discussion raised concerns about the use of `Retry-After` on 200 OK responses and the need for a repeated HTTP Directorate review.
+
+*   **Bulk Submissions to DAP (Alex Kosev)**
+    *   Alex Kosev presented the need for bulk report submission functionality, driven by a W3C Private Advertisement Working Group use case where intermediate collectors handle millions of reports.
+    *   The current per-report submission is inefficient due to duplicated HTTP fields.
+    *   The proposal aims to address efficiency and potential cost savings by allowing bulk submissions.
+    *   Key design challenges include handling partial failures (e.g., connection drops, individual report rejections) and ensuring atomicity.
+    *   Discussion explored solutions like HTTP resumable uploads (though some skepticism was expressed regarding its relevance and complexity) and the trade-offs between client-side versus server-side complexity for chunking and parallelization.
+    *   Concerns were raised regarding the atomicity of bulk uploads, with some participants advocating for an all-or-nothing processing model for a given batch.
+
+*   **ECDH-PSI Protocol (Yongji Wu)**
+    *   Yongji Wu introduced the Elliptic Curve Diffie-Hellman Private Set Intersection (ECDH-PSI) protocol, designed for two parties to compute the intersection of their datasets without revealing non-intersecting records.
+    *   The protocol's relevance to PPM stems from its simplicity, efficiency, and privacy-preserving nature, with security based on well-understood Diffie-Hellman assumptions.
+    *   Numerous industry implementations (e.g., Meta, TikTok, Google) and diverse use cases (e.g., education, detecting liquid passwords, CSAM content, statistical matching) were highlighted.
+    *   The security model discussed typically involves a semi-honest adversary, with the draft also considering malicious attack scenarios for which further security analysis is desired.
+    *   Technical details included channel bounding (linking ECDH-PSI sessions to underlying TLS sessions via `exported_key_material`) and a truncation mechanism to reduce data transmission.
+    *   A point was raised that while existing implementations of ECDH-PSI are common, they often lack interoperability due to non-standard hash-to-curve algorithms and data formats, underscoring the value of standardization. The protocol is classical safe, not quantum safe.
+
+## Decisions and Action Items
+
+*   **Decision:** The Working Group decided to maintain the current feature set of DAP, affirming the design choices made for multi-round VDAs, the aggregation parameter, and existing batch modes.
+*   **Decision:** Rough consensus was achieved on Tim Gagen's proposal to align DAP with RFC 9205 guidelines and introduce consistent semantics for long-running operations (allowing both synchronous and asynchronous handling, except for uploads).
+*   **Action Item (Tim Gagen):** Prepare Pull Requests for the DAP draft to implement the RFC 9205 alignment and consistent async/sync operation semantics.
+*   **Action Item (Tim Gagen):** Investigate how the ACME working group addressed the use of the `Retry-After` header on 200 OK responses.
+*   **Action Item (Alex Kosev):** Continue to develop the bulk submission proposal (via PR), focusing on design details for partial failure handling and assessing its impact on core DAP protocol logic.
+*   **Action Item (Yongji Wu):** Pursue further security analysis for the ECDH-PSI draft, particularly regarding the malicious security model.
+*   **Action Item (Yongji Wu):** Engage with existing implementers of ECDH-PSI to encourage participation in IETF standardization efforts, with a focus on achieving interoperability.
+
+## Next Steps
+
+*   Tim Gagen will proceed with drafting and submitting Pull Requests for the DAP specification to incorporate the agreed-upon changes for HTTP alignment and consistent long-running operation semantics.
+*   Alex Kosev will continue to refine the bulk submission proposal, with the intention of incorporating it into the DAP specification if it can be done without blocking DAP's progression.
+*   Yongji Wu is encouraged to continue developing the ECDH-PSI draft, with emphasis on demonstrating its security properties and engaging the community of implementers to build consensus for standardization.
+*   The chairs will consider requesting an HTTP Directorate review of the DAP draft after Tim Gagen's proposed changes are incorporated.

@@ -1,0 +1,43 @@
+# [SNAC](../wg/snac.html)
+
+## Summary
+
+The SNAC working group held an interim meeting to discuss open issues and pull requests, focusing primarily on technical specifications and document refinements. Key discussions included a proposed redesign of the state machines, handling of multi-AIL scenarios, security considerations, and various editorial improvements. The group decided to incorporate multi-AIL election logic into the core state machines rather than a separate appendix for undefined scenarios, and several editorial and technical pull requests were approved for merging.
+
+## Key Discussion Points
+
+*   **State Machine Redesign:** A proposal was made to refactor the SNAC state machines into four distinct components: a Router Tracker, a Publisher, and specialized state machines for NAT64 (deeply tied to the Router Tracker) and potentially others. This modular approach is intended to simplify adjacent link agnostic behavior, making the specification clearer and more implementable. The Router Tracker would independently listen for Router Advertisements (RAs), ping routers, and track prefixes/routes. The Publisher would then decide whether to advertise a usable prefix based on the tracker's findings. This approach was noted to be similar to implementations in projects like OpenThread.
+*   **Multi-AIL Scenario and Scope (Issue 139 & PR 115):** The working group discussed how to handle situations where a stub network might be connected to multiple Access Infrastructure Links (AILs). It was agreed that complex routing and discovery mechanisms (e.g., using Babel or Ripple) for redundant uplinks are out of scope for "Snack Simple" to avoid over-complicating the specification. Instead, the focus is on a simpler, deterministic approach:
+    *   If multiple stub routers are present, only one should obtain a Prefix Delegation (PD) and advertise a default route, thus numbering the network.
+    *   If a non-PD stub router connects, it might advertise a route only to its upstream prefix, providing limited connectivity.
+    *   For discoverability, complex multi-AIL solutions are also considered out of scope for Snack Simple, possibly deferred to the DNSSD working group.
+    *   The group opted to integrate the logic for detecting and electing a "winning" AIL (e.g., one providing IPv4/NAT64 or the first one providing routable IPv6 service) directly into the state machines rather than detailing ambiguous scenarios in an appendix.
+*   **Multi-Router IPv6 Networks (Issue 127):** Discussion arose regarding the potential for multi-router, multi-prefix IPv6 networks within a stub network. It was noted that if Snack Simple design enforces only one prefix delegation per stub network, this complex scenario might not apply. However, concerns were raised about temporary situations where multiple prefixes might be advertised due to timing or lack of detection.
+*   **Network Partition Healing (Issue 128):** The group decided that specific issues like network partition healing, which are highly specific to certain IoT mesh technologies like Thread, should be considered out of scope for Snack Simple. Any relevant sections covering such behavior in the document will be removed.
+*   **Security Considerations (Issue 129):** A potential attack vector where a malicious SNAC router advertises an incorrect prefix, leading to network instability, was discussed. While no immediate mitigation was proposed, the discussion led to a re-evaluation of whether Snack Simple should allow multiple stub routers to advertise PD prefixes, with a general sense that it should not. Clear withdrawal/election rules are needed for such scenarios.
+*   **RA Options in Single Packet (Issue 125):** It was agreed that a SNAC router "MUST" send all Router Advertisement (RA) options within a single RA packet. While the Neighbor Discovery RFC technically allows multiple RAs, host support for this is uncertain, and there are no compelling use cases for a SNAC router to do so.
+*   **Stub Resolver and Deploy Requirements (Issue 141):** The term "stub resolver" will be formally defined by referencing RFC 8499, section 6. Normative requirements previously placed on a "stub network" will be rephrased to apply specifically to the SNAC router (e.g., a Wi-Fi SNAC router), as requirements cannot be placed on abstract network entities or generic hosts. The use of capitalized "MUST" will be consistently applied for normative statements in relevant sections. Reference to RFC 6763, section 11, will be added for legacy browsing domains.
+
+## Decisions and Action Items
+
+*   **State Machine Redesign (Ted):** Ted to write the new state machines based on the proposed four-component split (Router Tracker, Publisher, NAT64, etc.).
+*   **Editorial PRs (Esco):** Esco to make minor updates to the editorial PRs based on Ted's comments, then merge them.
+*   **PR #2 (Esco):** Esco to merge PR #2 after Ted's approval.
+*   **Caps Usage PR (Esco):** Esco to merge the caps usage PR after Ted's approval.
+*   **M and O Bits (Ted):** Ted to push changes related to M and O bits on the AIL.
+*   **Multi-AIL Appendix (Esco):** Esco to update PR 115 to simplify the multi-AIL appendix section, ensuring it only describes initial examples and current SNAC rules, avoiding open problem statements. The core logic for handling multi-AIL elections will be moved to the state machine specifications.
+*   **Temporary Two-Prefix Situation (Ted):** Ted to document how hosts handle temporary two-prefix situations, especially during network convergence.
+*   **Network Partition Healing (Esco):** Esco to review and propose removing the section on network partition healing from the document, as it's out of scope for Snack Simple.
+*   **Multiple Prefix Advertisement (Ted):** Ted to revisit the question of whether multiple stub routers should advertise prefixes and define clear withdrawal/election rules within the state machines.
+*   **Guest Networks (Ted):** Ted to rephrase text to avoid the term "guest network" and instead describe networks that isolate devices.
+*   **Appendix Normative Language (Darren):** Darren to address normative language and rationale for zero values in the appendix, ensuring normative statements are either removed or refer back to the main text.
+*   **RA Options (Ted):** Ted to add a "MUST" requirement to the main text stating that all RA options must fit within a single RA packet.
+*   **Editorial Review (Jonathan):** Jonathan offered to address general editorial, spelling, and referencing comments (Issue 132).
+*   **XML Links (Ted):** Ted to provide guidance on specifying XML links in the document.
+*   **Multicast Address Text (Esco):** Issue 140 (multicast address text) closed as duplicate, its content having been integrated into Issue 109.
+*   **Stub Resolver and Deploy Requirements (Esco & Ted):** Esco to do the initial update for Issue 141 (reference RFC for stub resolver, rephrase requirements for Wi-Fi Snack Router, fix "must"). Ted will take over the part concerning `default.service.arpa` and legacy browsing domains.
+
+## Next Steps
+
+*   Working group participants are encouraged to submit topics for discussion at the IETF 124 Montreal meeting to the mailing list. If substantive discussions beyond document editing topics are needed, a physical meeting will be more valuable.
+*   Two interim meetings are scheduled for September 30th and October 7th.

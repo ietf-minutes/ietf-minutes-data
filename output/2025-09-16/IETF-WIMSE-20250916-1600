@@ -1,0 +1,67 @@
+# [WIMSE](../wg/wimse.html)
+
+## Summary
+
+The WIMSE working group held an interim meeting to discuss the two proposed mechanisms for proof of key possession (PoP) in workload-to-workload (W2W) authentication: HTTP Message Signatures (based on RFC 9421) and the Workload Proof Token (Whippet). The discussion focused on their comparative benefits, drawbacks, and whether the draft should standardize both, only one, or pursue a different document structure. No immediate decision was reached, but a clear call was made for authors and interested parties to submit concrete proposals for document restructuring and to develop implementations to validate assumptions, particularly regarding Whippet's applicability beyond HTTP.
+
+## Key Discussion Points
+
+*   **Welcome and Logistics**: The chairs opened the interim meeting, reminded participants of the IETF Note Well, and set the focus on workload-to-workload authentication.
+*   **Recent Draft Updates**:
+    *   The "oth" (other token hashes) claim in the Workload Proof Token (Whippet) was updated from a single string to a more structured format to accommodate multiple hashes based on headers.
+    *   Media types and editorial content were also updated.
+*   **W2W Authentication Mechanisms Recap**:
+    *   The adopted document describes two credential types:
+        *   **Workload Identity Certificates (X.509)**: Used for network layer authentication (mTLS). This is straightforward and well-established.
+        *   **Workload Identity Tokens (WIT)**: Used for application layer authentication, especially in scenarios with middleware (e.g., API gateways, service meshes). WITs are JSON Web Tokens (JWTs) containing a public key via the `cnf` (confirmation) claim, requiring proof of possession.
+    *   **Two Proof of Possession (PoP) Approaches for WITs**:
+        *   **HTTP Message Signatures (RFC 9421)**: An HTTP-specific mechanism.
+        *   **Workload Proof Token (Whippet)**: A JWT sent alongside the WIT, bound to the transaction via an audience claim and potentially other token hashes.
+    *   The main objective of the meeting was to discuss these two approaches and work towards a decision on whether to retain both, choose one, or restructure the document.
+*   **Comparison of HTTP Message Signatures vs. Whippet**:
+    *   **Proof of Key Possession**: Both mechanisms provide this.
+    *   **Integrity Protection**:
+        *   **HTTP Message Signatures**: Provides integrity protection for HTTP messages, including content digests and choice of HTTP headers within the signature, which also helps prevent replays.
+        *   **Whippet**: Primarily demonstrates PoP. While it includes the target URI in the audience claim, it does not protect the message content or arbitrary HTTP headers, making replays possible within its short lifetime.
+    *   **Protocol Scope**:
+        *   **HTTP Message Signatures**: HTTP-specific.
+        *   **Whippet**: Potentially adaptable to other protocols (e.g., asynchronous delivery like Kafka, gRPC), though current deployment beyond HTTP is largely conjecture.
+    *   **Technology Required**:
+        *   **HTTP Message Signatures**: Requires JWT/JWS verification and HTTP message signature attachment/verification.
+        *   **Whippet**: Primarily requires JWT/JWS signing/verification.
+    *   **Response Signing**:
+        *   **HTTP Message Signatures**: Supports signing responses.
+        *   **Whippet**: Does not support response signing.
+    *   **Summary**: HTTP Message Signatures are feature-rich and specialized for HTTP; Whippet is lightweight and potentially deployable beyond HTTP.
+*   **The Core Debate: One Mechanism or Two?**:
+    *   **Initial WG Feedback (Vancouver)**: Overwhelmingly favored keeping both options in the document.
+    *   **Editors' View**: Editors generally prefer consolidating to one option but could not reach internal agreement on which to prefer.
+    *   **Arguments for One Mechanism**: Simplifies developer choice, reduces implementation and document complexity. Extending Whippet to include integrity protection similar to HTTP Message Signatures could lead to "feature creep" and increased complexity (analogous to DPoP).
+    *   **Arguments for Retaining Both or Structuring Differently**:
+        *   The two mechanisms solve slightly different problems and cater to different infrastructure/deployment models (e.g., HTTP-only vs. non-HTTP protocols).
+        *   Restricting how a credential type (like WIT) can be used, unlike X.509 certificates, seems unusual.
+        *   If the IETF only standardizes an HTTP-specific solution, communities needing W2W authentication for other protocols (e.g., gRPC, async messaging, Spiffy) will likely develop their own, leading to fragmentation outside the IETF.
+        *   The WIMSE charter is focused on HTTP but does not explicitly disallow work benefiting non-HTTP protocols.
+        *   Some participants suggested splitting the document: a core document for generic credentials, with separate profiles/documents for HTTP (using HTTP Message Signatures) and other protocols (potentially using Whippet). This would avoid putting one mechanism into an appendix, which might imply it's less important.
+    *   **Concerns about Whippet's Generic Applicability**: While Whippet is seen as "easily adaptable" beyond HTTP, participants noted a lack of running code for non-HTTP use cases, emphasizing it's currently conjecture. The experience with HTTP SIG deliberately choosing not to use JOSE (which is JSON-based, like Whippet) for HTTP-specific needs was cited as a cautionary tale for trying to apply a generic mechanism where protocol-native solutions might be better.
+    *   **WIT Remains Consistent**: It was clarified that the Workload Identity Token (WIT) itself would remain the same regardless of which proof-of-possession mechanism is chosen.
+
+*   **Document Structure Options Discussed**:
+    1.  Keep both Whippet and HTTP Message Signatures in the main document, as is.
+    2.  Keep both, but move Whippet to an appendix with appropriate qualifying text.
+    3.  Break the content into two or more separate documents (e.g., a core credential document, then separate profile documents for HTTP and other protocols).
+    4.  Separate credentials from authentication mechanisms, potentially leading to three or four specifications (e.g., one for X.509, one for WIT, one for HTTP Message Signatures, one for Whippet).
+
+## Decisions and Action Items
+
+*   No immediate decision was made regarding which PoP mechanisms to include or the final document structure.
+*   The discussion indicated a desire to move forward with a clearer direction.
+*   **Action Item**: Authors and interested parties are encouraged to develop and submit individual drafts that propose concrete document structures (e.g., splitting into multiple documents, moving sections to appendices) to provide tangible options for the working group to consider.
+*   **Action Item**: The working group strongly encourages individuals with implementation experience, especially concerning Whippet's use beyond HTTP (e.g., gRPC, asynchronous messaging), to share their findings and build running code to validate existing assumptions. This was suggested as an excellent topic for an IETF hackathon.
+
+## Next Steps
+
+*   Further discussion on the merits of different PoP mechanisms and document structuring options will continue on the WIMSE mailing list.
+*   Proposals for document restructuring in the form of individual drafts are anticipated.
+*   Updates on the next interim meeting will be shared via the mailing list.
+*   The call for implementations to validate assumptions will be reiterated.

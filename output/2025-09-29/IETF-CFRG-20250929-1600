@@ -1,0 +1,46 @@
+# [CFRG](../wg/cfrg.html)
+
+## Summary
+
+This interim meeting of the Crypto Forum Research Group (CFRG) focused on hybrid Key Encapsulation Mechanisms (CHEMs). The chairs welcomed attendees and reminded them of the IRTF Note Well. The discussion centered on recent updates to the hybrid CHEM draft, including refined security considerations, new framework constructions, and open issues regarding document structure, naming, IANA registration, key generation methods, fallibility in decapsulation, and the inclusion of pre-hashing. Key decisions were made on naming conventions, proposing an IANA registry, and handling key generation variants and decapsulation failures.
+
+## Key Discussion Points
+
+*   **Hybrid CHEM Document Status and Scope:**
+    *   The primary goal is to produce guidance on security properties for hybrid CHEMs, review well-established techniques, and provide concrete instantiations.
+    *   New requirements include considering overlap with LAMPS and OpenPGP and providing targets for convergence.
+    *   Significant changes since the last IETF meeting include revisions to security considerations, streamlining of constructions, and covering additional use cases not previously addressed by the GHP (CHEM + traditional component) and QSF (Group + traditional component) frameworks.
+    *   Pre-hashing (PRE) variants were removed due to lack of interest in favor of simplicity.
+    *   New frameworks now cover traditional components as either a Group or a CHEM, combined with post-quantum components assuming either NCCA only or the C2PRI property, creating a 2x2 matrix of constructions that are notationally similar.
+    *   Security goals for hybrid CHEMs focus on NCCA (Non-Chosen Ciphertext Attack security) and binding properties (LeakBindKPK and LeakBindKCT), with "leak" being the appropriate security model target, and KPK/KCT relevant for transcript binding.
+*   **Security Analysis of Hybrid CHEM Frameworks:**
+    *   **GHP (Generic Hybrid Primitive):** Most general construction. NCCA proof derived from the 2018 CHEM combiners paper (standard model). Requires one component to be NCCA secure and the KDF to be a secure split-key PRF. Provides LeakBindKCT and LeakBindKPK properties.
+    *   **QSF (Quantum Superiority Fighter):** Used by X-Wing, combines a post-quantum CHEM and a group. Requires the PQ CHEM to be NCCA (post-quantum) and C2PRI (pre-quantum, even if NCCA fails), and the group to be Strong Diffie-Hellman (SDH) secure. Has two NCCA proofs (one in Random Oracle Model for pre-quantum, one in Standard Model for post-quantum). Binding properties are contingent on the PQ CHEM's binding properties.
+    *   **HQB (Hybrid Quantum Bomber - new):** Similar to GHP but allows the traditional component to be a group, inlining DH CHEM operations. Only relies on PQ CHEM's NCCA property. Two NCCA proofs (one ROM, one Standard Model). Expected to provide LeakBindKCT and LeakBindKPK.
+    *   **QSH (Quantum Superiority Hunter - new):** Similar to QSF but allows the traditional component to be a CHEM (e.g., RSA OAEP). Requires the traditional CHEM to be NCCA and the PQ CHEM to be NCCA (post-quantum) and C2PRI (pre-quantum). Two NCCA proofs (both Standard Model). Binding properties are contingent on the PQ CHEM's binding properties.
+    *   **PQPQ Hybrids:** It was discussed that GHP and QSH frameworks may be applicable to Post-Quantum/Post-Quantum hybrids, with some re-analysis for ROM-based proofs.
+*   **Dissemination of Security Proofs:** Authors are working on "prettying up" proof sketches for ePrint and sharing with the CFRG list to support the document's claims, which are critical for other IETF working groups (e.g., LAMPS) awaiting citations. The Cryptographic panel will review the quality of these proofs.
+*   **Document Structure (Single Framework vs. Independent Descriptions):** Discussion on whether to present the four hybrid CHEM variants as variations within one framework (more abstract) or as four distinct constructions (more explicit). Implementer feedback was requested.
+*   **Naming Conventions for Hybrid CHEMs:** Proposal of two sets of names: existing (GHP, QSF, QSH, HQB – often Star Wars inspired) and descriptive (GK, GS, KC, KS – encoding Group/CHEM and NCCA/C2PRI assumptions). A poll showed a strong preference for the more descriptive "orange" names.
+*   **IANA Registry for Domain Separation Labels:** The use of domain separation labels in the KDF inputs to prevent cross-protocol attacks was discussed. While not explicitly part of current security proofs, it's considered good hygiene. An IANA registry could provide unique, short labels.
+*   **Key Generation (Shared Seed vs. Separate):** The document's default "shared seed" key generation (PRG expands a single seed into component keys) was contrasted with "separate" key generation (independent generation of component keys). The latter is necessary for HSMs that don't support seed-based derivation. Debate centered on whether to maintain interoperability (same labels) despite different security properties (seed-based offers stronger binding properties and resilience to stripping attacks).
+*   **Fallibility (Decapsulation Failures):** Post-quantum CHEMs can have a minuscule, cryptographically negligible probability of decapsulation failure (implicit rejection, e.g., ML-CHEM, HQC). The API always returns a pseudo-random value, not an error. RSA-OAEP, however, can explicitly reject due to padding errors. The discussion focused on whether the document should explicitly acknowledge these rare failures, or if the implicit rejection approach (passing pseudo-random values which higher-level protocols like TLS would detect as Mac errors) is sufficient and better for security by not revealing attacker-useful information. It was noted that implicit rejection is considered a security feature.
+*   **Pre-hashing Variants:** The possibility of re-adding pre-hashing variants for performance in specific scenarios (e.g., large public keys like Classic McEliece) was discussed. Concerns were raised about the lack of robust security analysis for these variants, and whether their benefits are still relevant given C2PRI-optimized constructions.
+
+## Decisions and Action Items
+
+*   **Document Structure:** Chris Wood and Chris Patton will attempt to implement based on draft-ietf-cfrg-hybrid-kem-02 (Chris Patton with the "one framework" approach, Chris Wood with the "four independent descriptions" approach) to provide implementer feedback.
+*   **Naming Conventions:** The group will lean towards adopting the more descriptive "orange" names (GK, GS, KC, KS) which encode component types and security assumptions.
+*   **IANA Registry:** The authors will proceed with proposing an IANA registry within the generic hybrid CHEM document for domain separation labels.
+*   **Key Generation:** The document will describe the shared seed key generation as the default and recommend it, but also allow for separate key generation as an option. Interoperability will be maintained (using the same labels for both methods), but the document will include clear warnings and caveats about the different security properties and implications (e.g., for stripping attacks) when using separate key generation.
+*   **Fallibility:** The document will describe CHEMs as operating under implicit rejection, where decapsulation always returns a value (either the shared secret or a pseudo-random value). The document will not introduce explicit error signaling at the hybrid CHEM API level for minuscule failures. Any resulting data disagreement will be handled by higher-level protocols. Chris Wood committed to doing a literature review on the consequences of implicit vs. explicit rejection, particularly concerning timing attacks.
+*   **Pre-hashing:** The document will not include detailed algorithms or proofs for pre-hashing variants. Instead, it will briefly mention pre-hashing as a concept (potentially in a "paths not followed" section) that could be explored in future work or documents, noting the complexities and the existence of more efficient alternatives (C2PRI-optimized constructions).
+
+## Next Steps
+
+*   Authors will prepare an updated draft incorporating the decisions made regarding naming, IANA registry proposal, key generation, and fallibility.
+*   Chris Wood and Chris Patton will provide implementer feedback on the document structure.
+*   Chris Wood will conduct a literature review on the security implications of fallibility (explicit vs. implicit rejection, timing attacks).
+*   The authors will work to resolve open issues on GitHub based on the discussions.
+*   Once the draft is deemed stable and the GitHub issues are addressed, it will be submitted for review by the Cryptographic panel, followed by a working group Last Call.
+*   An update to the concrete hybrid CHEM document will also be needed after the generic document is finalized.

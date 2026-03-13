@@ -1,0 +1,79 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group met to finalize the agenda for the upcoming IETF meeting in Madrid and to progress on three key documents: EDN Literal, CBOR Packed, and CBOR Deterministic Encoding (CDE). Significant discussions revolved around string escaping in EDN extensions, the adoption of integration tags and simple values in CBOR Packed, and the complex issue of NaN payloads in CDE, particularly in light of IEEE 754-2019. The group confirmed agenda items for Madrid, including a presentation on verified CBOR implementations, and set hackathon priorities.
+
+## Key Discussion Points
+
+### EDN Literal (`draft-ietf-cbor-edn-literals`)
+*   **Version 08 Submission**: A new version (-08) was submitted, primarily containing corrections for D17, with no intended technical changes.
+*   **Application Extension String Escaping**:
+    *   Ongoing disagreement regarding the complexity and justification of the current application-oriented extension string escaping approach. One view suggested a way forward exists for implementation error messages, while another found it overly complicated and questioned its necessity.
+    *   Discussion centered on whether application extensions should handle all unescaping (e.g., percent encoding) or if EDN should provide a base level of unescaping. The current draft proposes EDN handles one level (Layer 1), and app extensions handle subsequent levels (Layer 2).
+    *   The "layered" approach was argued to provide isolation, enabling EDN generators to produce ASCII-printable forms without needing to understand every application extension's escaping syntax, a property likened to JSON. Counterarguments suggested that new IETF protocols should assume Unicode compatibility, and that JSON.stringify often doesn't escape Unicode.
+    *   An implementer reported difficulties transitioning from D16 to D17, finding extensions more complicated and encountering blockers.
+    *   **Proposal for Raw Strings**: The idea of supporting "raw strings" (e.g., delimited by backticks) was introduced as a potential solution to reduce escaping complexity for application extensions that use backslashes heavily (e.g., regular expressions, SQL). This approach would allow internal delimiters to be unescaped by using a higher number of delimiters for the string itself. Challenges in ABNF specification due to lookahead were noted.
+    *   A call was made for concrete examples of EDN that can be interoperably converted to CBOR, especially demonstrating interactions with comments and single-quoted strings, and for explicit requirements to guide design.
+
+### CBOR Packed (`draft-ietf-cbor-packed`)
+*   **Tunables (A, B, C)**: Progress has been made on the selection of tunables (e.g., 1288), with increased confidence in the proposed choices, acknowledging that these are optimizations rather than matters of correctness.
+*   **Simple Values and Integration Tags**:
+    *   The document (-16) includes "integration tags" (e.g., tag 1115 for splicing), which give shared item references more power than simple substitution by allowing them to alter context (e.g., modifying array length during splicing).
+    *   This enhanced functionality was presented as a justification for expanding the number of simple values (e.g., to 16), as they can now perform more complex operations.
+    *   There was a sense that integration tags should move forward, despite reservations from some participants about their power and potential for complexity.
+    *   A proposal was made to use 16 simple values, with a suggestion to allow range sharing between different standards, similar to SSH2.
+*   **Minor Open Issues**: Three minor issues were identified:
+    *   Error handling where two different errors might appear identical.
+    *   Handling of implementation disagreements on media types.
+    *   Guidance on capabilities of table setup tags (Issue 23).
+*   **Alternative Idea**: An "evil thought" was raised regarding the use of nanboxed integers for packed tags to achieve a lower byte footprint, though acknowledged as an "ugly" design space.
+
+### CBOR Deterministic Encoding (CDE) (`draft-ietf-cbor-cde`)
+*   **NaN Narrowing/Widening Issue**:
+    *   There are differing interpretations of RFC 8949 regarding the handling of Not-a-Number (NaN) values with payloads, particularly concerning the narrowing and widening between F16, F32, and F64 subsets in preferred serialization and key equivalence.
+    *   The IEEE 754-2019 standard introduced `set payload` and `get payload` APIs, giving semantic meaning to NaN payloads, which may retroactively impact the understanding of NaNs in RFC 8949, where they were often treated as "just bits." This places the relevant text in 8949 in a "precarious position."
+    *   A critical operational reality is that existing running code often narrows NaNs with zero payloads to a specific F16 value (F97E0), and this behavior should ideally not change.
+    *   Implementers are starting to grapple with how to access and handle NaN payloads, noting it often involves bit masking and assumptions about endianness.
+*   **Editorial and Procedural Questions**: Additional editorial misgivings and a procedural question regarding a potential BCP for CDE were noted.
+*   A suggestion was made to consider a broader "ethnography of deterministic encoding mechanisms."
+
+### Madrid Meeting Agenda & Hackathon
+*   **Madrid Agenda**:
+    *   **DNS CBOR**: Martin will provide a 10-minute update.
+    *   **Verified CBOR Implementation & CDDL Generator**: Tahina (Microsoft Research) will present findings from an ACM CCS-accepted paper on a verified CBOR implementation and a verified parser/serializer generator for CDDL.
+        *   A side meeting is scheduled for Tuesday at 17:00 CST (conflicting with DM WG).
+        *   For the main WG meeting, Tahina will give a brief summary of the side meeting discussions (a few minutes) followed by a longer discussion period with the working group.
+*   **Hackathon Focus**:
+    *   Validate late changes to the three active documents (EDN, Packed, CDE).
+    *   Benchmarking Tahina's verified CBOR and CDDL parser generator implementations.
+
+## Decisions and Action Items
+
+*   **EDN Literal**:
+    *   The discussion on application extension string escaping, including the raw strings proposal, will continue on the mailing list.
+    *   Ken will draft text for the mailing list to facilitate this discussion.
+    *   The hackathon will focus on implementing and validating proposed changes to EDN Literal.
+    *   An implementer will provide specific details on where D17 implementation efforts got stuck.
+*   **CBOR Packed**:
+    *   There is a sense that integration tags should move forward, with the caveat that reservations will be documented on the mailing list.
+    *   Ken will draft a working group last call on the mailing list to confirm the approach for packed, particularly regarding the number of simple values (e.g., 16+8+8 tunable choices) and integration tags.
+    *   The three minor open issues (error handling, media types, table setup tags) will be discussed further on the mailing list.
+    *   The hackathon will focus on implementing and validating proposed changes to CBOR Packed.
+*   **CDE**:
+    *   The complex technical discussion on NaN narrowing/widening, including the implications of IEEE 754-2019 on RFC 8949, will be taken to the mailing list. This is expected to be an "arcane" but necessary technical deep dive.
+    *   Editorial and procedural questions (e.g., BCP for CDE) will also be discussed on the mailing list.
+    *   The hackathon will focus on implementing and validating proposed changes to CDE.
+*   **Madrid Meeting Agenda**:
+    *   Martin's DNS CBOR presentation (10 min) confirmed.
+    *   Tahina's presentation on verified CBOR/CDDL confirmed for 15-20 minutes, with a brief summary of side meeting discussion followed by significant time for WG discussion.
+    *   Remaining time will be dedicated to discussion of open issues across the three active documents.
+*   **Hackathon**: Tahina will advertise the benchmarking hackathon for verified CBOR/CDDL implementations on Hackathonf and the mailing list.
+
+## Next Steps
+
+*   All three documents (EDN, Packed, CDE) require continued technical discussion on the mailing list, particularly on the complex points identified.
+*   Specific text will be drafted by the chairs/editors for the mailing list to guide these discussions and prompt working group last calls where appropriate.
+*   Participants are encouraged to engage in the hackathon to implement and validate proposed changes to the three documents and to benchmark verified CBOR/CDDL implementations.
+*   The Madrid IETF meeting will serve as a forum to wrap up discussions on these documents and address remaining open issues, building on the preceding side meeting and hackathon activities.
+*   Interim meetings will continue on even Wednesdays after IETF 123 (starting late August), as announced on the mailing list.

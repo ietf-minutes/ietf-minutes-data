@@ -1,0 +1,96 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+This virtual interim meeting focused on progressing several open issues and Pull Requests (PRs) related to the MOQ specification. Key discussions centered on the normative language for multi-publisher scenarios, track name construction clarity, authorization token handling in client setup, and the behavior of `Track Status` messages at relays. Several PRs were discussed, with consensus reached to merge some, while others require further review or discussion on GitHub, particularly concerning the `Expires` parameter. Audio issues with the Meetecho platform were noted, and an interop day for Draft 11 implementations was announced.
+
+## Key Discussion Points
+
+*   **Administrative & Agenda Bash**
+    *   The IETF Notewell was reviewed. The session was recorded.
+    *   Scribe: Mike English volunteered.
+    *   Agenda additions: Allan requested discussion on the resolution of issue 335 (unique track token) and a brief mention of the session request for the upcoming Madrid IETF meeting (three hours were historically requested).
+    *   Issue 335 (Unique Track Token): Victor confirmed it would primarily require editorial text, no wire changes. Victor will prepare the text or provide a prompt for Allan.
+    *   Session Request for Madrid: No objections were raised regarding the historical request for three hours.
+    *   Meetecho Audio Issues: Several participants experienced audio problems, particularly with echo cancellation and muting/unmuting delays. This was noted for follow-up with Meetecho.
+
+*   **Issue 995: Publish Message (and Issue 1037)**
+    *   **Context:** The PR for the publish message (995) has four approvals. Suhas raised Issue 1037 regarding normative language for multi-publisher scenarios at a relay. The current text uses "should" for forwarding subscribe messages to all publishers, and publish follows this same pattern. Suhas requested "must" instead of "should" for consistency and to avoid implementation inconsistencies.
+    *   **Discussion:**
+        *   Suhas emphasized that a new rule is being added for publish, and it would be beneficial to align the normative language simultaneously, as this has been an outstanding clarification.
+        *   Martin expressed discomfort with "must" forcing relays to take double bandwidth, suggesting applications might prefer flexibility (e.g., accepting one and canceling another). He acknowledged a subscriber could dictate `forward=0`.
+        *   Suhas highlighted "make before break" use cases, where a relay's inconsistent behavior could lead to different end-user experiences.
+        *   The chair suggested merging the publish PR (995) as is, given it unblocks many features, and discussing the `should` vs `must` (Issue 1037) separately, as few people have multi-publisher implementations yet.
+        *   Mike English supported separating the discussion into Issue 1037.
+    *   **Decision:** Suhas agreed to merge the publish PR (995) as is, with the understanding that Issue 1037 on `should` vs `must` will be discussed and resolved as a separate working group issue.
+
+*   **Issue 108: Clarify Full Track Name Construction**
+    *   **Context:** This PR clarifies that within a namespace, a given name cannot simultaneously be a namespace tuple and a track name (e.g., `a/b` cannot be both a namespace `a` with name `b` AND a namespace `a/b`). Ian questioned the necessity of this restriction and asked if it warranted reconsidering merging namespace and name fields.
+    *   **Discussion:**
+        *   Ian requested clearer text on why this restriction is necessary beyond just "it's confusing." The current text states it avoids ambiguity, similar to a file system.
+        *   Will argued that for cache matching, the concatenated string (`a/b`) would be the same regardless of the tuple breakdown, making the distinction unclear. He clarified that matching should be per-tuple byte match, not on a concatenated string.
+        *   Suhas and Ian agreed that matching should be a "per-tuple bytes match" and that the spec should be very clear on this.
+        *   Victor and Will expressed that splitting namespace and name felt "weird" and hard to reason about, suggesting a revisit of merging them.
+    *   **Decision:**
+        *   Editors will verify that the spec explicitly states matching is "per-tuple bytes match" and open an issue if clarification is needed.
+        *   The PR for clarifying full track name construction will move forward.
+        *   A separate discussion on whether to merge namespace and name fields will be taken up if there is sufficient interest, as this impacts the object model.
+
+*   **Authorization Token Parameter in Client Setup (PR to close 7 issues)**
+    *   **Context:** This PR adds the authorization token parameter to client setup, allowing a single token for connection establishment and subsequent actions. A challenge arises because the client doesn't know the server's maximum cache size (default is zero).
+    *   **Proposed Solution:** If a client sends an oversized registration in client setup, the server does not fail the session. Instead, it treats it as a "use value," and the client, upon receiving server setup with the max size, can adjust its cache and retry registration if needed. For other messages, a registration that causes cache overflow or uses a non-existent alias results in a session error.
+    *   **Discussion:**
+        *   Martin found the special case for client setup "a little annoying" from an implementation perspective but could live with it.
+        *   Will questioned why this soft error handling couldn't be extended to *all* token registrations, not just client setup. The chair explained that after server setup, the client knows the cache size, and failing subsequent registrations is intended to prevent misuse and maintain security.
+        *   Martin acknowledged the security argument for hard errors but still found soft errors easier to implement.
+        *   Colin suggested filing a new issue for this specific problem of hard/soft errors for cache overflow, to explore other combinations.
+        *   Ian noted the complexity around client setup is to save sending 100s or 1000s of bytes (for large tokens) twice. He questioned if the control plane bandwidth savings justify the complexity. He suggested making it a hard error, potentially adding a specific error code.
+        *   The chair explained keeping the default cache size zero to lower the barrier to entry for implementations.
+    *   **Decision:** The PR, which has approvals and fixes seven issues, will be merged unless there are strong objections (request changes on GitHub) within the next 12 hours. The working group will evaluate its implementation experience and revisit the hard/soft error behavior if needed.
+
+*   **Track Status and Subscribe Mirroring (PR)**
+    *   **Context:** This PR, updated based on previous feedback, defines `Track Status`. Message formats are identical. The publisher always sets `track_alias` to zero. The PR allows a relay, when it receives a downstream `Track Status` request and does *not* have an active subscription, to either: 1) forward the `Track Status` upstream, or 2) proactively send a `Subscribe` message (potentially with `forward=0`) to establish an upstream subscription and then respond based on that.
+    *   **Discussion:**
+        *   Suhas questioned the proactive `Subscribe` option. He worried about multi-hop delays and potentially unwanted data, suggesting `Track Status` is primarily for finding the "head" of an active track.
+        *   The chair pointed out that without an active subscription, a relay facing many downstream `Track Status` requests for the same track would have to forward them all upstream, creating a DoS vector. Proactively subscribing (even with `forward=0`) could mitigate this by aggregating requests.
+        *   Allan questioned why a relay couldn't simply cache the `Track Status` response. The chair noted the lack of mechanisms for caching metadata (like `max_cache_duration` for objects).
+        *   Will suggested that a `Track Status` response from the origin publisher could include a "cache hint" (e.g., `TTL` or `age`) to allow relays to cache the status for a defined period.
+        *   Ian agreed with the option to subscribe upstream if desired and caching `Track Status` but still finds `Track Status` "weird" and not fitting well with wildcard subscriptions.
+        *   Mo suggested an `age` parameter in the response, indicating how old the information is, allowing relays to decide if it's fresh enough.
+        *   Suhas, Ian, and Mo suggested implementing the current PR and gaining experience before adding more complexity like caching mechanisms.
+    *   **Decision:** The PR needs more reviews and approvals to merge. Participants are encouraged to review it on GitHub. Further discussion on caching mechanisms (`age` header or `cache hint`) will be considered after implementation experience.
+
+*   **Expires Parameter (PR)**
+    *   **Context:** This PR proposes making the `expires` field (currently only in `Subscribe`) a generic parameter usable by any message that creates state. The idea is for the state acceptor to advise the requester on how long the state is expected to persist.
+    *   **Discussion:**
+        *   Ian supported making it a parameter. He disagreed with the idea of `expires` implying a "silent close," arguing for explicit close messages. He noted that making it a parameter doesn't guarantee implementation, citing ECN in QUIC.
+        *   Manish asked how to choose a correct `expire` time. The chair gave an example of an OAuth token's expiry dictating the subscription's expiry, noting it's currently advisory.
+        *   Gwendal strongly opposed the PR, arguing it mixes security (token claims/expiration) with delivery parameters, revealing sensitive information to "pirates." She suggested `expires` is largely tied to token expiration, which should be handled by a separate control plane mechanism (e.g., a "katar" parameter for token renewal).
+        *   Ian clarified that this is a `Subscribe` parameter, thus control plane. He questioned if `expires` is *always* token-related or if it has other uses, as this affects the client's understanding of necessary actions.
+        *   Will disagreed with Gwendal, stating the need for expiry handling without tokens and for trusted expiry coming from the origin up through the CDN, not just from the client.
+    *   **Decision:** Discussion is ongoing. Participants are encouraged to continue the debate on GitHub, as there are differing views on the purpose and implications of the `expires` parameter.
+
+*   **Draft 11 Interop Day**
+    *   An informal virtual interop day for Draft 11 implementations is planned for next Wednesday, the 11th, to accommodate different time zones. A note will be sent to the mailing list.
+
+## Decisions and Action Items
+
+*   **Decision:** Publish PR (Issue 995) will be merged.
+    *   **Action Item:** Discussion on `should` vs `must` for multi-publisher scenarios (Issue 1037) will continue separately on GitHub.
+*   **Decision:** Clarify Full Track Name Construction PR (Issue 108) will move forward.
+    *   **Action Item:** Editors to verify and add explicit text to the spec clarifying "per-tuple bytes match" for name matching. Open a new issue if needed.
+    *   **Action Item:** Reconsideration of merging namespace and name fields will be taken up as a separate discussion if deemed necessary.
+*   **Decision:** Authorization Token parameter in Client Setup PR will be merged within the next 12 hours, unless significant "request changes" are submitted.
+    *   **Action Item:** Working group to evaluate implementation experience and revisit the hard/soft error handling for cache overflow if issues arise.
+*   **Action Item:** Participants to review and approve the `Track Status` and `Subscribe Mirroring` PR on GitHub.
+    *   **Action Item:** Further discussion on caching `Track Status` responses (e.g., adding `age` or `cache hint` parameters) will follow implementation experience.
+*   **Action Item:** Continue discussion on the `Expires` parameter on GitHub to resolve differing views on its purpose and implications.
+*   **Action Item:** Martin to send an email to the mailing list regarding the upcoming Draft 11 interop day on Wednesday, the 11th.
+*   **Action Item:** Magnus to collect feedback on Meetecho audio problems and report them to the IETF Secretariat for forwarding to Meetecho, and to assess the platform for the next interim.
+
+## Next Steps
+
+*   Continue PR reviews and discussions on GitHub for outstanding issues, particularly `Track Status` and `Expires`.
+*   Participate in the informal Draft 11 interop day.
+*   Chairs to evaluate Meetecho for future virtual interims based on feedback.
+*   Schedule next interim meeting, potentially focusing on `Expires` and the namespace/name merge.

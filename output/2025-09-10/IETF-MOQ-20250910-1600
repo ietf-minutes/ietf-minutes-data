@@ -1,0 +1,62 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+This virtual interim meeting focused on several open Pull Requests (PRs) and issues concerning MOQ message serialization, error handling, and parameterization. Key discussions revolved around optimizing fetch metadata, consolidating `_error` and `_ok` messages, and the parameterization of subscription-related fields. Decisions were made to proceed with specific serialization optimizations for fetch, consolidate error messages, and define parameters for `group_order`, `subscriber_priority`, and `subscription_filter`, while deferring broader parameterization discussions. The new group request (NGR) algorithm was also discussed, with a decision to review an alternative solution at the upcoming Toronto meeting.
+
+## Key Discussion Points
+
+*   **Fetch Metadata Compression (PR #1105):**
+    *   The PR proposes using flags in a serialization byte to represent common metadata values, significantly reducing metadata size (e.g., from 1200 bytes to 164 bytes in a simulated scenario).
+    *   **Open Question: Handling "priority not present"**: Two options were discussed: using the previous object's priority in the fetch response (1A), or using the previous object's priority within the current subgroup (1B), falling back to the previous object in the overall response if it's the first in the subgroup. Option 1B offers better compression for scenarios with multiple subgroups.
+    *   **Open Question: Using a bit for "object ID zero"**: This could save one byte per group but adds complexity to the encoding. Its primary benefit would be for datagram tracks sending one object per group. Concerns were raised about the need for such optimization in fetch streams versus datagrams, and the desire for consistent behavior across message types.
+*   **Request Error Consolidation (PR #1159):**
+    *   Proposal to replace multiple `_error` messages (e.g., `subscribe_error`, `publish_error`) with a single generic `request_error` message.
+    *   Error codes would be correlated by `request_id` and potentially remapped into common ranges or message-specific bands.
+    *   This approach simplifies the specification and reduces code duplication without changing error semantics.
+*   **Request OK Consolidation (Issue):**
+    *   A similar proposal for `_ok` messages, but it's more complex as some `_ok` messages contain specific fixed fields (e.g., `subscribe_ok`, `fetch_ok`).
+    *   The current proposal targets `publish_namespace_ok` and `subscribe_namespace_ok`, which contain only a `request_id`, consolidating them into a generic `request_ok` message that would include parameters for future extensibility.
+    *   A primary motivation is to enable acknowledgments for `subscribe_update` messages (using `request_ok` for success and `request_error` for failure).
+    *   The broader discussion on fully parameterizing all `_ok` messages was acknowledged but deferred due to past working group feedback.
+*   **Parameterization of Subscription Fields (PR #1158):**
+    *   The PR implements parameterization for `group_order`, `subscriber_priority`, and `subscription_filter`.
+    *   `subscription_filter` is defined with the existing wire format, but is used as an inline field in `subscribe` messages and as a parameter in `subscribe_update`, allowing updates to other subscription parameters without modifying the filter.
+    *   **Questions about filter types and ranges:** Discussed whether relative filter types (e.g., `latest_group`) should be allowed in `publish_ok` and `subscribe_update`, and the implications of not being able to change an absolute range's end without specifying its start.
+    *   **Group order asymmetry:** The default behavior for `group_order` differs between `subscribe` ("I don't care," letting the publisher choose) and other messages (implied "ascending"). This creates a challenge for subscribers learning a publisher's preference if "ascending" is always the default when not specified.
+    *   **`forward` flag:** Discussion on whether to keep `forward` as an inline flag or parameterize it.
+*   **New Group Request (NGR) (PR #1106):**
+    *   An updated NGR algorithm was presented, allowing a relay to send an NGR if its value is zero (unknown remote group) or if the requested group ID is larger than any outstanding NGR. This clears previous outstanding NGRs when the group ID changes.
+    *   A concern was raised about this new algorithm potentially increasing the denial-of-service (DOS) vector, as a subscriber could potentially send many NGRs without relay suppression. The analogy to fetch requests, which already can bypass relay caches, was noted.
+    *   Further points included the need for publisher acknowledgement/rejection of NGRs (Suhas argued against explicit ACKs for scalability reasons, suggesting implicit ACKs via data plane new groups), the general challenge of extensibility across relay chains, and the DOS vector using zero NGR.
+    *   Mike English suggested exploring alternative solutions that don't require special relay logic, using application-level features instead.
+
+## Decisions and Action Items
+
+*   **Fetch Metadata Compression (PR #1105):**
+    *   **Decision:** For handling "priority not present," use the priority of the previous object in the subgroup; if it's the first object in the subgroup, use the priority of the previous object in the response (Option 1B).
+    *   **Decision:** Do not dedicate a bit for "object ID zero" at this time.
+    *   **Action Item:** Allan to update PR #1105 to reflect these decisions.
+*   **Request Error Consolidation (PR #1159):**
+    *   **Decision:** Consolidate all existing `_error` messages into a single generic `request_error` message.
+    *   **Action Item:** All working group members are requested to review PR #1159.
+*   **Request OK Consolidation (Issue):**
+    *   **Decision:** Proceed with a PR to consolidate `publish_namespace_ok` and `subscribe_namespace_ok` into a generic `request_ok` message, primarily to address `subscribe_update` acknowledgments. The broader discussion on full parameterization of all `_ok` messages is deferred.
+    *   **Action Item:** Allan to create one or two PRs for the `request_ok` consolidation.
+*   **Parameterization of Subscription Fields (PR #1158):**
+    *   **Decision:** `subscription_filter`, `group_order`, and `subscriber_priority` will be defined as parameters. `subscription_filter` will remain inline in `subscribe` but will be a parameter in `subscribe_update`.
+    *   **Decision:** The `forward` flag will remain inline.
+    *   **Decision:** Relative filter types (`latest_group`, etc.) will not be allowed in `publish_ok` or `subscribe_update`.
+    *   **Decision:** The asymmetry in `group_order` defaults will be addressed by considering a separate "publisher group order preference" to clarify the subscriber's final control.
+    *   **Action Item:** Allan to update PR #1158 based on the discussion.
+*   **New Group Request (NGR) (PR #1106):**
+    *   **Decision:** The updated NGR algorithm (allowing sending NGR if value is zero or requested ID is larger) will be used as a basis for further discussion.
+    *   **Action Item:** Mike English to request agenda time for the upcoming Toronto meeting to present alternative solutions for NGR behavior that do not require special relay logic.
+    *   **Action Item:** Allan to refine PR #1106, though no strong changes were mandated during this specific discussion.
+
+## Next Steps
+
+*   Working group members should review PR #1159 (Request Error Consolidation) and PR #1158 (Parameterization of Subscription Fields) as soon as possible.
+*   Mike English is requested to email the chairs to secure agenda time for Toronto to present alternative approaches to the New Group Request mechanism.
+*   Today (the day of the interim) is the deadline for all Toronto agenda requests.
+*   The chairs will finalize the Toronto agenda later this week.

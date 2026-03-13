@@ -1,0 +1,53 @@
+# [QUIC](../wg/quic.html)
+
+## Summary
+
+This interim meeting focused on exploring the scope and requirements for adapting QUIC stream multiplexing and related application-oriented extensions to operate over transports other than UDP, particularly reliable byte streams (informally referred to as "QMUX"). Participants discussed motivations, technical requirements, desired exclusions, and the relationship to existing work like Web Transport over HTTP/2. There was a strong consensus to move forward with this work within the QUIC Working Group and to pursue an explicit charter modification to enable it.
+
+## Key Discussion Points
+
+*   **Introduction and Notewell**: The meeting was a special QUIC Working Group interim on "QUIC stream multiplexing," intended to be an interactive discussion session. The IETF Notewell applies.
+*   **Motivation for QMUX (Kazuhog)**:
+    *   Reuse QUIC stream multiplexing abstraction.
+    *   Enable TCP as a fallback when UDP is blocked.
+    *   Support use in data centers and other environments where QUIC (with its full transport stack) might not be a good fit (e.g., Unix sockets, InfiniBand, Fiber Channel).
+    *   Address limitations of Web Transport over HTTP/2 (e.g., needing HTTP, lack of TCP fallback).
+    *   Many existing systems provide in-order, reliable byte streams (TCP, TLS, domain sockets, InfiniBand, Fiber Channel) but may not need QUIC's packetization, loss recovery, or congestion control. Some are inherently secure or use TLS.
+*   **QMUX Requirements**:
+    *   Provide multiplexing compatible with QUIC, maintaining same stream semantics (reset, stop sending, flow control).
+    *   Support QUIC extensions like datagrams.
+    *   Run on any transport providing bidirectional, in-order delivery of bytes and guaranteed delivery.
+    *   Rely on the underlying transport for congestion control, confidentiality, and integrity if necessary.
+*   **What QMUX Should NOT Optimize For**:
+    *   Specific underlying transports (e.g., modifying TCP for head-of-line blocking).
+    *   Address migration (IP-specific).
+    *   TLS extensions for transport parameters (if TLS not used).
+    *   Message boundaries from some transports (e.g., InfiniBand), as TCP does not provide this.
+*   **Implications**:
+    *   Application protocols must define their own mapping to QMUX (e.g., via ALPN or out-of-band configuration).
+    *   QMUX applicability statements should highlight differences from QUICv1 (e.g., head-of-line blocking, no path migration).
+*   **Discussion on QMUX Scope and Relation to Web Transport over HTTP/2**:
+    *   **Ian**: Noted importance of prioritization and transport parameters, suggested a default application mapping to QMUX over requiring new ALPNs for every application.
+    *   **Chair/Kazuhog**: Acknowledged prioritization for other groups (e.g., MOQ) and QMUX's potential to provide a framework for transport parameter negotiation. ALPN is useful for IP networks, out-of-band mechanisms for others.
+    *   **Victor**: Raised concerns about functional overlap between QMUX and Web Transport over HTTP/2, stating that WT over H2 implementations are largely H2-agnostic at its core. Worried about maintaining two similar codebases.
+    *   **Chair/Kazuhog**: Highlighted that QUIC and HTTP/3 are distinct, implying QMUX and Web Transport over HTTP/2 (or TCP) could also be distinct given different use cases and scopes. Noted that Web Transport over HTTP/2 uses the HTTP capsule protocol, which adds overhead (e.g., length fields) that QMUX aims to avoid for efficiency in certain environments.
+    *   **Willie**: Emphasized that QUIC's streaming and flow control are superior to H2's, and QMUX avoids the need for HTTP encapsulation, simplifying non-HTTP protocol transport.
+    *   **Marco/Ian**: Discussed the possibility of splitting Web Transport over HTTP/2 into a generic QMUX-like layer and an H2-specific binding. Noted a lack of appetite in the Web Transport WG to slow down progress for such a re-architecture.
+    *   **Alan**: Suggested charter language should recognize that QUIC is composed of separable entities (like its abstract object model/streaming model), and that QMUX doesn't need to take *all* of QUIC.
+    *   **Marco/Ian**: Clarified that QMUX's scope should include other application-oriented extensions like datagrams, not just stream multiplexing.
+    *   **Security Concerns (Martin L)**: Raised the issue of QMUX potentially running over plain (unencrypted) TCP, similar to discussions around "plaintext QUIC." Emphasized the importance of QUIC's secure-by-default wire image and the need to consider security in the charter.
+    *   **Chair/Gorry**: Agreed that the charter should explicitly address the security aspect, focusing efforts on *secure* transports and not enabling or standardizing insecure ones, even if the WG cannot prevent all such deployments.
+
+## Decisions and Action Items
+
+*   **Decision**: The QUIC Working Group agrees to pursue work on adapting QUIC stream multiplexing and related application-oriented extensions to operate over secure, reliable, and bidirectional byte stream substrates (informally QMUX). This work is motivated by use cases where UDP is blocked or full QUIC transport is not desired (e.g., data centers, specific proxy architectures).
+*   **Decision**: The Working Group will initiate a charter modification process to explicitly include this work within the QUIC WG's scope.
+*   **Action**: Lucas (Chair) will perform a gap analysis between the current "QUIC on Streams" (QMUX) draft and the Web Transport over HTTP/2 specification, identifying overlaps and differences. Volunteers are requested to assist.
+*   **Action**: Lucas (Chair) will draft an email to the QUIC WG mailing list proposing refined charter text for review and discussion, based on the meeting's output.
+*   **Action**: Lucas (Chair) will inform the Web Transport WG co-chairs and their Area Director about this discussion and the planned gap analysis.
+
+## Next Steps
+
+*   The draft charter text will be circulated on the QUIC WG mailing list for further refinement and discussion.
+*   The gap analysis between QMUX and Web Transport over HTTP/2 will be conducted, with results to be presented at a future IETF meeting (likely the next QUIC WG session).
+*   Based on mailing list consensus and AD review, a formal charter modification proposal will be submitted.

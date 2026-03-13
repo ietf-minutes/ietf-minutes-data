@@ -1,0 +1,49 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group held an interim meeting to discuss several key documents: CBOR Deterministic Encoding (CDE), CBOR Packed, and EDN Literal. Lawrence presented a list of ambiguities and issues in RFC 8949 related to preferred and deterministic serialization that CDE aims to address. The discussion on CBOR Packed focused on tag allocation strategies, with concerns raised about resource curation and efficiency, alongside an alternative proposal. Lastly, the group debated a new approach to EDN Literal extensibility using structured content, which sparked discussion regarding semantic changes. Many technical points require further mailing list discussion to reach consensus.
+
+## Key Discussion Points
+
+### CBOR Deterministic Encoding (CDE) and RFC 8949 Clarifications
+
+*   **RFC 8949 Ambiguities:** Lawrence presented five points highlighting issues in RFC 8949:
+    1.  **Indefinite Lengths:** Preferred serialization allows indefinite lengths as a "preference" rather than a "must," diminishing its value.
+    2.  **Divergence in RFC 8949:** Sections 4.1 (preferred serialization) and 4.2.1 (determinism) diverge, with 4.2.1 restating most preferred serialization requirements normatively but omitting indefinite lengths. Implementers must cross-check.
+    3.  **Big Number Determinism:** Preferred serialization requirements for big numbers (tags 2 and 3) in Section 3.4.3 are not explicitly included when 4.2.1 restates general preferred serialization, leading to ambiguity. Lawrence sees this as a key difference between CDER (8949) and CDE.
+    4.  **Lack of Tag Determinism:** RFC 8949 provides preferred serialization for tags 2 and 3 but lacks determinism for them (this is added in draft-cbor-cde). Moreover, there's no preferred or deterministic serialization for most other tags (e.g., date-time tag 1, date strings, decimal fractions, big floats).
+    5.  **General Data Model Determinism:** RFC 8949's Section 4.2.2 discussion of "additional deterministic encoding considerations" is primarily tag-focused, not providing a general data model for determinism (e.g., as seen in DCBOR). Lawrence views CDE as expanding on 4.2.2.
+*   **Carsten's Counter-Arguments:** Carsten argued that 4.2.1's statement "preferred serialization must be used" implies the normative application of Section 3.4.3 for big numbers. While acknowledging that 4.2.1's "in particular" list could be misread due to omissions, he asserts it's not undefined in RFC 8949. He views CDE as a clarification and ease-of-use improvement rather than a fundamental addition to RFC 8949's deterministic encoding requirements.
+*   **Application-Level Determinism for Specific Tags:** Carsten explained that CDE intentionally does not define determinism for tags 0, 1, 4, and 5 because different applications have conflicting requirements (e.g., floating-point vs. integer representations for tag 1). Such decisions should be made at the application level. He suggested adding a "determinism" column to the CBOR tag registry.
+
+### CBOR Packed (packed-cbor) Tag Allocation Strategy
+
+*   **Resource Curation:** The working group discussed the allocation of 1+1 tags for `packed-cbor`, noting concerns raised by Joe about consuming a large number of the remaining 158 1+1 tags.
+*   **Single Tag Approach Proposal:** A previous proposal (from Bangkok) suggested starting with a single 1+0 tag that contains an array (identifier + value) for the "radically reduced" approach, with the possibility of adding more specific 1+1 tags later.
+*   **Carsten's Concerns:** Carsten expressed concern that this approach would "shadow" or "waste" space by potentially making existing 1+1 tags redundant or pushing their usefulness.
+*   **Vadim's Alternative Proposal and Critique:** Vadim presented an alternative (Circ), arguing that `packed-cbor` has fundamental architectural flaws.
+    *   **DNS CBOR Issues:** `packed-cbor` does not accommodate CBOR sequences (unsequenced splicing), which required a revision of the DNS CBOR draft. Future protocols might encounter similar issues.
+    *   **Compression Effectiveness:** `packed-cbor` uses 16 simple values and approximately 40 1+1 tags (32 for a shared table, 8 for arguments), which Vadim considers an arbitrary division that might not be sufficient. His alternative claims better compression, especially for commonly used numbers, by leveraging unused CBOR start bytes.
+    *   **Architectural Flaw:** Vadim believes `packed-cbor` over-relies on tags, leading to unnecessary expansion, and that its consumption of 16 simple values limits their availability for other applications. He argues his alternative achieves similar compression ratios without the extensive tag and simple value registration, is simpler, and more extensible.
+*   **Discussion on "Wasted" Tag:** A sense of those present indicated a willingness to accept the potential "waste" of a single 1+0 tag to move forward with the radically reduced approach. However, due to complexity and timing, a formal poll was not taken.
+
+### EDN Literal Extensibility
+
+*   **Defining EDN and Extension Points:** The `draft-ietf-cbor-edn-literal` document defines EDN in ABNF and adds an extension point. A question was raised whether these two aspects should be handled simultaneously.
+*   **Carsten's Proposal for Structured Content:** Carsten proposed abandoning the current "app literal" mechanism and using the double angle bracket `<<...>>` for *all* application extensions. This mechanism would be extended to allow structured content (e.g., `<<encrypt [key, plaintext]>>`) rather than just strings. This would align EDN more closely with JSON's approach to application-level semantics and would help resolve layering issues. He also suggested a shorthand for text-only content (e.g., `e"hkdf"`).
+*   **Rowan's Concerns:** Rowan raised concerns that changing the `<<...>>` mechanism to allow arbitrary output types (e.g., integer from `DT<<'date'>>` instead of only binary strings) based on the app prefix would introduce semantic ambiguity and make parsing or code coloring more difficult, akin to a "new original sin" of type ambiguity that already exists for single-quoted appstrings.
+*   **Joe's Procedural Suggestion:** Joe suggested defining the appstrings currently in use and shipping the EDN Literal document first, allowing more time for a broader discussion on general extensibility.
+*   **Vadim's Syntax Suggestions:** Vadim suggested exploring alternative syntax (e.g., different bracket types or quote styles) to distinguish between text/binary output or various types.
+
+## Decisions and Action Items
+
+*   Lawrence will take further discussion regarding the nuances of RFC 8949's deterministic encoding and the application-level determinism for specific CBOR tags to the mailing list.
+*   The working group will resolve the path forward for `packed-cbor`'s tag allocation strategy on the mailing list before the next scheduled call.
+*   Discussions on the EDN Literal extensibility proposal (specifically Carsten's structured content approach) will continue on the mailing list.
+*   Joe highlighted four small, specific issues related to bare single-quoted and bare double-quoted strings in EDN Literal that may already have rough consensus; these should be addressed on the mailing list.
+
+## Next Steps
+
+*   Participants are encouraged to engage in detailed technical discussions on the mailing list for CDE, `packed-cbor` tag allocation, and EDN Literal extensibility.
+*   Any unresolved issues from these discussions will be brought back for review at the next working group call, scheduled in two weeks.

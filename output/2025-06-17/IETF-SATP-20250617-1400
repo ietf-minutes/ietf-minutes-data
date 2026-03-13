@@ -1,0 +1,88 @@
+# [SATP](../wg/satp.html)
+
+## Summary
+
+This interim meeting focused on recent updates to the SATP core document, primarily addressing error handling and session abort mechanisms. Key discussions revolved around the new error message and session abort types, including their parameters and implications. The group also initiated a detailed discussion on "Stage Zero" – the pre-SATP negotiation phase – outlining its purpose, assumptions, and preliminary flow, with calls for further community engagement. Updates on the status and timelines for the core, architecture, and use cases drafts were also provided, with a target for significant progress before the IETF Madrid meeting.
+
+## Key Discussion Points
+
+### Core Document Updates
+
+*   **Error Message Type**:
+    *   A new `error` message type was introduced to allow a gateway to indicate an error to the opposite gateway.
+    *   Parameters include `current session ID`, `error type`, `error code` (referencing an appendix of codes), and a `hash of the previous message` for correlation.
+    *   Discussion ensued regarding the `hash of the previous message`:
+        *   A participant questioned the computational expense of hashing and suggested using a `message ID` or `serial number` (which was present in earlier spec versions) for simpler correlation, especially as error codes often imply the message type.
+        *   The current draft specifies the hash as mandatory, but making it optional or replacing it was suggested.
+    *   An `error severity` field was included but left undefined for future refinement, acknowledging its subjective nature.
+    *   This error type specifically addresses SATP payload-level errors, not TLS or IP connection issues.
+*   **Session Abort Message Type**:
+    *   A new `session abort` message type was introduced, addressing a long-discussed need.
+    *   A gateway can send this message to abort a session at any time *before* message 3.5 (commit final).
+    *   A participant suggested the abort might need to occur *before* message 3.4, specifically if asset burning occurs at 3.4, to ensure recoverability of temporary assets created by Gateway 2. The presenter agreed to review this.
+    *   Currently, the abort message does not mandate a `reason code`, but the addition of an optional reason was suggested. The group noted the difficulty of standardizing reason codes due to subjectivity and the intent that this abort message signifies an external, non-SATP-level decision (e.g., user cancellation).
+*   **Suspension Request**:
+    *   The possibility of a `suspend` message was raised, allowing a gateway to pause a transfer.
+    *   Concerns about Denial of Service (DoS) attacks were immediately highlighted. The current SATP design emphasizes rapid, committed execution after initial negotiation, making suspension risky.
+    *   It was noted that Stage Zero includes parameters for network finalization duration, which gateways can use for timeout determination, offering an alternative to suspension for slow back-end operations.
+*   **Security Considerations Section**:
+    *   Discussion on the content of the `security considerations` section for the core document.
+    *   Recommendation to include specific misuse cases (e.g., using aborts or timeouts for attacks/DoS) even if it makes the section lengthy.
+    *   Two approaches for managing security text across linked documents (core and architecture) were discussed:
+        1.  Duplicate relevant text in both documents.
+        2.  Refer to the more comprehensive section in the architecture document, explicitly stating its relevance to the core protocol. This is common for "cluster" documents published together.
+
+### Document Status & Timelines
+
+*   **SATP Core Draft**:
+    *   The latest changes (error and abort messages) are currently in the GitHub repository's editor's copy but have not yet been published as an IETF draft.
+    *   Plan to publish an updated draft by the end of June to meet the submission deadline for the Madrid IETF meeting.
+*   **SATP Architecture Draft**:
+    *   The architecture document is considered stable, with only minor typos remaining to be addressed. No significant updates are planned before Madrid.
+*   **SATP Use Cases Draft**:
+    *   The author acknowledged pending comments from Eugene and committed to submitting an updated draft before the Madrid deadline.
+*   **Overall Goal**: The aim is to finalize these documents by Madrid, assuming no significant new issues are discovered.
+
+### Stage Zero Discussion
+
+*   **Purpose**: Stage Zero refers to the pre-SATP negotiation and setup between gateways and relevant parties. It involves aspects often outside IETF scope (e.g., identity verification) but provides crucial context for the protocol.
+*   **Current Focus Areas**:
+    *   Deriving a `context ID`.
+    *   Determining how `App1` (the initiating application client) kickstarts the process.
+    *   Mechanisms for selecting `Gateway 1` from multiple potential gateways, especially when `App1` may not have a prior relationship with a specific gateway.
+    *   Defining standardized APIs for applications to communicate with gateways.
+*   **Assumptions for Stage Zero**:
+    1.  The application (`App1`) is aware of its associated gateway and network (`G1`, `Network1`).
+    2.  `Network1` may have state for intent indication but cannot initiate callbacks to applications or gateways.
+    3.  `App1` assists in establishing the connection between the selected `G1` and `Network1` for a specific transfer instance.
+*   **Preliminary Flow (one-sided)**:
+    1.  Client 1 declares an "intent to transfer" (e.g., via a smart contract on the network).
+    2.  Gateways "read" this intent from the network.
+    3.  A gateway (`G1`) "claims" responsibility for the transfer.
+    4.  Client 1 "binds" the `transfer intent ID`, `asset ID`, `TIR ID` (Tokenized Asset Record ID, for asset validation pointers), and `Gateway ID` to establish a `transfer context ID`.
+    5.  (Optional) Client 1 communicates the `transfer context ID` to Client 2.
+    *   This flow represents one side; the opposite side's flow is TBD.
+*   **Questions and Comments on Stage Zero Flow**:
+    *   **"Read" Mechanism (Step 2)**: Discussion on whether gateways "pull" (poll) or "push" (event emission) for transfer intents from the network. A hybrid approach or leaving the mechanism open to implementation was suggested.
+    *   **"Intent of Use" / Extensibility**: A participant inquired about including "computational intent" or "intent of how to use" the asset/data, especially for data transfer scenarios, rather than just simple asset movement. The chairs emphasized designing for extensibility, perhaps through optional parameters or new message types in future protocol versions, noting that SATP 1.0 is currently focused on basic asset transfer.
+    *   **Beyond Two Gateways / Unidirectional**: The current scope is unidirectional, two-gateway transfers. Stage Zero's `transfer context` could be extended to support more complex scenarios (e.g., one-to-many transfers, a "master coordinator" gateway).
+    *   **Metadata Registry**: A "metadata registry" was briefly mentioned as a potential component where gateways might check asset validity or conformance to financial standards.
+*   **Call for Participation**: The group welcomed suggestions and participation in Stage Zero discussions, particularly for the data transfer mode.
+
+## Decisions and Action Items
+
+*   **Decision**: New `error` and `session abort` message types will be incorporated into the SATP core document.
+*   **Action Item (Thomas)**: Update the SATP core document to include the `error` and `session abort` message types (currently in GitHub) and address other recent comments (e.g., regarding the use of `hash of previous message` vs. `message ID` for correlation) by the end of June to meet the IETF Madrid draft submission deadline.
+*   **Action Item (Thomas)**: Review the precise point at which a `session abort` is permissible, specifically the cutoff before message 3.4 or 3.5, based on asset burning/creation.
+*   **Action Item (Thomas)**: Consider adding an optional `reason code` field to the `session abort` message.
+*   **Action Item (Thomas)**: Refine the `security considerations` section in the core document to clearly outline SATP-specific risks, possibly by referring to the architecture document's comprehensive section.
+*   **Action Item (Rama)**: Submit an updated SATP Use Cases draft, addressing Eugene's comments, before the Madrid submission deadline.
+*   **Action Item (Working Group)**: Actively participate in ongoing discussions regarding Stage Zero on the mailing list and during the IETF Madrid meeting.
+*   **Action Item (Working Group)**: Provide feedback and suggestions on the Stage Zero flow, particularly concerning the "read" mechanism, extensibility for "intent of use," and the data transfer mode.
+
+## Next Steps
+
+*   Finalize updates to the SATP core, architecture, and use cases drafts for publication before the IETF Madrid meeting.
+*   Hold extensive discussions on Stage Zero at the IETF Madrid meeting, covering its technical components, assumptions, and future extensibility.
+*   The chairs will work on outlining next chartering items for SATP based on previous working group discussions and current progress.
+*   Consider scheduling an additional interim meeting, potentially in August, if further dedicated time is needed to advance Stage Zero discussions.

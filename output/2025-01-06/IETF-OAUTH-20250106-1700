@@ -1,0 +1,35 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group held an interim meeting to discuss the "OAUTH Client ID Scheme" draft (draft-aaron-oauth-client-id-scheme). The discussion centered on standardizing a mechanism for clients to publish metadata and use a URL as their `client_id`, particularly in scenarios where client pre-registration is not feasible. A significant portion of the discussion revolved around the ambiguity arising from existing deployments that already use HTTPS URLs as `client_id` in various contexts (e.g., OpenID Federation, client metadata documents), and how to introduce a clear scheme without breaking backward compatibility or introducing new security vulnerabilities. No formal decisions were made, but an action item was assigned to the author to refine the draft with explicit consideration of the proposed solutions.
+
+## Key Discussion Points
+
+*   **Client ID Metadata Context:** The discussion built upon the "Client ID Metadata" draft (draft-aaron-oauth-client-metadata), which proposes a method for OAUTH clients to publish their metadata at a URL and then use that URL as the `client_id` in authorization requests. This is beneficial for ecosystems where pre-registration of clients is impractical (e.g., self-hosted applications, microservices).
+*   **Ambiguity of HTTPS URLs as Client IDs:** Previous discussions highlighted that several existing specifications and deployments already use HTTPS URLs as `client_id` values, including OpenID Federation and client metadata documents. This creates ambiguity for an Authorization Server (AS) attempting to interpret a given `client_id`.
+*   **"Client ID Scheme" Draft Proposal:** The new draft aims to extract and standardize the `scheme:value` syntax for client IDs, originally defined in OpenID for Verifiable Presentations (VP). This syntax allows for explicit identification of the client ID's type (e.g., `did:`, `redirect:`, `https:`).
+    *   The OpenID for VP specification currently limits the `https` scheme primarily to OpenID Federation.
+    *   The draft proposes defining `https` as a scheme for systems that only need to support one interpretation (either OpenID Federation or client ID metadata).
+*   **Parameter vs. Prefix (Scheme:Value):** A query was raised about using a separate `client_id_type` parameter instead of a `scheme:value` prefix. Participants noted that this was extensively discussed in the OpenID for VP working group. The conclusion was that a single `scheme:value` string for `client_id` is preferable to avoid security issues (e.g., mixing/matching parameters by attackers) and simplify its use in other contexts like JWT claims.
+*   **Resolving HTTPS Ambiguity - Initial Proposal:** The draft's initial proposal for resolving `https` ambiguity was for Authorization Servers expecting conflicting uses to operate with different issuer URLs and corresponding authorization endpoints. This implies that clients would implicitly know which method to use based on the issuer URL they target.
+    *   **Concerns:** Participants (e.g., Brian) expressed discomfort with this, stating it could limit the flexibility of generalized AS products/services that wish to support multiple resolution methods under a single top-level issuer domain, adding configuration and maintenance complexity.
+*   **Alternative Proposal - Explicit Prefixes for HTTPS:** An alternative was proposed (e.g., Emilia) to introduce explicit prefixes for specific HTTPS URL interpretations (e.g., `metadata:https://example.com` or `federation:https://example.com`).
+    *   This approach would treat bare `https:` (e.g., `https://example.com`) as an opaque value, allowing AS to define their default behavior (e.g., error, default to one type).
+    *   This provides an "upgrade path" for existing deployments to adopt explicit prefixes while maintaining some backward compatibility with bare HTTPS URLs.
+    *   This approach was seen as potentially cleaner and more consistent, resolving concerns about the awkwardness of the current `scheme:value` model and its potential confusion with URI schemes.
+*   **Discussion on Terminology (URI, URL, Scheme):** There was some discussion regarding the consistent use of "URI," "URL," and "scheme," and whether the "scheme" in `scheme:value` should always align with official URI schemes. This highlighted potential for confusion in the draft's language.
+*   **"Client_URL" Parameter Proposal:** A suggestion (e.g., Dick) to introduce a new `client_url` parameter in the authorization request for un-pre-registered clients was discussed.
+    *   This was largely dismissed as it wouldn't fully solve the internal ambiguity of the URL's interpretation and would require significant breaking changes for existing ecosystems that already use `client_id` for this purpose. The sentiment was that standards should document existing practice where possible, rather than force new, incompatible mechanisms.
+*   **Relationship with Existing Deployments:** The importance of accommodating existing, widely deployed solutions (like OpenID Federation) that use bare HTTPS URLs as `client_id` was a recurring theme. The challenge is to introduce clarity and consistency for the future without disrupting current operations.
+
+## Decisions and Action Items
+
+*   **No Formal Decisions:** No formal decisions were made during this meeting.
+*   **Action Item (Aaron):** The author of the "OAUTH Client ID Scheme" draft is tasked with documenting the various proposals and alternative approaches discussed (especially regarding the handling of HTTPS URL ambiguity, including explicit prefixes and treatment of bare HTTPS URLs), capturing their pros and cons. This will facilitate further discussion and refinement of the draft. Engagement with implementers for feedback on these alternatives is encouraged.
+*   **Administrative Note:** The "Client ID Metadata" draft (draft-aaron-oauth-client-metadata) has recently expired and needs to be refreshed or resubmitted by the author to remain on the working group track.
+
+## Next Steps
+
+*   Aaron to update the "OAUTH Client ID Scheme" draft based on the discussion and the assigned action item, providing clear options for handling HTTPS URL client ID ambiguity.
+*   Further discussions on the refined proposals are expected to occur on the OAUTH mailing list and/or at future interim meetings.

@@ -1,0 +1,61 @@
+# [MLS](../wg/mls.html)
+
+## Summary
+
+This MLS Working Group meeting focused on two main technical areas: refining the MLS Extensions document to clarify the distinction between core protocol extensions and application-layer components, and discussing a proposal for MLS Subgroups to improve multi-device privacy and operational efficiency. The session also included a review and resolution of open GitHub issues and Pull Requests related to the extensions document.
+
+## Key Discussion Points
+
+*   **MLS Extensions Document Refinement**:
+    *   **Problem**: The existing MLS Extensions document conflates "extensions" (which modify the MLS stack) with "application logic" or "reusable application components" (which use the MLS stack). This leads to increased complexity and application-specific logic creeping into the core protocol.
+    *   **Proposal (Richard)**:
+        *   **Definition of "Extension"**: Reserve the term "extension" for items that fundamentally change MLS protocol behavior or the MLS stack itself.
+        *   **New "Application API" Framework**: Create a new framework to expose MLS capabilities that applications can use (e.g., signature keys, PSKs, exporters, encrypted data). These are termed "reusable application components".
+        *   **Application Components**: These will use a new `component_ID` for domain separation, rather than overloading existing extension types.
+        *   **New Proposals**: Introduce `ApplicationDataProposal` to associate application data with commits without modifying MLS state, and an `updated_dictionary` for group agreement on context extensions.
+        *   **Reclassification of Existing Extensions**:
+            *   `AppAck`, `Content Advertisement`, `Last Resort Key Package` would become reusable application components.
+            *   `Targeted Messages`, `Self Remove`, `Additional Credentials`, `Associated Party Exchange` would remain extensions.
+        *   **Timeline**: Aim to complete edits and reach Working Group Last Call by the March IETF timeframe.
+    *   **Discussion**: General agreement on the proposed reframing. Raphael noted Rowan has already started filing PRs for the `appsyc` related changes.
+*   **MLS Subgroups (Brendan's Proposal)**:
+    *   **Current Model Limitations**: The existing MLS model (one large group with individual devices as members) incurs high costs for consistency across devices and compromises user privacy (device visibility, tracking message sender).
+    *   **Subgroups Concept**:
+        *   Each user maintains a "subgroup" consisting of all their own devices.
+        *   These devices collectively control a "virtual client".
+        *   Virtual clients join "supergroups" with other users.
+    *   **Key Challenges & Solutions**:
+        *   **Private Key Generation**: Requires coordinated, forward-secure, post-compromise secure, and consistent private key generation across devices.
+            *   **Solution**: Export a secret from each subgroup epoch, build a secret tree from it, and use leaf nodes as seeds for private keys. Intermediate nodes are deleted for forward security. Device-specific leaf subsets prevent key reuse.
+            *   **Inter-device Communication**: An extension is added to KeyPackages/LeafNodes containing an encrypted hint about the secret tree leaf used, allowing other devices in the subgroup to derive the key.
+        *   **Application Message Key/Nonce Reuse**: Preventing multiple devices from reusing the same key and nonce for different messages.
+            *   **Solution**: Utilize MLS `reuse_guard` field. Different devices use different `reuse_guard` prefixes, passed through a pseudo-random permutation to prevent leaking sender identity.
+    *   **Benefits**: Enhanced privacy, simplified multi-device operational aspects, preserves MLS security properties, and critically, *does not require changing the MLS wire format*.
+    *   **Discussion**:
+        *   **DS Requirements**: Significant discussion on the requirements placed on the Delivery Service (DS) for preventing application message key reuse. While nonce reuse is a security concern addressed by the `reuse_guard`, key reuse for message decryption is a functionality concern.
+            *   Brendan clarified that the DS *should* prevent key reuse, but it's an application-layer decision *how* this is managed (e.g., DS fanning out messages to all subgroup devices, or a DS maintaining a hash set of used `sender`+`epoch`+`generation` combinations).
+            *   Concern raised about Federated settings where the DS might not have full knowledge of subgroups.
+        *   **Documentation**: Need to clearly state the properties and requirements in the draft, especially regarding abandoned clients and preserving Post-Compromise Security (PCS).
+        *   **Comparison to PPRF-based proposals**: Raphael noted the main difference with other proposals (e.g., PPRF-based) is the wire format; PPRF-based changes wire format but has minimal DS requirements, while Subgroups maintains wire format but imposes DS requirements.
+        *   **Mimi WG Context**: Potential application in the Mimi working group, but concern that DS requirements might hinder adoption in a federated environment if providers must implement it.
+
+## Decisions and Action Items
+
+*   **MLS Extensions Document Refinement**: The author team will proceed with the proposed reframing and reclassification of extensions and application components in the `draft-ietf-mls-extensions` document.
+*   **Targeted Messages (GitHub Issues #34, #30)**: Raphael will address these issues pending a decision on whether to keep the `Targeted Messages` extension within the main extensions document or move it to a standalone draft, considering its complexity.
+*   **Self Remove and Multiple Clients (GitHub Issue #29)**: The issue will be noted as a potential problem in specific environments but closed for now, as `self_remove` will proceed as currently specified. Virtual clients could provide a more robust solution in the future.
+*   **Weak vs. Strong Ordering Signal (GitHub Issue #24)**: This issue will be closed due to a lack of concrete need and the existing discussion in Mimi policy.
+*   **Missing Description for Content Type (GitHub Issue #30)**: This issue will remain open and be addressed as part of the overall refactoring of the extensions document.
+*   **Add Wire Format Compatibility to Architecture (GitHub Issue #28)**: This issue will remain open. Richard is assigned to add a section on negotiating support for new wire formats (e.g., for detached authenticated data) and general extension points.
+*   **Streamline Extensions (GitHub Issue #17)**: This issue will remain open and be addressed as part of the overall refactoring of the extensions document.
+*   **Add Group Context Encryption Mechanism (GitHub PR #32)**: Status remains "on Ron". This is not covered by the new AppSync framework.
+*   **Add Additional Credentials Extension (GitHub PR #38)**: The Pull Request will be merged after addressing Brendan's comments, particularly regarding Cipher Suites. This will remain an extension as it changes MLS behavior.
+*   **Mark Media Types as Suggested (GitHub PR #40)**: This Pull Request will be merged to improve consistency, with further edits to be made as part of the extensions document refactoring.
+*   **Update Editor List (GitHub PR #42)**: This PR is resolved and closed.
+
+## Next Steps
+
+*   **MLS Extensions Document**: The author team will proceed with the comprehensive refactoring and reclassification of the extensions document, targeting completion for Bangkok. All participants are encouraged to review the ongoing work (GitHub PR #43).
+*   **MLS Subgroups Draft**: Brendan will revise the `draft-ietf-mls-subgroups` to include more concrete examples of how Delivery Services can manage application message key reuse and further clarify the properties and requirements. The draft will continue to be discussed in the MLS WG, and its applicability to the Mimi WG will be explored.
+*   **Combiner Draft**: Participants are encouraged to submit comments on the `draft-ietf-mls-combiner` document, especially on parts other than the security considerations which have been recently updated.
+*   **Bangkok Session**: An allocation of two hours for the MLS session in Bangkok will be requested to accommodate anticipated discussions.

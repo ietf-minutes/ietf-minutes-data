@@ -1,0 +1,57 @@
+# [HPKE](../wg/hpke.html)
+
+## Summary
+
+The HPKE Working Group met to discuss open Pull Requests (PRs) and issues on the core and post-quantum (PQ) drafts. Key outcomes included agreement to merge several minor errata fixes and a PR for single-stage KDFs (pending a small update). A significant discussion revolved around the authenticated modes (`auth` and `auth_psk`), with a decision to proceed with a PR to remove them, although a re-chartering path for an "extension" document was suggested to preserve them. The provisional PR for Post-Quantum Hybrid KEMs was reviewed, acknowledging its dependency on CFRG draft stabilization. Discussions on providing guidance for pure PQ KEMs versus hybrid KEMs, and the potential for a "Recommended" column in the IANA registry, were deferred to the mailing list.
+
+## Key Discussion Points
+
+*   **Errata PRs (AATA)**
+    *   Small, mostly one- or two-word changes addressing previously agreed-upon errata.
+    *   No significant comments were raised, indicating general agreement on these fixes.
+    *   These changes clarify the description of the third parameter, change "fields" to "parameters," and add a description for "info" passed to the KDF.
+*   **IANA Registry Pointer Update**
+    *   A mechanical PR was noted to shift an IANA registry pointer, observing that RFC 9180 created the registries.
+*   **Single-Stage KDFs**
+    *   **Motivation:** The KDF API in RFC 9180 presumes a two-stage HKDF-like structure, which is not optimal for SHA-3 based primitives. This PR introduces a single-stage KDF interface for efficiency with SHA-3.
+    *   **Mechanism:** It replaces separate extract/expand stages with a single invocation, arranging inputs with length prefixing to avoid ambiguity (input from Ari was acknowledged).
+    *   **Input Lengths:** The length prefix function uses two-byte lengths, supporting inputs up to 65KB, which was deemed sufficient for plausible use cases like PSK IDs and info structures. A note about this new limit will be added.
+    *   **Charter Compliance:** The addition of single-stage KDFs is considered new functionality allowed by the charter, thus not requiring bit-level compatibility with RFC 9180 for these new modes.
+    *   **Proposed KDFs:** `shake` and `turbo_shake` (SHA-3 based) were proposed for registration.
+        *   `turbo_shake` offers performance improvements, but `shake` is more widely available (e.g., in Python cryptography library) and is in FIPS 202.
+        *   There was a sense that both should be registered due to their respective advantages and low cost of allocation.
+*   **Removal of Authenticated Modes (auth/auth_psk)**
+    *   **PR Status:** A newly created PR (minutes old) proposes the removal of `auth` and `auth_psk` modes.
+    *   **Implementer Feedback:** Corey Myers, speaking for the Crispen team (implementers of HPKE-RS on top of Librux), expressed a desire for `auth` (specifically `auth_psk`) to remain for hybrid needs, particularly for use with ML-KEM outputs as PSKs. He noted that existing implementations might continue to support RFC 9180 modes regardless.
+    *   **Rationale for Removal:** Richard Barnes noted that RFC 9180 would still exist for reference, easing concerns about removal. He also suggested that if these modes are critical, a re-chartering to create an "extension" document might be a path forward, which would also allow for better framing of security properties (e.g., for Erratum 7790). Stephen Farrell supported removal to streamline the specification, citing low usage in RFC 9180. Mike O'Neill noted that JOSE and COSE HPKE drafts had already removed these modes for simplification.
+    *   **Post-Quantum Considerations:** The authenticated modes complicate PQ analysis due to the lack of PQ KEMs with equivalent properties, though Corey clarified their use case did not rely on PQ authentication in these modes.
+*   **Post-Quantum Hybrid KEMs**
+    *   **Provisional Status:** This PR is provisional, awaiting stabilization of the CFRG hybrid KEM drafts, which define the generic scheme and concrete constructions.
+    *   **Proposed Combinations:** Three hybrid KEM combinations are currently envisioned, aligning with MLS requirements and CFRG design: P256+ML-KEM, X25519+ML-KEM, and P384+Big ML-KEM. These combinations use SHA-3 as their KDF.
+    *   **SHA-3 Dependency:** The current proposed combinations use SHA-3 for KDFs. There was a discussion about whether non-SHA-3 options (e.g., SHA-2 based) would be needed, particularly given CNSA 2.0 guidance. It was noted that those with strong opinions on this should raise them on the mailing list, potentially cross-posting to TLS and MLS lists.
+*   **Guidance on Pure PQ KEMs / "Recommended" Column**
+    *   **Issue:** Discussion arose regarding whether the document should provide guidance on the use of pure PQ KEMs versus hybrid PQ KEMs, or if the IANA registry should include a "Recommended" column.
+    *   **Differing Views:** Some argued against explicit guidance, citing the complexity and ongoing debate in other forums (like PQUIP) and HPKE's low-level nature. Others, including Stephen Farrell and Mike O'Neill, argued that due to the qualitatively different security characteristics (e.g., hybrid being "riskier" if one component fails but offering better "belt-and-suspenders" protection), some guidance or a "Recommended" column (similar to JOSE, COSE, TLS) is appropriate to aid implementers in making informed choices.
+    *   **Security Considerations:** Deb (AD) suggested that security considerations text might be appropriate to address the pros and cons of pure vs. hybrid, even if a "Recommended" column is not added.
+*   **IANA Registry "Comments" Field**
+    *   Briefly discussed a PR to add a "Comments" field to the IANA registry. The sense was that it might not be necessary given that "Specification Required" allows comments within the defining document. Rich dropped from the call, so further color on the motivation was not available.
+
+## Decisions and Action Items
+
+*   **Decision:** Merge the minor errata (AATA) PRs.
+*   **Decision:** Merge the IANA registry pointer update PR.
+*   **Decision:** Merge the Single-Stage KDF PR after adding a note about the 65KB length restriction for inputs.
+    *   **Action Item:** Editor to add a note about the length restriction to the single-stage KDF PR.
+*   **Decision:** Proceed with updating the PR for the removal of `auth` and `auth_psk` modes from the core draft.
+    *   **Action Item:** Editor to update the PR for `auth`/`auth_psk` modes based on discussion (potentially not removing them, but reflecting the consensus that the PR *as is* needs further thought or an alternative approach like a separate extension doc) and notify the mailing list.
+*   **Decision:** Defer merging the Post-Quantum Hybrid KEMs PR until the underlying CFRG hybrid KEM drafts have stabilized (anticipated in 1-1.5 months).
+*   **Action Item:** Discussion on the need for non-SHA-3 KDF options for hybrid KEMs should be taken to the mailing list, with cross-posting to the TLS and MLS mailing lists to gather broader input.
+*   **Action Item:** The discussion regarding providing guidance on pure vs. hybrid PQ KEMs (e.g., adding a "Recommended" column to the IANA registry or comprehensive text in Security Considerations) will continue on the mailing list to seek broader consensus.
+*   **Action Item:** The issue of adding an IANA registry "Comments" field will be closed unless further compelling reasons for its necessity emerge.
+
+## Next Steps
+
+*   Editors will proceed with merging PRs for which there was clear agreement.
+*   Editors will revise PRs where minor tweaks or notes were requested and notify the mailing list for final review.
+*   Key discussions (auth modes, guidance for PQ KEMs, non-SHA-3 KDFs) will continue on the HPKE mailing list, with relevant points cross-posted to TLS and MLS lists.
+*   The goal is to resolve all open issues and release updated draft revisions within the next couple of weeks, aiming for completion before IETF 119 in Madrid, where possible (acknowledging dependency on CFRG for PQ KEMs).

@@ -1,0 +1,59 @@
+# [TOOLS](../wg/tools.html)
+
+## Summary
+
+The TOOLS working group met to discuss ongoing development projects, infrastructure transitions, and operational updates. Key topics included the upcoming migration of core IETF applications to Azure, the continued development of the Purple and Red RFC Editor tools, and efforts to modernize various backend systems like the Data Tracker and Mail Archive with Python upgrades and blob storage integration. Initial discussions also touched upon the use of commercial or closed-source libraries within IETF tools and the necessity of PDF formats for meeting materials.
+
+## Key Discussion Points
+
+*   **Azure Transition:** The Data Tracker, Mail Archive, primary www server, and IMAP will transition from DigitalOcean to Azure on Thursday at 19:00 UTC. The outage window is reserved for two hours, but testing suggests it will be shorter. During this time, the Data Tracker, Mail Archive, and services relying on authentication (e.g., Wiki, MeetEcho login) will be unavailable. The www.ietf.org and rsync will remain available but with content frozen at the start of migration. A significant architectural change involves moving primary applications from managed databases to a self-hosted PostgreSQL cluster for improved performance and manageability. Updates will be posted on the status page.
+*   **IETF 123 Feedback and PDF Archiving:** A question arose regarding the necessity of converting all slides to PDF for MeetEcho and archiving, particularly due to auto-conversion issues. It was affirmed that PDF is currently required for both MeetEcho presentation and for long-term archiving due to format consistency, security, and integration needs. The possibility of MeetEcho supporting native animated slide formats would require IESG-level discussion and a query to the MeetEcho team.
+*   **Security Review Findings:** An external security review is in progress for the Data Tracker and cloud infrastructure. Initial findings highlight issues primarily within `xml2rfc` and its usage by the Data Tracker, specifically concerning its ability to interact with external resources. Fixes are planned to address these potential vulnerabilities.
+*   **ID-NITS 3 Status:** ID-NITS 3 is ready for further testing. A few non-useful error messages need to be resolved before its production rollout, which is anticipated by the September tools call. Participants were encouraged to test it with existing drafts.
+*   **Mail System Modernization (NMF):** Efforts have begun to diagram the current mail system's behavior, with the goal of refactoring the complex existing implementation into more manageable and purposefully deployed components.
+*   **Cloudflare Managed Challenges and Blob Storage:** During IETF 123, significant resources were spent reducing Cloudflare managed challenges for meeting materials. The ultimate solution involves storing artifacts in blob storage and serving them from Cloudflare's edge, eliminating the need for challenges. Currently, a limitation exists where cached documents can still trigger challenges, which Cloudflare is investigating.
+*   **Data Tracker Updates:**
+    *   **Password Reset:** The password reset process before IETF 123 went relatively smoothly, with minor issues related to mail server rejections or misconfigured accounts. This lays the groundwork for a future transition to an external authentication provider.
+    *   **"No Person User" Cleanup:** Approximately 6,000 unusable Data Tracker user accounts that lack associated person records (a historical artifact) are slated for removal in the coming weeks. This will clean up accumulated "croft" and improve auditing of new accounts.
+    *   **Python and Django Upgrades:** The Data Tracker is being upgraded from Python 3.9 (end-of-life in October) to Python 3.12. A sandbox instance is available for testing at `dt-py312.dev.ietf.org`. The next major upgrade will be to Django 5.2 (Django 4.2 goes end-of-support next April), which will then allow for a move to Python 3.13 or 3.14. This Django upgrade is expected to be non-trivial, involving significant refactoring for deprecations and time zone management.
+    *   **Blob Storage Integration:** Drafts, RFCs, meeting slides, and other artifacts, historically stored on disk, are being transitioned to blob objects. The Data Tracker's authoritative store will be a separate Postgres database, with copies placed in Cloudflare R2 for edge access. Infrastructure is largely complete; existing artifacts will be loaded in upcoming cycles.
+*   **Meeting Agenda IAL Files:** The generation of calendar files for meeting agendas has been refactored to use Python's `ical` library, replacing a difficult-to-maintain custom template. This improves RFC 5545 conformance, loading speed, and maintainability.
+*   **XML2RFC Development:**
+    *   Work is underway to add restrictions to how `xml2rfc` processes input and to enhance access control, following security review findings. A release addressing these fixes is planned.
+    *   An upcoming release will fix the `no-external-js` flag to ensure it correctly prevents `meta-min.js` from being added.
+    *   A grammar change was made before IETF 123 that "jumped the gun" on the formal process for such changes. Jay is preparing a message for RSWG to outline future procedures.
+*   **BibXML Service Prototype:** A prototype is being developed to use `rebos-gems` for BibXML data and serve it from a Cloudflare blob store. This aims to provide more flexible upgrades to data sources compared to the current interconnected system with outdated gems, and to improve search capabilities.
+*   **WWW, SVG, and RFC2HTML Updates:**
+    *   `www.ietf.org` will see an upcoming release with BackVetail 7.0 LTS and Django 5.2.
+    *   SVG will have a release with bug fixes and improvements to the PI publishing workflow.
+    *   `rfc2html` will include community-contributed command-line tool improvements, drop Python 3.8 support, and use a PI secured publishing workflow.
+*   **TLP6 and IPR Declaration:** The IPMC Trust is working towards the release of TLP6. Updates to `xml2rfc`, `id-nits 2`, and `id-nits 3` are planned to accept the new TLP and trust name. Submissions will be required to conform to the new IPR declaration towards the end of the year.
+*   **Mail Archive Updates:** Two recent releases prepared the mail archive for the Azure migration, including support for Azure blob storage and ElasticSearch snapshots. Upcoming work includes upgrading to Python 3.12, implementing blob storage to replace NFS, and improving the search results page (currently a hand-rolled infinite scroll that hits Cloudflare rate limits, looking towards a React-style component).
+*   **Purple and Red RFC Editor Tools:**
+    *   **Purple:** Current development aims to make Purple actively usable by the RPC for feedback and iteration. New features include handling document dependencies (normative references), importing assignments from the old system, and reordering authors for drafts. Work is also underway on mapping labels from the old system to more self-explanatory names.
+    *   **Data Reconciliation:** An extensive and largely manual process is ongoing to reconcile authors between the existing RFC Editor database and the Data Tracker when importing data into Purple.
+    *   **Architectural Challenge:** A significant architectural problem is coordinating ongoing data changes (e.g., person merges in Data Tracker, RFC metadata updates in RFC Editor database) reliably between disparate services, especially considering potential service unavailability.
+    *   **Red:** Focus has been on RFC info pages, ensuring responsive design across various tablet and mobile screen sizes (down to 180 pixels wide). A unique algorithmic font size is being implemented for plain text RFCs, which dynamically adjusts based on the maximum line width (e.g., 80 characters) to optimize readability on different displays.
+*   **Use of Paid Libraries/Components:** An initial discussion was held regarding the IETF's long-standing preference for open-source components versus the potential need for commercial or closed-source tooling for specific features, particularly in production environments. Opinions varied, with some suggesting it might be acceptable for backend components but not for user-facing developer tools where full access is desired. This topic requires further discussion.
+
+## Decisions and Action Items
+
+*   **Decision:** The migration of core IETF applications (Data Tracker, Mail Archive, www, IMAP) to Azure will proceed on Thursday, as scheduled.
+*   **Decision:** Approximately 6,000 "no-person user" accounts in the Data Tracker will be removed in the next couple of weeks.
+*   **Decision:** PDF remains the required format for meeting slides in MeetEcho and for archiving in the IETF proceedings.
+*   **Action Item:** All interested participants are encouraged to experiment with ID-NITS 3 and provide feedback on any issues.
+*   **Action Item:** The discussion on the use of paid/commercial libraries and components in IETF tools will be continued on the tools-discuss mailing list.
+*   **Action Item:** Jay to prepare a message for the RSWG explaining the process and rationale for future grammar changes, acknowledging a slight overstep with the recent `xml2rfc` grammar change.
+
+## Next Steps
+
+*   Complete the Azure migration of core IETF applications.
+*   Finalize and roll out ID-NITS 3 to production.
+*   Continue implementing blob storage for all IETF artifacts.
+*   Proceed with mail system stabilization and refactoring efforts (NMF).
+*   Address and fix security vulnerabilities identified in `xml2rfc` and related systems.
+*   Continue Data Tracker Python and Django upgrades, and further integrate blob storage.
+*   Continue development of Purple and Red, including data reconciliation and solutions for architectural data synchronization challenges.
+*   Work towards enabling TLP6 adoption and requiring the new IPR declaration in submissions by the end of the year.
+*   Explore Cloudflare Stream integration for MeetEcho recordings.
+*   Engage in further discussion on the tools-discuss list regarding the use of paid libraries and components.

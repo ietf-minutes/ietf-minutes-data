@@ -1,0 +1,72 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held an interim meeting to discuss updates for Draft 13, including several Pull Requests, and to present and discuss proposals for handling "new group" requests from subscribers. While Draft 13 is being prepared, Draft 12 remains the interop target for IETF 119 Madrid. A significant portion of the meeting was dedicated to evaluating two approaches for new group requests: a specific parameter-based mechanism (PR 1060) and a more general feedback mechanism. The discussion highlighted the importance of deduplication for scalability. The group decided to close a PR related to duplicate namespace/name usage and to hold PR 1060 pending further discussion in Madrid, with a strong interest in exploring a more generic feedback signal.
+
+## Key Discussion Points
+
+*   **Administrative Updates**:
+    *   This was the last interim meeting before IETF 119 Madrid.
+    *   The IETF Note Well was reviewed.
+    *   Feedback on the MeetEcho platform was solicited.
+    *   Will Law volunteered as scribe.
+    *   Draft 13 is in preparation, but Draft 12 remains the official interop target for Madrid.
+
+*   **Draft 13 Pull Requests (Editors' Time)**:
+    *   **ALPN for Version Negotiation**: Discussion re-iterated the group's preference for using ALPN for version negotiation in MOQ due to the complexity of in-band negotiation with QUIC streams and its alignment with WebTransport. Implementations in browsers are reportedly nearing completion. The PR remains open, awaiting updates and implementations.
+    *   **Duplicate Namespace/Name (PR 108)**: A PR suggesting that publishers be prevented from using the same tuple for both a namespace and a name was discussed. The sense of those present was that while the intent was to avoid confusion, there was no functional breakage if not enforced, and that enforcing it would create unnecessary complexity.
+    *   **Track Status (Unspecified PR)**: A PR aimed at clarifying the definition and behavior of track status messages was reviewed. Specifically, it addressed whether relays could subscribe to fulfill a track status (yes, if authorized) and whether it creates downstream subscription state (no). The author (Suhas) indicated satisfaction with the clarifications.
+    *   **Editorial and Wire Format Changes**: Several other PRs were briefly mentioned:
+        *   Renaming `subscribe announces` to `subscribe namespace` (PR 1055) to better reflect its function of soliciting publish messages.
+        *   Renaming `announce` to `publish namespace` (PR 1042).
+        *   Wire format changes for delta encoding (PR 949) and addressing flow control blocked streams. These are not interop targets for Madrid and are not considered disruptive to land.
+
+*   **New Group Request Proposals**:
+    *   **Alan's Proposal (PR 1060 - "Dynamic Groups")**: This proposal uses a `new group request` parameter within `subscribe update` messages. Key features include:
+        *   Publisher opt-in via a `dynamic groups=1` parameter in `PUBLISH` or `SUBSCRIBE`. Relays must preserve this.
+        *   The `new group request` parameter carries the largest group ID seen by the subscriber + 1, or 0 if no group ID is known.
+        *   Publishers *should* issue a new group if the request is 0 or greater than their current group, with the publisher determining the new group ID and timing.
+        *   Relays are designed to maintain only one outstanding `new group request` per track and drop stale requests for older group IDs.
+        *   Compared to a previous proposal (PR 1031), PR 1060 uses a parameter instead of a new message, allows the request in initial `SUBSCRIBE`, has a more flexible value for the request, makes the publisher's action "should" instead of "must", and defines a stricter relay deduplication mechanism.
+        *   The parameter-based approach was favored by several participants for its implementation straightforwardness.
+    *   **Victor's Alternative ("General Feedback Mechanism")**: This approach proposes leveraging existing MOQ mechanisms where a publisher can define a feedback namespace in its catalog. Subscribers would then `PUBLISH` feedback objects into this namespace.
+        *   **Advantages**: Reuses existing, well-understood MOQ tools and object delivery optimizations, reducing new complexity.
+        *   **Disadvantages**: Requires more state, may not scale for N^2 communication problems in large conferences due to lack of relay-level deduplication. Publishers would need to perform their own deduplication.
+        *   Victor questioned if creating specific mechanisms like PR 1060 would duplicate efforts if a more general feedback mechanism is later introduced.
+
+*   **Discussion on New Group / Generic Feedback**:
+    *   The preference was to use a parameter for new group requests rather than a new message frame.
+    *   Scalability in large-scale scenarios (e.g., 100,000 users in a conference) was a primary concern, making relay-level deduplication a critical feature.
+    *   Colin suggested a refinement to PR 1060's relay handling, proposing that a relay should track and forward the *greatest* requested group number, abandoning older outstanding requests, to better handle distributed relay networks and concurrent requests. Alan agreed to consider this.
+    *   There was significant interest in a more generalized subscriber-to-publisher feedback mechanism beyond just keyframe requests, with potential benefits for non-media applications like sensor networks and many-to-one aggregation.
+    *   Suhas emphasized the urgent need for a solution to the keyframe request use case, particularly for active speaker switching in conferencing (requiring 300-400ms latency), where PR 1060 has shown promise. He advocated for landing PR 1060 now to gain experience and then exploring a more generic solution.
+    *   Ian expressed concern about edge cases introduced by specifying the group ID in the request, suggesting that the response might be a better place for this information.
+    *   The chair summarized the interest in both the specific new group parameter as a stopgap and the generic feedback signal for future development.
+
+*   **Fetch Optimization**:
+    *   Will presented a proposal to optimize fetch responses by encoding common object behaviors (e.g., consistent group ID, incrementally increasing object number).
+    *   This involves adding a one-byte serialization field that, while incurring an extra byte initially, leads to significant byte savings for subsequent objects in a fetch stream (e.g., 2 bytes per object for low-bitrate audio, saving 60 bytes/sec for 30 objects/sec).
+    *   Further work is needed to formalize subgroup encodings for layered tracks.
+    *   The proposal was generally well-received as a step towards making fetch streams more efficient.
+
+## Decisions and Action Items
+
+*   **Decisions**:
+    *   The Pull Request (PR 108) concerning preventing publishers from using the same tuple for namespace and name will be closed.
+    *   The `new group request` mechanism, if adopted, should utilize a parameter rather than a new message frame.
+    *   The current Draft 13 target (PR 1060) is not considered an interop target for IETF 119 Madrid, which will continue to use Draft 12.
+
+*   **Action Items**:
+    *   Suhas to finalize review and remove requests for changes on the Track Status PR.
+    *   Editors to land approved editorial and wire format PRs (e.g., 1055, 1042, 949, and flow control related) for Draft 13, pending final reviews by the end of day.
+    *   Alan to consider refinements to the relay handling logic in PR 1060 to manage outstanding `new group request` parameters more dynamically (e.g., always tracking the highest requested group ID).
+
+*   **Deferred / Discuss Further**:
+    *   Landing of PR 1060 (Dynamic Groups) will be held pending further discussion at IETF 119 Madrid, to avoid potential churn if a more generic solution for subscriber feedback is adopted.
+
+## Next Steps
+
+*   **IETF 119 Madrid Agenda Requests**: WG members are encouraged to send agenda requests to `moq-chairs@ietf.org` by tomorrow (end of day) for topics to be discussed in Madrid, especially for open subjects that could benefit from broader community input.
+*   **Generic Feedback Signal**: Enthusiasts for a generic subscriber-to-publisher feedback signal are encouraged to meet informally at IETF 119 Madrid for whiteboard discussions and to develop a proposal for discussion at a future virtual meeting, ideally before IETF 120 Toronto.
+*   **Fetch Optimization**: Further discussion on Will's Fetch Optimization proposal and a systematic approach to data plane compression is encouraged, potentially informally at IETF 119 Madrid.

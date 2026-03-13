@@ -1,0 +1,46 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting focused on two main topics: the status and proposed changes for `draft-ietf-core-uri-path-abbrev`, and a discussion regarding the IANA registry for CoAP Resource Type Target Attribute Values, specifically how to register ranges and update RFC 6690. Key decisions were made to simplify the URI path abbreviation draft by making the option non-repeatable, and a path forward was outlined for updating IANA registry practices for CoAP resource types.
+
+## Key Discussion Points
+
+### Abbreviated URI Paths (draft-ietf-core-uri-path-abbrev)
+
+*   **Draft Update**: Christian B. provided an update on version 02 of the draft, noting its new name, `URI-Path-Abbrev`, and its proposed standard track status. The draft is currently under a call for adoption.
+*   **Repeated Options Semantics**:
+    *   Previously, homework was to define a default behavior for repeated options, such as appending text strings.
+    *   Christian explained that for EST (Enrollment over Secure Transport) sub-resources (e.g., `/.well-known/EST/certs`), it is more efficient to register the complete path as a single numeric abbreviation (e.g., a specific number for `/.well-known/EST/certs`) rather than relying on string appending. This approach is more compact and simplifies implementation.
+    *   The use of opaque identifiers in EST (e.g., `/.well-known/EST/someopaqueid/certs`) was discussed. The current sense is that these are not frequently used in CoAP contexts, and therefore, not compressing them at all would simplify the specification.
+    *   If full EST paths are registered as single numbers, the need for a general "append text strings" mechanism for repeated options significantly diminishes or disappears.
+*   **Client Fallback**: For applications where abbreviation support is uncertain, clients should be prepared to send the full URI path. Specifications introducing new abbreviations should mandate server support, reducing fallback needs.
+*   **Bill's Questions**:
+    *   **Purpose**: The option shortens the serialization of URI paths, not the URI path itself.
+    *   **Use Cases**: The primary driver is Bruski to save bytes. Other potential use cases include `/well-known/core` and `/well-known/rd`, as well as ADHOC and CoAP over Bluetooth advertisements, where byte savings are critical.
+    *   **Complexity vs. Long Form**: It was acknowledged that implementations might opt for the long form if unsure of abbreviation support. Servers only need to support abbreviations for resources they already provide. Christian offered to provide code size comparisons.
+    *   **Mutual Exclusivity**: The `URI-Path-Abbrev` option is mutually exclusive with the `Uri-Path` option; encountering both is an error. There is no mechanism to "go up" the path hierarchy using additional options after an abbreviation.
+    *   **Query Parameters**: The option (designated number 13, before `Uri-Query`) is explicitly for paths and does not abbreviate query parameters. Queries remain separate.
+*   **Option Naming**: A suggestion was made to use "well-shop-inc" instead of "uri-path-abbrev".
+*   **Server Signaling**: The idea of a server using the option in a response to signal support was discussed. This was deemed too complex due to the option being critical in a request, which would cause unsupported clients to fail. It was generally agreed that negotiation is best avoided for this option.
+
+### IANA Registry for CoAP Resource Types (RFC 6690 Update)
+
+*   Torless E. presented a draft (from ENMA) that proposes updating RFC 6690 to add entries to the "CoAP Resource Type Target Attribute Values" range table.
+*   **Problem**: The current range table is not a proper IANA registry; changes require updating RFC 6690. The draft proposes adding entries for Bruski-related resource types with specific requirements.
+*   **Christian's Suggestion**: Instead of adding new *range entries* directly to the RFC 6690 table, a better approach would be to generalize the registry to allow prefixes in the *main* registry table itself, and define how such prefix registrations alter registration policies. This could be done in an appendix to Torless's draft, as it doesn't change a protocol but rather a registry.
+*   **Review Procedure for Ranges**: Discussion on whether range entries should require "ITF review" (i.e., an RFC) or allow external SDOs to define their own range rules. Concerns were raised about external documents defining requirements without IETF review.
+*   **ESCO's Point**: Making the range table a separate IANA registry might add an extra level of indirection and complexity for casual readers.
+*   **Alternative Structure**: A discussion on whether to create a *new, dedicated IANA registry* for range definitions (e.g., defining rules for "Bruski*" prefixes), which would then be referenced by the `rt` and `if` registries. This would keep the main tables simpler and address the issue of requiring RFC 6690 updates for every new range rule. This was generally seen as a more flexible and robust solution than inlining ranges or constantly updating RFC 6690.
+
+## Decisions and Action Items
+
+*   **Decision**: The `URI-Path-Abbrev` option (`draft-ietf-core-uri-path-abbrev`) will be simplified by making it *non-repeatable*. Future extensions for complex repetition mechanisms will be considered only if a clear use case emerges. Implementations encountering repeated options or unrecognized values should return an error.
+*   **Action Item**: Christian B. to revise `draft-ietf-core-uri-path-abbrev` (D03) to reflect the decision on non-repeatability, incorporate the strategy of registering full EST sub-paths as single numbers, and remove the need for arbitrary string appending. He will also consider adding code size comparison examples.
+*   **Action Item**: Torless E. to explore with IANA the possibility of establishing a *new, dedicated IANA registry* for CoAP resource type *range definitions*, which would specify registration policies for prefix-based resource types (e.g., "Bruski*"). This new registry would then be referenced by the existing `rt` and `if` registries.
+
+## Next Steps
+
+*   Christian B. will update `draft-ietf-core-uri-path-abbrev` based on the discussion and decision.
+*   Torless E. will engage with IANA to investigate the feasibility of creating a dedicated registry for CoAP resource type range definitions.
+*   Further discussion on the mailing list is encouraged, especially regarding examples of when URI path abbreviation would be beneficial in specific constrained environments (e.g., 802.15.4).

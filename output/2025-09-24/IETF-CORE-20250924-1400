@@ -1,0 +1,61 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting focused on the status of three key documents: the CRI (Constraint Resource Identifiers) document, the SIDPEN (YANG Schema Item Description Private Enterprise Number) document, and the recently adopted CoAP Abbreviated Path Options document. The discussion also included a proposed optimization for Constrained BRski discovery, which explored the use of unspecified IPv6 addresses in CoAP link-format. Key decisions included advancing the CRI document to ISG evaluation, preparing the SIDPEN document for Working Group Last Call, and formally adopting the CoAP Abbreviated Path Options document.
+
+## Key Discussion Points
+
+*   **CRI (Constraint Resource Identifiers) Document Status**
+    *   The document has passed AD review and is currently awaiting ISG evaluation.
+    *   Dash-24 addressed most AD review comments.
+    *   Two remaining issues are being addressed via pull requests:
+        *   **More examples**: The document will point to the CORE WG wiki at `wiki.ietf.org` for additional examples and test vectors (PR 138). The wiki now has a page pointing to the GitHub source repo for href test vectors, providing a stable link for evolving content.
+        *   **ToASCII processing for `regname`**: Clarification that ToASCII processing for `regname` in the UI authority part is explicitly out of scope for the CRI document (PR 139). This aims to avoid requiring full Unicode tables on constrained devices and treats ToASCII as a UI concept, not a CRI concept.
+    *   A sense of those present indicated satisfaction with the proposed resolutions for these issues.
+
+*   **SIDPEN (YANG Schema Item Description Private Enterprise Number) Document Status**
+    *   This is a Working Group document intended to provide a "zero-threshold" mechanism for third-party YANG models to obtain numeric Schema Item Identifiers (SIDs) using Private Enterprise Numbers (PENs).
+    *   Current YANG-CBOR (RFC 9254) requires SIDs, with a formal mechanism for RFCs, but an easier method is needed for ad-hoc YANG models.
+    *   Discussion from May highlighted concerns about ensuring that "zero effort" doesn't mean "zero responsibility," particularly regarding the availability of SID files.
+    *   The author plans to add "implementer notes" or text to the document clarifying expectations for authors to make their SID allocations from PENs easily accessible. This is not a technical change but sets expectations.
+
+*   **Constrained BRski Discovery Method (Unspecified Address Discussion)**
+    *   Esko presented a proposal from the ANIMA WG related to Constrained BRski discovery using unsecured CoAP and link-local addresses.
+    *   The current protocol for discovering a Joint Proxy involves a node sending a CoAP request for a specific resource type (`brewski.jp`) and receiving a link in response. The joining device then contacts the proxy using the *source address* of the response message, not necessarily the address specified in the returned link.
+    *   **Proposed optimization**: To reduce overhead and bytes, it was suggested to use the unspecified IPv6 address `[::]` in the returned link, implying the client should use the sender's IP address.
+    *   **Concerns raised (Karsten)**:
+        *   The unspecified address `[::]` has a defined meaning (e.g., "self" or "any local address") and giving it a new, implicit meaning could cause backward compatibility issues and unexpected behavior (e.g., web browsers and OS kernels often resolve `[::]` to `[::1]` or a local host address).
+        *   Such usage could introduce security vulnerabilities (e.g., cross-protocol attacks) by leading clients to unintended local addresses.
+        *   The link-format relies on URI resolution (RFC 3986), which does not support this type of partial compression (retaining the server's host while specifying a different port).
+    *   **Alternative suggestions**:
+        *   If the primary goal is to discover port numbers and protocol variations rather than a full link, consider defining a new, compact media type (e.g., `application/brewski+cbor`) for the discovery response. This would allow explicit encoding of necessary information (e.g., a CBOR array of port numbers and profiles) without misusing link-format semantics.
+        *   Advanced compression/deduplication could be considered with CORAL (Concise Object Representation for Application Links) in the future, though CORAL's serialization is still evolving.
+    *   The general sense was that using `[::]` as a shorthand for "sender's address" in this context is problematic due to existing semantics and potential security implications. The alternative of a dedicated, compact media type for discovery responses should be explored further.
+
+*   **CoAP Short Paths Document Adoption**
+    *   The document, which was previously in "call for adoption," received positive feedback on the mailing list.
+    *   Discussion around the document title: "short paths" is a misnomer, as the path itself is not shortened, but an abbreviated form is used. The option name used in the draft is `Ebrev` (for "abbreviation").
+
+## Decisions and Action Items
+
+*   **CRI Document**:
+    *   **Decision**: The Working Group is generally happy with the proposed resolutions in PR 138 and PR 139.
+    *   **Action Item**: Karsten to signal the AD for ISG evaluation within the next 24-48 hours, assuming no further objections or comments are received. Individuals are encouraged to review PRs 138 and 139.
+*   **SIDPEN Document**:
+    *   **Action Item**: Author (Karsten) to submit a -02 draft including implementer notes/text to clarify expectations for SID file availability.
+    *   **Action Item**: Initiate a Working Group Last Call for the SIDPEN document once the -02 draft is published.
+    *   **Action Item**: Chairs will begin looking for a document shepherd.
+*   **Constrained BRski Discovery Method**:
+    *   **Decision**: The proposed use of `[::]` (unspecified IPv6 address) as a shorthand for the sender's address in link-format for discovery responses is deemed problematic due to existing URI semantics, potential for misinterpretation by clients, and security concerns.
+    *   **Action Item**: Esko to consider alternative approaches, such as defining a new, compact CBOR-based media type for discovery responses that explicitly carries the necessary information (e.g., port numbers, protocol variations) without misusing link-format semantics.
+*   **CoAP Short Paths Document**:
+    *   **Decision**: The document is formally adopted as a Working Group document.
+    *   **Action Item**: Karsten to update the document name to align with the option name `Ebrev` (e.g., "CoAP Abbreviated Path Options" or similar) upon submission as a Working Group document.
+
+## Next Steps
+
+*   CRI document to proceed to ISG evaluation.
+*   SIDPEN document to be revised with implementer notes and then enter Working Group Last Call.
+*   Discussion on Constrained BRski discovery to continue, focusing on alternative compact media types for discovery results.
+*   The newly adopted CoAP Abbreviated Path Options document will be revised for name alignment.

@@ -1,0 +1,51 @@
+# [DELEG](../wg/deleg.html)
+
+## Summary
+
+The DELEG interim meeting focused on two primary topics: the relationship and potential divergence of the DELEG specification from the SVCB specification, and the expected behavior of authoritative servers and recursive resolvers when both NS and DELEG records are present for a zone. A key theme was the need to define DELEG's core functionalities before finalizing its wire format. Discussions also covered the complexities of fallback mechanisms, the desire for direct IP-based delegation, and the operational implications of synthesizing NS records from DELEG information. The working group provided direction for ongoing mailing list discussions and the next draft iteration.
+
+## Key Discussion Points
+
+*   **Agenda & Scope:**
+    *   The proposed agenda included discussion on DELEG's divergence from SVCB and NS/DELEG record interaction.
+    *   A suggestion was made to include the topic of delegating directly to IP addresses rather than names.
+    *   General agreement to focus on the desired capabilities and functions of DELEG (form follows function) before delving into wire format specifics.
+    *   A need for "marching orders" for document authors was identified.
+
+*   **DELEG Capabilities and SVCB Relationship:**
+    *   Requirements for DELEG include direct/indirect delegation (e.g., "include" mode), extensibility, future handling of DS records, and flexible metadata/parameters for name servers.
+    *   The concept of delegation directly to IP addresses, bypassing name resolution, was raised as a potentially significant new capability.
+    *   Discussion arose on whether stub-to-recursive and recursive-to-authoritative DNS interactions should be treated as a "single DNS protocol" or distinct protocols.
+        *   One perspective advocated for architectural parallelism and code simplicity by reusing SVCB's transport parameter set for transport establishment.
+        *   A counter-perspective argued that these are fundamentally different protocols with distinct discovery mechanisms, connection management rules, and semantics (e.g., the RD bit).
+    *   While there was openness to reusing SVCB's key-value pair structure for attributes and possibly its registry, there was also a desire to remove or modify prescriptive SVCB elements like mandatory priority and name fields if they don't align with DELEG's specific use cases (e.g., for glue records).
+    *   The importance of ensuring DELG can convey all necessary information for resolver-authoritative exchanges, potentially including transport-related attributes, was emphasized.
+
+*   **NS and DELEG Record Interaction (Fallback Scenarios):**
+    *   A central concern was how authoritative servers and recursive resolvers should behave when both NS and DELEG records exist for a delegation.
+    *   A strong sentiment was expressed against automatically "falling back" from DELEG records to NS records if DELEG is requested and available, citing potential security issues due to unsigned NS records.
+    *   Clarification: "Not falling back" means the initial response to a DELG-enabled query should *only* contain DELG records. If these DELEG records are unusable (e.g., broken "include" chain, unresponsive direct address), the resolver *may then* initiate a *new* query without the DELG bit set (or an explicit NS query). The initial response should not return both.
+    *   The discussion touched on how to express desired transport fallback (e.g., preferring encrypted transport but allowing unencrypted if necessary) within DELEG itself, possibly through multiple DELEG records or explicit service parameters, rather than relying on implicit protocol fallback.
+    *   The group indicated a need for a comprehensive enumeration (e.g., tables or matrices) of all possible combinations of resolver capabilities, authoritative server capabilities, and record presence/support to clearly define expected behavior.
+    *   Operational concerns were raised regarding the ability of zone maintainers or registries to synthesize NS records and associated glue from DELEG records, particularly if DELEG records specify only IP addresses without names. This sparked a debate on whether DELEG records *must* have an NS equivalent or if the "NS world" and "DELEG world" should remain distinct. The idea of a parent zone inventing arbitrary, unique names within its own bailiwick for glue was suggested.
+
+*   **Document Structure and Future Types:**
+    *   A question was raised about potentially splitting the DELEG specification into multiple documents for manageability, with a counter-argument for keeping it as a single, well-structured document to avoid review complications and cross-referencing issues.
+    *   A proposal to consider allowing for more "parent side types" (like DS and DELEG) to enable a flexible range of future delegation extensions was mentioned for future discussion.
+
+## Decisions and Action Items
+
+*   **Mailing List Discussion Direction:**
+    *   The working group will engage in extensive mailing list discussions, potentially utilizing tables, to outline combinations of resolver and authoritative server capabilities and record presence/support. This effort aims to define the expected behavior, especially concerning NS/DELEG record interaction and fallback scenarios.
+    *   Peter requested that participants start thinking about "nameless glue" or direct IP-address delegation to inform future discussions.
+    *   Roy indicated he would propose a discussion in Madrid about allowing a range of "parent side types" beyond DS and DELEG.
+
+*   **Document Author Guidance for Draft-01 (July 7th Cut-off):**
+    *   Document authors should focus on updating the text in draft-01 to address the handling of NS records in the authoritative section when DELEG records are present, specifically clarifying the expected behavior regarding the inclusion of NS records and the fallback from DELEG to NS.
+
+## Next Steps
+
+*   **Immediately:** Initiate mailing list discussions on the NS/DELEG interaction and fallback scenarios, starting with combinations of recursive and authoritative capabilities.
+*   **By July 7th (Draft-01 Cut-off):** Document authors to produce draft-01 incorporating text on how NS records are handled in the authoritative section when DELEG records are present.
+*   **Ongoing:** Continue discussions on "nameless glue" and IP-based delegation.
+*   **Madrid Meeting:** Roy will propose a discussion on whether to allow a range of new "parent side types."

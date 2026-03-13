@@ -1,0 +1,59 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group held an inter-meeting to discuss two primary topics. The first centered on the handling of conditional query parameters in CoAP Observe, specifically addressing the server's behavior when encountering unknown parameters and the broader web principles of URI control. The discussion explored the role of an `if=` (interface) attribute for discoverability and the implications of "must understand" semantics. The second topic was a proposed individual submission concerning the use of Private Enterprise Numbers (PENs) to derive SIDS (Symmetric IDentifiers) for YANG-to-CBOR mappings, with a view towards working group adoption.
+
+## Key Discussion Points
+
+### Conditional Query Parameters for CoAP Observe
+
+*   **Problem Statement (Esco)**: The `core-conditional-attributes` draft defines conditional query parameters (e.g., `C.step`) for CoAP Observe to filter notifications. A key question is how a server should react to an unknown conditional query parameter – specifically, whether to treat it as an error or to ignore it. Ignoring it might lead to a client receiving more notifications than desired, but allows the observe operation to proceed.
+*   **Web Principles and URI Control (Karsten)**:
+    *   Clarified that "conditional attributes" in the draft refers to URI query parameters, not CoAP target attributes.
+    *   Referenced RFC 66, RFC 9110 (HTTP Semantics), and BCP 190 ("Get Off My Lawn") to emphasize that the server maintains full control over its URI space. Each unique query component identifies a distinct resource.
+    *   Prefixing query parameters (e.g., `C.`) does not inherently create a special category outside server control, as the prefix itself is subject to collision risk (BCP 190).
+    *   HTML forms demonstrate server-driven URI construction, allowing clients to navigate the server's namespace. APIs, conversely, often require out-of-band human understanding for implementation.
+    *   The HTTP QUERY method, under development, reinforces the principle that control of the URI space is always with the server.
+    *   The discussion explored whether these "big web" principles apply directly to the "thing web" or if tweaks are necessary, especially to enable cross-proxies.
+*   **Server Behavior and Discovery**:
+    *   A proposal was made to define an `if=` (interface) attribute for resources to declare support for conditional query parameters. This would allow clients to discover supported functionality and enable servers to indicate a commitment to specific parameter conventions (e.g., all `C.` parameters following the conditional attribute scheme).
+    *   The most future-proof solution for unknown conditional query parameters was generally seen as "ignoring" them, meaning the observe operation would still work, but the filtering might not apply. This is different from a general application filter, where ignoring could lead to an oversized response and server overload.
+*   **"Must Understand" Semantics (Dave Robin)**:
+    *   The concept of "must understand" for query parameters was raised, similar to critical/elective options in CoAP.
+    *   For some parameters (e.g., rate limiting, value step), ignoring them might be acceptable. However, for filtering parameters where ignoring them could lead to an overwhelming response (e.g., too much data, server overload), the client might need to assert a "must understand" requirement.
+    *   The client might decide whether a parameter is critical based on context, potentially sending the same query with different "must understand" indications.
+    *   The CoAP options mechanism was noted as a potential but currently unused parallel for expressing "must understand."
+*   **Error Codes and Problem Details**:
+    *   Discussion on appropriate error codes:
+        *   `4.04 Not Found` was suggested by Karsten based on the strict URI doctrine, but Dave Robin noted this can be counter-intuitive for developers who see query parameters as modifiers to an existing resource.
+        *   `4.00 Bad Request` was suggested by Dave Robin as a more developer-friendly option for invalid query parameter syntax.
+        *   `5.03 Service Unavailable` might occur if ignoring a critical filter parameter leads to server overload.
+    *   RFC 9290 (Concise Problem Details) was identified as the appropriate mechanism for providing structured, machine-readable diagnostic information in error responses (e.g., listing unrecognized parameters or parameter out-of-range issues).
+    *   A standard problem detail key for unrecognized query parameters would be beneficial.
+
+### Private Enterprise Number SIDs for CoAP YANG
+
+*   **Context (Karsten)**: The `core-conf` work resulted in YANG-to-CBOR mapping (RFC 9595), which uses numeric SIDS instead of text-based identifiers for schema nodes.
+*   **Proposal**: An individual submission proposes a mechanism to derive 64-bit and 32-bit SIDS based on a Private Enterprise Number (PEN).
+    *   This offers a "zero-threshold" approach for organizations that already have a PEN, allowing them to define SIDS for private YANG specifications without needing IANA registration.
+    *   The draft defines ranges: 100,000 64-bit SIDS and 10,000 32-bit SIDS per PEN (with an initial PEN limit for 32-bit SIDS).
+    *   The document's purpose is to be placed in the RFC editor repository, ensuring future reference for these derived SID spaces without ongoing expert management.
+*   **WG Scope (Esco)**: Confirmed that this work is within CORE's scope, as RFC 9595 (which introduced SIDS) was a CORE WG item.
+*   **List Discussion (Marco)**: There has been positive feedback and sufficient interest on the mailing list to consider working group adoption.
+
+## Decisions and Action Items
+
+*   **Conditional Attributes / Query Parameters**:
+    *   The general direction for unknown conditional query parameters is to ignore them when possible, especially if an `if=` attribute declares support for the conditional parameter scheme.
+    *   Karsten to consider adding content to the `core-clarifications` document regarding the application of general web principles on URI control and query parameters to the CoAP context.
+    *   Explore registering a standard problem detail key (using RFC 9290) for indicating unrecognized query parameters, potentially including a list of problematic parameters or specific values (e.g., "parameter out of range").
+*   **PEN SIDS**:
+    *   The chairs will initiate a working group adoption call on the mailing list for the "Private Enterprise Number SIDS for CoAP YANG" individual submission.
+
+## Next Steps
+
+*   **Conditional Query Parameters**: Authors of the `core-conditional-attributes` draft to consider incorporating an `if=` attribute for discovery and explicitly stating the "ignore unknown" behavior. Further discussion on "must understand" semantics for CoAP query parameters will continue.
+*   **`core-clarifications` Document**: Karsten to draft text for `core-clarifications` regarding URI principles.
+*   **Problem Details**: Investigate the registration of a problem detail key for query parameter issues.
+*   **PEN SIDS Adoption**: The working group will conduct an adoption call on the mailing list.

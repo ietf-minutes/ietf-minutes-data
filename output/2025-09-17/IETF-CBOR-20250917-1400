@@ -1,0 +1,78 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group met to discuss issues surrounding CBOR Deterministic Encoding (CDE) and default serializations, including the handling of indefinite lengths and the distinction between well-formed and valid CBOR. The discussion highlighted the need to clarify existing specifications, particularly concerning the normative expectations for encoders and decoders, and to define standardized terms for various encoding constraint sets. While there was agreement on the underlying semantics, authors were tasked with improving the clarity and readability of the CDE document based on the feedback received.
+
+## Key Discussion Points
+
+*   **Lawrence's Presentation: Default Serializations**
+    *   Most CBOR-based protocols (e.g., COSE, CWT, SNML) do not explicitly specify a serialization.
+    *   Three interpretations were presented regarding serialization when not specified:
+        1.  An interoperable decoder must implement all valid CBOR serializations, including indefinite lengths.
+        2.  Specifications are incomplete and require profiling, allowing flexibility (e.g., streaming in constrained environments).
+        3.  The issue is implicitly covered by "generic decoders."
+    *   An observation was made that many existing implementations of protocols like COSE/CWT do not decode indefinite lengths, which appears to contradict interpretation 1.
+    *   The question was raised: Is there a default serialization? If so, is it "all serializations" or a constrained form like preferred or DCBOR?
+
+*   **Carsten Bormann's Initial Responses**
+    *   Interpretation 1 (all serializations) is generally correct for a complete CBOR implementation, though practical usage may diverge.
+    *   Interpretation 2 (incomplete specifications) was deemed incorrect.
+    *   Interpretation 3 (generic decoders) was described as a practical approach reflecting interpretation 1, but noted that "generic decoder" is not a normative definition.
+    *   There is no "default serialization" as a concept; instead, the default is an *empty constraint set*.
+
+*   **Discussion on Indefinite Lengths**
+    *   A sense of those present indicated that RFC 8949 implies a complete CBOR implementation should handle indefinite lengths.
+    *   Indefinite lengths, especially for strings, significantly increase implementation complexity, memory allocation, and API structure compared to definite lengths. Indefinite length arrays and maps are comparatively simpler.
+    *   This complexity for strings was acknowledged as "unfinished business" from RFC 8949's development.
+
+*   **Well-Formed vs. Valid CBOR**
+    *   The distinction between well-formed (syntactically processable) and valid (conforming to specific application-level rules, e.g., no duplicate map keys, valid UTF-8) was discussed.
+    *   The intent behind this distinction in RFC 8949 was to avoid placing an undue "onus" on every decoder to perform comprehensive validity checks, thereby aiding interoperability and performance in constrained environments.
+    *   Decoders can choose to error or replace problematic items (e.g., invalid UTF-8, duplicate map keys) but should not process invalid data as if it were valid.
+    *   Encoders *should not* send invalid data (e.g., duplicate map keys), but some (e.g., streaming encoders) might not be able to enforce all validity constraints without external input or significant memory.
+    *   Multimaps are not directly supported by CBOR's major type 5 but can be handled using CBOR tags.
+
+*   **Carsten Bormann's Presentation: CDE and Encoding Constraints**
+    *   **Axioms**: No technical changes to RFC 8949, but clarifying text is acceptable. Terms can be defined if useful.
+    *   **Preferred Serialization**: This concept was initially implementation guidance to ensure "sensible" encoding, not a standalone normative requirement except where referenced by other normative sections (e.g., 4.2). It provides information about data model equivalence.
+    *   **CDE (CBOR Deterministic Encoding)**: Defined as an encoding constraint set combining three sub-constraints:
+        1.  The "shortest argument" constraint set (referred to as preferred serialization).
+        2.  "Definite Length Only" (DLO).
+        3.  "Lexicographic Map Sorting" (LMS).
+    *   **Purpose of Constraints**: To reduce variation in serialization and lower the onus on decoders. CDE supports external requirements like cryptographic signatures.
+    *   **Cost of Indefinite Lengths**: The cost of handling indefinite lengths in decoders (code size, memory, API complexity) was emphasized as a strong motivation for defining "Definite Length Only."
+    *   **Naming Constraint Sets**:
+        *   "Well-formed CBOR" was affirmed as the term for the empty encoding constraint set (a point of consensus from the previous meeting).
+        *   There is a need for a clear name for the "Definite Length Only" constraint, which can be orthogonally selected or combined with other constraints.
+    *   **Generic Encoder/Decoder**: These terms are defined in RFC 8949 for discussing implementations, but their presence is not a normative requirement for a CBOR implementation.
+    *   **Things to Avoid**: Misleading application developers into creating "profiles" (the term was removed from the document), using "option" terminology, or implying invalidation of previous uses of RFC 8949 (e.g., the thumbprint document uses CDE as currently defined).
+    *   **JSON Analogy**: The ambiguity in JSON's number representation (e.g., 7.0 vs. 7.00) was used to illustrate the importance of a well-defined data model and the issues that arise when it's not fully specified.
+    *   **Conclusion (Carsten's perspective)**: CBOR has demonstrated interoperability for 12 years with well-formed CBOR. Indefinite length encoding is a selectable feature in most encoders and is often intentionally not used by developers.
+
+*   **Feedback on CDE Document**
+    *   Lawrence expressed that many of his previous comments regarding the clarity, simplicity, and readability of the CDE document remain unaddressed, despite agreement on the underlying semantics. He noted a lack of movement on improving the document's presentation.
+
+*   **Serialization Constraints Example: CIS**
+    *   The CIS (CBOR-encoded Internet Identifiers) document was cited as an example of a CBOR protocol that imposes a serialization constraint ("must not use indefinite length encoding").
+    *   This highlights potential issues with composability if such constraints are not applied in a standardized, granular way across different CBOR data items.
+
+*   **"Postel Was Wrong" and Checking Decoders**
+    *   Joe brought up that the DCBOR draft effectively describes encoder prohibitions and decoder checking requirements for deterministic encoding.
+    *   An emerging consensus supports the idea that decoders *can* (and for certain applications, *should*) perform checks against encoding constraints (e.g., error if indefinite length is received when DLO is expected), even if they don't *have* to be in that checking mode. This aligns with a "Postel was wrong" approach, leading to better interoperability.
+    *   It was reiterated that CBOR data items themselves do not signal which encoding constraints apply; this information must come from context (e.g., the defining protocol).
+
+## Decisions and Action Items
+
+*   The term "Well-formed CBOR" will be used to refer to the empty encoding constraint set.
+*   The group acknowledged the need for a standardized name and definition for a "Definite Length Only" (DLO) encoding constraint set.
+
+**Action Items:**
+*   Carsten Bormann (author) to revisit Lawrence's comments and other feedback on the CDE document.
+*   Carsten to generate pull requests for updates to the CDE document, focusing on clarity, simplicity, and readability.
+*   Carsten to submit a D-13 draft incorporating these updates, aiming for several iterations before the next meeting.
+
+## Next Steps
+
+*   Review of pull requests and the D-13 draft on the mailing list.
+*   The next interim meeting is scheduled in two weeks to continue discussions based on the updated document.

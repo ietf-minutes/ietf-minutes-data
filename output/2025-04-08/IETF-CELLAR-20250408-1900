@@ -1,0 +1,66 @@
+# [CELLAR](../wg/cellar.html)
+
+## Summary
+
+The CELLAR Working Group met to discuss the status of the `tags` and `codecs` drafts, review open issues, and receive an update on FFV1 development. Key discussions revolved around resolving remaining technical issues in the `tags` draft prior to Working Group Last Call, clarifying "should" vs. "must" requirements and legacy handling in the `codecs` draft, and ensuring consistency across related specifications. An update on FFV1 V3 GPU acceleration and V4 float support was also provided.
+
+## Key Discussion Points
+
+*   **Administrative Issues:**
+    *   The chairs noted Robert's absence.
+    *   Previous meeting minutes were reviewed and approved without corrections.
+    *   The `application/x-font` action item on Robert remains open. Michael Richardson was noted as joining via Zulip, possibly listening.
+    *   The `codec-control` draft was confirmed as dropped.
+
+*   **`draft-ietf-cellar-tags` (tags-15) Discussion:**
+    *   The chair indicated satisfaction with most responses to tags-15.
+    *   **EBU Specification Recommendations:** No clear path forward. Jerome indicated he might spend time looking at actual code to see if things match the EBU spec.
+    *   **Floating Point String:** Jerome recently commented on this. Steve needs to review this issue in detail as soon as possible. It was identified as the only remaining significant issue before the draft is ready for Working Group Last Call.
+    *   **Publication Readiness:** Once the outstanding issues are merged, a new version will be published, which is expected to be ready for Working Group Last Call. Reviews for publishing and potential IANA registry additions (e.g., in a future MOSA V5) were mentioned as the primary expected changes post-last call.
+
+*   **`draft-ietf-cellar-codecs` Discussion (Steve's Responses Review):**
+    *   **"Reclaimed" Codec IDs:** Discussion on the term "reclaimed" in the context of codec IDs. It was clarified that these are IDs found "in the wild" but should not be used in the future (i.e., forbidden), and have not been formally allocated by IANA. The group agreed to retain the term "reclaimed" for now.
+    *   **Outstanding Chair Comments:** Spencer noted he had almost completed reviewing Steve's responses, with three items remaining. He committed to sending his comments to the mailing list.
+    *   **FF1/FFV1 Wording Consistency:** A question arose about potential discrepancies in wording between the Matroska specification and the FFV1 RFC. It was acknowledged that as CELLAR controls both, consistency is desired, but often different specs contain similar content. An action was noted to ensure clarity on where implementers should look for definitive information.
+    *   **"Should" vs. "Must" for VP9 Codec Private:**
+        *   The discussion focused on the `codec private` element for VP9, particularly for 10-bit content. While crucial for hardware decoding, many legacy (and even some contemporary) VP9 files lack this element.
+        *   A "must" requirement for its presence would render many existing files non-conformant for clean players.
+        *   The proposed solution, aligning with FFV1's approach, is that **encoders must write** the `codec private` for 10-bit VP9 content, but **decoders should be prepared to handle** its absence in legacy files. This distinction between encoder obligation and decoder robustness was seen as crucial.
+        *   An action was taken to clarify this "should"/"must" distinction within the draft, specifically addressing the handling of 10-bit content and legacy files.
+    *   **Multi-channel Audio (e.g., 5.1):** The phrase "more than two channels like for 5.1" was discussed for its clarity. The group decided to retain "like for 5.1" as it aids understanding for a broader audience.
+    *   **Codec Mapping Guidelines:**
+        *   It was noted that establishing rigid "must" rules for mapping codec elements to Matroska is challenging due to the variability of codecs, optional fields, and diverse stream practices.
+        *   The use of "should" is often more appropriate, especially where providing an example reason for a deviation helps implementers understand potential complexities without being overly prescriptive.
+        *   The discussion highlighted the balance between providing clear guidance and accommodating the realities of existing media and diverse codec designs.
+    *   **Robert Sparks' BCP14 Keywords Suggestion:** A suggestion from Robert Sparks regarding BCP14 keyword usage (e.g., using "one way to do this would be to use..." instead of prescriptive product mentions) was discussed and agreed upon for incorporation.
+    *   **Timestamp Comments in Examples:** The group considered removing a comment about `subre` format timestamps in an example, as it was considered not directly relevant to the Matroska format.
+    *   **Legacy Timestamp Locations:** It was clarified that Matroska decoders must be prepared to find timestamps in legacy or unexpected locations within a media capsule. If a choice exists (e.g., in `codec data` vs. Matroska elements), the Matroska element should take precedence; otherwise, the available timestamp should be used.
+    *   **Subtitle Duration Handling:** For subtitles, players "should" respect duration, but it's understood as a "best effort" due to complexities in timing synchronization with video frames and varied system approaches.
+    *   **Security Considerations (Codec Private Mandatory but Missing):** The issue of `codec private` not being mandatory in Matroska itself, but potentially mandatory for specific codecs, was raised. The clarification needed is that if a codec *defines* `codec private` as required, its absence constitutes a protocol violation, *unless* the codec's specification explicitly allows for its absence in certain cases (e.g., some VP9 streams). Text will be added to clarify this distinction based on codec-specific requirements and legacy scenarios.
+
+*   **FFV1 Development Update (Jerome):**
+    *   **FFV1 Version 3:** A GPU decoder for FFV1 V3 has landed in FFmpeg and is planned for release with FFmpeg version 8 in the coming weeks. This provides a GPU-accelerated encoder and decoder for FFV1 V3.
+    *   **FFV1 Version 4:** MLName has significantly updated the reference decoder and encoder, including float support and other optimizations.
+    *   **Draft Update:** The `draft-ietf-cellar-ffv1` (version 4) needs to be updated to match the code in FFmpeg's reference implementation.
+    *   **Performance:** Real-time decoding of 4K 10-bit FFV1 content is now achievable with modern GPUs (e.g., GeForce 4070 Ti). 6K 16-bit remains challenging.
+    *   **VLC 10-bit Playback:** A known slowdown in VLC for 10-bit FFV1 decoding due to pixel format transformation was mentioned as a potential bottleneck, which will be re-evaluated with new FFmpeg versions.
+
+## Decisions and Action Items
+
+*   **Decision:** Previous meeting minutes were approved.
+*   **Decision:** The `codec-control` draft is officially dropped.
+*   **Action (Steve):** Review Jerome's comment on the floating point string issue in the `tags` draft as soon as possible.
+*   **Action (Jerome):** Investigate EBU spec recommendations for the `tags` draft, potentially by examining code.
+*   **Action (Spencer):** Send remaining comments on Steve's responses to the `codecs` draft to the mailing list.
+*   **Action (Steve/WG):** Clarify the "should" vs. "must" requirements for VP9 `codec private` in the `codecs` draft, explicitly addressing 10-bit content and legacy file handling (encoder vs. decoder perspective).
+*   **Action (Steve/WG):** Incorporate Robert Sparks' suggested rewording for BCP14 keyword usage in the `codecs` draft.
+*   **Action (Steve/WG):** Remove the comment about `subre` format timestamps in examples if deemed irrelevant to Matroska.
+*   **Action (Steve/WG):** Add clarifying text to the "Security Considerations" section of the `codecs` draft regarding the mandatory/optional nature of `codec private` based on codec-specific definitions and legacy allowances (e.g., VP9).
+*   **Action (Jerome/WG):** Update the FFV1 version 4 draft to align with the latest changes in the FFmpeg reference decoder and encoder.
+
+## Next Steps
+
+*   The `tags` draft will proceed to Working Group Last Call once the floating point string issue and any EBU-related considerations are addressed and merged into a new version.
+*   The `codecs` draft will similarly proceed to Working Group Last Call once all outstanding chair comments, "should"/"must" clarifications, BCP14 wording, and security considerations are resolved and incorporated into a new version.
+*   Jerome will continue work on updating the FFV1 version 4 draft.
+*   The next CELLAR WG call is scheduled for April.

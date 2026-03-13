@@ -1,0 +1,56 @@
+# [CORE](../wg/core.html)
+
+## Summary
+The CORE Working Group held an interim meeting to discuss three main topics: the "Short Paths in CoAP" (Shopping) document, the potential for using CoAP as a foundation for GRASP, and the status of the HRef document. The primary discussion revolved around the "Shopping" draft, which proposes a numeric CoAP option to abbreviate common well-known URI paths, aiming to reduce message overhead and simplify path management. Decisions were made to proceed with the "Shopping" document, requesting a new revision for a subsequent adoption call. Initial discussions also explored how GRASP's specific requirements might integrate with CoAP, with an action item to further define these interactions. The HRef document's status in AD review was also briefly updated.
+
+## Key Discussion Points
+
+### Short Paths in CoAP (Shopping Document)
+*   **Problem Statement**: Current well-known URI paths (e.g., `.well-known/core`, `.well-known/brski`, `.well-known/est`) consume significant bytes (e.g., 17+ bytes) in CoAP messages, which is inefficient, especially in constrained environments. Other SDOs can define shorter paths without the same BCP constraints.
+*   **Proposed Solution**: Define a numeric CoAP option, tentatively named `URI-Path-Short`, that expands to a well-known prefix. This option would be critical and safe to forward.
+*   **Option Number**: Option 13 was proposed due to its small number, improving efficiency and placement before `URI-Query`. Ken agreed that Option 13 is justified.
+*   **Interactions**:
+    *   **`URI-Query`**: The `URI-Path-Short` option can be combined with `URI-Query` to filter resources, maintaining common linear CoAP option handling.
+    *   **Multiple Occurrences**: The default behavior for multiple occurrences or components following `URI-Path-Short` would be to treat them as `URI-Path` strings. Registrations in a new IANA registry could define custom behaviors if needed.
+    *   **`Proxy-URI`**: Discussion on the interaction with `Proxy-URI`, which is considered a complex and rarely used option. The draft proposes `URI-Path-Short` to be proxy-safe, simplifying deployment. The group expressed skepticism about realistic scenarios where a proxy would rewrite a request with `URI-Path-Short` into a `Proxy-URI`.
+*   **Encouraging Well-Known Paths**: A concern was raised about potentially encouraging more use of well-known paths over resource discovery. The general sense was to reduce the pain of existing well-known usage rather than promote it.
+*   **IANA Considerations**: A new IANA registry would be created for these numeric abbreviations. The relationship to the existing well-known registry was discussed, emphasizing that this is a separate, CoAP-specific compression mechanism. A "custom bit" in the registry could ease implementation.
+*   **Application Benefits**: This mechanism would significantly benefit applications like CBOR Object Signing and Encryption (CBOR-BRSKI) and Enrollment over Secure Transport (EST), where short, static paths are frequently used. It could help avoid the need to duplicate ASCII path components with shorter, potentially less descriptive names for CoAP use (e.g., in RFC 9148 for EST).
+*   **Draft Status**: The current draft status was "informational" and was clarified to be `Standard Track`.
+
+### GRASP over CoAP
+*   **Background**: Thomas provided an update on GRASP work and sought direction on how to integrate GRASP's features with CoAP.
+*   **Three Options Explored**:
+    1.  **Extract CoAP's reliable message layer**: Make it a reusable service for other protocols.
+    2.  **Add GRASP-specific features as CoAP methods**: Introduce new CoAP methods (e.g., for multicast, multi-roundtrip negotiation).
+    3.  **Define GRASP as a CoAP application**: Leverage CoAP as an application layer, accepting potential inefficiencies.
+*   **Challenges and GRASP Semantics**:
+    *   GRASP's semantics (e.g., reliable multicast, multi-roundtrip negotiation with transactional commit/rollback) do not map directly to CoAP's request/response model.
+    *   Multicast reliability is not natively supported by CoAP's message layer.
+    *   GRASP's design emphasizes network-layer protocols between network devices, often without URIs, which contrasts with CoAP's URI-centric model.
+    *   Security for multicast is a concern, as DTLS does not support multicast.
+*   **Proposed Direction**: Ken suggested that Thomas should focus on explaining the desired GRASP interactions and functionalities, to then evaluate how these could map to CoAP's message layer or require extensions.
+
+### HRef Document Status
+*   **AD Review**: The HRef document is currently in AD review.
+*   **Mike Bishop's Review**: A pull request (#135) has been submitted to address Christian's comments from Mike Bishop's review.
+*   **Annik Gmanson's Review**: Annik requested more examples. Ken intends to respond to this, potentially integrating new examples via pull requests from the community rather than generating them himself.
+*   **Timeline**: A new revision of the Internet Draft is aimed for publication by the end of the week.
+
+## Decisions and Action Items
+
+*   **Decision**: The Working Group will proceed with a document defining a numeric option for short CoAP URI paths. The proposed option name `URI-Path-Short` is favored.
+*   **Action Item (Christian)**: Publish version `-02` of the "Short Paths in CoAP" draft. This revision should:
+    *   Update the document status to "Standard Track".
+    *   Further elaborate on the `Proxy-URI` interaction or the reasons for not needing extensive text if the interaction is deemed absurd.
+    *   Refine `IANA` considerations, particularly regarding the default behavior for subsequent path components and potential cross-referencing with the well-known registry.
+    *   Include an example demonstrating how this mechanism could have avoided string duplication in RFC 9148 (EST).
+*   **Action Item (Thomas)**: Prepare a write-up detailing the specific GRASP interactions and desired functionalities (e.g., reliable multicast, multi-roundtrip negotiation, atomic operations) for further discussion, rather than immediately proposing CoAP method extensions or layer separations.
+*   **Action Item (Ken)**: Publish a new revision of the HRef Internet Draft by the end of the week, incorporating existing fixes for Mike Bishop's review and addressing Annik Gmanson's request for examples (potentially by soliciting community contributions).
+*   **Action Item (Ken)**: Check the shepherd write-up for the HRef document.
+
+## Next Steps
+
+*   **Short Paths in CoAP**: Once Christian's `-02` draft is available, an adoption call will be initiated. The goal is to move towards Working Group Last Call (WGLC) around September.
+*   **GRASP over CoAP**: Further discussion will be scheduled based on Thomas's detailed write-up of GRASP interactions.
+*   **HRef**: Following the publication of the new draft revision, the document will continue through the AD review process.

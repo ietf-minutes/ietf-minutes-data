@@ -1,0 +1,46 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+This interim meeting focused on a presentation and discussion of `draft-ietf-schc-universal-options-01`, which proposes solutions for handling and compressing new or unknown protocol options within the SCHC framework, particularly as SCHC moves beyond traditional LPWAN use cases. The document explores two main approaches: syntactic (wire-format based) and semantic (abstract field-ID based), providing a comparison of their impact on rule size, query size, and compression residue. The discussion highlighted the trade-offs between these approaches, emphasizing the need for clear scope definition. The chair decided to initiate a working group adoption call for the document, inviting further feedback from the group.
+
+## Key Discussion Points
+
+*   **Motivation for Universal Options:** As SCHC expands beyond LPWAN to more general network environments (e.g., node-to-node communication via SCHC instances), there's a need to manage and compress traffic with potentially new or evolving protocol options that are unknown at initial rule configuration.
+*   **Problem Statement:** Current SCHC rule management, particularly with RFC9363 (core-conf), relies on pre-assigned Field IDs for options. When an unknown option arrives, the SCHC compressor (S1) can parse its wire format but lacks a Field ID to define it in a rule management message, thus preventing its compression.
+*   **Proposed Approaches:**
+    *   **Syntactic Approach:** Treats options as a triplet of delta-T, Length, and Value (TLV), representing the option's wire format directly.
+        *   **Pros:** Highly flexible, easily integrated into SCHC architecture with minimal core changes (only parser updates), allows ignoring unknown option values.
+        *   **Cons:** Leads to significantly larger rule representations (e.g., in core-conf) due to representing each option as three distinct entries, and potentially higher compression residue for variable-length options.
+    *   **Semantic Approach:** Defines options using an abstract notation, requiring a Field ID. The document explores augmenting RFC9363's data model.
+        *   **Pros:** Better compression performance (smaller SCHC packet residue).
+        *   **Cons:** Requires modifications to the SCHC parser and changes to RFC9363's data model.
+*   **Comparison of Approaches (based on measurements in the draft):**
+    *   **Rule Size (core-conf):**
+        *   Pure RFC9363: 355 bytes.
+        *   Semantic (Universal Option, independent augmentation, different seed ranges): 481 bytes (significantly larger due to huge deltas).
+        *   Semantic (Universal Option, 9363 revision, integrated model): 400 bytes.
+        *   Semantic (Universal Option, clever manual seed allocation): 376 bytes (best semantic result).
+        *   Syntactic: Very large due to repeating three entries per option.
+    *   **Query Size:** Semantic universal options might add 1 byte. Syntactic has no change.
+    *   **SCHC Packet Compression Residue:** Semantic approaches show better residue (e.g., 49 bytes). Syntactic is slightly higher (e.g., 52 bytes in the example) if value length must be sent twice.
+*   **Presenter's Recommendation (Semantic with 9363 revision):** The authors lean towards revising RFC9363's data model, suggesting it provides better core-conf representation and an opportunity to address other data model limitations (e.g., explicitly stating that rule entries must be `ordered-by user` to ensure consistent residue interpretation). They also recommended manual seed allocation over alphabetical order.
+*   **Discussion on Trade-offs and Scope:**
+    *   Participants noted that rule provisioning (management messages) happens less frequently than data packet transmission. Thus, optimizing SCHC packet compression (residue size) might be prioritized over minimizing rule/query message size.
+    *   The variability of option value lengths (static in some CoAP/LwM2M cases, dynamic in others like TCP) affects the residue difference between syntactic and semantic.
+    *   The term "syntactic" was questioned, with "transparent" suggested as an alternative.
+    *   The potential for "universal options" to apply beyond CoAP (e.g., TCP, MQTT) was raised, emphasizing the need for broader protocol studies.
+    *   A key concern from Pascal was the lack of a clearly defined scope and specific objectives for the new work. Depending on the use case (e.g., very specific, long-lasting traffic vs. a general "best fit for all" approach), the optimal solution might differ.
+    *   It was acknowledged that both syntactic and semantic approaches are not mutually exclusive and could potentially coexist.
+    *   A CoAP dataset (LiShan client/server based) has been published to aid quantitative comparisons.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group will initiate a call for adoption for `draft-ietf-schc-universal-options-01`. The adoption call will allow for further discussion, particularly regarding the document's scope and objectives.
+*   **Action Item (Chair):** Initiate the working group adoption call on the SCHC mailing list.
+*   **Action Item (Working Group Members):** Read `draft-ietf-schc-universal-options-01` and provide feedback on the mailing list, specifically addressing concerns about the scope, objectives, and technical merits of the proposed solutions.
+
+## Next Steps
+
+*   Continue discussion on the `draft-ietf-schc-universal-options-01` on the mailing list as part of the adoption call.
+*   The adoption call may be extended if significant discussion is required to refine the document's scope or address open concerns.

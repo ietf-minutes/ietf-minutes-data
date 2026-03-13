@@ -1,0 +1,98 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held an interim meeting to discuss the upcoming Draft 14 cut, interop planning, and a significant proposal on the protocol's extensibility model, particularly concerning parameters and field encoding. Discussions also touched on the status of several open Pull Requests (PRs), including the `end_of_group` bit and New Group Requests.
+
+## Administrative
+
+*   **Notewell**: The IETF Notewell was presented.
+*   **Meet Echo Usage**: Standard instructions for using Meet Echo (mic queue, hand raising, headset use) were reviewed.
+*   **Scribe**: Will volunteered to scribe for the meeting.
+*   **Toronto Interim**: An email will be sent to the list regarding in-person attendance at the Toronto interim to get an accurate headcount.
+*   **Draft 14 Cut**: Allan proposed cutting Draft 14 approximately three weeks before the interop. The target cut date is Tuesday (due to a holiday Monday). Implementers were asked to surface any PRs they definitely want included or excluded from this cut.
+*   **Interop Planning**: Allan expressed a personal preference for a later Monday evening interop in Toronto due to travel schedule. Access to the building will be arranged as needed.
+*   **Draft 12/13 Last Call**: Comments on Draft 12 and 13 were due yesterday. Participants were asked to submit any remaining comments immediately.
+*   **Next Meeting**: The next interim meeting is scheduled for two weeks from now, on September 10th.
+
+## Key Discussion Points
+
+### Draft 14 Cut and Interop Logistics
+
+*   **Draft 14 Content**: Allan noted that there aren't many significant wire format changes between Draft 12 and 14 so far.
+*   **PRs for Draft 14**:
+    *   The `request_error` PR is likely to land if there are no objections.
+    *   The `multi-publisher` clarification PR is nearly ready and expected to land.
+    *   No strong objections were raised to specific PRs for Draft 14. Editors will use best discretion, with an open call for implementers to highlight critical items.
+*   **Toronto Interop Schedule**: Allan plans to send an email to the list to gauge interest in a Monday evening interop session.
+
+### Proposed Extensibility Model (Colin)
+
+Colin presented an alternative vision for handling parameters, rooted in a broader discussion of the protocol's extensibility model.
+
+*   **Terminology**: Proposed terms:
+    *   **Protocol Version**: e.g., MOQ 1.0 (changes via ALPN, new RFC).
+    *   **Commands**: e.g., `SUBSCRIBE`, `FETCH` (verbs).
+    *   **Fields**: Values within commands (e.g., `track_name`, `priority`).
+*   **Extensibility Points**:
+    *   **Protocol Version**: The last resort, requiring new ALPN negotiation.
+    *   **Commands**: New commands can be added, possibly through a registry. Relays need to understand mandatory commands. If relays need to understand a new command, it implies a protocol version bump.
+    *   **Fields**: This was the core of the discussion.
+        *   Problem: Optional fields interacting can lead to exponential testing complexity.
+        *   Proposal: Differentiate between fields that are **mandatory** for relays to understand and those that are **optional**.
+        *   **Orthogonality**: Optional fields should provide orthogonal functionality and not change how other parts of the command work (e.g., a `cat_token` vs. `forwarding_preferences`).
+        *   **Relay Awareness**: If a field is optional, it must be fine for a relay to be unaware of it, not implement it, or not understand it, with the system still functioning.
+    *   **Values**: Values within fields can also be extensible (e.g., new `filter_type` values). A protocol version needs to list mandatory values for relays to understand and define behavior for unknown optional values.
+*   **Field Encoding Proposal**:
+    *   **Mandatory, Multiple Common Values**: Value-only encoding (ordered list).
+    *   **Mandatory, Single Common Value**: Tag-value (TV) encoding, where the tag indicates presence and the value is sent if not the common default.
+    *   **Optional**: Tag-Length-Value (TLV) encoding, as the length is not necessarily known to older implementations.
+    *   Ordering: Value-only fields first, then TV fields (ordered by tag), then TLV fields (ordered by tag).
+*   **Discussion on Encoding**:
+    *   Allan clarified that TLV fields correspond to what are currently called "parameters." Colin's proposal introduces an intermediate TV category.
+    *   Allan emphasized the importance of a tag-based mechanism for application-specific, end-to-end parameters that relays do not need to understand (similar to HTTP headers).
+    *   **Victor's point**: For `SUBSCRIBE` commands, relays typically do not forward parameters upstream due to many-to-one aggregation. This implies that optional fields in `SUBSCRIBE` messages are often unusable, suggesting negotiation in `SETUP` might be preferable. This might apply less to `PUBLISH` or object extensions.
+    *   Ian expressed support for the TLV approach as an enforcement mechanism, pushing people to define what they are using.
+    *   **`SUBSCRIBE_UPDATE` Complexity**: The `SUBSCRIBE_UPDATE` command presents unique challenges.
+        *   Distinction between "not present for compression" and "don't change."
+        *   Need for a semantic value like "no change" or "remove" for fields in `SUBSCRIBE_UPDATE`.
+        *   This suggests that an `SUBSCRIBE_UPDATE` might *require* a "no change" value, even if compressed on the wire.
+        *   Will expressed a preference for being able to send `SUBSCRIBE_UPDATE` with minimal fields (just request ID and the changed tag field) to reduce chattiness and potential for error, which aligns with the TV/TLV approach.
+    *   **Compression vs. Simplicity**: Ian raised a concern that focusing on compression for control messages (which are infrequent and small) adds undue complexity to the parsing logic. Will added that he prefers simpler parsers where the internal structure closely mirrors the wire format. Colin acknowledged this but noted that the group seemed to lean towards some level of compression.
+    *   **Value Types for TV/TLV**: Will asked about the types of values allowed. Colin confirmed `varints`, `array of bytes`, and potentially locations (pairs of varints) or booleans.
+*   **Next Steps for Extensibility Proposal**: Colin will condense his general extensibility recommendations into an email to the list for further discussion. He will also review existing PRs to categorize current parameters into the proposed T, TV, or TLV structure.
+
+### Open Issues and PRs
+
+*   **PR 1017 / 1020 (`end_of_group` bit)**:
+    *   This bit, intended to signal the end of a group, has been difficult to implement.
+    *   Allan's proposal was to reinterpret the bit as implying an object one higher than the current is the end of the group.
+    *   Martin Duke proposed removing it entirely, citing difficulties if extensions are needed in end-of-group objects.
+    *   **Decision**: No changes to the `end_of_group` bit will be made for Draft 14. Further discussion is deferred, with Victor expected to bring an alternate proposal.
+    *   Ian disliked extensions in `end_of_group` objects, viewing them as a "fin" signal rather than a "thing."
+*   **PR 1025 (Immutable Extensions)**:
+    *   This PR suggests serializing immutable extensions as their own block, allowing relays to add/remove other extensions freely while preserving the immutable ones.
+    *   **Action Item**: More review and stamps are needed.
+*   **PR 1060 (New Group Requests)**:
+    *   This PR has momentum but also concerns about potential generic messaging alternatives.
+    *   Will clarified that a generic messaging construct is *not* being pursued, as it became too complex and would essentially embed a new messaging protocol. Requesting a new group is considered intrinsic to MOQ's object model.
+    *   **Decision**: Continued iteration on PR 1060. It is not expected to make the Draft 14 cut and will likely be discussed further in Toronto. Consideration may be given to whether the `new_group_request` parameter should be a required parameter based on Colin's extensibility framework.
+
+## Decisions and Action Items
+
+*   **Scribe**: Will volunteered to scribe.
+*   **Draft 14 Cut**: Allan will cut Draft 14 on Tuesday (approx. 3 weeks before interop). Editors will use best discretion on which PRs to include. Implementers are encouraged to surface any PRs they want definitely in or out.
+*   **Toronto Interim Interop**: Allan will send an email to the list to determine interest in a Monday evening interop session.
+*   **Extensibility Model**: Colin will condense his recommendations for the protocol's extensibility model into an email to the mailing list for further discussion.
+*   **`end_of_group` bit**: No changes will be made for Draft 14 regarding the `end_of_group` bit. Discussion is deferred for a future meeting, with Victor expected to present an alternate proposal.
+*   **PR 1025 (Immutable Extensions)**: WG participants are requested to review and provide feedback.
+*   **PR 1060 (New Group Requests)**: Continued iteration on this PR. It will not be part of Draft 14 but will be discussed further at the Toronto interop.
+*   **Draft 12/13 Last Call**: Participants with any remaining comments on Draft 12 or 13 are requested to send them immediately.
+
+## Next Steps
+
+*   **Draft 14 Cut**: Allan to proceed with cutting Draft 14 on Tuesday.
+*   **Interop Planning**: Allan to poll the list for Toronto interop timing preferences.
+*   **Extensibility Model**: Colin to draft an email outlining his extensibility recommendations.
+*   **PR Review**: All WG participants are encouraged to review open PRs, especially 1025 and 1060.
+*   **Next Meeting**: The next interim meeting is scheduled for September 10th.

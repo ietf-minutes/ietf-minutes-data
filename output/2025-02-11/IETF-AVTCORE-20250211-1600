@@ -1,0 +1,107 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE virtual interim meeting included status updates on various working group drafts, a detailed discussion on the `rtp-over-quic` and `rtp-over-quic-sdp` drafts, and presentations on `abs-capture-time` and `rtcp-ts-resolution` (formerly green metadata). Key outcomes included soliciting reviewers for `rtp-over-quic-sdp`, identifying a need for further reviews and implementation experience for `rtcp-ts-resolution`, and a call for a new co-chair for the working group.
+
+## Key Discussion Points
+
+### Administrative and Chair Updates
+*   **Note-taker**: A volunteer was requested for note-taking.
+*   **IETF Policies**: Standard IETF policies regarding audio/video, note well, patent rules, recording, privacy, and conduct were reviewed.
+*   **Bernard Aboba**: The co-chair, Bernard Aboba, sadly passed away on February 1. A moment of silence was observed in his memory.
+*   **Chair Status**: Jonathan Lennox is currently the sole chair. The AD is working on finding a second co-chair.
+*   **GitHub Setup**: The working group is moving drafts to its GitHub organization. The `abs-capture-time` draft has been imported, and an action item was noted for a pull request to Mark Nottingham's activity repository.
+
+### Draft Status Overview
+*   **Off 48 (RTP Payload for V3C and others)**: Two drafts are awaiting off 48 reviews. `rtp-payload-registry` is in the edit stage.
+*   **J2K (RTP Payload for JPEG 2000)**: Completed Working Group Last Call (WGLC). Stefan Wenger has volunteered as Shepherd.
+*   **Green Metadata (RTP Control Protocol for Temporal Spatial Resolution)**: Completed WGLC, with further discussion scheduled for this meeting. More RTP-side review is requested.
+*   **V3C**: Needs a second WGLC due to comments received during the first, which was unfortunately delayed.
+*   **Haptics**: An action item was noted to initiate a WGLC for the haptic draft, as it was also delayed.
+*   **HBC-WebRTC**: The co-author is determining if they can become the primary editor; otherwise, a new editor will be sought.
+*   **Volumetric Media Region of Interest**: Call for adoption was successful. Authors should submit it as a working group draft.
+*   **S-Frame**: Has seen no recent activity. A call for active interest in taking over the draft will be made on the list; otherwise, it will be parked.
+
+### RTP over QUIC (draft-ietf-avtcore-rtp-over-quic)
+*   **Matthias Schinzel** presented an update on `draft-ietf-avtcore-rtp-over-quic`.
+    *   **Updates**:
+        *   Added packet disambiguation to terminology.
+        *   Added a paragraph explaining why bidirectional streams are not used for RTCP.
+        *   Included the new MeetEcho implementation in the interop section, now open-sourced.
+        *   An open pull request (234) updates the acknowledgement section.
+    *   **Interop Status**: All six test cases for BBC and MeetEcho implementations are confirmed working. Two more test cases (multiple streams and RTCP) are on the wiki page but not yet implemented/tested by Matthias. Sam Hurst is no longer actively working on this.
+    *   **Next Steps**: Continue interop testing, seek working group reviews, and eventually move towards a working group last call.
+
+### Offer/Answer for RTP over QUIC (draft-ietf-avtcore-rtp-over-quic-sdp)
+*   **Spencer Dawkins** presented the new draft `draft-ietf-avtcore-rtp-over-quic-sdp`.
+    *   **Draft Structure**: Contains normative sections defining new protocol identifiers (`secure-ap-quic-protos`), new attribute names (`rock-quick-datagrams`, `rock-flow-identifiers`), and normative considerations for reusing existing attribute names (`setup`, `connection`, `fingerprint`, `rtcp-mux`). Also includes non-normative implementation topics, an example, security, and IANA considerations.
+    *   **Discussion on `secure-ap-quic-protos`**: Harold expressed concern about changing security posture in middleboxes and preferred end-to-end encryption. The draft proposes defining `secure-ap-quic-protos` to allow endpoints to avoid non-secure translations by middleboxes or to require s-frame support. Jonathan suggested that these should be considerations rather than strict requirements, as different topologies might require different security postures.
+    *   **Discussion on `rock-quick-datagrams` attribute**: Jonathan questioned the necessity of this advisory attribute in SDP, given that datagram support is negotiated via the QUIC handshake. He suggested it might not be needed and could be removed if implementations don't show a need.
+    *   **Discussion on reusing `fingerprint`**: Jonathan clarified that `fingerprint` is for mutual authentication of TLS certificates, not for connection migration detection (which QUIC uses connection IDs for). He questioned if connection ID signaling is needed in SDP.
+    *   **Discussion on `tls-id`**: Spencer noted this was originally for DTLS with connectionless transport. Jonathan suggested consulting the authors of the `tls-id` draft but noted that its lack of WebRTC implementation implies it's not a critical attack vector.
+    *   **Discussion on `rtcp-mux`**: Matthias noted that ROCK allows RTP and RTCP over the same flow identifier, and the SDP document should explicitly clarify what `rtcp-mux` means in this context. Jonathan suggested possibly an `rtcp-flow-id` if separate flow IDs are desired.
+    *   **RTCP Feedback Replacement with QUIC Feedback**: Harold emphasized that whether RTCP feedback is sent is an observable event and should be standardized, not a private matter. Jonathan agreed that it needs implementation experience and potentially negotiation (e.g., turning off specific feedback types).
+    *   **Interaction with UDP Connect/ICE**: Jonathan queried if `udp-connect` interactions belong in the spec, suggesting it might require implementation experience to determine.
+    *   **Next Steps**: Spencer requested early reviewers for the draft. The goal is to be ready for a call for adoption around IETF 120. Adoption is seen as crucial for the working group to progress the ROCK specification, which has been gated on a way to set up ROCK connections without manual configuration.
+    *   **Review Volunteers**: Harold, Jonathan, and Matthias volunteered to review the editor's version of the draft.
+    *   **Hackathon Interest**: Potential for hackathon testing was discussed, dependent on implementer interest (e.g., MeetEcho, Sam Hurst's previous work).
+
+### Absolute Capture Time (draft-ietf-avtcore-abs-capture-time)
+*   **Harold Alvestrand** presented on `abs-capture-time` from Gran Canaria, experiencing some temporary connection issues.
+    *   **Motivation**: To know the time a frame was captured, comparable to a receiver's system clock, especially in multi-hop scenarios where each hop is a separate RTP session.
+    *   **Solution**: `abs-capture-timestamp` allows each hop to signal the offset between its timestamp and system clock.
+    *   **Deployment Experience**: Experimentally deployed, not needed on every packet. No special consideration for clock drift beyond periodic updates.
+    *   **Chrome Metrics**: Measurements in Chrome showed typical clock differences around 400ms (possibly a bug), with drifts around 6ms/second. Some large offsets indicated client clocks "out of whack."
+    *   **Draft Stability**: The draft seems stable, with no current need for changes.
+    *   **Open Question**: Whether to keep the Google-allocated URL for experimentation or register with IANA, which would involve a transition period for Chrome implementations. A sense of those present indicated a preference for IANA registration when ready for publication.
+    *   **Next Steps**: Seek better experimental setups and measurements from sources other than Chrome. Call for volunteers to join this effort.
+
+### RTP Control Protocol for Temporal Spatial Resolution (draft-ietf-avtcore-rtcp-ts-resolution)
+*   **Ye Xing** presented on `draft-ietf-avtcore-rtcp-ts-resolution` (formerly Green Metadata).
+    *   **Development Timeline**: Adopted Jan 2023, revisions for name change and feedback, WGLC in Oct 2024.
+    *   **WGLC Feedback**: Three responses expressed support. Comments from Xavier focused on:
+        *   **Reference Correction**: Update Green Metadata spec reference from 5.3 to 6.3.
+        *   **Wording**: Use "invalid" instead of "illegal" (preferred by Jonathan and the room).
+        *   **FMT Value Conflict**: Value 11 for the `fmt` field is reserved for RTP congestion control feedback and must be changed.
+    *   **IANA Registration**: Ye inquired about the timing for IANA registration. Jonathan suggested it's typically done upon publication, but early registration is possible once the format is stable. Harold suggested using an "assigned by IANA" placeholder in the draft.
+    *   **Implementation Status**: Internal implementations are ongoing. Temporal and spatial resolution changes are widely deployed, often via proprietary means, but not yet through this specific RTCP signaling. The draft aims to enhance interoperability and supports IMTC's Green Metadata spec.
+    *   **Next Steps**: Address Xavier's comments in a new revision. More RTP expert reviews are needed (Jonathan volunteered and requested others). Ideally, prototypes implementing the spec as written are desired to uncover potential issues, possibly via a hackathon at IETF Bangkok. A second WGLC or publication request would follow.
+
+### Any Other Business
+*   **J2K Shepherd Report**: Sadia acknowledged delays due to Bernard's passing but expects progress with the new designated Shepherd in the coming weeks, as most technical work was completed.
+*   **New Co-chair**: Sadia (AD) reiterated the community's loss of Bernard and requested suggestions for a new co-chair, preferably someone who hasn't chaired an IETF WG before, but capable of complementing Jonathan.
+
+## Decisions and Action Items
+
+*   **Decision**: The use of "invalid" is preferred over "illegal" for error conditions in `rtcp-ts-resolution`.
+*   **Decision**: The `fmt` value 11 in `rtcp-ts-resolution` must be changed due to conflict with existing IANA registrations. The working group agreed to use a placeholder "to be assigned by IANA" for the value in the draft.
+
+*   **Action Item**: Jonathan Lennox to initiate a Working Group Last Call for the Haptics draft (`draft-ietf-avtcore-rtp-haptics`).
+*   **Action Item**: Jonathan Lennox to send a pull request to Mark Nottingham's activity repository for the `abs-capture-time` draft now that it's in the AVTCORE GitHub repo.
+*   **Action Item**: Spencer Dawkins, Harold Alvestrand, Jonathan Lennox, and Matthias Schinzel to review the editor's version of `draft-ietf-avtcore-rtp-over-quic-sdp`.
+*   **Action Item**: Spencer Dawkins to update `draft-ietf-avtcore-rtp-over-quic-sdp` based on discussion points, especially regarding the `rock-quick-datagrams` attribute, `fingerprint` usage, `tls-id`, and `rtcp-mux` implications.
+*   **Action Item**: Jonathan Lennox and other RTP experts to review `draft-ietf-avtcore-rtcp-ts-resolution`.
+*   **Action Item**: Ye Xing to revise `draft-ietf-avtcore-rtcp-ts-resolution` to correct references, update wording, and change the conflicting `fmt` value.
+*   **Action Item**: Sadia (AD) to continue efforts to find and appoint a new co-chair for AVTCORE.
+*   **Action Item**: Jonathan Lennox to review meeting minutes and recording for any additional action items.
+*   **Action Item**: Jonathan Lennox to check the status of the "multipath RTP" document and update the data tracker if it is indeed considered dead or parked.
+
+## Next Steps
+
+*   **RTP over QUIC**:
+    *   Continue interop testing for `draft-ietf-avtcore-rtp-over-quic`.
+    *   Address review comments for `draft-ietf-avtcore-rtp-over-quic-sdp` and aim for a Call for Adoption around IETF 120.
+*   **Absolute Capture Time**:
+    *   Seek additional experimental setups and measurements from non-Chrome implementations.
+    *   Transition to an IANA-registered URI for the mechanism when ready for publication.
+*   **Temporal Spatial Resolution**:
+    *   Complete revisions to `draft-ietf-avtcore-rtcp-ts-resolution` based on WGLC comments.
+    *   Seek further RTP expert reviews.
+    *   Encourage implementation of the spec as written, potentially at a hackathon (e.g., IETF Bangkok).
+    *   Depending on the extent of changes and implementation experience, a second WGLC or direct request for publication may follow.
+*   **General WG**:
+    *   Progress outstanding drafts (Haptics WGLC, J2K Shepherd report).
+    *   Actively seek and appoint a new co-chair.
+    *   Call on the mailing list for active interest in the S-Frame draft to avoid parking it.
+*   The next meeting will likely be at IETF 120 in Bangkok.

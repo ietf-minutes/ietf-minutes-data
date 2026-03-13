@@ -1,0 +1,106 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The AVTCORE working group held a virtual interim meeting to discuss the status of several drafts. Key discussions revolved around the SDP offer/answer for RTP over QUIC (rock) draft, including clarifications on datagrams, multiplexing, and integration with BUNDLE and ICE. The S-frame draft was reintroduced, proposing two encryption modes and discussing SDP signaling challenges. Updates were provided for VDMC and JPEG XS payload formats, both leading to calls for working group adoption. The green metadata and volumetric media ROI drafts also presented progress, with calls for further review and, for green metadata, more implementation feedback.
+
+## Key Discussion Points
+
+*   **Meeting Logistics & Note-taking:** The chairs requested a volunteer note-taker. No volunteer was found, so the chairs offered to take the most important decisions.
+*   **SDP Offer/Answer for RTP over QUIC (rock)**
+    *   **Quick Datagrams Advisory (Issue #22):** The draft initially included an advisory indication for quick datagrams in SDP. Discussion centered on whether this is useful, given datagram negotiation happens during the QUIC handshake. Jonathan (speaking as an individual chair) suggested dropping it if no clear use case exists, allowing for later re-addition if needed, as it is purely informative. Spencer noted this is a GitHub issue for further comment.
+    *   **RTP/RTCP Multiplexing:** The draft implicitly assumed RFC 5761-style RTP/RTCP multiplexing. Harold advocated for requiring it, noting WebRTC's similar stance against non-multiplexed flows due to complexity. Spencer indicated an inclination to require multiplexing.
+    *   **BUNDLE and Flow IDs:** Discussion addressed how BUNDLE interacts with rock flow IDs, which also multiplex media descriptions onto a QUIC connection.
+        *   Jonathan highlighted that BUNDLE and RTCP multiplexing were practical compromises for RTP architecture to aid middlebox traversal, which might not apply to QUIC. He questioned if the original architectural properties of RTP were still valued, or if adaptations to existing concessions (like BUNDLE) were sufficient.
+        *   Harold expressed strong feelings, stating that not bundling was a "stupid mistake" in RTP design. He was 51% in favor of requiring BUNDLE always and 49% in favor of banning it forever, but 100% against making it optional due to gateway burdens and complexity.
+    *   **ICE with rock:** Harold raised the lack of a mechanism to specify rock as an ICE candidate, similar to UDP or TCP, which impacts the `proto` field.
+        *   Jonathan suggested *not* making rock an ICE candidate, arguing against negotiating rock vs. other RTP transports via ICE, as it would be overly complicated. An offer could specify rock, and the peer could reject the m-line if unsupported.
+        *   Harold countered, arguing that rock should be a first-class transport, and the ability to choose between transports (e.g., for interoperability with non-rock endpoints) necessitates it being an ICE candidate.
+        *   A side meeting was proposed to brainstorm practical approaches for ICE with rock.
+    *   **Rock Draft Status:** It was discussed whether the base rock draft should proceed to Working Group Last Call (WGLC) without waiting for the SDP work. Mattis (co-author of rock) stated that from the authors' perspective, the rock draft could move forward as changes based on SDP work could still be incorporated later, and the draft is currently stalled. Spencer agreed, noting that rock is targeting "experimental" status, which allows for more flexibility regarding perfect backward compatibility. The likelihood of changes to the *base* rock specification affecting fundamental aspects (like flow IDs) seemed low.
+    *   **Rock Flow ID Usage:** A question was raised about whether multiple rock flow IDs could be allocated for different media streams within a single QUIC connection, especially in the context of bundling. The draft's example showed one rock flow ID for multiple media streams. Spencer clarified that multiple rock flow IDs, each corresponding to a media flow, could exist on a single QUIC connection, and acknowledged a need for clearer specification text.
+
+*   **S-frame**
+    *   **Reboot Presentation:** Richard presented a reboot of the S-frame draft, which defines a lightweight encapsulation for symmetric encryption of media data, adding a small header and an authentication tag.
+    *   **WebRTC Context:** The need stems from WebRTC's Encoded Transform and S-frame Transform, allowing JavaScript to access or the browser to encrypt media frames before packetization.
+    *   **Requirements:** Enable RTP endpoints to use S-frame encryption, support both per-packet (higher overhead, sub-frame decoding) and per-frame (amortized overhead, waits for full frame) modes, facilitate migration from script transform to S-frame transform, and remain codec-agnostic.
+    *   **Proposed Direction:** Use an m-line attribute in SDP to indicate S-frame encryption and the chosen strategy (per-frame or per-packet).
+        *   Per-packet: Normal payload wrapped in S-frame.
+        *   Per-frame: Encoded frame is S-frame encrypted, then segmented into RTP payloads.
+        *   "Bundling/Concatenation" approach: Normal RTP payloads concatenated, S-frame encrypted, then re-sliced maintaining original packet boundaries.
+    *   **Generic Packetization:** A fragment header (unit ID, payload count, index) might be needed for fragmenting encrypted data, especially for reassembly at the de-packetization stage.
+    *   **Open Issues:**
+        *   **Cipher Suite Negotiation in SDP:** The author team decided *not* to do cipher suite negotiation in SDP, as SDP lacks downgrade protection, and key negotiation happens at a different layer.
+        *   **Generic Fragmentation Header:** Unclear if a full generic fragmentation header is needed, or if marker bit/timestamp and header extensions (for SVC/layering) suffice. Jonathan suggested at least a "start bit" is necessary to avoid trial decryption for frame boundaries. He also emphasized that RTP stacks need to treat S-frame encrypted payloads as opaque to avoid issues with media-aware packetization (e.g., H.264 NAL unit parsing).
+        *   **Choice of Modes:** Whether to support per-frame, bundling/concatenation, or both, weighing compatibility with script transform vs. RTP semantics.
+    *   **SDP Signaling Concerns:** Harold expressed dissatisfaction with `a=sframe` as an m-line attribute, likening it to the problematic `a=packetization:row` in WebRTC, which effectively doubled payload types. He suggested treating S-frame combined with a codec as a new "codec" or "media format" to avoid duplication and simplify SFU handling. He also raised concerns about payload type protection and changes in SFUs.
+    *   **Side Meeting Proposed:** A side meeting (virtual or in Madrid) was suggested to further discuss S-frame design and the SDP attribute issues.
+
+*   **VDMC (Volumetric Video Coding for Multimedia Communications)**
+    *   **Draft Status:** The draft has seen several revisions since Oct 2022, received comments, and IPR declarations were submitted.
+    *   **Standard Status:** The MPEG standard (ISO 23090-29) is at FDI voting stage, indicating maturity. Various organizations are exploring VDMC over RTP, including web browser-based transmissions.
+    *   **Call for Adoption:** The author requested working group adoption. No objections were raised.
+
+*   **JPEG XS**
+    *   **RTP Payload Format Update:** Tim presented an update to RFC 9134 to support the third edition of JPEG XS (ISO 21122), particularly the new temporal differential coding (TDC) mode.
+    *   **Key Changes:** Support for the SLI marker (for TDC slices), a new `FGB level` SDP parameter, clarification of interlaced video signals (integrating erratum 6752), and general text improvements.
+    *   **Backward Compatibility:** The new draft is designed to be fully backward compatible with RFC 9134 for both senders and receivers.
+    *   **Call for Adoption:** The author requested working group adoption. No objections were raised.
+
+*   **Green Metadata (Temporal/Spatial Resolution Feedback)**
+    *   **Draft Status:** The WG draft, based on feedback from a previous WGLC, was updated in February.
+    *   **Implementation Feasibility:** Examples were provided of public APIs (NVIDIA Video SDK, WebRTC) that enable dynamic resolution/frame rate changes. Microsoft's proprietary RTCP extension for similar functionality was cited.
+    *   **Benefits:** Papers were referenced demonstrating energy savings (up to 20% for HD video) by dynamically reducing resolution.
+    *   **Discussion & Call for Review:**
+        *   Eric requested clarification on intended use cases (viewport fitting, CPU/network overload adaptation beyond bandwidth estimates). The author clarified the primary target is energy saving (e.g., low battery) and network bandwidth adaptation (where RTCP feedback informs device capability).
+        *   Eric also asked for a clearer definition of how frame rates (e.g., 25, 29.97) are represented in the feedback message, noting the current draft is unclear on encoding integer vs. fractional values.
+        *   The chairs noted that the draft stalled due to a low number of responses in the previous WGLC, indicating a lack of clear consensus for publication. They requested explicit implementations of *this draft* (not just similar techniques) to show its completeness and utility.
+        *   Stefan (WGLC chair for the original green metadata draft) pushed back on making working implementations a prerequisite for RTP payload formats, arguing it could hold up industry, as deployments often wait for a suite of standards to be complete. He offered to facilitate access to ISO specifications for reviewers.
+        *   The chairs reiterated the importance of active reviews and comments to demonstrate the document's readiness and need.
+
+*   **Volumetric Media Region of Interest (ROI)**
+    *   **WG Adoption:** The individual draft was adopted as a WG draft (version 00 published last month).
+    *   **Motivation:** Addressing the high bandwidth needs of volumetric media (V3C) by enabling partial delivery based on user viewport or region of interest.
+    *   **Mechanisms Proposed:**
+        *   RTCP feedback messages for requesting static, arbitrary spatial regions, or viewport-based content.
+        *   RTP header extensions to report which 3D region (static or dynamic) has been transmitted, in response to requests.
+        *   SDP signaling to indicate support for these RTCP feedback messages and RTP header extensions.
+    *   **Status & Review:** The author noted a minor misalignment with MEG part 5 specification that would be updated soon. No current implementations of this specific partial access for V3C were reported, though similar concepts exist for 360-degree media. A call for review was issued.
+
+## Decisions and Action Items
+
+*   **General Note-taking:** Spencer volunteered to take the most important decisions, with chairs filling in otherwise.
+*   **SDP Offer/Answer for RTP over QUIC (rock):**
+    *   **DECISION:** Drop the SDP quick datagrams advisory indication (Issue #22).
+    *   **DECISION:** Require RFC 5761-style multiplexing for RTP/RTCP over rock.
+    *   **ACTION:** Schedule a side meeting (in Madrid or virtual) to discuss the integration of ICE with rock.
+    *   **ACTION:** The chairs will initiate a Working Group Last Call (WGLC) for the base rock draft, as the SDP work is not a strict dependency for its progression to Experimental.
+*   **S-frame:**
+    *   **DECISION (Author team consensus):** Do not include cipher suite negotiation in SDP.
+    *   **ACTION:** Authors to clarify requirements for a generic fragmentation header, particularly the need for a "start bit."
+    *   **ACTION:** Schedule a side meeting (in Madrid or virtual) to discuss S-frame design, particularly the choice of encryption modes and SDP signaling approaches.
+*   **VDMC (Volumetric Video Coding for Multimedia Communications):**
+    *   **ACTION:** The chairs will issue a Call for Adoption for the VDMC draft.
+*   **JPEG XS:**
+    *   **ACTION:** The chairs will issue a Call for Adoption for the JPEG XS payload format draft.
+*   **Green Metadata (Temporal/Spatial Resolution Feedback):**
+    *   **ACTION:** The chairs will actively seek more reviews, especially from individuals with RTP-side expertise.
+    *   **ACTION:** Authors are encouraged to provide more explicit examples of implementations of *this specific draft* (or prototypes based on it) to demonstrate its utility and completeness.
+    *   **ACTION:** Eric to provide further review and specific questions regarding frame rate encoding.
+    *   **ACTION:** Stefan offers to facilitate access to ISO specifications for reviewers.
+*   **Volumetric Media Region of Interest:**
+    *   **ACTION:** The author will update the draft to align with MEG part 5 specification in the coming week.
+    *   **ACTION:** Call for working group members to review the draft, particularly from RTP and SDP perspectives.
+
+## Next Steps
+
+*   **Chairs:**
+    *   Initiate a Working Group Last Call for the base rock draft.
+    *   Issue Calls for Adoption for the VDMC and JPEG XS drafts.
+    *   Actively solicit more reviews for the green metadata and volumetric media ROI drafts.
+    *   Organize side meetings (virtual or in Madrid) for SDP for rock (ICE integration) and S-frame discussions.
+*   **Authors (SDP for rock):** Incorporate decisions on datagrams advisory and RTP/RTCP multiplexing. Participate in ICE with rock discussions.
+*   **Authors (S-frame):** Prepare for side meeting discussions, considering input on fragmentation headers and SDP signaling.
+*   **Authors (Green Metadata):** Address Eric's questions on frame rate encoding and consider providing more explicit implementation evidence.
+*   **Authors (Volumetric Media ROI):** Update the draft for MEG alignment.
+*   **Working Group Members:** Review green metadata and volumetric media ROI drafts, provide feedback on mailing lists. Consider attending side meetings for SDP for rock and S-frame.

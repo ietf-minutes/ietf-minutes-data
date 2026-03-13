@@ -1,0 +1,102 @@
+# [DETNET](../wg/detnet.html)
+
+## Summary
+
+This DETNET interim meeting featured presentations and discussions on various data plane forwarding mechanisms, including Earliest Deadline First (EDF), Time-based Flow (TF), Core-Stateless Fair Queuing (C-Core), On-Time Forwarding with Py-For-Q, and Non-conserving Stateless Core-Stateless Fair Queuing (N-Core). The chairs outlined the working group's goal to move towards adopting a small number of solutions, requesting authors to categorize their drafts according to the DETNET Taxonomy and aiming for only one active working group document per category. The meeting concluded with an action for authors to update their drafts and a plan to initiate the adoption process at IETF 119 in Madrid, leveraging the recordings for broader working group feedback.
+
+## Key Discussion Points
+
+*   **Chairs' Opening Remarks**
+    *   The presentations serve as an archive and basis for future discussion on the mailing list, compensating for lower interim participation.
+    *   The working group aims to identify a small number of DetNet-defined solutions (expecting more than one, but fewer than the current number of drafts).
+    *   Solutions should be categorized using the existing DetNet Taxonomy document.
+    *   Authors are requested to update their documents to explicitly reference the category they align with.
+    *   The goal is to have only one *active* working group document per category. If a new document is adopted in a category where one is already active, the previous one becomes inactive.
+    *   The working group is contribution and consensus-driven, thus not expecting solutions in all taxonomy categories.
+
+*   **EDF (Earliest Deadline First) Mechanism (Shafu)**
+    *   **Overview**: Assigns different flows to delay levels to ensure scheduling before a deadline, based on quantified delay levels.
+        *   Each packet is assigned a deadline (arrival time + *volunt* time + latency deviation).
+        *   Packets are inserted into a sorted queue based on their deadline.
+        *   Schedulability conditions must be met.
+        *   Latency compensation (e.g., receiving) is applied if actual arrivals violate expected arrivals.
+    *   **Functional Characteristics & Taxonomy Mapping**:
+        *   Non-periodic (scaling measured over arbitrary non-repetitive time).
+        *   Class-level (flows grouped by similar delay levels, no per-flow identification needed for service).
+        *   Right-bounded (deadline defines the maximum time bound).
+        *   Mapping: EDF with "Y mode" maps to "right bounded" (Section 6.1 of taxonomy); EDF with "anti-time mode" maps to "class level periodic bounded" (Section 6.5).
+    *   **Discussion**:
+        *   A participant questioned the "violation" of arrival patterns, particularly due to burst accumulation from upstream nodes, and how the mechanism guarantees end-to-end latency despite this.
+        *   Shafu clarified that mechanisms like receiving or latency compensation maintain the target interval, ensuring function constraints and schedulability conditions are met. The calculation for dynamic network conditions was briefly discussed as potentially complex.
+
+*   **TF (Time-based Flow) Mechanism (Shafu)**
+    *   **Overview**: Allows flows to periodically access dedicated time slots in an orchestration period, achieving flow isolation based on time slot allocation.
+        *   Detects and sets up base time slot mapping between adjacent nodes.
+        *   Sets up forwarding time slot mapping (FTM) for each flow, forming a stack of outgoing time slots.
+        *   Inserts packets into the queue based on the outgoing time slot ID.
+    *   **Functional Characteristics & Taxonomy Mapping**:
+        *   Periodic (orchestration period with multiple time slots, flow assigned repeating slots).
+        *   Flow-level (FTM assigned per flow, extending T-single scheduled traffic to multiple slot queues).
+        *   Bounded (transmission completion time within the outgoing time slot).
+        *   Mapping: "flow level periodic bounded" (Section 6.2 of taxonomy).
+    *   **Discussion**:
+        *   A participant raised concerns about the scalability and complexity of assigning time slots to each flow in a large-scale network.
+        *   Shafu acknowledged this as a control plane complexity that would be addressed in a separate document.
+
+*   **C-Core (Stateless Core-Stateless Fair Queuing) (Chinu)**
+    *   **History**: An independent draft since 2023, stable after intensive debates.
+    *   **Taxonomy Mapping**: "flow level rate based unbounded" (Category 1).
+    *   **Operation**:
+        *   Allocates an imaginary dedicated link to each flow, with capacity accorded to the flow's service rate.
+        *   Packets are served in ascending order of their "finish time" (service completion time on the imaginary link).
+        *   Entrance nodes keep flow state; core nodes are stateless and simply update metadata (finish time) in the packet header.
+    *   **Advantages**: Simple admission control (sum of service rates must not exceed link capacity), excellent flow isolation (admitted flows unaffected by others), flexibility to adjust end-to-end latency by setting service rate, excellent statistical performance (low average buffer occupancy due to work-conserving nature).
+    *   **Complexity**:
+        *   End-to-end jitter bound is currently the same as the latency bound (potential for future improvement).
+        *   Data plane requires a priority queue (complexity about twice that of FIFO).
+        *   Control plane admission control is simple; no complex scheduling procedures needed.
+    *   **Scaling Requirements**: Addresses inflexibility of synchronization/cyclic operation (not needed), complexity due to large network size (statistical properties, flow isolation), and network dynamicity (simple admission control, easy latency bound calculation).
+    *   **Discussion**:
+        *   A participant questioned buffer requirements, specifically if the sum of bursts from all flows could exceed input buffer capacity at a node.
+        *   Chinu stated that burst accumulation is bounded and buffer space is generally not a limiting factor in modern switches/routers, except in very restricted environments.
+
+*   **On-Time Forwarding with Py-For-Q (Yanu)**
+    *   **Taxonomy Mapping**: "flow level non-periodic bounded" (Category 4).
+    *   **Operation**:
+        *   Controls packet transmission based on node delay upper and lower bounds set per flow at each node.
+        *   Each node calculates minimum and maximum departure times for an arriving packet (based on arrival time plus node delay bounds and existing mean/max departure times).
+        *   Packets are enqueued in a Py-for-Q in ascending order of a "nominal departure time" (midpoint of min/max departure times).
+        *   Packets are dequeued when their minimum departure time is reached or passed.
+        *   End-to-end variable delay bounds are inserted at ingress, and each node subtracts its residence time from these remaining bounds.
+    *   **Capabilities & Limitations**:
+        *   Can adjust end-to-end maximum and minimum delay.
+        *   Applicable to multi-domain and multi-path scenarios (e.g., P2MP).
+        *   Requires per-flow admission control (checking if sum of bursts at all nodes is less than the difference between low and up node delay bounds).
+        *   Requires path node upper/lower bound information and remaining bounds in the packet header.
+    *   **Use Case**: Multi-user collaboration with time-critical service over multi-path networks, where each user needs consistent latency and jitter despite varying path lengths/hop counts. Network delay matching effectively replaces end-station buffering.
+
+*   **N-Core (Non-conserving Stateless Core-Stateless Fair Queuing) (Yanu)**
+    *   **Concept**: Introduces an "eligible time" to ensure a minimum delay, transmitting packets only after this time.
+    *   **Taxonomy Mapping**: "flow rate based left bounded" (Category 2).
+    *   **Operation**:
+        *   Entrance nodes manage per-flow state (previous packet finish time, service rate).
+        *   Determines "eligible time" (maximum of previous packet finish time and current arrival time) and "finish time" (eligible time + packet length / service rate).
+        *   Marks eligible time and finish time in the packet header for the next node.
+        *   Transmits packets after their eligible time, in ascending order of finish time.
+        *   Core nodes are stateless, simply obtaining and updating eligible/finish times from the packet header using a delay factor.
+    *   **Advantages**: Simple admission control (comparing service rate with link capacity), flexible adjustment of end-to-end latency bound by setting service rate, fixed jitter. Does not require synchronization, cyclic operation, or traffic periodicity. Guaranteed maximum and minimum delay based on rate.
+    *   **Discussion**:
+        *   A participant raised concerns that N-core's non-work-conserving behavior might lead to significantly large end-to-end latency compared to C-Core.
+        *   Chinu clarified that the maximum end-to-end latency for both N-core and C-core is the same. The key difference is that N-core, due to its "eligible time" concept, provides less jitter but typically has a higher *average* latency compared to C-Core.
+
+## Decisions and Action Items
+
+*   **Decision**: Authors of DetNet forwarding solution drafts are requested to update their documents to self-identify the category (found in the DetNet Taxonomy document) with which their document is aligned.
+*   **Action Item**: All authors who presented (Shafu, Chinu, Yanu) are to update their respective drafts to include the self-identified taxonomy category.
+
+## Next Steps
+
+*   The working group's objective is to move forward with working group adoption of solutions based on the updated documents.
+*   The adoption process is planned to commence at IETF 119 in Madrid. This timeline was set due to the lower participation of non-authors in this interim, indicating a need for broader feedback to be gathered during the main IETF meeting.
+*   The chairs will summarize the outcome of this interim meeting and encourage the broader working group to review the available recording to aid future discussions.
+*   No second interim meeting is currently planned, with the focus shifting to IETF 119 for further progress.

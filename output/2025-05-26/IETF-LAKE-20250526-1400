@@ -1,0 +1,103 @@
+# [LAKE](../wg/lake.html)
+
+## Summary
+
+The LAKE Working Group held an interim meeting to review progress on adopted drafts and discuss future work. Updates were presented for the `draft-ietf-lake-edhoc-application-profiles`, `draft-ietf-lake-remote-attestation`, `draft-ietf-lake-psk-authentication`, and `draft-ietf-lake-third-party-authorization` documents. Key discussions included refining error handling, addressing attestation freshness, resolving authentication vulnerabilities, and modularizing authorization flows. The working group reviewed and proposed updates to its milestones, and initiated a discussion on potential post-quantum cryptography (PQC) related work.
+
+## Key Discussion Points
+
+### `draft-ietf-lake-edhoc-application-profiles` (Marco Tiloca)
+
+*   **Document Purpose:** Helps EDHOC peers align on parameters and application profiles (identified by integer ID) for successful EDHOC sessions, using in-band (new EAD item or error message) or out-of-band mechanisms.
+*   **Error Handling Updates:**
+    *   `EAD` item in Message 3 or 4 (where not expected) should be safely and silently ignored.
+    *   Multiple `EAD` instances in Message 1 or 2 should abort the session for safety.
+    *   Malformed elements in a `CBOR` sequence within `EAD` or error messages should be silently ignored.
+*   **`EDOCF_INFO` CDDL Definition:** A bug was found in the `EDOCF_INFO` CDDL definition; a naked CBOR sequence is not allowed, it must be wrapped in `CBOR` bytestring. This ensures compliance and consistency with `EAD` value encoding.
+*   **Parameter Namespace Simplification:** The related ACE document defines a shared parameter namespace. This draft will inherit an improved, simplified namespace, trimming parameters not pertinent to EDHOC application profiles or misaligned with EDHOC concepts.
+*   **Inconsistent Profile Advertisement Prevention:**
+    *   To prevent inconsistent or contradicting information when advertising multiple EDHOC application profiles, parameters will be split into two subsets.
+    *   This enables producers to avoid creating inconsistent profiles and consumers to perform minimal sanity checks.
+*   **`EAD` Item Semantics:** The `EAD` item should be used in a critical way (negative sign label) because it influences the session continuation. This ensures peers are on the same page regarding supported capabilities.
+*   **Trust Anchors in Profile Object:**
+    *   The `SAUR` object (canonical profile representation) has an optional `trust_anchors` parameter.
+    *   It was proposed to *remove* `trust_anchors` from this object instance because trust anchors have expiration times or can be revoked, which would prematurely invalidate the entire profile and its integer ID.
+    *   This does not prevent an EDHOC message sender from indicating trust anchors via the `EAD` value through other means.
+*   **DNS Advertisement:** Proposed to define an `SRV` parameter key for DNS to advertise EDHOC support and features/profiles, using the same semantics as `EAD` or error messages. An empty sequence can indicate basic EDHOC support.
+*   **New `EAD` Item for Message 1:** A simple, boolean-like `EAD` item only for Message 1 was proposed, allowing the initiator to request responder information or indicate it knows everything.
+*   **Next Steps:** Update the document for the Madrid meeting, incorporating these points, and seek further reviews.
+
+### `draft-ietf-lake-remote-attestation` (Yang Song)
+
+*   **Document Hierarchy:** Flattened the document hierarchy to make `EAD` items (attestation proposal, request) directly accessible from the table of contents.
+*   **CR Removal & Nonce Use:**
+    *   Removed `CR` (Commitment Reference) from figures, as it was deemed unnecessary and risky for the verifier to derive session state from ad hoc session parameters.
+    *   The verifier now uses a nonce (`n`) to identify session state. The verifier generates a nonce upon receiving an attestation proposal, stores it locally, and verifies received evidence against it.
+*   **Nonce Support in Passport Model:**
+    *   Added `n` as an optional parameter to the `result_request` in the passport model.
+    *   This allows low-power or time-unsynchronized relying parties to send a nonce, enabling the verifier to include it in the attestation result for freshness verification.
+*   **Clarifications and Editorials:**
+    *   Need to explain the rationale for identical `EAD` labels in background check and passport models.
+    *   Will clarify all eight possible instantiations of the remote attestation protocol in section 6.
+*   **Open Issues (Not Yet Solved):**
+    *   Add a dedicated section for verifier operations (background check and passport models).
+    *   Discuss combining LAKE and LAKE-OAUTH (from last hackathon).
+    *   Correct the section for error handling.
+*   **Rats WG Review:** No feedback received from the Rats WG yet.
+*   **Next Steps:** Solve remaining open issues and update the draft for the next IETF.
+
+### `draft-ietf-lake-psk-authentication` (Elsa Dufrasne)
+
+*   **Test Vectors:** Added test vectors, following the structure of RFC 9529 traces of EDHOC.
+*   **Acknowledgements:** Added acknowledgements to the document.
+*   **Reflection and Selfie Attacks:** A solution was implemented to prevent these attacks for preset key authentication without identities: adding an identity to the `field` of the `Quick PSK`, which is included in transcript hashes but not sent in messages.
+*   **Document Structure:** The document remains a delta-document (containing differences) with respect to the core EDHOC RFC 9528. This approach is preferred to avoid repetition.
+*   **Next Steps:**
+    *   Call for formal analysis of the document once the draft is frozen.
+    *   Plan for interop testing, especially given interest from industry implementations.
+*   Yoran provided information about another industry implementation, which could facilitate interop testing.
+*   Rafa indicated Yumo has a recent implementation of EDHOC PSK.
+
+### `draft-ietf-lake-third-party-authorization` (Giovanni Campagna)
+
+*   **Document Consolidation:** The draft is now a more general lightweight authorization mechanism, applicable to zero-touch enrollment, supporting two modes: device as initiator and device as responder (L-reverse flow).
+*   **Current Status:** Protocol supports error handling, includes optimizations (in appendix), implementation is validated.
+*   **Closed Issues:**
+    *   Reverse flow merged (version 4).
+    *   Error message fields: kept as-is.
+*   **Ongoing Discussion (Issue 26 - Christian Amsüss):**
+    *   If it makes sense to support not having a voucher.
+    *   If it makes sense to support having more vouchers.
+    *   Discussion around identity protection services and modularizing the three-party scenario (W has private key) from specific applications like ZOE.
+    *   Michael and Christian discussed the need to potentially separate "initiator confidentiality on identity" into a new document or modify ELA to be more generally applicable by not breaking the protocol if a voucher response is absent.
+*   **EA Review:** Simple fixes needed for section 7 (considerations) and to define `EAD` labels.
+*   **Implementation:** ELA is implemented in Rust within the `lakers` open-source implementation, running on nrf52840/nrf5340 (device), and Rust/Python for gateway and enrollment server. Michael indicated interest in implementing the W (enrollment server) side.
+*   **Next Steps:** Solve remaining issues for IETF 123 in Madrid, aiming for a final version.
+
+## Decisions and Action Items
+
+*   **WG Session for IETF 123:** The Chairs will request a 1 hour 30 minute session for the LAKE WG at IETF 123 in Madrid. (No objections heard.)
+*   **Milestones Update:**
+    *   **Decision:** Remove the "verification of ad hoc authentication credentials submitted to ISG as proposed standard" milestone from the data tracker, as no draft was ever adopted for this. (No objections heard.)
+    *   **Action Item (Chairs):** Remove the aforementioned milestone.
+    *   **Action Item (Yusuan):** Target end of 2025 for working group last call for `draft-ietf-lake-remote-attestation`, aiming for ISG submission by **March 2026**.
+    *   **Action Item (Elsa, Yoran, Rafa):** Target **Summer 2026** for ISG submission for `draft-ietf-lake-psk-authentication`, allowing for formal analysis and interop testing.
+    *   **Action Item (Giovanni):** Target **end of 2025** for ISG submission for `draft-ietf-lake-third-party-authorization`.
+    *   **Action Item (Marco):** Target **Summer 2026** for ISG submission for `draft-ietf-lake-edhoc-implementation-considerations`, allowing for input from other draft implementations.
+*   **`draft-ietf-lake-psk-authentication` Interop Testing:**
+    *   **Action Item (Yoran, Elsa):** Coordinate with the industry implementation mentioned by Yoran.
+    *   **Action Item (Elsa, Yoran, Rafa):** Plan for an interop testing event for EDHOC PSK at the Madrid hackathon (IETF 123). Chairs will publicize this on mailing lists.
+*   **`draft-ietf-lake-third-party-authorization` Issue 26:**
+    *   **Action Item (Giovanni, Michael, Christian, and co-authors):** Convene a design team meeting (offline from this interim) to discuss the complexities of Issue 26 (voucher presence/absence, identity protection, modularization of three-party scenarios). Report conclusions to the mailing list.
+*   **PQC Discussion:**
+    *   **Decision:** Plan for a substantial discussion (e.g., 15 minutes) during the IETF 123 Madrid meeting on post-quantum cryptography related to EDHOC, including `draft-matsunaga-lake-pquake` and the general working group position on PQC threats.
+
+## Next Steps
+
+*   Authors to address open issues and prepare new versions of their drafts for IETF 123 in Madrid.
+*   The chairs will request a 1.5-hour session for LAKE at IETF 123.
+*   The working group will proceed with updated milestone targets.
+*   Implementers of adopted drafts are encouraged to contribute input to the `draft-ietf-lake-edhoc-implementation-considerations` document.
+*   Formal analysis for `draft-ietf-lake-psk-authentication` will be initiated once the draft is stable.
+*   Coordination and planning for interop testing events (EDHOC PSK) at the Madrid hackathon.
+*   A dedicated discussion on Post-Quantum Cryptography and its relevance to LAKE will be held at IETF 123. The chairs emphasized focusing on current milestones while keeping an open mind for future PQC work.

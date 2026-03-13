@@ -1,0 +1,46 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC working group held an interim meeting to discuss two primary topics: the SCHC Fragmentation with Forward Error Correction (F) draft and a new draft on SCHC Universal Options. For the SCHC F draft, the discussion focused on two proposed approaches for integrating FEC – a new rule ID bound to existing fragmentation rules (with tile interleaving for robustness) and a layer-based FEC approach. A strong sense of those present indicated a preference for the XOR-based FEC using a new rule ID. The Universal Options discussion explored how to dynamically compress new or proprietary protocol options without prior knowledge, proposing an augmentation to the SHC rule format using a `space-ID` and `option-value` to identify options, with recognized trade-offs between compression efficiency and unparser complexity.
+
+## Key Discussion Points
+
+### SCHC Fragmentation with FEC (SCHC F)
+
+*   **Proposed F Rule ID Approach:** Alejandro presented a proposal to introduce a new FEC Fragmentation Rule ID (e.g., ID 30) that would be bound to an existing fragmentation rule (e.g., ID 20). This F rule would inherit parameters and extend functionality to inject FEC fragments (e.g., an XOR fragment every two regular fragments).
+    *   **Benefits:** This approach was highlighted for not altering existing fragmentation functionality, ensuring backward compatibility; non-FEC-aware nodes would simply ignore FEC fragments.
+    *   **FCN Handling:** It was clarified that the FCN (Fragmentation Control Number) would reference the beginning of the recoverable data.
+    *   **Loss Recovery:** An evaluation showed that with 10% packet loss and a 2-out-of-3 XOR scheme, the probability of FEC not working was reduced to 2.8%, indicating high success for sparse losses. The scheme allows recovery for up to 33% packet loss.
+    *   **Consecutive Loss Mitigation:** To address consecutive packet losses, tile interleaving for FEC data was proposed, distributing mixed tiles across fragments to enhance robustness.
+    *   **Discussion on Rule ID Binding:** A point of contention was raised regarding how a new FEC Rule ID (e.g., 30) interacts with an existing fragmentation Rule ID (e.g., 20). It was clarified that Rule 30 is *bound* to Rule 20, inheriting its context, and that FEC-unaware endpoints would ignore Rule 30.
+*   **Alternative FEC Layer Approach:** An alternative was presented where a traditional FEC algorithm (e.g., Reed-Solomon) is applied as a separate layer *before* fragmentation. The receiver would then accept N out of K fragments and use a recover function.
+*   **Community Feedback:**
+    *   A poll of the room in a previous meeting (Dublin) indicated a strong preference for the XOR-based FEC approach, also noting its potential for network coding benefits.
+    *   Anna expressed that the "first one (new Rule ID) doesn't work" for her, preferring the "second one (FEC as a layer)."
+    *   Alejandro noted that discussions with industry (Actility) preferred XOR, especially with tile interleaving.
+*   **Future Considerations:** Need for more FEC experts, evaluation with LPWAN sample traffic, and consideration of MTU change behavior (currently out of scope).
+
+### SCHC Universal Option
+
+*   **Problem Statement:** The original SCHC specification (RFC 9363) was designed for static LPWAN environments with predefined Field IDs in the YANG data model. With the working group's rechartering for dynamic environments, there's a need to handle new, unknown, or proprietary options that were not predefined, requiring dynamic compression and decompression.
+*   **Approaches to Option Representation:**
+    *   **Semantic Approach (current):** Relies on abstract Field IDs, which provides good compression but requires prior definition and creates interoperability issues for new options.
+    *   **Syntactic Approach (proposed):** Represents options as they are coded on the wire (e.g., Delta-type, length, value). This resolves interoperability for new options as their native protocol values are preserved.
+        *   **Drawbacks:** Can lead to suboptimal compression (multiple fields to send) and increased complexity for the unparser, especially if future options don't follow simple TLV structures (e.g., CoAP's internal variable length encoding).
+*   **Proposed Solution:** Lauren proposed augmenting the SCHC rule format. Instead of solely relying on `field-ID`, options would be identified using a combination of a `space-ID` (e.g., "CoAP", "TCP") and the native `option-value` from the protocol (e.g., option 11). This combination would serve as the key for the rule.
+    *   **YANG Data Model Impact:** This would require augmenting the YANG data model to include `space-ID` and `option-value` as part of the key for option-related rules. It aims to keep existing mandatory field definitions unchanged.
+    *   **Discussion on `space-ID`:** The need for `space-ID` was highlighted to differentiate options with the same numerical value across different protocols (e.g., "11" in TCP vs. CoAP). Concerns were raised about the implications of modifying the YANG data model key structure.
+*   **Trade-offs and Future Directions:** Cont noted that the proposed solution pushes complexity to the unparser, requiring protocol-specific logic for reconstructing packet deltas. The discussion suggested that a hybrid approach might be beneficial, allowing for both the current semantic (abstract) representation and the proposed syntactic (on-wire) representation of options, potentially with an indicator in the rule to specify which approach is being used. This could allow for simpler implementations on resource-constrained devices.
+
+## Decisions and Action Items
+
+*   **Alejandro:** To follow up offline via email with Anna to discuss the specific arguments regarding the FEC rule ID binding and the first proposed solution for SCHC F.
+*   **Alejandro:** To investigate simulations or implementations to compare the performance of the proposed FEC modes.
+*   **Working Group:** Any future discussions on defining a "seed for the data model" or other significant data model changes should be accompanied by slides to facilitate clear discussion.
+
+## Next Steps
+
+*   Continue the discussion on the SCHC F draft, incorporating feedback from offline discussions and potential simulation/implementation results.
+*   Continue the discussion on the SCHC Universal Option draft, further exploring the proposed `space-ID`/`option-value` approach, its impact on the YANG data model, and considering the feasibility of a hybrid approach for option representation.
+*   The next interim meeting is scheduled for two weeks from now. Participants are encouraged to submit any further topics for discussion to the chairs or the mailing list.

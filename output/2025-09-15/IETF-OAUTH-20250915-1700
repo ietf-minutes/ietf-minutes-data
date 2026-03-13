@@ -1,0 +1,45 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This interim meeting session focused on proposals for automated client registration, driven by the need to eliminate client secrets and support dynamic, ephemeral workloads using platform-issued attested credentials. Peter presented two drafts: "Register on First Use" and "Spiffy + Dynamic Client Registration," providing context, technical details, and discussing their relationship to other ongoing work like Client ID Metadata. Key discussions revolved around leveraging existing credential systems like Spiffy, managing redirect URIs, and the implications of key-bound vs. non-key-bound credentials and stable client identifiers.
+
+## Key Discussion Points
+
+*   **Motivation for Automated Client Registration**:
+    *   **Elimination of Secrets**: Drive to remove client secrets and API keys, leveraging platform identity systems (e.g., Spiffy, Kubernetes projected service account tokens) that provide easy attestation and credentialing for individual workloads.
+    *   **Operational Cost & Management**: Manual client registration is costly, error-prone, and leads to complex lifecycle management challenges, especially at scale. Automated systems can manage credential rotation and expiry.
+    *   **Heterogeneous and Dynamic Environments**: Large organizations operate in complex, varied environments with high development velocity, demanding faster client setup. Support for ephemeral workloads (scaling up/down) requires unique, dynamic registration.
+    *   **Security**: Dynamic credential provisioning allows for per-instance identifiers and credentials, reducing secret sprawl.
+*   **Core Idea of Proposals**: Leverage attested identities (e.g., from Spiffy) for client authentication and, crucially, for automated client registration when a client ID is required (e.g., for redirect flows). The authorization server would trust the issuer of these attested credentials, delegating aspects of client identity lifecycle management.
+    *   **Clarification on Client IDs**: It was clarified that while some flows like the JWT Bearer Grant (RFC 7523) and Client Credentials Grant can utilize strong authentication without client secrets, they generally still require a client ID for identification.
+*   **Spiffy Context**: Spiffy (Secure Production Identity Framework For Everyone) addresses the "bottom turtle problem" by bootstrapping credentials without long-lived secrets through workload attestation. It assigns Spiffy IDs and provisions short-lived X.509 Svits and JWT Svits, with future work including Workload Identity Tokens (WIC). It includes built-in continuous lifecycle management (rotation).
+*   **Proposal 1: Register on First Use (ROFU)**:
+    *   **Mechanism**: A client presents its attested credential (e.g., X.509 Svits, JWT Svits) during its first interaction (specifically, a token request for client credentials flow). If the Authorization Server (AS) verifies the credential and trusts its issuer, the AS registers the client using its attested identity as the client ID.
+    *   **Benefits**: Efficient, low latency, avoids a separate registration protocol, and works with existing X.509 and JWT authentication.
+    *   **Challenge**: Managing redirect URIs remains a consideration, potentially requiring their inclusion in the credential or derivation from the identifier.
+    *   **Implementation**: An existing implementation from Signicat was noted as proof of concept.
+*   **Proposal 2: Spiffy + Dynamic Client Registration (DCR)**:
+    *   **Mechanism**: The attested credential (e.g., a Spiffy-issued JWT Svits) is used as a "software statement" in a standard Dynamic Client Registration (RFC 7591) request.
+    *   **Requirements**: Requires the AS to support DCR and the software statement to be a JWT (as per DCR spec).
+    *   **Benefits**: Once registered, the client ID is established and can be used for subsequent flows with its attested credentials. The specification attempts to generalize this beyond Spiffy IDs to other verifiable credentials.
+    *   **Implementation**: An existing implementation by Christian Pasta (using Keycloak and Spire) was noted.
+*   **Comparison with Other Proposals/Options**:
+    *   **RFC 7523**: Useful for authentication but still generally requires a client ID for identification.
+    *   **Client ID Metadata (draft-ietf-oauth-client-id-metadata)**: This proposal is seen as very interesting and complementary. Key questions for Peter's proposals in relation to Client ID Metadata include:
+        *   How to handle *per-instance* client IDs.
+        *   How to use *existing credentials* that may have non-URL identifier types (e.g., Spiffy IDs are URNs).
+        *   Whether it will support non-JWT credentials (e.g., X.509).
+*   **Discussion on Key-Binding and Stable Identifiers**:
+    *   **Key-Bound Credentials**: Currently, X.509 Svits are key-bound, while traditional JWT Svits are not. Upcoming Workload Identity Tokens (WIC) will introduce key-bound JWTs, which "rhymes" with attestation-based client authentication.
+    *   **Stable Identifiers vs. Rotating Keys**: Participants discussed whether the public key itself could serve as an implicit client ID. While some use cases involve long-lived keys for clients (months to years) that could fulfill this, in systems like Spiffy, keys are short-lived and constantly rotating. The presented proposals advocate using the stable Spiffy ID (the subject or subject alternative name in the credential) as the client identifier, rather than the ephemeral key, to ensure auditability and consistent access management across key rotations.
+
+## Decisions and Action Items
+
+No formal decisions were made or specific action items assigned during this discussion. The session served as an informational presentation and open discussion.
+
+## Next Steps
+
+*   **Explore Convergence with Client ID Metadata**: A key next step is to investigate the extent to which the "Register on First Use" and "Spiffy + DCR" drafts can converge with or leverage the client ID metadata work.
+*   **Address Specific Challenges**: Focus on reconciling how to support per-instance identifiers and accommodate existing credential identifier formats (e.g., non-URL types like URNs) within the OAuth framework. The difficulty of changing established identifier formats in existing systems due to downstream authorization processes was highlighted.
+*   **Continued Discussion**: Peter expressed interest in insights from the upcoming interim meeting on Client ID Prefix and Client ID Metadata to further explore potential merging or integration points for these concepts.

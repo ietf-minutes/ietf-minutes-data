@@ -1,0 +1,58 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This inter-meeting of the CORE working group focused primarily on the handling and standardization of URI query parameters within the CoAP ecosystem, particularly in the context of the `core-clar` (Corrections and Clarifications) document and the `conditional-attributes` draft. Key discussions revolved around reconciling different interpretations of query parameter roles (resource identification vs. parameterization), the implications of BCP 190 (RFC 8820) for standardizing query parameter semantics, and practical proposals for indicating server support and "must-understand" semantics for conditional query parameters. The meeting also included an update on the ongoing working group adoption call for the Yang Pen draft.
+
+## Key Discussion Points
+
+*   **Role of URI Query Components**:
+    *   URIs include an optional query component, typically starting with a `?`. RFC 7252 (CoAP) supports splitting queries by `&` into parameters.
+    *   Common expectation: parameters are `name=value` or boolean `name`. The CoAP specification does not mandate this format.
+    *   RFC 3986 (URI Generic Syntax) views query and path components as identifying a resource, implying a change in query means a different resource. This aids caching.
+    *   RFC 7252 also states queries "parameterize the resource," which introduces ambiguity regarding whether it modifies the *resource* or the *resource name*. This ambiguity is a target for `core-clar`.
+    *   Practical server implementations often route based on path and pass query parameters to handlers, influenced by HTML forms.
+
+*   **Standardizing Query Parameters and BCP 190**:
+    *   CoAP options are a clear extension point. Query parameters were not originally intended as such but are server-controlled application data.
+    *   BCP 190 (RFC 8820) distinguishes: applications *can* specify query syntax for resources under their control, but extensions *must not* constrain general query format/semantics to avoid collisions.
+    *   This raises the question: is a query parameter specification an "application" part or a general "extension"? Extensions combined with others could conflict.
+
+*   **Conditional Query Parameters (CQP) Draft**:
+    *   The `conditional-attributes` draft specifies query parameters for `Observe` registrations (e.g., controlling notification conditions).
+    *   It's seen as "between an application and an extension" – widely applicable (like an extension) but with application-specific semantics.
+    *   **Server Indication**: A server could indicate support for CQPs using the `if=` (interface type) target attribute (e.g., `if=conditional-query-parameters`) during resource discovery. This would clarify when `C.` prefixes (see below) are understood.
+    *   **Handling Unknown CQPs ("Ignore Unknown")**: To support extensibility, the "ignore unknown" principle is desired. A `C.` prefix for CQP names could allow servers that advertise `if=conditional-query-parameters` to ignore unknown CQPs, while other query parameters remain unaffected.
+    *   **"Must-Understand" CQPs**: For critical parameters (e.g., rate limiting), the client needs to know if the server understands them. A convention was suggested: CQP names starting with uppercase `C.` denote "must-understand" (e.g., `C.rate`). This is a protocol-specific convention, not a general URI mandate. Marco noted that generalizing such a convention could conflict with BCP 190 unless carefully constrained.
+    *   **Multiple `if=` interfaces**: When a resource advertises multiple `if=` types, care must be taken to avoid query parameter name collisions across these interface types. Prefixes help.
+
+*   **Role of `core-clar` for Query Parameter Explanation**:
+    *   Kirsten highlighted ambiguity in CoAP regarding "parameterizing the resource" (resource vs. resource name).
+    *   Proposed solutions for clarification:
+        1.  Add explanation to `core-clar` (Kirsten has a PR 47).
+        2.  Update the `conditional-attributes` draft itself.
+        3.  Extend existing informational documents like `restful-iot`.
+    *   Marco's preference: start clarifications in `core-clar` for convenience, then potentially move some parts to `t2rg` (restful-iot) if they become more informational.
+
+*   **Implementation Perspective (John, LibCoAP)**:
+    *   John described `libcoap`'s approach: resource identified by URI path, query parameters are passed to the application handler to deal with as it likes.
+    *   Acknowledged the "dialectical view" where query parameters might be treated as part of the resource identifier for caching purposes (e.g., at a proxy layer).
+    *   John offered to provide example code demonstrating how `libcoap` handles query parameters.
+
+*   **AOB: Yang Pen WG Adoption Call**:
+    *   The WG adoption call for the Yang Pen draft is ongoing.
+    *   Michael, Andy, and Alexander expressed positive views.
+    *   Michael noted it seems non-controversial and a document is needed for SID allocation/reservation.
+    *   Kirsten agreed on objectives, noting Alexander's detailed concerns would be a good discussion point once it's a working group document, to ensure no "doomsday scenario" is overlooked.
+
+## Decisions and Action Items
+
+*   **Bill (Editor, `conditional-attributes` draft)**: Incorporate proposed conventions for server discoverability (using `if=` target attribute) and "must-understand" semantics (e.g., `C.` vs. `c.` prefix) into the `conditional-attributes` draft.
+*   **Kirsten**: Continue to seek feedback on PR 47 for the `core-clar` document, which addresses the explanation of query parameter roles.
+*   **John**: Provide example code for `libcoap`'s handling of query parameters for inclusion in the `core-clar` document.
+
+## Next Steps
+
+*   The editor of `conditional-attributes` is expected to publish a new revision incorporating the discussed conventions.
+*   The `core-clar` document will continue to be developed, with ongoing discussion on PR 47 to provide clearer explanations regarding query parameter semantics in CoAP.
+*   The working group will continue to monitor and close the Yang Pen WG adoption call.

@@ -1,0 +1,67 @@
+# [SNAC](../wg/snac.html)
+
+## Summary
+
+This interim meeting focused on several open Pull Requests and issues related to the SNAC document. Key discussions included aligning Router Advertisement (RA) terminology and timing with RFC 4861, addressing the handling of multiple prefixes in subnetwork failure scenarios, clarifying DHCPv6 delegated prefix lifetimes, and administrative renaming for consistency. Significant updates to the RA beacon/interval logic and the handling of subnetwork partitions were proposed and refined. Progress on the state machine layout, a major outstanding item, was noted for the next meeting.
+
+## Key Discussion Points
+
+*   **Router Advertisement (RA) Terminology and Timing:**
+    *   Discussion centered on replacing the term "RA beacon" with "periodic unsolicited multicast RA message" for consistency with RFC 4861.
+    *   Proposed changes included using Neighbor Discovery Protocol (NDP) parameters for RA sending intervals, introducing `min_RA_interval` and `max_RA_interval` values (154s and 206s respectively) to achieve an average RA interval of three minutes, diverging from RFC 4861 defaults for SNAC's faster requirements.
+    *   The value of randomization in RA intervals, particularly in power outage recovery scenarios, was debated.
+    *   A related SixMan document on router lifetime was mentioned as potentially relevant for future updates.
+*   **RA Constant Naming and Usage:**
+    *   It was suggested to clarify that `average_RA_interval` is a derived value, not a configurable constant, to avoid confusion.
+    *   Consensus was reached to use RFC 4861 parameter names (`MinRouterAdvInterval`, `MaxRouterAdvInterval`) instead of inventing new SNAC-specific constant names.
+    *   For decision logic related to prefix deprecation, using `MaxRAInterval` was preferred over a calculated average.
+*   **SNAC Router Restart and Flash Write Lifetime:**
+    *   The section discussing "maintenance across SnackRouter restart" and the suggestion to avoid frequent flash writes for advertised prefixes was reviewed.
+    *   Given that Thread border routers (a primary SNAC implementation) address this problem differently (constant prefix), a sense of those present indicated this section might be irrelevant or provide suboptimal advice for SNAC.
+*   **Neighbor Table Renaming:**
+    *   A minor change to rename "Neighbor table" to "Neighbor cache" was discussed for consistency with RFC 4861.
+    *   The capitalization of terms in the document (preferring lowercase for general terms) was also briefly touched upon.
+*   **Handling Subnetwork Partitions/Failures:**
+    *   Discussion on issue 119, concerning mesh networks splitting and merging, potentially leading to multiple SNAC prefixes.
+    *   The original text suggested deprecating one prefix, but a new approach proposed allowing multiple prefixes for robustness, while acknowledging that specific technologies (like Thread) might have their own mechanisms to manage network data size.
+    *   The section on "Handling Subnetwork Failures and Changes" was reviewed for normative language. It was suggested that SNAC should outline the problems that subnetwork technologies must solve, rather than providing normative solutions within the SNAC document itself.
+*   **M/O Flags Copying:**
+    *   A Pull Request to remove `max_flags_copy_time` and clarify the logic for copying MNO bits from the most recent non-SNAC router RA was discussed. The SNAC router should clear flags on boot and then copy from observed RAs.
+*   **Stub Network Reachable Time Clarification:**
+    *   The term "stub network reachable time" in the context of Route Information Options (RIO) was found to be potentially confusing with Neighbor Discovery's reachable time.
+    *   A proposal was made to rename this concept to `stub_network_route_lifetime` to explicitly refer to the route lifetime field in the RIO.
+*   **DHCPv6 Address Assignment for SNAC Router:**
+    *   The necessity of specifying DHCPv6/SLAAC for the SNAC router's own Infrastructure Link (AIL) address was discussed.
+    *   Consensus indicated that this is outside the scope of the SNAC document, as router communication on the AIL typically uses link-local addresses, and other addressing needs (e.g., for a web interface) are covered by existing IETF specifications.
+*   **DHCPv6 Delegated Prefix Lifetime:**
+    *   Discussion regarding the minimum suitable lifetime for a DHCPv6 delegated prefix (e.g., 30 minutes).
+    *   The group explored requesting a very long or infinite lifetime from the DHCPv6 server to reduce renewal traffic, while still stipulating that a SNAC router should not accept any delegated prefix with a valid lifetime less than 30 minutes. The server's response to an infinite request could dictate the actual maximum offered lifetime.
+*   **State Machine Layout:**
+    *   Status update on the state machine layout work, noting its significant impact and need for careful review. This is expected to resolve the issue of handling fallback solutions for multiple AILs.
+
+## Decisions and Action Items
+
+*   **DECISION:** Rename "RA beacon" to "periodic unsolicited multicast RA message" throughout the document for consistency with RFC 4861.
+*   **DECISION:** Use RFC 4861 parameter names (`MinRouterAdvInterval`, `MaxRouterAdvInterval`) for RA interval configurations in SNAC, rather than defining new SNAC-specific constant names.
+*   **DECISION:** The `average_RA_interval` will be removed as a formal constant or explicitly clarified as a derived, non-configurable value.
+*   **DECISION:** For prefix deprecation decision logic, `MaxRAInterval` will be used instead of a calculated average interval.
+*   **ACTION (Esko):** Update the Pull Request to reflect the above decisions regarding RA terminology and constant naming.
+*   **DECISION:** The section on "Maintenance across SnackRouter restart" (flash writes for prefixes) will be moved to an appendix as informative guidance, and any normative language will be removed.
+*   **ACTION (Esko):** Create an issue or update the existing one to track the refactoring/removal of the "Maintenance across SnackRouter restart" section, potentially moving it to an appendix.
+*   **DECISION:** "Neighbor table" will be renamed to "Neighbor cache" for consistency with RFC 4861.
+*   **ACTION (Esko):** Update the Pull Request for the Neighbor Table rename, ensuring consistent capitalization (preferably lowercase).
+*   **DECISION:** The section on "Handling Subnetwork Failures and Changes" will be moved to an appendix as informative text, explicitly stating that the specific solutions for these issues are within the scope of the subnetwork technology (e.g., Thread), not SNAC. Normative language will be removed.
+*   **ACTION (Esko):** Update the Pull Request for handling subnetwork failures to reflect moving the section to an appendix and removing normative language.
+*   **DECISION:** The M/O flag copying logic will be updated to instruct SNAC routers to clear flags on boot, and then copy the most recent MNO bits observed from a non-SNAC router's RA.
+*   **ACTION (Esko):** Update the Pull Request for M/O flag copying.
+*   **DECISION:** The term "stub network reachable time" will be renamed to "stub network route lifetime" to avoid confusion and better reflect its purpose as a route lifetime in the RIO.
+*   **ACTION (Esko):** Create a Pull Request to rename "stub network reachable time" to "stub network route lifetime".
+*   **DECISION:** The SNAC document will not specify DHCPv6 or SLAAC for the SNAC router's own AIL address, as this is covered by existing IETF specifications and best current practices. The related issue will be closed.
+*   **ACTION (Esko):** Close the issue regarding DHCPv6 address assignment for the SNAC router.
+*   **ACTION (Esko):** Draft text for the DHCPv6 delegated prefix lifetime, proposing to request a long lifetime (e.g., 6 hours) from the server, but clarifying that a SNAC router should not accept offers with a valid lifetime less than 30 minutes.
+
+## Next Steps
+
+*   **Ted:** Continue development of the state machine layout and present it at the next meeting. This is crucial for resolving the fallback solution for multiple AILs.
+*   **Esko:** Implement the agreed-upon changes from the discussion points, creating or updating Pull Requests as necessary, and address open issues.
+*   The working group will review document updates via email and during the next scheduled interim meeting.

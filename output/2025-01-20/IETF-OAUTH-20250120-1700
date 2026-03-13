@@ -1,0 +1,36 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+Dmitri from Back Bay UK presented a proposal for "single-use tokens" within the OAUTH framework. The concept aims to standardize the handling of tokens that are intended for a single consumption, such as those used for high-value transactions like payments, or for internal authorization server needs like magic links and password resets. The discussion focused on the technical challenges of enforcing single-use at scale and the overlap with existing OAUTH mechanisms like DPoP and Rich Authorization Requests (RAr).
+
+## Key Discussion Points
+
+*   **Single-Use Token Proposal:**
+    *   The concept has been significantly simplified since IETF 121, removing "complimentary confirmation tokens" and focusing on single-use, down-scoped access tokens.
+    *   Existing one-time objects in OAUTH include authorization codes and DPoP proofs. The proposal addresses access tokens and non-OAUTH JOTs (e.g., "action tokens" in Keycloak for internal AS use).
+    *   **Use Cases:** Payments (disclosing card details, generating statements), password resets, email confirmations, magic links, organization invites.
+    *   **Distinguishing Features:** Single-use tokens are typically very short-lived (e.g., 30 seconds), must not have a refresh token, and should not initiate a long-lived session at the Authorization Server (AS).
+    *   **Difference from Step-Up:** Unlike Step-Up, which replaces a token with a more powerful, active one, single-use tokens are temporary replacements for a single call, after which the original token is restored.
+    *   **Current Practices (without standard):** Implementers often resort to client-level settings to disable refresh tokens, creating dedicated clients, starting separate authorization sessions, requesting custom scopes, and explicitly revoking tokens.
+*   **Proposed Mechanism:**
+    *   Introduce a new JOT claim: `use`, with a suggested value `single`.
+    *   **In Token Response:** The `use` claim informs the client library that no refresh token is provided, the existing access token should not be replaced, and the new token is for a single request.
+    *   **In JOT Token (for Resource Server):** Indicates that non-reuse must be enforced.
+    *   The concept could also extend to non-OAUTH JOTs (action tokens).
+    *   **Resource Server Flow:** Re-use of a single-use token should result in an `invalid_token` error. Clients could explicitly request a single-use token via a new authorization endpoint parameter.
+*   **Open Questions from Presenter:**
+    *   How `userinfo` and `introspection` endpoints should interpret the `use` claim (ignore or reject calls with single-use tokens).
+    *   The absence of an `insufficient_scope` equivalent for Rich Authorization Requests (RAr) and potential privacy concerns if AS delivers detailed authorization information.
+    *   Whether to limit the scope of this document to first-party stacks (where AS, RS, and client are controlled by a single entity).
+*   **Discussion on "One-Time Use" Enforceability:**
+    *   **Overlap with Existing Work:** Participants noted overlap with DPoP, mTLS, and RAr, particularly for payment use cases. DPoP, for instance, requires unique proofs per request for replay protection.
+    *   **Challenges at Scale:** Peter suggested that strictly enforcing "one-time use" is challenging at scale, especially in globally distributed systems with clustering, network errors, and retries. This can lead to a poor user experience.
+    *   **Industry Practice:** Philip and Peter indicated that in practice, "one-time use" often becomes a "best effort" or "eventual consistency" property, as ensuring strict uniqueness can introduce unacceptable latency. While DPoP mandates clients generate unique proofs, the specification doesn't explicitly require the AS/RS to strictly enforce one-time use of the *proofs* (beyond freshness checks).
+    *   **Authorization Codes:** While authorization codes are theoretically one-time, practical implementations and certification tests often allow for a small window of re-use to accommodate network issues, underscoring the difficulty of strict enforcement.
+*   **Client-Side Token Management:**
+    *   A brief discussion touched upon how JavaScript clients manage tokens. While IETF guidance (e.g., the SPA document) advises against storing access tokens in the browser/JS (favoring patterns like BFF), the reality of client implementations varies. This impacts the ease of "temporarily replacing" an existing token with a single-use one.
+
+## Next Steps
+
+Dmitri will continue to refine the draft based on the feedback received during the session, particularly regarding the nuances of enforcing "one-time use" at scale and the interplay with existing OAUTH specifications. The next interim session will discuss private key JOT issues.

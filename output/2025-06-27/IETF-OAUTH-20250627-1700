@@ -1,0 +1,40 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This interim meeting focused on the "deferred key binding" pattern in OAUTH, also referred to as "trust me bro." The core problem discussed is that existing Proof-of-Possession (PoP) mechanisms assume the party requesting an access token is the same party that will present it and can prove possession of the bound key at the time of issuance. However, several real-world use cases demonstrate a need to bind a token to a key without presenting proof of that key at the time of binding, deferring the presentation to a later point, often by a different party. The discussion explored various approaches to formally address this pattern within the OAUTH framework.
+
+## Key Discussion Points
+
+*   **The Problem of Deferred Key Binding:** Current OAUTH PoP (e.g., DoP, mTLS, HTTP Message Signatures) relies on the `cnf` claim and assumes a single party both requests and presents the token, proving key possession at issuance. This model doesn't fit emerging use cases.
+*   **Real-world Patterns:** While resembling an attacker model, this pattern appears in legitimate scenarios:
+    *   **SPIFFE Agent:** An agent obtains tokens bound to a workload's key, where the agent issues the key but the token is for the workload, not the agent.
+    *   **Backend for Frontend (BFF):** Clients split into multiple pieces with different keying material.
+    *   **Transaction Tokens:** A gateway obtains a token that needs to be cryptographically bound and carried through a chain of systems.
+    *   **Cross Trust Domain Boundary:** Work in one domain requires a token bound to a key in another domain, without the requesting party having direct proof of that key.
+    *   **Network Segmentation:** Scenarios where a client cannot directly communicate with the Authorization Server (AS) due to network topology (e.g., behind a gateway, no internet access).
+*   **Proposed Options for the Working Group:**
+    1.  **Ignore:** Dismiss as bad practice.
+    2.  **Informational/BCP Document:** Document patterns, use cases, guardrails, and security considerations/restrictions.
+    3.  **Protocol Specification:** Add new OAUTH parameters to formalize the request for a token bound to a specific key where the key's proof is deferred.
+    4.  **Transitive Proof:** Define mechanisms for cryptographically verifying a "chain of custody" or delegation (e.g., A authorizes B to request a token for C).
+    5.  **Token Specification:** Define how such tokens (bound without immediate PoP) are represented, e.g., within or separate from the `cnf` claim.
+*   **Key Management and Assumptions:**
+    *   Discussion highlighted the importance of documenting assumptions regarding key generation, distribution, and storage (e.g., server-generated keys for workloads, as seen in SPIFFE).
+    *   The fundamental assumption is that the entity requesting the token does not possess the private key for which the token is being requested and cannot generate PoP from it.
+    *   It was agreed that specifying *how* keys are stored is out of scope, but considerations around key distribution and protection (e.g., similar to PKCS standards) are relevant to architectural choices.
+*   **"Transitive Proof" Explained:** This refers to a mechanism where an entity (C) can prove that another entity (A) authorized an intermediary (B) to act on its behalf in obtaining a token. Prior work in VoIP protocols (e.g., SIP) was mentioned as a reference.
+*   **Relation to Other Work:** The pattern has parallels with "chained OAUTH flows" and "client and device metadata for nested flows" (an expired draft by Aaron). It also impacts the WHIMSY working group (workload identities) and broader delegated authorization scenarios.
+*   **Mechanism Suggestions:** X5C headers with certificate chains and signed JWTs were suggested as a self-contained proof mechanism for PKI-based environments, but not considered a universal solution.
+*   **Path Forward Debate:** A preference was expressed for a protocol specification (option 3 or 4) over an informational document, as it could lead to interoperable security faster. However, starting with a document detailing use cases, scenarios, and guardrails was seen as a valuable initial step, provided it doesn't become a blocker for later protocol work.
+
+## Decisions and Action Items
+
+*   The working group recognizes the need to address the "deferred key binding" pattern, as ignoring it could lead to non-interoperable and potentially insecure deployments.
+*   **Action Item:** Justin, Dean, and Brian will initiate and push further discussion on the OAUTH mailing list regarding the proposed options and the draft.
+*   **Action Item:** All interested participants are encouraged to review the "deferred key binding" draft and the meeting notes to prepare for further discussion.
+
+## Next Steps
+
+*   A brief, high-level discussion (approximately 10 minutes) is planned for one of the OAUTH working group sessions in Madrid. This will be primarily to gauge the sense of those present on the preferred path forward (e.g., informational vs. protocol specification) based on prior mailing list discussion, rather than a detailed technical deep dive.
+*   The chairs will aim to facilitate this discussion, potentially during the Friday session.

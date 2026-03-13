@@ -1,0 +1,54 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held an interim meeting primarily focused on the ongoing discussion of parameterization in MOQ messages, specifically distinguishing between fixed fields and parameters. Ian presented a principle for parameterization and several PRs proposing to convert existing fixed fields to parameters. Significant discussion ensued regarding the performance implications of parameters versus fixed fields, particularly in high-scale scenarios, and the impact on spec understandability. Colin raised objections based on implementation experience and will present an alternative principle at the next meeting. Other topics included mechanisms for providing default subscription parameters for `SUBSCRIBE_NAMESPACE` and opportunities for data plane compression.
+
+## Key Discussion Points
+
+*   **Parameterization Principle:** Ian proposed a principle where fields required for a verb to make sense, and lacking a sensible default, should remain fixed fields (e.g., `track_name`, `namespace` for `SUBSCRIBE`). Parameters, being easier to change in future versions or extensions, would be for optional or extensible items.
+*   **Specific Fields Proposed for Parameterization:** PRs were presented for `expires`, `subscribe_priority`, `group_order`, `rel_forward`, and `largest_location` to become parameters, each with a proposed default value.
+*   **Publisher Priority:** The `publisher_priority` field was identified as a candidate for parameterization on `PUBLISH` messages (rather than per object) to reduce datagram overhead, a move strongly supported for efficiency.
+*   **Implementation Experience Concerns (Colin):**
+    *   **Performance:** Parsing parameters incurs CPU overhead, especially for a large number of `SUBSCRIBE` messages at startup (e.g., 100,000 joins). Fixed-order fields allow for faster parsing into native structures.
+    *   **Spec Understandability:** Fixed fields, defined within a specific verb's structure, can make the specification clearer by explicitly listing what applies, reducing editorial errors.
+    *   **Default Values:** Default values for parameters were seen as less relevant if all parameters are parsed into fixed structures anyway.
+    *   **Multiple Copies:** Parameters can lead to issues if multiple copies of values are received.
+    *   He requested dedicated time at the next meeting to present a prepared talk on his objections and an alternative principle, rooted in implementation experience.
+*   **Refining the Parameter Principle:**
+    *   Mo suggested refining the principle to consider a "highly likely default" rather than just a "possible default." If a field is almost always present, it should remain a fixed field to avoid "burning bits" due to less efficient parameter encoding.
+    *   Parameters should ideally be "widely applicable to most verbs" rather than verb-specific.
+    *   Alan noted that HTTP/2's binary encoding made path/authority fixed fields due to their mandatory nature, aligning with Ian's principle.
+*   **Performance Discussion (Victor and Alan):**
+    *   Victor questioned if CPU parsing overhead is a bottleneck, suggesting efficient implementations avoid hashmap serialization. He also emphasized that bandwidth (compactness) is equally critical in high-scale scenarios.
+    *   Alan requested concrete numbers for performance claims to facilitate objective discussion.
+*   **`SUBSCRIBE_NAMESPACE` and Defaults:**
+    *   Discussion arose on how `SUBSCRIBE_NAMESPACE` could provide default parameters for resulting publishes. Ian previously proposed copying params.
+    *   Mo indicated his team is working on a proposal for "autosubscribe" or richer filters to handle high-scale use cases, aiming to eliminate explicit `SUBSCRIBE` machinery and directly receive objects based on filters.
+    *   There was agreement that `SUBSCRIBE_NAMESPACE` might be overloaded, conflating name discovery with multi-track subscription.
+*   **Filters as Parameters:**
+    *   `start` and `end` filters (`largest_object`, `next_group`, `prior_group`, `absolute_group`, `absolute_location`) were generally considered good candidates for parameters due to the expectation of future changes and extensions in filtering mechanisms.
+    *   It was suggested to avoid modifying `FETCH` filters for now, focusing on `SUBSCRIBE`.
+    *   Clarification on `end_object` (removed for simplicity, but potentially reintroduced by this PR) and `start_object` was sought.
+    *   Martin suggested clearer text for filter definitions and considering `start_of_track` and `end_of_track` as explicit values instead of "none" for improved readability and reasoning.
+*   **Relay Termination of Subscriptions:** Alan raised an issue about whether relays should be allowed to terminate subscriptions if they determine no further objects can match the filter. Concerns were expressed about interop issues if a subscriber relies on the subscription remaining active to update its filter. Mo emphasized that relays operate with a global view and may have internal constraints that dictate their actions, making it difficult to mandate specific forwarding behavior.
+
+## Decisions and Action Items
+
+*   **Parameter Principle Discussion:** Colin will prepare a presentation for the next interim meeting to articulate an alternative principle for parameters, incorporating implementation experience and data.
+*   **`SUBSCRIBE_NAMESPACE` Defaults / "Autosubscribe":** Ian will defer his proposal to copy parameters for `SUBSCRIBE_NAMESPACE`. Mo and Will will coordinate to put their "autosubscribe" / richer filter proposal (including text or slides) on the mailing list as soon as possible.
+*   **Publisher Priority (Datagrams):** Ian will clean up the existing PR to allow for default publisher priority set at the `PUBLISH` level, aiming to reduce the size of datagrams.
+*   **Data Plane Compression:** Alan requested that participants with ideas for further data plane compression submit them as issues to the repository for systematic review.
+*   **Filter Parameterization:** Ian will refine the text for `start` and `end` filters, making them clearer, and consider using explicit `start_of_track` and `end_of_track` values. `FETCH` filter changes will be postponed.
+*   **Agenda Publication:** Chairs will aim to publish interim agendas at least one week in advance, especially for topics with known differing views.
+
+## Next Steps
+
+*   Colin to present an alternative principle for parameterization at the next interim meeting.
+*   Mo and Will to share their "autosubscribe" / richer filter proposal on the mailing list.
+*   Ian to update relevant PRs based on the discussion, particularly for `publisher_priority` and `SUBSCRIBE` filters.
+*   Working Group members are encouraged to review and comment on the following calls:
+    *   CAT4 adoption call (due August 8th).
+    *   Confirmation of no renaming for MOQ (due August 13th).
+    *   Draft 13 consensus review (due August 26th).
+*   The next MOQ interim meeting is scheduled for August 27th.

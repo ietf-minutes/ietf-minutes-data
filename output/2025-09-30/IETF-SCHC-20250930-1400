@@ -1,0 +1,65 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+This SCHC interim meeting covered discussions on two new draft proposals: "SCHC Payload Compression" and "SCHC over Direct-to-Satellite (DTS) IoT." The "SCHC Payload Compression" draft explores reusing the SCHC engine for application payload compression using static and dynamic methods. The "SCHC over DTS IoT" draft proposes a hybrid ARQ with FEC mechanism to improve reliability in highly intermittent satellite IoT networks. The meeting also included a brief update on the "SCHC Protocol Numbers" draft, specifically regarding the challenges of UDP port allocation. There was significant interest in progressing both new technical areas and fostering collaboration.
+
+## Key Discussion Points
+
+*   **Working Group Document Status:**
+    *   The "SCHC Protocol Numbers" draft has a new version. Bob, the author, was not present to discuss it further at this meeting.
+    *   A reminder was issued to publish a new version of the architecture draft.
+
+*   **"SCHC Payload Compression" Draft Presentation (Jaime et al.):**
+    *   **Proposal:** Reuse the SCHC engine (RFC 8724) for compressing application payloads, not just headers.
+    *   **Two Proposed Mechanisms:**
+        1.  **Static Template-Based Method:** For time-series payloads (e.g., JSON, SenML), where a template defines static parts and only residue values are sent. Assumes some periodicity and uses semantic bases (e.g., `rel` for relative values, relative time).
+        2.  **Dynamic Method:** For unknown payloads, where the compressor analyzes incoming payloads, identifies stable or repetitive key-value fields, and dynamically generates SCHC rules on the fly for those fields.
+    *   **Mapping to SCHC Context:** Proposed using a new structured data type for the Field Identifier to signal payload compression, with other SCHC context parameters adapted (e.g., bit length for Field Length, template for Target Value).
+    *   **Discussion:**
+        *   An attendee mentioned existing similar work like "Dixie" and offered to share links.
+        *   It was suggested that both static and dynamic approaches could coexist.
+        *   The challenge of sharing dynamic context updates was raised, with a reference to the "SCHC Management" draft by Tuta et al.
+        *   Questions were raised about applicability beyond JSON/SenML to CBOR, noting CBOR's own compression capabilities.
+        *   The structure of the Field Identifier was discussed, suggesting the potential for including URNs or template IDs for unambiguous identification.
+        *   The dynamic approach was noted to bring SCHC closer to RoHC (Robust Header Compression) principles.
+        *   Edgar, a co-author, emphasized focusing on context provisioning.
+
+*   **"SCHC over Direct-to-Satellite (DTS) IoT" Draft Presentation (Sandra on behalf of Rodrigo et al.):**
+    *   **Motivation:** SCHC was not designed for networks prone to interruptions (e.g., DTS IoT with visibility/revisit windows, satellite-to-ground station link interruptions). This leads to early timer expirations, lost packets, and increased energy consumption.
+    *   **Proposal:** Implement a Type 2 Hybrid ARQ mechanism with Forward Error Correction (FEC) for SCHC packets. This aligns with the SCHC charter.
+    *   **Mechanism:** An ARQ+FEC fragmentation sub-layer below SCHC. SCHC packets are encoded (FEC code unspecified, e.g., Reed-Solomon), then fragmented. The receiver reassembles and decodes using FEC, even if some fragments are lost, leveraging `SCHC_ACK_ON_END_OF_SESSION` for energy efficiency in these intermittent scenarios.
+    *   **Scope:** Describes the DTS IoT scenario, identified problems, and the ARQ+FEC fragmentation sub-layer behavior at sender and receiver. Includes Reed-Solomon examples in an appendix.
+    *   **Discussion:**
+        *   A question was raised about the relationship with a prior generic FEC draft by Yorgos and how the two documents fit together.
+        *   There was a strong sense that a generic "FEC on SCHC fragments" document would be beneficial, with the current draft serving as a specific application or profile for DTS IoT.
+        *   Authors confirmed that the core fragmentation mechanism described is largely scenario-independent and could be adapted for a more generic FEC document.
+        *   It was clarified that this functionality could be added to a SCHC profile.
+
+*   **"SCHC Protocol Numbers" (UDP Port Allocation) Discussion (Alex & Anna):**
+    *   Discussion on requesting UDP ports for SCHC.
+    *   **Two distinct use cases identified:**
+        1.  **Careless Use Case:** A well-known UDP port to signal that a packet is SCHC compressed, allowing direct decompression in the stack (e.g., for 15.4 Internet mechanisms).
+        2.  **Connection-Oriented Use Case:** A UDP port for a daemon to listen for and establish SCHC sessions.
+    *   **Challenge:** These two use cases are fundamentally different, making it difficult to request a single UDP port. This could imply the need for multiple ports or a dispatch mechanism within a single port (similar to 6LoWPAN dispatch type).
+    *   The use of Layer 4 ports as discriminators for incoming SCHC packets was also noted.
+    *   Further discussion is needed on this topic.
+
+## Decisions and Action Items
+
+*   **"SCHC Payload Compression" Draft:**
+    *   **Action:** Authors are encouraged to seek further written feedback from the working group, review related drafts (Dixie, SCHC Management, RoHC), and prepare for a new submission. The chairs expressed strong interest in proposing this as a Working Group item.
+*   **"SCHC over Direct-to-Satellite (DTS) IoT" Draft:**
+    *   **Action:** The authors, in collaboration with the chairs and other interested parties, are encouraged to work towards converging the FEC-on-fragments work into a more generic "FEC for SCHC Fragments" document. The current draft can then serve as an applicability statement or a profile for the DTS IoT scenario.
+*   **"SCHC Protocol Numbers" Draft (UDP Port Allocation):**
+    *   **Action:** Further dedicated discussion is required within the working group to clarify the requirements for UDP port allocation for SCHC, considering the identified distinct use cases and potential dispatch mechanisms.
+*   **SCHC Architecture Draft:**
+    *   **Action:** The chairs and co-authors are to find a suitable time to produce and publish a new version of the architecture draft.
+
+## Next Steps
+
+*   Authors of "SCHC Payload Compression" to address feedback, study related work, and prepare for a new submission, with a view toward potential Working Group adoption.
+*   Authors of "SCHC over DTS IoT" to collaborate with the chairs to develop a generic "FEC on SCHC Fragments" document, potentially leveraging the current draft.
+*   Schedule a dedicated discussion session to resolve the UDP port allocation challenges for SCHC protocol numbers.
+*   Publish an updated version of the SCHC Architecture draft.
+*   The agenda for the upcoming Montreal IETF meeting needs to be finalized (deadline October 22nd, for WG scheduling).

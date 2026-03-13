@@ -1,0 +1,91 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+This was an interim meeting of the OpenPGP Working Group to discuss the status of three currently adopted drafts: Key Replacement, Persistent Symmetric Keys, and NIST and Brainpool Post-Quantum Curves. Key discussions included interoperability testing for key replacement, the structure and semantics of a new packet type for persistent symmetric keys, and the selection of appropriate code points and the use of context parameters for the new PQC algorithms. Several decisions were made regarding the path forward for these drafts, and action items were assigned to continue progress. The chairs also announced an upcoming discussion in Montreal about the working group's charter and future work items.
+
+## Key Discussion Points
+
+### Working Group Administration
+
+*   **Note Well**: The chairs reminded all participants that the IETF Note Well applies, covering IP disclosure, anti-harassment policies, and code of conduct.
+*   **Note-Taking**: A call for note-takers was made, with a link provided in the chat. Multiple individuals assisted, which was appreciated.
+*   **Meeting Logistics**: Reminders were given to keep audio/video off unless speaking and to use the queue for speaking. The importance of constructive, reasoned argument for the best internet was reiterated.
+*   **Chat Channels**: A brief confusion arose regarding multiple chat channels (Interim with today's date vs. IETF interim), which was clarified to use the "Interim 2025-10-16" channel.
+
+### Key Replacement Draft (draft-ietf-openpgp-key-replacement) - Presented by Andrew Gallagher
+
+*   **Recap of Design**: The draft introduces a signature sub-packet to hint at finding a new key, supporting both forward (preferred key) and reverse (deprecated keys) relationships. An "identity equivalence binding" links keys to a single identity. This equivalence is transitive.
+*   **Changes Since Last Meeting (IETF 123)**:
+    *   Target record lengths are now a single octet (two octets deemed excessive for current hashing algorithms, extension mechanism available if needed).
+    *   Terminology shift from "key equivalence" to "identity equivalence" to clarify that the shared property is the identity, not specific key material.
+    *   Numerous new examples and SVG art (thanks to DKG).
+    *   More granular definitions for "identity," "user ID," "identity claim," and "identity link" (direct vs. derived) to better distinguish concepts.
+*   **Outstanding Issue: Interoperability Testing (SOP Interface)**:
+    *   The primary blocker for interop testing is how SOP (Stateless OpenPGP CLI) should expose an interface for key replacement. This discussion is happening on the OpenPGP stateless CLI issue tracker.
+    *   **Merge Request 50**: Proposes an explicit `replaced-keys` and `replaced-keys-out` option to the `update-key` command, preferred by DKG.
+    *   **Merge Request 52**: Proposes an implicit `revoke-deprecated-keys` option, which automatically handles updates, preferred by Daniel Hodgins.
+    *   **Third Proposal**: `SOPSplitKeys` command to split concatenated OpenPGP binary files, useful for extracting preferred certificates.
+    *   **Proposed Interop Tests**: Andrew suggested two tests:
+        1.  Given a certificate bundle with a verifiable certification only over a deprecated key, will a receiving implementation encrypt to the *preferred* key?
+        2.  Given the same bundle, will it verify a signature made by the *preferred* key, even if it has no direct certification?
+    *   **Discussion on "must ignore" vs. "should ignore"**: A recent mailing list discussion suggested relaxing a "must ignore" requirement for replacement key sub-packets in the unhashed area to a "should ignore" to allow key servers to add non-cryptographically-bound deprecation hints. Daniel Hodgins noted that a future document could supersede this "must ignore" guidance, making a change in the current draft unnecessary. The consensus was to keep "must ignore" for now.
+
+### Persistent Symmetric Keys Draft (draft-ietf-openpgp-persistent-symmetric-keys) - Presented by Daniel
+
+*   **Mailing List Conclusion**: Broad agreement was noted to define a *new key packet* for persistent symmetric key material, distinguishing it from asymmetric key packets (e.g., no public key extraction). Existing PKESK and signature packets will continue to be reused, implying that new algorithm IDs are not needed there to signal symmetric status.
+*   **Proposed Changes (on GitLab, not yet a new draft)**:
+    *   **New Packet**: Define a new "Persistent Symmetric Key Packet" (Packet ID 40, non-critical) which is essentially a copy of the Secret Key Packet (v6 fields), exclusively using AAD encryption for encrypted key material. Non-critical status allows bundles with multiple keys to decrypt existing messages on older devices while supporting new keys.
+    *   **Grammar Extension**: The transferable secret key grammar would be extended to include this new packet, but *without* subcomponents like User IDs, Signatures, or Subkeys, as public metadata is less relevant for private symmetric keys.
+    *   **Algorithm Registry**: No longer needs to reserve algorithm space specifically for symmetric algorithms due to the new packet signalling the type.
+*   **Open Questions**:
+    *   **Symmetric Subkeys**: The current proposal makes it impossible to add a symmetric subkey to an existing asymmetric transferable secret key. Is this acceptable, or are there scenarios where it's needed? Andrew suggested a "halfway house" of symmetric-only key structures (e.g., symmetric primary + symmetric encryption subkey) to maintain structure without mixing with asymmetric keys. Daniel was open to this, noting it would require defining a symmetric subkey packet.
+    *   **User IDs/Signatures**: Is it necessary to attach User IDs or signatures to symmetric keys? The current proposal omits this.
+    *   **Secret Key Format Copy**: Is copying the secret key format overkill, or is it pragmatic for implementation ease? A simpler packet (e.g., just 32 bytes of key material) would require a larger overhaul.
+*   **Code Points**: Daniel acknowledged that the problem of code point allocation remains, even with a new packet. He noted his original preference for new packets *and* new algorithm IDs (in a separate registry) for cleaner separation. Aaron agreed that using algorithm 0 or two registries in the same space are problematic.
+*   **Implementations**: Daniel's team has implementations (not yet updated to the new packet structure). Sequoia is planning implementation, and sponsorship for RPGP is likely. Other implementers expressed interest.
+*   **Next Steps**: Daniel will aim to mint a new draft reflecting these changes before IETF 124 in Montreal, possibly without updated test vectors initially. He will also further consider the code point allocation.
+
+### NIST and Brainpool Post-Quantum Curves (draft-ietf-openpgp-pqc-nist-brainpool) - Presented by Falco
+
+*   **Recap**: This draft introduces composites of ML-KEM+ECDH and ML-DSA+ECDSA using NIST and Brainpool curves, following the model of the main OpenPGP-PQC draft (which focuses on Curve25519 and Curve448).
+*   **Discussion Points**:
+    *   **Code Points**: The draft proposes multiple code points for NIST curves (3) and Brainpool curves (2) for both KEM and signatures.
+        *   **Brainpool**: Follows the paradigm of using a higher security level for the structured lattice.
+        *   **NIST**: Avoids the 521-bit curve.
+        *   **Suggestions**: Replace the 348 curve with a 521-bit curve, drop the lowest security level, or drop 256 curves in general.
+        *   **Consensus**: A sense of those present and mailing list comments indicated a preference for *dropping the lowest security code points* to align with the main PQC draft (which does not include lowest-level options). The goal is to reduce the overall number of algorithms, aiming for 2-4 levels per curve type. Falco will revise the draft accordingly and seek further feedback on the list.
+    *   **Context Parameters**: Discussion around using a non-empty context parameter to provide domain separation against cross-protocol attacks.
+        *   **PQC Draft Precedent**: This was considered too late for the main PQC draft (a breaking change).
+        *   **Pros**: Better domain separation, defending against key reuse attacks (even if not recommended).
+        *   **Cons**: Potential lack of support in cryptographic backends, misalignment with EDDSA and the main PQC draft.
+        *   **Discussion**: Daniel Hodgins and DKG argued that for *new* algorithms, using a context parameter is a good idea, particularly for distinguishing OpenPGP use from other uses of the same primitives. DKG suggested simply using "OpenPGP" as the context string and letting implementers report any issues, rather than waiting for universal backend support. Andrew Gallagher suggested exploring a general OpenPGP-level domain separator in the signed data stream.
+        *   **Consensus**: There was broad agreement to consider using context parameters for new algorithms in this draft.
+    *   **Implementations**: Daniel Hodgins and Andrew Gallagher's teams plan to implement this draft, aiming to produce test vectors.
+    *   **Code Point Assignment**: DKG reminded implementers to use experimental code points (not blocking development) and that these would be swapped for permanent ones once assigned. Andrew noted that permanent code points for the main PQC draft are already with IANA.
+
+## Decisions and Action Items
+
+### Key Replacement Draft
+
+*   **Decision**: The working group defers the decision on which specific SOP interface (Merge Request 50 or 52) to expose for key replacement to the implementers. They are encouraged to agree among themselves.
+*   **Action Item**: Andrew Gallagher to open an issue or Pull Request in the OpenPGP interop test suite outlining the general shape of interoperability tests for key replacement (specifically, tests for encryption to a preferred key and signature verification by a preferred key, even if certified via a deprecated key).
+
+### Persistent Symmetric Keys Draft
+
+*   **Decision**: The general approach of defining a new non-critical packet (Packet ID 40) for persistent symmetric key material was broadly accepted.
+*   **Action Item**: Daniel to mint a new draft reflecting the proposed changes (new Packet ID 40, no user IDs/signatures/subkeys attached for now). Daniel will aim to produce this draft before IETF 124 in Montreal, potentially without fully updated test vectors initially.
+*   **Action Item**: Daniel to continue considering the code point allocation issue, particularly in light of discussions around creating separate registries for symmetric algorithm IDs if new PKESK/signature packet types are also introduced.
+
+### NIST and Brainpool Post-Quantum Curves Draft
+
+*   **Decision**: The number of proposed algorithms in the draft will be reduced, specifically by dropping the lowest security level code points, aiming for 2-4 levels per curve type (NIST/Brainpool) to align with the existing main OpenPGP-PQC draft.
+*   **Decision**: To consider using a non-empty context parameter (e.g., "OpenPGP") for new algorithms in this draft to enhance domain separation.
+*   **Action Item**: Falco to revise the draft with a reduced list of code points and bring the updated proposal to the mailing list for further discussion.
+*   **Action Item**: Falco to incorporate the use of a context parameter (e.g., "OpenPGP" ASCII string) into the draft for the new algorithms, with implementers requested to report back on any cryptographic backend support issues.
+*   **Action Item**: Implementers are encouraged to use experimental code points during development and not let the lack of fixed code point assignments block progress.
+
+## Next Steps
+
+*   The chairs will initiate a discussion on the mailing list regarding the OpenPGP Working Group's charter and potential future work items, to be further discussed at IETF 124 in Montreal.
+*   The meeting minutes will be finalized and posted to the mailing list.

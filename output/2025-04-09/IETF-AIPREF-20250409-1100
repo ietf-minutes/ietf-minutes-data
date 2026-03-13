@@ -1,0 +1,82 @@
+# [AIPREF](../wg/aipref.html)
+
+## Summary
+
+The session focused on defining attachment mechanisms for AI preferences, specifically discussing HTTP headers and the reuse or extension of `robots.txt`. Strong support emerged for both HTTP headers and `robots.txt` (with modifications for purpose-based selection) as initial attachment mechanisms. The working group agreed to appoint editors to consolidate existing proposals into a concise draft for these two mechanisms. Key discussions also covered the challenge of combining multiple preference signals and the timeliness of preference application, with a general consensus that the working group should define technical interpretation rules but not delve into legal enforcement or retroactive application.
+
+## Key Discussion Points
+
+*   **Note-Taker Volunteer**: A volunteer (Farms) agreed to take notes for the afternoon session, with a request for others to assist in capturing major points and emerging conclusions.
+*   **Order of Discussion**: The session commenced by discussing "unit-based" attachment mechanisms (HTTP headers) as a warm-up before moving to "location-based" mechanisms (`robots.txt`).
+
+*   **Attachment by HTTP Header Fields**
+    *   **Concept**: HTTP headers serve as metadata for content (e.g., PDF, image, HTML). They are key-value pairs indicating content type, caching info, and can convey generic information about the content.
+    *   **Advantages**: HTTP headers offer granularity, as their scope is implicit to a single response. Servers can be configured to add specific headers, enabling fine-grained policies.
+    *   **Interaction with `robots.txt`**: It was noted that crawlers generally retain HTTP headers when fetching content, which is crucial for their function. The possibility of `robots.txt` explicitly pointing to HTTP headers was raised but not fully resolved.
+    *   **Link Headers (RFC 8288)**: The use of link headers (RFC 8288) was discussed as a mechanism to reference external data. While recognized as in use (e.g., for CTPA data), the sense of the room was that link relations might constitute a separate form of attachment to be considered distinct from direct HTTP header fields if pursued.
+    *   **Relevance to Content**: The discussion highlighted the importance of defining "content-related" HTTP headers that travel with the content, ensuring metadata is preserved as content moves through systems.
+    *   **Scope for Composite Media**: For HTTP headers, the policy applies to the specific representation provided by HTTP (e.g., an HTML page or an image file). For complex composite media (e.g., streaming video with ads) where elements might be assembled server-side and delivered as one, the HTTP header would apply to the entire container. If individual elements are fetched via separate HTTP requests, they would each have their own headers. It was acknowledged that defining policies for deeply embedded or tunnelled content (e.g., MASK protocol) or very granular sub-elements within a single stream would likely require specific attachment mechanisms outside the current scope.
+    *   **Bad Actors / Rights Verification**: The issue of content reposted by bad actors without correct headers was raised. The working group reiterated that its charter does not include technical mechanisms for verifying rights holders or enforcing compliance; rather, it focuses on defining how preferences can be expressed.
+
+*   **Attachment by Location (`robots.txt`)**
+    *   **Need for Purpose-Based Selection**: A primary concern was the lack of a global opt-out for AI training in current `robots.txt` and the need to enable selection by "purpose" (e.g., AI training, search) rather than just "user-agent" or "location."
+    *   **Support for `robots.txt` Reuse**: There was strong support for leveraging `robots.txt` due to its wide implementation, respect by crawlers, and performance benefits (e.g., avoiding fetching disallowed resources).
+    *   **Extensibility**: The key-value syntax of `robots.txt` was considered extensible, with parsers designed to skip unrecognized fields, which can make it robust to new preference expressions.
+    *   **Concerns**:
+        *   `robots.txt` is an older, "dumb" protocol, which can be prone to misconfiguration.
+        *   Some creative communities (e.g., photographers) view `robots.txt` as irrelevant to their needs.
+        *   While supporting purpose-based selection, the continued need for user-agent specific rules was also acknowledged.
+    *   **Alternative (`ai.txt` pointer)**: An alternative of using `robots.txt` to point to a separate file (e.g., `ai.txt`) for AI preferences was discussed. The general sense was to prioritize integrating preferences directly into `robots.txt` first, and only consider a separate file if insurmountable syntax conflicts arise.
+    *   **Applicability beyond HTTP**: It was clarified that `robots.txt` applies to any protocol (e.g., FTP) that uses URIs, not solely HTTP.
+    *   **"Crawling" vs. "Scraping"**: The distinction between "crawling" (mapping the internet) and "scraping" (making copies for use, often for training) was briefly discussed, highlighting that `robots.txt` preferences need to be relevant to both.
+
+*   **Combination Rules (Multiple Preferences)**
+    *   **The Problem**: A single piece of content might have multiple, potentially conflicting, preference signals from different sources (e.g., `robots.txt`, HTTP header, embedded metadata).
+    *   **Proposed Algorithm**: The most discussed algorithm was "most specific, most restrictive wins." This implies:
+        1.  **Resolve Specificity**: Determine which preference signal is more specific (e.g., embedded metadata often seen as more specific than an HTTP header, which is more specific than a `robots.txt` rule).
+        2.  **Apply Restrictiveness**: Among the most specific applicable rules, the most restrictive preference takes precedence.
+    *   **Hierarchy of Specificity**: The discussion touched on the hierarchy of location-based vs. unit-based (asset-based) preferences, with a leaning towards asset-based (embedded/HTTP header) being more specific.
+    *   **Legal Context vs. Technical**: The group acknowledged that external factors like laws, agreements, or platform policies might override technical combination rules, but these are out of the scope of the WG's technical definition.
+    *   **Multiple Copies**: For identical content existing on different servers with different preferences, the current consensus is to treat these as distinct instances; a technical solution for "shopping for least restrictive" content across the web is not within the current charter.
+
+*   **Timeliness and Staleness of Preferences**
+    *   **The Problem**: How should preferences apply to content obtained at different times? For example, if content was scraped years ago, should the current `robots.txt` policy apply, or the one from when it was fetched?
+    *   **Current Practice**: Crawler operators generally refresh `robots.txt` every 12-24 hours and apply the policy contemporary to the content acquisition.
+    *   **Retroactive Application**: There were strong arguments against defining retroactive application of new preferences to old data, citing legal issues (certainty, fairness) and technical complexity (content changing over time).
+    *   **Decision**: The WG will aim to define how preferences are interpreted at the time of usage/acquisition but will explicitly state that retroactive application of preferences is out of scope. This ensures the technical framework doesn't overstep its authority. HTTP caching semantics are not suitable for defining content freshness in this context.
+
+*   **Registry of Attachment Mechanisms**
+    *   **Proposal**: An IANA registry was proposed to authoritatively list various attachment mechanisms (e.g., HTTP headers, `robots.txt`, embedded in specific file formats).
+    *   **Arguments For**: Provides a clear, extensible list for implementers, aids discovery for actors needing to respect all preferences, and offers a common reference point for policymakers.
+    *   **Arguments Against**: Some felt it was premature or unnecessary "handholding," potentially raising political issues about inclusion criteria or implying enforcement beyond the WG's scope.
+    *   **Status**: No firm decision was made. It was noted as an issue to consider for future work or guidance, rather than an immediate deliverable.
+
+## Decisions and Action Items
+
+1.  **Attachment Mechanism for HTTP Headers**: The working group supports defining an attachment mechanism using HTTP header fields.
+2.  **Attachment Mechanism for `robots.txt`**: The working group supports reusing and updating `robots.txt` for location-based attachment, with the specific goal of accommodating purpose-based selection. The idea of a separate pointer file (`ai.txt`) is considered a fallback if direct integration into `robots.txt` proves technically unfeasible due to syntax constraints.
+3.  **Document Structure**:
+    *   The overall standard is envisioned to consist of at least two main documents: one for the core vocabulary, abstract data model, and default serialization; and a second for specific attachment mechanisms.
+    *   The initial attachment document will focus on `robots.txt` and HTTP headers.
+    *   The document defining combination rules will likely be part of the vocabulary document.
+4.  **Editors for Attachment Draft**: Chairs will appoint editors to survey existing drafts and create a compact, succinct proposal for the `robots.txt` and HTTP header attachment mechanisms, to be brought to the working group for a call for adoption.
+5.  **Issues List**: An issues list will be established to track all identified problems related to attachment, including:
+    *   Timeliness of preference application.
+    *   Definition and use of link relations.
+    *   Discovery of applicable attachment mechanisms.
+    *   Handling of encapsulated/multipart media (containers).
+    *   Specific `robots.txt` integration details (e.g., single file vs. indirection).
+    *   Proposals for embedding preferences in specific file formats.
+6.  **Out of Scope for Current Charter**: The working group confirmed that its current charter explicitly excludes:
+    *   Enforcement mechanisms for preferences.
+    *   Determining the validity or authority of parties making preference assertions.
+    *   Retroactive application of preferences to previously acquired content.
+    *   Technical mechanisms for verifying authenticity or rights.
+    *   Defining attachment mechanisms for all other protocols (e.g., SMTP, MASK) or deeply embedded composite media beyond HTTP's direct content representation, though external drafts on these are welcome.
+
+## Next Steps
+
+*   Chairs will proceed with appointing editors for the attachment mechanisms draft.
+*   The working group will establish an issues list to track attachment-related problems.
+*   Discussions on combination rules and potential proposals will continue, likely on the mailing list and in future sessions.
+*   The next session is scheduled for tomorrow (truncated, 3h 15m), where the group plans to discuss next steps for the working group and potential future meetings. Attendees are encouraged to prepare issues they wish to discuss productively.

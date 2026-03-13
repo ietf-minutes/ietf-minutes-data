@@ -1,0 +1,69 @@
+# [SCONE](../wg/scone.html)
+
+## Summary
+
+This interim SCONE working group meeting focused on three main topics: progressing the protocol work stream towards a merged SCONE/TRAIN proposal, exploring the role of the User Plane Function (UPF) in 5G/4G networks for advisory signal insertion, and discussing the semantic content of throughput advice, specifically for video session data rates. Key discussions revolved around communication models, signal encoding flexibility versus simplicity, and the time scales and security implications of network-initiated signals. The chairs requested the SCONE and TRAIN authors to collaborate on a consolidated "TRAIN-shaped" draft for the next meeting.
+
+## Key Discussion Points
+
+*   **Administration**
+    *   Welcome and Happy New Year from the chairs.
+    *   Call for minute-takers: Brian and Marcus volunteered to co-take minutes.
+    *   The SCONE experimentation work plan proposal requires wider review on the mailing list.
+
+*   **Protocol Work Stream: Merged SCONE/TRAIN Proposal (Marcus)**
+    *   Marcus presented thoughts on a merged SCONE/TRAIN proposal, co-authored with Matt.
+    *   **Communication Model**: Proposed adopting TRAIN's communication model, which uses transport parameters for negotiation, making both QUIC endpoints aware of the interaction. This prevents unsolicited SCONE packets from being sent to unaware servers and binds signals to end-to-end QUIC packets, aiding against spoofing and clarifying connection association.
+    *   **Network Element-Initiated Signals**:
+        *   SCONE allows network elements to send unsolicited signals, while TRAIN involves endpoint probing.
+        *   Marcus suggested the merged draft should explicitly allow and describe network elements inserting TRAIN packets into UDP datagrams containing end-to-end QUIC packets, potentially by expanding the datagram.
+        *   Mia questioned the practicality of expanding datagrams, especially with full-size packets or unknown MTU, suggesting explicit mechanisms for unsolicited signals might be needed.
+        *   Ted concurred that network elements don't know the acceptable maximum packet length, limiting datagram expansion.
+        *   A sense of those present indicated a preference for a basis document to accelerate discussions on mailing lists and GitHub.
+    *   **Encoding Throughput Advice**:
+        *   TRAIN uses 6 bits in a fixed location (first header byte), providing 64 distinct values. SCONE proposes explicit throughput advice for more flexibility.
+        *   Concerns were raised about the 6-bit limitation being too restrictive for diverse network policies or future requirements (e.g., conveying averaging windows, other signal properties).
+        *   Explicit advice, while adding per-packet overhead and potentially more processing, offers greater flexibility. The expected low frequency of video shaping/throttling signals suggests this overhead might be acceptable.
+        *   Christian highlighted TRAIN's composability where multiple network points can compare and substitute values in an ordered space. More complex advice (e.g., multiple dimensions) would make comparison difficult and costly in hardware. Simplicity is key for composition.
+        *   Mia argued that the majority of deployments involve a single capable node (e.g., UPF in mobile networks) for policy insertion, reducing the practical concern of multi-point composability.
+        *   Brian suggested a "TBD" length for throughput advice initially, allowing experimentation and data-driven decisions later. This was supported by others (Mia, Marcus).
+        *   Christian emphasized modification in place for throughput advice, requiring a fixed-size blob and client reservation of bits to avoid packet expansion, ruling out TLVs or variable-length fields for dynamic changes.
+        *   There was support for initially supporting both fixed-length and flexible blob options for experimentation.
+    *   **Security Concerns for Push Notifications**: Christian raised security concerns regarding network-injected messages without an authentication channel. These could be indistinguishable from third-party injections. He stressed that endpoint checks (heuristics or strict rules) against non-concatenated QUIC packets would likely remain.
+    *   **Relationship with Congestion Control**: Christian and Marcus discussed the distinction between TRAIN/SCONE providing an *upper bound* based on policy (slower changes) and ECN reflecting *real-time congestion* (faster changes). Christian suggested congestion signals (ECN, packet loss, excessive delay) could trigger endpoint re-probing for SCONE/TRAIN updates. Mia advocated keeping these signals independent to avoid a "recipe for failure."
+    *   **Time Scales**: Brian highlighted the need to clarify the "update frequency" or "change time scale" for throughput guidance. Mia clarified that it's less about frequency and more about needing information *when* changes occur (e.g., user moving cells, plan exhaustion), which is known only by the network. Christian enumerated different time scales: Wi-Fi hotspot learning, network change (border/region), cell changes. A consensus emerged that drafts should explicitly define the considered time scales and where the line is drawn with congestion control mechanisms.
+
+*   **Leveraging User Plane Function for Network Side Advisory Signal (Sanjay Mishra)**
+    *   Sanjay presented on the User Plane Function (UPF) in 5G core as a suitable network element for SCONE signaling.
+    *   **UPF Role**: UPF is the data path in 5G core, with access to subscriber policy via N4 interface (Session Management Function - SMF) and connection to 5G base station (gNB) via N3 interface. It performs packet routing, forwarding, QoS enforcement, and traffic filtering.
+    *   **Scone Path**: Proposed inserting SCONE signals over the N3 interface, connecting UPF, gNB, and the end-user. Similar concepts apply to 4G networks (P-Gateway).
+    *   **Signaling Mechanism**: Client app endpoint initiates SCONE signaling to UPF/P-Gateway. UPF sends advisory bitrate and metadata via SCONE signaling to the client endpoint. This mechanism is independent of CSP's video policy determination.
+    *   **Open Questions**: Dynamic updates and frequency of updates, especially during transitions between radio access technologies (RATs), require further experimentation.
+    *   **Scope**: This approach is not limited to mobile networks and can extend to fixed wireless, fixed internet, or satellite services.
+    *   Kevin Smith (Vodafone) noted that while UPF is an easy place to do it, it is not close to the likely point of congestion (Radio Access Network), raising a trade-off between ease of implementation and signal freshness.
+
+*   **Video Session Data Rate (Dan Romascanu)**
+    *   Dan presented on defining the *meaning* (semantics) of throughput guidelines, beyond just formatting.
+    *   **Purpose**: Ensure a consistent way for both Content Service Providers (CSPs) and networks to measure and interpret throughput advice. This aids trust, verification, and accounts for multiple flows.
+    *   **Challenge with Single Bitrate**: Current video delivery uses multiple streams, pre-fetching, making a single instantaneous bitrate value problematic. CSPs primarily observe and count packets.
+    *   **Proposal**: Define "Video Session Data Rate" by counting all data within a specified time frame considered an "active session" and dividing by its duration. This results in a value representing policy, not just a raw bitrate.
+    *   **Implications**: This approach introduces parameters (e.g., percentage of video delivered, predefined limits, time frame) that would need to be encoded in the throughput advice blob.
+    *   **Optimizing Delivery**: Consistent calculation allows applications to optimize delivery (e.g., pacing videos, multiplexing) to stay within policy, and CSPs to verify conformance.
+    *   Marcus supported the work, emphasizing the importance of correctly defining "idle periods" to enable massive bursting and full network capacity utilization, a key benefit of disabling shaping. The proposal applies to Adaptive Bit Rate (ABR) video.
+
+## Decisions and Action Items
+
+*   **Decision**: The chairs requested authors of the SCONE and TRAIN drafts (Marcus, Matt, Christian, Martin) to collaborate and produce a single, consolidated "TRAIN-shaped" draft proposal for discussion at the Bangkok meeting. This draft should incorporate feedback from recent discussions, aiming for a unified discussion document for adoption.
+*   **Action Item**: Authors (Marcus, Matt, Christian, Martin) to work together on preparing the merged "TRAIN-shaped" draft before the Bangkok meeting.
+*   **Action Item**: Working group participants are encouraged to provide more input and discussion on the SCONE experimentation work plan proposal on the mailing list.
+*   **Action Item**: The working group should explicitly discuss and clarify the time scales for throughput guidance provided by SCONE/TRAIN relative to real-time congestion control mechanisms (like ECN) in the drafts.
+
+## Next Steps
+
+*   The designated authors will work on consolidating the SCONE and TRAIN proposals into a single draft for review.
+*   Discussions will continue on the mailing list regarding:
+    *   The proposed merged protocol document.
+    *   The semantic content and encoding of throughput advice (fixed-length vs. flexible blob, definition of "Video Session Data Rate" and idle periods).
+    *   The time scales and interplay between policy-based throughput guidance and congestion control.
+    *   The SCONE experimentation work plan.
+*   Prepare for further discussions at the upcoming Bangkok IETF meeting.

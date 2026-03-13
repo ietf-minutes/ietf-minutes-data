@@ -1,0 +1,52 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+This interim meeting of the CoAP working group focused on a discussion regarding CoAP message aggregation, specifically in the context of CoAP over Bundle Protocol (BP) but with broader applicability. The discussion explored two main technical approaches—modifying the CoAP header or using a `Payload-Length` option—and an alternative application-layer aggregation method. Key points included considerations for transport independence, proxy interaction, response matching, and the atomicity of aggregated requests. No formal decisions were made, but valuable feedback was gathered for future draft revisions.
+
+## Key Discussion Points
+
+*   **Problem Statement**: CoAP over Bundle Protocol (BP) draft currently defines aggregate messages as a concatenation of single messages, each carrying a new `Payload-Length` option. The need for message aggregation was also raised during the Bangkok IETF meeting, with general applicability beyond BP.
+*   **Current Draft Approach**: Aggregate messages are a concatenation of standard CoAP messages, each including a new `Payload-Length` option to indicate its individual payload size.
+*   **Concerns from Bangkok Meeting**: Karsten B. Christian raised a concern that determining the size of an individual message within an aggregate requires parsing all options, which is undesirable.
+*   **Suggested Alternatives (by Karsten B. Christian)**:
+    1.  **Modify CoAP Header**: Incorporate message length information directly into the CoAP message header, similar to RFC 8323 (CoAP over TCP).
+    2.  **`Payload-Length` Option with Low Number**: Use the `Payload-Length` option but assign it a low option number (e.g., 0) to indicate its critical importance.
+*   **Discussion on Alternative 1 (Header Modification)**:
+    *   **Pros**: Provides direct length information.
+    *   **Cons**:
+        *   **Transport Dependency**: This approach would likely not work across different transports (e.g., UDP, TCP, QUIC, BP) due to varying header structures. It might work for message-oriented transports like UDP or BP but not generally.
+        *   **Header Changes**: Requires modifications to the CoAP header, potentially removing the version field to accommodate length pointers, as demonstrated in a proposed format for CoAP over BP.
+*   **Discussion on Alternative 2 (`Payload-Length` Option with Low Number)**:
+    *   **Pros**:
+        *   **Transport Agnostic**: Could potentially work across different transports without modifying core CoAP headers.
+    *   **Cons**:
+        *   **Option Number Assignment**: Option number 0 is reserved. The `Payload-Length` option would need to be critical and unsafe-to-forward (as it affects message parsing), which rules out option 0 (which is safe-to-forward). Finding a suitable *odd*, *unsafe*, and low option number might still lead to a higher value.
+        *   **Parsing Overhead**: Still requires parsing options to find the `Payload-Length` option, though this might be unavoidable for extensibility.
+*   **Christian's Questions and Further Discussion Points**:
+    *   **Proxy Interaction**: How would aggregation interact with proxies? Would proxies need to support it, or only endpoints? This influences option number choice (critical options require proxy support). If a proxy doesn't support a critical option, it must refuse the request.
+    *   **Commonality of Requests**: Are aggregated requests expected to have commonalities (e.g., same URI-Host option)? Or are they independent messages? This impacts potential for deduplication or shared options.
+    *   **Response Handling**: For a bundle of requests, how are responses handled?
+        *   Single aggregated response bundle?
+        *   Individual responses as they become ready (similar to observations)?
+        *   This complicates CoAP's token-based response matching, as there's no mechanism for individual responses to indicate which sub-request they belong to within an aggregated request.
+    *   **Interaction Between Requests**: Are aggregated requests atomic, sequential, or independent? The easiest approach for design would be to treat them as independent, allowing servers to reorder and process them non-atomically.
+*   **Application-Layer Aggregation Proposal (by Christian)**:
+    *   Suggests treating aggregation as an application-layer construct. A single CoAP POST request could carry a payload containing multiple "sub-CoAP messages" (using on-the-wire CoAP encoding for code, options, and payload).
+    *   **Pros**:
+        *   **Proxy Compatibility**: Would work across any proxy, as it's just a regular CoAP POST at the transport layer. The proxy would either split the requests or forward to an origin server that does the splitting.
+        *   **Flexibility**: Allows mixing immediate and delayed/bundled responses, and provides more leeway for client-server negotiation on how individual requests are processed.
+    *   **Cons**: Potentially more complex to define and implement at the application layer.
+*   **Bundle Protocol Capabilities**: It was clarified that the Bundle Protocol itself encapsulates application payloads but does not provide mechanisms for aggregating CoAP messages. This responsibility lies with the application layer (or CoAP layer in this case). The DTN working group's earlier advice to address this in the CoAP over BP specification reinforces this understanding.
+*   **OSCORE Interaction**: If `Payload-Length` is used, its interaction with OSCORE needs consideration. If messages are OSCORE-protected, the `Payload-Length` option might need to be added *after* OSCORE protection (indicating the protected payload size) or as a Class E option within the OSCORE context, depending on the aggregation scope (e.g., endpoint-to-endpoint vs. proxy-to-proxy).
+*   **TKL Hack (Header Alternative)**: Mentioned a "hack" involving the reserved TKL value of 15 in RFC 8974 to potentially include length fields in the header, allowing individual tokens for each request. This was acknowledged but considered a "cludge."
+
+## Decisions and Action Items
+
+*   No formal decisions were made during this interim meeting. The discussion served to gather feedback and explore different approaches.
+*   **Action Item**: Carlos Gomez will follow up on the mailing list with a summary of this discussion to continue the technical exchange. Karsten B. Christian is expected to provide further comments on the list.
+
+## Next Steps
+
+*   Further discussion on the CoAP mailing list regarding the pros and cons of the discussed approaches, especially the application-layer aggregation proposal.
+*   The authors of the CoAP over Bundle Protocol draft will consider the feedback and suggestions for the next version of the draft.

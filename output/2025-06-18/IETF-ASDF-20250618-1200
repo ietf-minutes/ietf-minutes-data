@@ -1,0 +1,76 @@
+# [ASDF](../wg/asdf.html)
+
+## Summary
+
+The ASDF working group held its fifth inter-meeting to discuss updates on several drafts. Key discussions included the SDF extension for non-affordance information, SDF modeling for digital twins, and a detailed review of open issues for the NIPY draft. Several NIPY issues were addressed and closed, while others, particularly regarding device-model linkage and content-format, require further discussion. A NIPY hackathon and an additional virtual interim meeting were planned.
+
+## Key Discussion Points
+
+### Welcome and Notewell
+
+*   The chairs opened the meeting, welcoming participants and reviewing the IETF Notewell, IPR guidelines, and Code of Conduct.
+
+### SDF Extension for Non-Affordance Information (Junga Hong)
+
+*   Junga Hong presented updates to the "SDF extension for non-affordance information" draft.
+*   The primary update addressed previous questions on why a new `SDF non-affordance` class was introduced instead of using `SDF property`. The rationale is to semantically distinguish non-interactive, contextual, or setting metadata from actionable device features.
+*   The extension is organized into two parts:
+    *   **Design-time model definition**: Contextual metadata is embedded directly in the SDF document under the new `SDF non-affordance` class.
+    *   **Runtime context messaging**: Introduces three JSON envelopes (`context snapshot`, `identity manifest`, `context patch`) for deployed devices to report changes to this metadata over time, keeping it outside the affordance model.
+        *   `Context snapshot`: Conveys the full current set of non-affordance fields.
+        *   `Identity manifest`: Declares immutable identity data.
+        *   `Context patch`: Transmits only changed keys to minimize bandwidth.
+*   **Carsten Bormann** commented on the need to ensure the architecture fits with SDF's overall design, especially regarding ecosystem variants and how actual messages (snapshots, manifests, patches) integrate. He also noted that patch/delta mechanisms could be useful for other (non-affordance) use cases like configuration updates. He mentioned an upcoming T2TRG meeting where model derivation, related to these issues, would be discussed.
+*   **Michael Koster** questioned the criticality of the `context patch` for non-affordance information, particularly if bandwidth savings are significant given the typical size of such metadata. Junga Hong clarified that it is intended for partial updates to minimize data transmission.
+*   **Ari Keränen** found the life cycle management aspects interesting and suggested a potential side meeting in Madrid to explore them further.
+
+### SDF Modeling for Digital Twin (Yunjong Lee)
+
+*   Yunjong Lee presented the "SDF modeling for digital twin" draft (version 8), co-authored with Dr. Hong.
+*   The draft maps Digital Twin elements from ISO 23247 Part 3 to SDF thing structures to promote interoperability.
+*   The approach uses `SDF thing` as the main abstraction. Information attributes like identifier, location, and owner are defined via `SDF non-affordance`, allowing metadata modeling without implying interaction capabilities.
+*   An updated modeling example demonstrates how static (non-affordance) and dynamic (property, event) attributes can be modeled.
+*   Future plans include extending modeling with historical data and object relationships, providing use case examples, and developing guidance for registration, discovery, and development of SDF-based digital twins.
+*   **Ari Keränen** asked about the "TBD" status of relationship information in the mapping table and suggested considering the `SDF relation` quality or determining if it needs extension. Yunjong Lee agreed to investigate this further.
+*   **Michael Koster** noted the draft's long history and questioned its fit into the working group's milestones.
+*   **Ari Keränen** suggested the working group review the draft with the perspective that it should serve as a "how-to" guide for modeling digital twin information using SDF. He emphasized that adoption indicates interest, not a final publication state.
+
+### NIPY Draft Issues (Bart van der Poel)
+
+*   **Bart van der Poel** announced a NIPY hackathon in Madrid, with Cisco and open-source implementations planned, encouraging participation for testing. He also raised concerns about the large number of open issues (35) and whether the allocated face-to-face time in Madrid would be sufficient, suggesting a side meeting or hackathon focus.
+*   The following NIPY issues were discussed and actions noted:
+    *   **Issue #1 (Broadcast Action)**: Originally an action in Draft 6. It was moved to `extensions` under `/manage` as a `transmit` operation. Rationale: it's a network-to-device broadcast (primarily BLE), not an action on a device's SDF affordance. Device-originated broadcasts are modeled as SDF events. **Decision:** Closed.
+    *   **Issue #2 (Example Protocol Mapping)**: Related to #1. ID was removed from the payload, and `protocol mapping` for broadcast was simplified to just the "B" keyword. Moved under `extensions`. **Decision:** Closed.
+    *   **Issue #3 (Action API Method)**: Changed to a `POST` method. It now returns a handle (`Location` header) which can be used with a `GET` request to retrieve status. `octet-stream` and `JSON` data types were added. Multi-value input will be tracked as a separate issue. **Ari Keränen** questioned if the OpenAPI specification restricts content types compared to `SDF content-format` quality. Bart will investigate if NIPY API can express more specific content types and add `content-format` examples to SDF. A new issue will be created for this. **Decision:** Closed (new issue for content-format).
+    *   **Issue #4 (Event API Method)**: Similar to action API, changed to `POST` and returns a handle for status retrieval. **Decision:** Closed.
+    *   **Issue #5 (Get ID Property Read All - #98)**: Request to retrieve all properties of a device. The current NIPY model does not explicitly associate an SDF model with a specific device instance; applications determine which model to use. This design avoids complexity in maintaining mappings (e.g., during firmware upgrades) but makes a "read all" property API difficult. **Michael Koster** noted this makes diagnostics harder. **Ari Keränen** highlighted the value of linkage for gateway validation and centralized model provisioning/discovery, suggesting an optional API for this. **Bart van der Poel** expressed strong reservations about an optional linkage due to significant implementation differences. It was suggested this might be more of a `scheme` problem. **Decision:** Remains open for further discussion.
+    *   **Issue #6 (Write Multiple Properties - #97)**: Simplified the request body for writing multiple properties to a simple list/array. **Decision:** Closed.
+    *   **Issue #7 (Path Element Naming - #96)**: Path elements were changed from singular to plural (e.g., "property" to "properties", "event" to "events", "action" to "actions") for consistency with collections. **Decision:** Closed.
+    *   **Issue #8 (OpenAPI Descriptions - #95)**: All OpenAPI descriptions were updated in Draft 7. **Decision:** Closed.
+    *   **Issue #9 (Rename Property Parameter - #94)**: The parameter "property" was renamed to "property name" in path elements, and similarly for "event name" and "action name." **Decision:** Closed.
+    *   **Issue #10 (Less Detail in Responses - #93)**: Responses were simplified, e.g., using `204 No Content` for success, and removing redundant parameters. Support for `octet-stream` and `JSON` for raw values was clarified. **Decision:** Closed (response details for `content-format` to be added to the new issue).
+    *   **Issue #11 (Data Types - #92)**: Discussion largely covered under `content-format`. **Decision:** To be covered by the new issue.
+    *   **Issue #12 (IANA Consideration - #91)**: The IANA consideration section has not yet been updated. **Decision:** Remains open.
+    *   **Issue #13 (API ID Parameter - #90)**: The first path element now uses a keyword (`device`, `group`, `registration`, `manage`) followed by the ID, improving programmatic clarity. **Decision:** Closed.
+    *   **Issue #14 (NIPY API with Embedded Protocol Mapping - #88)**: `Embedded protocol mapping` was largely removed or deprecated. Explicit connection API is under `/manage`; broadcast moved to extensions; read/write are deprecated in favor of `get property` APIs. Rohit noted one instance in the draft text still needs updating. **Decision:** Closed after text update.
+
+## Decisions and Action Items
+
+*   **Non-Affordance**: A side meeting in Madrid was suggested to further explore life cycle management aspects.
+*   **Digital Twin**: The working group will review the "SDF modeling for digital twin" draft, focusing on its role in demonstrating how to use SDF for digital twin information modeling, ahead of a potential call for adoption. Ari Keränen will drop an email to the list regarding `SDF relation` shortcomings for digital twins.
+*   **NIPY**:
+    *   A NIPY hackathon will be held in Madrid.
+    *   Bart van der Poel will create a new issue to track discussion of `content-format` in NIPY API and SDF examples.
+    *   Bart van der Poel will provide a one-sentence summary for each closed issue on the mailing list for historical record.
+    *   Rohit will update the draft text to fully remove references to `embedded protocol mapping`.
+    *   Issue #98 (Get ID Property Read All / Device-Model Linkage) remains open for further discussion.
+    *   A virtual interim meeting is scheduled for July 2nd to continue reviewing remaining NIPY issues.
+
+## Next Steps
+
+*   Participants are encouraged to review the NIPY draft, especially Draft 7, in preparation for the upcoming virtual interim on July 2nd.
+*   Review the "SDF modeling for digital twin" draft for potential working group adoption.
+*   Bart van der Poel will follow up on creating the new NIPY issue and writing summaries for closed issues.
+*   Rohit will update the NIPY draft text.
+*   Discussions on NIPY issues, including #98, will continue at the next virtual interim and potentially at a side meeting or during the hackathon in Madrid.
+*   The chairs encouraged participants to recruit colleagues for document reviews and shepherd assignments.

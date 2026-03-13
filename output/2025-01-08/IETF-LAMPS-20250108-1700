@@ -1,0 +1,74 @@
+# [LAMPS](../wg/lamps.html)
+
+## Summary
+
+The LAMPS working group held an unscheduled virtual meeting to cover several presentations that could not be accommodated at IETF 121 in Dublin. Discussions focused on critical security vulnerabilities in CMS signed attributes, the application of Merkel Tree Ladders for efficient Post-Quantum Cryptography (PQC) revocation in OCSP, and new certificate extensions for root CA re-keying and cross-referencing related certificates. The group also addressed a surprising behavior in RFC 5280 related to CRL key usage, confirmed the status of Key Purpose OIDs, and entertained a "joke proposal" for explicit "no signature" OIDs in X.509 for trust anchors. An update on composite PQC signatures covered various technical and design challenges.
+
+## Key Discussion Points
+
+*   **CMS Signed Attributes Vulnerability (EFC CMA U):**
+    *   Falco and Dan presented on signature forgery attacks (two variants) due to the optionality of `signedAttributes` in CMS `SignerInfo`.
+    *   One variant allows an attacker to forge a signature for an arbitrary message if the signer signs a specially crafted message. The other allows forgery if signed attributes are removed by an attacker.
+    *   Mitigation strategies discussed included:
+        *   Application/protocol level: Verifiers checking if unsigned content resembles DER-encoded signed attributes (Variant 2), and signers refusing to sign such content (Variant 1).
+        *   Protocol specification: Mandating the presence or absence of signed attributes.
+        *   Signature context-based mitigations (for algorithms supporting context strings like ML-DSA, SLH-DSA, and potentially Ed448 with RFC updates). This involved using different context strings based on `signedAttributes` presence, either directly in PQ CMS drafts or via a new optional unsigned attribute.
+    *   Discussion included a suggestion for a Best Current Practice (BCP) to mandate `signedAttributes` for future protocols, and concerns about impact on existing CMS objects and the feasibility of attacks.
+
+*   **Root CA Re-Keying for Legacy Devices (draft-wang-lamps-root-ca-re-key):**
+    *   Jillian Wang presented a solution for updating root CA certificates to allow legacy devices (unable to update trust anchors) to interoperate with newer devices.
+    *   The proposed "New with Old Link" certificate mechanism introduces a new public key for the same root CA, which is then treated as a subordinate of the old public key.
+    *   Test results demonstrated positive cross-verification across three generations of root CAs using RSA and ECDSA, showing the concept's viability.
+
+*   **Efficient OCSP PQC Revocation Using MTL Mode:**
+    *   Joe Harvey and John Gray proposed using Merkel Tree Ladder (MTL) mode for efficient PQC revocation in OCSP, addressing the challenge of large PQC signature sizes in high-volume revocation contexts.
+    *   MTL mode signs ladders of hashes, allowing a single PQC signature to validate many revocation statuses, significantly reducing the number of full signatures required.
+    *   Benefits include improved performance for both server-side generation (reducing `N` signatures to `N` hashes plus batch signatures) and client-side validation (using smaller authentication paths after an initial full signature).
+    *   Discussion raised skepticism about benefits for OCSP stapling due to potential for increased client complexity and round-trip issues if the server cannot assume client cache state.
+
+*   **Related Certificate Descriptor (draft-gray-lamps-related-cert-descriptor):**
+    *   John Gray presented a new `SubjectInfoAccess` extension to enable X.509 certificates to cross-reference related certificates.
+    *   The extension includes a URI for fetching the related certificate, and optional `signatureAlgorithm` and `publicKeyAlgorithm` hints.
+    *   Use cases include cross-linking between parallel PKIs (e.g., RSA and PQC), hybrid security, cryptographic agility, operational redundancy, and dual usage scenarios.
+    *   The draft builds upon previous efforts while addressing their limitations (e.g., mandatory hashes, lack of fetchable URIs).
+
+*   **Resolving Surprising CRL Sign Behavior (draft-bonnell-lamps-crl-sign):**
+    *   Corey Bonnell presented an issue in RFC 5280 where an ambiguity in processing the `crlSign` key usage bit could lead to an attack.
+    *   If the `keyUsage` extension is *absent* in a CRL issuer's certificate, the `crlSign` check is skipped during validation, potentially allowing certificates not intended for CRL signing to be used for that purpose.
+    *   The problem was empirically reproduced in widely available implementations. The proposed solution is a language modification to RFC 5280 (Section 6.3.3) to explicitly require both the presence of the `keyUsage` extension and the assertion of the `crlSign` bit.
+
+*   **Key Purpose OIDs (draft-falco-lamps-key-purpose-oids):**
+    *   Falco provided an update on the draft proposing new `KeyPurpose` OIDs for specific applications, particularly in rail automation and other industries.
+    *   These OIDs are intended for use cases such as general configuration file signing, configuration files for trust anchor updates, firmware package signing, and authenticating entities for safety communication. The document has completed WG Last Call.
+
+*   **Self-Signed Certificates Without Signatures (draft-david-lamps-no-signature-self-signed):**
+    *   David Benjamin presented a proposal to define an OID for "no signature" in X.509 certificates, to explicitly represent trust anchors or other "nodes" that are currently encoded as self-signed certificates.
+    *   The rationale is that self-signatures on trust anchors have no security value, waste bytes (especially with PQC), and can lead to confusion. The proposed OID would mandate that verifiers *must* fail verification for this "signature" (to avoid issues like the JWT "alg:none" vulnerability), but it would be ignored in contexts where the signature is already not relied upon.
+    *   While controversial, a WebRTC implementer expressed strong support, noting that it would reduce PQC payload size for DTLS handshakes where certificates are validated by fingerprints, not signatures.
+
+*   **Multi-Public-Key-Certificate (draft-shen-lamps-multi-public-key-certificate):**
+    *   Jinghao Shen presented a draft proposing a mechanism to include multiple public keys (e.g., traditional and PQC) in an X.509 certificate.
+    *   A key feature is the ability to transmit the second public key as a hash, with the client reconstructing and verifying it. This aims to reduce transmission size when the client may not support the second (e.g., PQC) key.
+    *   Discussion highlighted challenges regarding how protocols would negotiate which key to use and whether this approach genuinely simplifies usage compared to existing solutions, particularly concerning backward compatibility with various applications.
+
+*   **Composite PQC Signature Update:**
+    *   John Gray and Mike Ounsworth provided an update on the composite signatures draft.
+    *   **`hash_ML-DSA` OIDs:** The inclusion of `hash_ML-DSA` in the ML-DSA draft has doubled the number of composite signature OIDs. Arguments for removing these combinations (reducing OIDs, application-level hashing with `external_message`) versus keeping them (crypto agility, FIPS 204 alignment) were discussed. No consensus was reached.
+    *   **Domain Separator Prefix:** A proposal from Falco to add a 32-byte prefix to the composite signature domain separator was discussed. This prefix would prevent traditional verifiers from inadvertently validating extracted traditional signatures unless they are specifically updated to recognize and strip the prefix.
+    *   **Composite KEMs and HPKE:** A significant design challenge for composite KEMs relates to deterministic seed-based key generation for HPKE. The X-Wing method is not FIPS 203 compliant due to its use of SHAKE for key expansion, posing a blocker for the draft's progress.
+
+## Decisions and Action Items
+
+*   **Related Certificate Descriptor (draft-gray-lamps-related-cert-descriptor):** The working group will issue a call for adoption in the next couple of weeks.
+*   **CRL Sign Key Usage Clarification (draft-bonnell-lamps-crl-sign):** The working group will issue a call for adoption in the next couple of weeks.
+*   **Key Purpose OIDs (draft-falco-lamps-key-purpose-oids):** No objections were raised to proceeding with the OID allocation. The document has completed WG Last Call and is moving towards Request for Publication.
+*   **Self-Signed Certificates Without Signatures (draft-david-lamps-no-signature-self-signed):** The working group will issue a call for adoption in the next couple of weeks to discuss the proposal more thoroughly.
+*   **Composite PQC Signature Update:** The proposal to add a 32-byte prefix to the domain separator for composite signatures will be incorporated into the draft. The decision on removing `hash_ML-DSA` composite OIDs remains open.
+
+## Next Steps
+
+*   **CMS Signed Attributes Vulnerability:** Working group members are encouraged to provide feedback on the preferred mitigation strategy for addressing the signature forgery attacks.
+*   **Root CA Re-Keying for Legacy Devices:** Jillian Wang will refine the draft by clarifying its distinctions from existing certificate management protocols and present updates at a future IETF meeting.
+*   **Efficient OCSP PQC Revocation with MTL Mode:** The authors will proceed with planning a hackathon to gather performance metrics for the proposed solution, with a potential draft and IETF update to follow.
+*   **Multi-Public-Key Certificates:** Jinghao Shen will consider the feedback received, particularly regarding usability in existing protocols, and update the draft accordingly.
+*   **Composite PQC Signature Update:** The authors will address the remaining GitHub issues, integrate the domain separator prefix, and continue discussions regarding FIPS compliance for HPKE in composite KEMs. The goal is to prepare for WG Last Call for the composite and related ML-KEM/ML-DSA x509/CMS drafts soon.

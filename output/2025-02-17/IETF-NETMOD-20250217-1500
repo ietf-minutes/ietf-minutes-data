@@ -1,0 +1,56 @@
+# [NETMOD](../wg/netmod.html)
+
+## Summary
+
+This virtual interim meeting of the NETMOD Working Group focused on discussing and gathering feedback on the proposed requirements for YANG templates, captured in a GitHub issue tracker. The chairs, Kent Watsen and Lou Berger, facilitated a review of the first nine of sixteen open issues, aiming to establish a sense of the room regarding each requirement. Discussions included clarifications, motivations, and concerns, particularly regarding complexity and alignment with existing implementations. While several requirements garnered strong support, others highlighted areas needing more discussion due to split opinions or concerns about over-complexifying the core template specification. The working group agreed to hold another virtual interim to complete the review of the remaining requirements.
+
+## Key Discussion Points
+
+The meeting reviewed GitHub issues #1 through #9 for template requirements. For each issue, the discussion, proposed clarifications, and a poll result (where taken) are summarized.
+
+*   **Issue 1: Wherever a template reference can occur, more than one template reference can occur (and they are applied).**
+    *   **Discussion**: This requirement promotes configuration through composition, allowing a node to reference multiple templates (e.g., `apply-groups foo bar`). A point of clarification was made to distinguish this from hierarchical template application (ancestors affecting descendants). The intent is that all referenced templates are applied, with precedence rules (to be defined elsewhere) to resolve conflicts. An alternative suggestion to disallow conflicting values (erroring instead of resolving precedence) was discussed but not widely supported.
+    *   **Poll Result**: Unanimous support.
+
+*   **Issue 2: Templates must be able to reference other templates (hierarchical templates).**
+    *   **Discussion**: This requirement aims to enable hierarchical composition of templates (e.g., a device-specific template referencing a platform-generic template, which in turn references a broader OS-generic template). While the "Don't Repeat Yourself" (DRY) principle was cited as motivation, significant concerns were raised about the added complexity for the initial specification. Participants questioned if applying multiple templates at a single node (Issue 1) or explicitly listing a sequence of templates would sufficiently address the use case without introducing this additional complexity.
+    *   **Poll Result**: Mixed, with more "no" votes. This indicates a desire for more discussion and simplification for the base specification.
+
+*   **Issue 3: Templates must work with any Yang module, including augments and deviations.**
+    *   **Discussion**: The requirement ensures that the template solution is generic and orthogonal to specific Yang modules, meaning it should apply seamlessly to any existing or future Yang module without requiring module-specific template definitions. Clarification was made that "data model" here refers to "Yang module."
+    *   **Poll Result**: Strong support (unanimous among participating members).
+
+*   **Issue 4: Template syntax must be validated when defined, not only when used.**
+    *   **Discussion**: This requirement proposes validating templates at the time of their definition, rather than only when they are applied. Initial concerns about the feasibility of "strong" validation for sparse templates (which may intentionally omit mandatory leaves, expecting local config or other templates to provide them) were raised. However, arguments for "fail-fast" and early detection of errors (e.g., incorrect data types, non-existent nodes) led to a refinement. The proposed scope of validation was narrowed to "syntax" validation (e.g., node existence, correct value types), avoiding full semantic validation before expansion. The level of strictness in the RFC for such validation was also debated.
+    *   **Poll Result**: Split, with more "no" votes. This indicates ongoing concerns about complexity and the scope of required validation for a base specification.
+
+*   **Issue 5: Wherever a template reference can occur, it must be possible to delete nodes from the template.**
+    *   **Discussion**: This requirement suggests that a template consumer should be able to explicitly "delete" a node that would otherwise be configured by the template, effectively allowing the node to revert to its default value or be undefined. This was distinguished from *overriding* a value (which sets a new value). Concerns were raised that introducing such "action operators" within template application mechanisms adds undue complexity for a foundational specification.
+    *   **Poll Result**: Overwhelmingly "no" votes. This requirement is not supported for the initial set of features.
+
+*   **Issue 6: Local config overrides template config.**
+    *   **Discussion**: This requirement addresses the precedence rule where local configuration data explicitly set on a node should take precedence over any values provided by templates applied to that node. This was clarified to mean *explicitly configured* local data, not Yang default values. The discussion also touched upon whether this override should always be fixed (local wins) or optionally configurable (allowing a template to override local config), with a strong preference for the fixed "local wins" approach for simplicity. This requirement implicitly covers one aspect of precedence, separate from how multiple templates might interact with each other.
+    *   **Poll Result**: Unanimous support.
+
+*   **Issue 7: Templates are persistent and modifications to them are automatically applied to all consumers at commit.**
+    *   **Discussion**: This requirement specifies that templates are "long-lived" entities, meaning that if a template's definition is modified (e.g., via `edit-config`), these modifications should automatically cascade and be re-applied to all configurations that currently reference that template. This contrasts with a "one-off" application model where template changes would not affect already applied configurations. The wording was refined to ensure "instantly" was replaced with "at commit" to reflect practical processing.
+    *   **Poll Result**: Good participation, no objections. This indicates support for the concept of persistent, dynamically updated templates.
+
+*   **Issue 8: Support basic programmatic elements in templates.**
+    *   **Discussion**: This requirement proposed including scripting-like features within templates, such as conditional expressions, loops, and ranges, operating on variables and Yang data. Such functionality would introduce significant complexity in specification, implementation, and validation (e.g., XSL-like capabilities). There was no strong support voiced for this.
+    *   **Poll Result**: Not supported (not in the first round).
+
+*   **Issue 9: Templates can be applied at various nodes in the schema.**
+    *   **Discussion**: This requirement states that templates should be applicable at different levels within the data tree. The discussion acknowledged that templates themselves can be hierarchical. A key point of contention was whether the specification should mandate that templates *must* be applicable at *any and every* node (including leaves) or if implementations should be allowed flexibility to restrict where templates can be applied (e.g., only on lists, or specific types of lists). Concerns were raised that mandating universal applicability might conflict with existing implementations and introduce unnecessary rework. The consensus leaned towards allowing servers some flexibility to reject template application at certain nodes, while still enabling broad applicability for logical groupings.
+    *   **Poll Result**: Reasonable support, but with some "no" votes or "no opinion" votes due to perceived vagueness and the need for clearer definitions regarding server flexibility versus universal applicability.
+
+## Decisions and Action Items
+
+*   **Decision**: The working group will hold another virtual interim meeting to complete the review of the remaining template requirements (issues #10 through #16).
+*   **Action Item**: Kent Watsen (Co-chair) will send a Doodle poll to the NETMOD mailing list to determine the best time for the next virtual interim meeting.
+*   **Action Item**: Lou Berger (Co-chair) will inquire with AD Mahesh Jethanandani about the possibility of scheduling a 1-hour special session for this work at IETF 122 in Brisbane, although it was noted this might be difficult due to the late date and tight schedule.
+
+## Next Steps
+
+*   Participants are encouraged to monitor the NETMOD mailing list for the Doodle poll regarding the next virtual interim.
+*   The remaining seven GitHub issues for template requirements will be discussed and reviewed in the upcoming meeting.

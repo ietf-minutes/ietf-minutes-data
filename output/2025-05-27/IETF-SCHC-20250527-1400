@@ -1,0 +1,76 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC Working Group met to discuss several new and ongoing drafts. Key discussions included the successful IANA allocation of a SID range for the SCHC Yangit, a proposal for compressing QUICK packets using SCHC, and the introduction of a new draft outlining the SCHC context life cycle for dynamic management. Several action items were assigned, including proposing the actual SID file and following up on stalled drafts.
+
+## Key Discussion Points
+
+*   **Introduction and IPR Disclosure:** The meeting commenced with a standard IETF reminder regarding IPR disclosure and conduct.
+*   **Agenda Review:** The agenda included presentations on QUICK compression, SCHC context life cycle, and an update on the SCHC for IPv6 document.
+*   **Review of Previous Actions:**
+    *   **IANA Request for SIDs:** The request for SIDs for the SCHC Yangit data model was successfully processed and allocated (see "Decisions" below).
+    *   **Side Meeting on Architecture and Management:** An internal side meeting focused on architecture and management is pending; chairs are awaiting opening of ad-hoc meeting rooms to schedule it before the main SCHC session.
+    *   **Shepherd for ICMPv6 Compression:** Marco accepted to be the document shepherd for the ICMPv6 compression draft.
+    *   **IANA Option Submission:** This action item was reported as completed.
+    *   **Core To-Dos:**
+        *   Feedback on the IPSec diet protocol is still needed.
+        *   Pascal provided an update on the protocol numbers draft: The draft is stalled due to strong pushback against including UDP headers for compression. The document will be revised to focus solely on an IP protocol number and an Ethernet type. Pascal will attempt to contact Bob Moskovich to progress the draft, potentially meeting at IETF Madrid.
+*   **SCHC YANG Data Model SID Allocation:**
+    *   An IANA request was made for allocating a SID range for the SCHC data model.
+    *   After back-and-forth discussions with the assigned expert (Michelle), it was decided not to fragment the SID space.
+    *   A compromise was reached on a range size of 400 SIDs.
+    *   **Decision:** The SID range 2550-2949 (400 SIDs) was officially allocated for the SCHC Yangit range registry.
+    *   **Action Item:** Lauron is to propose the actual SID file, detailing the allocation of each item in the Yang data model, for working group discussion and submission to IANA. He emphasized the importance of careful assignment to accommodate future evolutions of the Yang model and universal options for efficient encoding (shortest possible deltas).
+*   **Document Status Update:** Lauron reported that his attempt to submit an update for the IPv6 compression document was blocked by the data tracker.
+    *   **Action Item:** Lauron to send an email to data tracker support for assistance.
+*   **Presentation: QUICK Compression (Samar)**
+    *   **Problem Statement:** QUICK, despite its benefits, introduces header overhead, particularly problematic in bandwidth-constrained environments (e.g., deep-space communication).
+    *   **Proposal:** A two-level compression architecture using SCHC.
+        1.  **Inner Quick Frame Header Compression:** Applied to individual frames within the QUICK payload.
+        2.  **Outer Quick Packet Header Compression:** Applied to the main QUICK packet header.
+        *   These two levels can be applied independently.
+    *   **Flow:** Quick frames -> SCHC compression (frame headers) -> aggregate compressed frames (with Rule ID) -> encrypt. Separately, Quick outer header -> SCHC compression -> header protection. Both combined into a final compressed Quick packet.
+    *   **Key Challenge:** The QUICK header protection mechanism assumes a fixed 4-byte packet number length, which conflicts with variable-length compressed fields. Applying header protection to the compressed residue requires careful consideration of the offset calculation and variable-length Rule IDs.
+    *   **Other Considerations:**
+        *   Two distinct compression contexts (one for inner frames, one for outer header).
+        *   Need for dynamically updated contexts (e.g., for Connection IDs).
+        *   Negotiation mechanism using transport parameters.
+        *   Compressed inner SCHC packet could be defined as a new QUICK frame type.
+        *   Evaluations are needed to quantify actual benefits.
+    *   **Potential Savings:** Estimated 22-46 bytes for long headers, 10-22 bytes for short headers.
+    *   **Discussion (Q&A):**
+        *   **Stratums:** Clarified that there are two main stratums for compression (outer header and inner frames).
+        *   **Frame Aggregation/Rules:** For multiple frames within a Quick packet, the same set of rules would be applied N times (for N frames). While the format is the same, values might differ, leading to different residues. The concept of parent rules with specific extensions for different frame types (as previously explored in SCHC) was brought up. Lauron noted that the ICMPv6 draft's approach of embedding residue within residue might offer a solution for variable-sized frame residues.
+*   **Presentation: SCHC Context Life Cycle (Marwan)**
+    *   **Rationale:** With SCHC's broadening scope beyond LPWAN, static context management is insufficient. The working group needs to define a dynamic architecture for context management.
+    *   **Objectives of the Draft:**
+        *   Agree on consistent terminology (e.g., SCHC instance, manager, session, context manager, parser, data model).
+        *   Identify interactions between context and other SCHC components.
+        *   Define requirements for dynamic context management.
+        *   Describe the context life cycle stages: Provisioning, Activation, Operation (with modifications), Deactivation, Retirement.
+        *   Ensure consistency with existing architecture and management drafts.
+    *   **YANG Data Models as Cornerstone:** Proposed that YANG data models will be central, allowing modularity, combining models for generic rules, and storing references/versions in profiles. Parsers could also be indicated in profiles for interoperability.
+    *   **Context Life Cycle Stages (Focus on Provisioning and Activation):**
+        *   **Handshake Procedure:** Suggested a three-step handshake: SCHC Advertisement (with preferences/capabilities) -> Acknowledgement (with additional parameters) -> Final Acknowledgement.
+        *   **Provisioning:** Can occur before or during the handshake (e.g., context retrieved from a remote location or sent by one endpoint to another).
+    *   **Remaining Work:** Further structuring the document, detailing each stage, ensuring consistency, and adding use cases.
+    *   **Discussion (Q&A):**
+        *   Pascal noted the document addresses a significant missing piece of the SCHC architecture.
+        *   Alex inquired about alternative context discovery/evolution mechanisms, such as peer-to-peer bootstrapping from a baseline. Marwan affirmed openness to various approaches and use cases, including preloaded contexts or contexts sent by capabilities.
+        *   Lauron highlighted the "chicken-and-egg" problem: how to use SCHC to get SCHC context if no rules are initially present. He also raised concerns about ensuring bootstrap messages are distinct from regular frames and handling endpoint restarts, suggesting the potential use of pre-installed management rules or entirely different protocols for context exchange.
+        *   **Action Item:** Working Group participants are encouraged to read the draft, provide feedback, and contribute use cases for the SCHC Context Life Cycle.
+
+## Decisions and Action Items
+
+*   **Decision:** IANA SID range 2550-2949 (400 SIDs) has been officially allocated for the SCHC Yangit range registry.
+*   **Action Item:** **Lauron** to propose the actual SID file for the SCHC Yangit allocation to the working group for discussion and submission to IANA.
+*   **Action Item:** **Pascal** to contact Bob Moskovich regarding the stalled protocol numbers draft and potentially coordinate a meeting at IETF Madrid to progress it.
+*   **Action Item:** **Lauron** to follow up with data tracker support regarding the blocked IPv6 compression update.
+*   **Action Item:** Working Group participants are encouraged to read the "SCHC Context Life Cycle" draft, provide comments on the mailing list, and contribute use cases.
+
+## Next Steps
+
+*   Continue discussions on the QUICK Compression and SCHC Context Life Cycle drafts on the mailing list.
+*   The next SCHC working group meeting is scheduled for June 17th.
+*   Participants wishing to present at the next meeting should send slot requests ahead of time.

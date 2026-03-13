@@ -1,0 +1,51 @@
+# [SPRING](../wg/spring.html)
+
+## Summary
+
+The SPRING Working Group convened an interim meeting to discuss approaches for expressing Network Resource Partitions (NRPs) in Segment Routing (SR) packets. The discussion centered on two main approaches: using resource-aware Segment Identifiers (SIDs) versus introducing a dedicated NRP Selector ID in the data plane. While both approaches were seen to have their merits and applicability, particularly regarding scalability and data plane readiness, a general preference for clearer characterization, operational considerations, and scalability impact in working group drafts emerged. The chairs will summarize the discussion and seek rough consensus on the mailing list.
+
+## Key Discussion Points
+
+*   **Meeting Objective**: The chairs opened the meeting, emphasizing the goal was to discuss different mechanisms for expressing NRPs using SR and to gain a sense of preference from the working group, rather than focusing on a specific draft. The discussion should not be limited to a specific draft but cover the general approach.
+*   **Two Approaches for NRP with SR**: Shangnan presented two main approaches:
+    1.  **Resource-aware Segment Identifiers (SIDs)**: SIDs indicate both the instruction and the set of resources to be used.
+        *   **Pros**: Minimum changes to SR forwarding, reuses existing SR data plane.
+        *   **Cons**: Allocates different SID groups for different NRPs, leading to additional overhead in the control plane and network management. Suitable for a *small number* of NRPs.
+    2.  **Dedicated NRP Selector ID**: Introduces a dedicated NRP Selector ID into SR packets, carried alongside the SID list.
+        *   **Pros**: No additional SIDs per NRP, leading to better scalability for a *large amount* of NRP deployment.
+        *   **Cons**: Requires data plane enhancements (e.g., new ID in packet, not a whole new data plane), encapsulation is protocol-specific.
+*   **Scalability Definition**: Joel clarified that "small" typically refers to <20 distinct NRPs and "large" to >100 distinct NRPs, emphasizing this refers to the number of NRPs, not routers.
+*   **Discussion on Approach Preference**:
+    *   **Ketan (participant)**: Noted both approaches are valid. Raised concerns about control plane and network management overhead for Approach 1 if it’s not strictly a one-to-one mapping between NRP and topology (e.g., Flex-Algo). Suggested that if an NRP scales beyond a certain point, switching to Approach 2 might be necessary. Speaking as an operator, expressed a preference for a single, scalable approach, ideally Approach 2, but acknowledged potential hardware readiness issues for Approach 2.
+    *   **Yi (participant)**: Clarified that Approach 2 involves data plane *enhancements* (e.g., MPLS Network Actions, SRv6 TLVs) rather than entirely new data planes, which is a choice for operators based on their existing infrastructure.
+    *   **Alvaro (chair)**: Stressed the importance of thoroughly characterizing both approaches in drafts, including their applicability, operational considerations, and the complexity of migrating from one approach to another.
+    *   **Joel (chair)**: Expressed a desire for a single approach but noted no working group member had advocated for only one. Highlighted the importance of comprehensive operational considerations.
+    *   **Ryan (participant)**: Stated his company has implemented and uses both methods, finding them both beneficial.
+    *   **Liang (participant, from China Mobile)**: Supported the idea that both approaches have different application scenarios. For large backbone networks (thousands of routers) even with a small number of NRPs, Approach 2 is preferred to avoid the burden of managing SIDs (Approach 1). However, for hierarchical network slices (e.g., coarse-granularity scenarios), Approach 1 might be suitable. Concluded that both approaches have pros and cons, and the choice should be left to operators.
+    *   **Zafar (participant)**: Advised SPRING to leverage existing work and discussions in other working groups (TEAS, LSR, MPLS, Sixpans) rather than re-hashing previously discussed scaling issues for Approach 1 or data plane definitions for Approach 2. He noted that LSR has extensively discussed the scaling concerns of Approach 1, and Sixpans/MPLS are addressing data plane encodings for Approach 2.
+*   **NRP Selector ID in SR Policy (Approach 2 Proposal)**: Shangnan presented a proposal from draft-ietf-spring-sr-policy-nrp:
+    *   The draft describes SR policy extensions to enable NRP association.
+    *   Each candidate path of an SR policy can be associated with an NRP Selector ID, which can be the same or different across paths.
+    *   All segment lists within a candidate path share the assigned NRP.
+    *   The SR policy information model is updated to include `NRP Selector ID`.
+    *   **Procedure**: Headend node steers traffic, encapsulates packets with the segment list and the NRP ID. Transit nodes read the NRP ID and schedule traffic to dedicated resources (e.g., HQoS queues).
+    *   A use case with SRv6 policies and color-based steering linked to different NRPIDs (and bandwidths) was presented.
+*   **Further Discussion on SR Policy & NRPID**:
+    *   **Bruno (chair)**: Noted that Approach 2 (NRPID in data plane) appears valid and future-proof, implying a need to encode NRPID within the SR policy itself.
+    *   **Joel (chair)**: Clarified that SPRING's role is to express the *need* for such encoding, while the actual definition of MNA actions (MPLS) or SRv6 TLVs (Sixpans) would fall to those respective working groups.
+    *   **Ketan**: Confirmed the draft's policy solution targets Approach 2, as Approach 1 is considered already covered by existing SR policy mechanisms.
+    *   **Zafar**: Raised that the NRPID's placement (policy attribute, candidate path attribute, or intent-driven by headend) depends on the data model.
+*   **Path Computation Aspect**: Zafar also highlighted the need to consider path computation for NRPs, especially concerning PCEP and IDR encodings. He noted that TEAS RFCs touch upon this but it's not fully resolved. Suggested that a SPRING document might provide a basis for path computation, with encodings handled by PCEP and IDR.
+
+## Decisions and Action Items
+
+*   **Chairs Action**: The chairs will summarize the discussion points and pose clear questions to the SPRING mailing list to solicit rough consensus from the working group on the preferred approach(es) for expressing NRPs in SR. This summary will address the applicability, operational considerations, scalability, and potential migration strategies for both approaches.
+*   **Draft Authors Action**: Drafts related to NRP and SR must clearly characterize both discussed approaches, including their applicability, operational considerations, and scalability implications for operators to make informed decisions.
+*   **SPRING Working Group Direction**: SPRING should express the requirement for mechanisms to encode an NRP Selector ID within SR policy (e.g., via PCEP or IDR) to support Approach 2.
+*   **SPRING Working Group Direction**: SPRING documents should address the path computation aspect of NRPs, providing a foundational understanding, while specific protocol encodings for path computation would be handled by PCEP and IDR.
+
+## Next Steps
+
+*   The chairs will post the meeting summary and a set of questions to the SPRING mailing list to initiate the consensus-building process.
+*   Further discussion is expected on the mailing list and potentially at the upcoming IETF meeting in Montreal.
+*   Drafts related to NRPs and SR are expected to be updated to incorporate the detailed characterization and operational considerations discussed.

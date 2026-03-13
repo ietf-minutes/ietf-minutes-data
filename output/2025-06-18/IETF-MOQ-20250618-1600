@@ -1,0 +1,56 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ working group held its virtual interim, focusing on interop feedback and a new proposal for requesting sync points. The interop report highlighted frustrations with frequent wire format changes and the desire for more stable or batched updates. The main discussion centered around Suhas's proposal for a `NEW_GROUP` message, enabling subscribers to request an original publisher to generate a new sync point (e.g., a keyframe in video) for use cases like late joiners or active speaker switching. While the necessity of the requirement was broadly accepted, debate focused on whether a new message was appropriate or if existing mechanisms like `SUBSCRIBE_UPDATE` could be extended, and whether this functionality belonged at the MOQ transport layer or a higher application layer.
+
+## Key Discussion Points
+
+*   **Interop Hackathon Report (Mike English):**
+    *   A virtual interop hackathon was held last week with several implementations participating synchronously and asynchronously (Moxygen, Matthysse's Go implementation, Ivan's warp player/mock live server, IMQ quick, mocktail).
+    *   Public relays and data servers proved very helpful for remote and asynchronous testing, despite the trade-off of not having logs from the other side.
+    *   A common sentiment among implementers was frustration with the high rate of wire format changes, particularly for optimizations rather than new features. There's a desire for batching or minimizing such changes.
+    *   Draft 12 is expected to have a smaller wire format diff and will include `publish`, serving as the interop target for Madrid.
+    *   Implementers were reminded to update the interop spreadsheet and wiki with their experiences and new implementations.
+
+*   **Wire Format Change Management:**
+    *   Editor Alan acknowledged being "overzealous" with changes in Draft 11 to close issues and sought group input on when to batch such changes.
+    *   It was noted that major wire changes had been held off for a while, leading to a potential surge in upcoming drafts, but this is expected to stabilize afterward.
+    *   The chair, speaking as an individual, suggested Draft 13 (published two weeks before Madrid, not an interop target) as a good opportunity for wire image changes, giving implementers two months before the next interop target (September Toronto interim).
+    *   Ian suggested grouping breaking changes by related functionality (e.g., compression, extensibility) to make updates more manageable for implementers.
+    *   A cautionary note was raised that delaying changes too long could lead to difficulties in managing multiple drastically different versions once deployments begin.
+
+*   **New Requirement: Requesting New Groups (Suhas's Proposal):**
+    *   **Motivation and Use Cases:** Suhas introduced a new requirement to allow end subscribers to request original publishers to start a new group (sync point or keyframe) in a track. This is driven by:
+        *   Interactive conferencing systems where new participants joining need an iframe, and Group of Picture (GOP) sizes are dynamic.
+        *   Subscribers falling significantly behind and missing cache hits for an initial sync point.
+        *   Resource-constrained publishers unable to maintain static GOPs.
+        *   Active speaker switching in conferences requiring real-time sync points for new speakers.
+        *   Publishers being unable to serve fetch requests due to upstream bandwidth constraints prioritizing live streams.
+        *   This use case extends to any delta-encoded content (e.g., catalog updates).
+    *   **Proposed `NEW_GROUP` Message:** A new message type with a `largest_group` field, populated by the subscriber, indicating their most recent observed group but inability to use it. This implicitly requests the publisher to generate a new sync point.
+    *   **Design Goals:** Minimize signaling flood, leverage MOQ's aggregation and caching, and minimize demand on the original publisher.
+    *   **Aggregation and Implicit Satisfaction:**
+        *   Relays would aggregate multiple `NEW_GROUP` requests for the same group upstream.
+        *   A `NEW_GROUP` request is implicitly satisfied when the requested group (or a newer one) is observed on the data stream.
+        *   If a request reaches an upstream relay or publisher that is already publishing a newer group, the `NEW_GROUP` request becomes a no-op at that hop.
+    *   **Publisher Discretion and Throttling:** It was emphasized that publishers must have discretion to ignore or throttle `NEW_GROUP` requests to prevent denial-of-service scenarios (e.g., a publisher might set a minimum time between keyframe generations).
+    *   **Layer and Mechanism Debate:**
+        *   Will questioned if this could be a flag in `SUBSCRIBE` to avoid an extra Round-Trip Time (RTT).
+        *   Mo suggested an optional parameter in `SUBSCRIBE` or `SUBSCRIBE_UPDATE`, noting that conceptually this is subscription state that relays must maintain and aggregate.
+        *   Mike questioned if this is the right layer for MOQ, suggesting it might be an application layer concern or could be generalized as a "fan-in" aggregation mechanism for other uses like log aggregation.
+        *   Alan questioned why a separate track for joining couldn't accomplish this with existing MOQ mechanisms, leveraging subscription aggregation and caching. Suhas argued that the specific aggregation rules needed for this dynamic request differ from standard track subscription aggregation.
+        *   Victor noted that relays would effectively have a mandatory role in forwarding these requests upstream unless a newer group is already being served.
+
+## Decisions and Action Items
+
+*   There was a strong sense that the problem of requesting new groups/sync points is a valid requirement that MOQ needs to solve.
+*   **ACTION:** Suhas will revise the current Pull Request (PR) to incorporate feedback and explore alternative mechanisms, specifically focusing on how this functionality could be built on `SUBSCRIBE_UPDATE`.
+*   **ACTION:** Suhas will collaborate with Ian, Colin, and Mo to prepare a comparison of different solution approaches (e.g., new message vs. `SUBSCRIBE_UPDATE` extension) for presentation at a future interim.
+*   **ACTION:** The chair will initiate a mailing list thread to discuss the optimal form and spelling of this message or mechanism.
+
+## Next Steps
+
+*   Working group members are encouraged to review Suhas's PR on GitHub and engage in the mailing list discussion regarding the appropriate mechanism for requesting new groups.
+*   Suhas will present revised proposals and a comparison of approaches at the next interim.
+*   The July 7th interim will continue discussions on this topic, as well as attempt to include parameterization on its agenda.

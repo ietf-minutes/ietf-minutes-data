@@ -1,0 +1,38 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This interim meeting featured a presentation on a new draft, "Updating Security BCP," detailing two major categories of OAuth vulnerabilities: Cross-Tool OAuth Account Takeover and Cross-User OAuth Session Fixation. These attacks exploit weaknesses in how OAuth is implemented in modern, complex deployments like AI agents, IoT devices, and "OAuth as a Service" platforms. The presenters highlighted the severe real-world impact of these vulnerabilities, affecting numerous major platforms and vendors. Technical defenses were proposed for both attack types. The session concluded with a call for the Working Group to adopt the draft to provide updated security best practices for the community.
+
+## Key Discussion Points
+
+*   **Introduction of "Updating Security BCP" Draft:** The authors, Adonis and Kaixin, presented their draft, which aims to address emerging OAuth security challenges not fully covered by existing best practices. The initial work was by Tim and PageROM on audience injection attacks, with current authors focusing on OAuth in account linking for AI and IoT platforms.
+*   **Background on Draft Genesis:** The work stemmed from discussions at an Iceland workshop regarding "mix-up reload attacks" (a form of audience injection). Consensus was to start a *new* draft rather than overloading or indefinitely delaying RFC 9700. The draft proposes updating security BCPs, with an open title for the new document.
+*   **Focus on Modern Deployments:** The presentation emphasized OAuth deployments facilitating account linking in AI platforms, smart home systems, and "OAuth as a Service" offerings (e.g., RK, AWS). These often involve complex integrations where an OAuth client may be outsourced or decoupled from the application maintaining the user session.
+*   **Two Categories of Attacks:**
+    1.  **Cross-Tool OAuth Account Takeover (formerly "Mix-up Attack" variants):**
+        *   **Description:** An attacker crafts a malicious OAuth authorization URL. When a victim clicks this link, the malicious server redirects the browser to a legitimate authorization server but with modified parameters (e.g., a state value controlled by the attacker for their session). The legitimate authorization server, seeing a seemingly valid request, issues an authorization code. This code is then returned to the *attacker-controlled* redirect URI, allowing the attacker to link the victim's legitimate service account (e.g., Spotify) to the attacker's platform account (e.g., Alexa).
+        *   **Impact:** Demonstrated to be severe, leading to full account takeovers. A prominent example cited was a Microsoft Power Automate vulnerability where an attacker could gain control over a victim's Azure infrastructure with a single click. Microsoft subsequently re-architected their system.
+        *   **OAuth as a Service Context:** This attack is exacerbated in OAuth as a Service, where platforms might pre-build tools with shared OAuth providers, or where tenant isolation mechanisms are insufficient ("cross-agent code" attack).
+        *   **Proposed Defense:** Enforce that the "tool" (an owner-specific application or integration) that initiates the OAuth flow is the *same* tool that receives the authorization code. This requires encoding a unique "connection context ID" (e.g., `tool_id`, potentially `tenant_id`) within the `redirect_uri` and validating its consistency at the redirection endpoint.
+    2.  **Cross-User OAuth Session Fixation Attack:**
+        *   **Description:** This attack targets scenarios where OAuth flows span different origins or user agents (e.g., a web application on `alexa.com` with a redirection endpoint on `amazon.com`, or native apps acting as confidential clients). Platforms often introduce "authorization sessions" or "OAuth sessions" to bridge the user session across these boundaries, embedding them in URL parameters or the `state` parameter. An attacker can initiate an OAuth flow, obtain an authorization URL containing their own authorization session ID, and then send this URL to a victim. When the victim completes the OAuth flow, the access token is incorrectly bound to the *attacker's* session because the session ID in the URL originated from the attacker.
+        *   **Impact:** Leads to account takeover of the victim's tool. It can be stealthy, requiring only a single click if no re-consent is needed.
+        *   **PKCE (Proof Key for Code Exchange) is insufficient:** PKCE only binds authorization and access token requests within the *same* OAuth session, but the attack's root cause is at the initiation of the OAuth session itself.
+        *   **OAuth as a Service Context:** This is an inherent architectural problem in OAuth as a Service due to the separation of duties between the OAuth client (the service provider) and the application agent (the tenant), making user session integrity validation complex.
+        *   **Proposed Defense:** Enforce that the user who *starts* OAuth is the *same* user who *completes* it. This typically requires the OAuth client to redirect back to the original user agent or origin where the platform user session is available for validation. The authors also suggested the need for a new specification, "OAuth 2.0 for Native App Backend," to securely guide developers on these complex patterns.
+*   **Prevalence and Severity:** The authors reported finding these attack variants in over 20 platforms for cross-tool attacks and over 135 vendors for cross-user attacks, including major names like Microsoft, Google, Amazon Alexa, and OpenAI. They emphasized that platform-wide vulnerabilities can compromise all integrations, even if individual OAuth providers are otherwise secure.
+*   **Relationship to RFC 9700:** Participants discussed how this new work relates to RFC 9700 (OAuth 2.0 Security BCP). Suggestions included superseding specific sections (e.g., Section 4.4, which covers mix-up attacks), referencing a new, more targeted document (e.g., "OAuth Security for Account Linking"), or creating a new "security considerations" document that the BCP could point to. The authors clarified that the intent is not to obsolete 9700 entirely, but to extend and update it for new attack vectors and deployment patterns.
+*   **Call for WG Adoption:** The authors expressed the urgency of this work given the rapid deployment of new AI and IoT systems, and requested community feedback and support for adopting the draft as a Working Group document to provide clear, actionable guidance to engineers.
+
+## Decisions and Action Items
+
+*   **Action Item:** The WG Chairs (Rifat and Hannes) will initiate a formal Working Group adoption call for the "Updating Security BCP" draft on the OAUTH mailing list in the coming days.
+*   **Action Item:** The WG Chairs will explore and clarify the possible options for structuring the new document in relation to existing BCPs, specifically RFC 9700.
+*   **Action Item:** The authors are encouraged to continue discussions with the Chairs regarding the progress and next steps for the draft.
+
+## Next Steps
+
+*   The OAUTH Working Group will conduct an adoption call on its mailing list to gauge community consensus on adopting the "Updating Security BCP" draft.
+*   The community is encouraged to review the latest version of the draft document and any referenced materials, providing feedback on the technical content and proposed approach to document framing (e.g., title, relationship to RFC 9700).
+*   Further discussions will be held on the most appropriate document structure and title to best serve the community while ensuring clarity and avoiding confusion with existing RFCs.

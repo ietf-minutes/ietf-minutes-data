@@ -1,0 +1,84 @@
+# [RATS](../wg/rats.html)
+
+## Summary
+
+The RATS working group meeting covered three main topics: an architecture for multi-verifier attestation, a concise selector for endorsements and reference values (CoSERF), and an update on attested TLS in the context of remote attestation, particularly addressing security and privacy concerns in confidential computing. Discussions included different attestation models (hierarchical, cascade), the role of various verifiers, the need for standardized data formats for endorsement conveyance, and the challenges of secure channel establishment, relay attacks, and runtime integrity measurements in attested TLS. The working group also decided to schedule a virtual interim meeting to continue in-depth discussions on several open topics.
+
+## Key Discussion Points
+
+*   **"Multi-verifier" Architecture (draft-sarangi-rats-multi-verifier-architecture)**
+    *   Presented by Yogesh Sarangi (with June struggling with audio).
+    *   **Problem Statement**: Attestors are becoming more complex (e.g., combining CPU and GPU components), often requiring multiple verifiers with diverse sets of reference values and endorsements, which a single verifier may not possess.
+    *   **Proposal**: A draft outlining how different verifiers can interwork to appraise complex evidence.
+    *   **Architectural Models Discussed**:
+        *   **Hierarchical Model**: A lead verifier receives composite evidence, breaks it down, routes sub-evidences to individual verifiers, collects individual attestation results, collates them into an aggregated attestation result, signs it, and sends it to the attester or relying party.
+            *   **Discussion**: Hannes asked why the lead verifier needs to aggregate all results rather than just acting as a front-end to the relying party. Yogesh responded that the level of aggregation depends on the lead verifier's policy and implementation, and if not aggregated, it might be considered a partial attestation result. Hank added that this model reduces complexity for the attestor. Usama questioned if the lead verifier also performs verification or merely mediates; Yogesh clarified it could perform signature verification for the complete token and needs knowledge of the individual verifiers' capabilities. It was clarified that verifiers specialize in different aspects rather than acting for load balancing.
+        *   **Cascade Model**: A verifier receives composite evidence, verifies what it understands, constructs a partial attestation result, and forwards the composite evidence downstream to another verifier. This process continues until all verification is done, with results aggregated back upstream.
+        *   **Hybrid Model**: Any combination of hierarchical and cascade models is possible.
+    *   **Real-world Use Cases**:
+        *   **Confidential Containers**: An example of a "layered attestor" where workload and platform tokens are combined. A key broker service (relying party) forwards composite evidence to a platform verifier (e.g., Verizon) for TE platform verification, which then passes identified realm/workload claims to a workload verifier (e.g., Koko). The aggregated result informs the relying party's decision to release keys.
+            *   **Discussion**: Usama inquired about security/privacy benefits and why composite evidence is sent to both. Yogesh emphasized distinct roles for platform and workload verification. Usama raised confusion over "layered" vs. "composite" attestor terminology, referring to RFC 9334. Hank noted the draft's "standards track" designation should be informational and acknowledged message design implications. Liz expressed interest in the specialization of verifiers to policy sets. Hank clarified that privacy benefits could arise if a lead verifier under local domain control only exposes subsets of evidence.
+        *   **Composite Device (CPU + GPU)**: Illustrated with Intel Trust Authority and Nvidia Remote Attestation Service. Intel Trust Authority acts as a lead verifier, verifying its part and delegating GPU-specific evidence to Nvidia's service.
+            *   **Discussion**: Usama highlighted the privacy benefit of Nvidia not seeing Intel's evidence but questioned why Intel sees both. Yogesh explained Intel Trust Authority acts in tandem as a lead verifier. Hannes questioned if this implies a new architectural assumption that vendors won't share reference values, necessitating evidence routing, rather than a verifier importing published reference values. Yogesh stressed that this model accounts for different policies and splitting roles.
+        *   **UDI Architecture Reference Framework**: Another hierarchical model context, emphasizing privacy where trusted verifiers in different domains verify specific attributes based on policy, and reference values should not be published outside their domain.
+    *   **Next Steps**: Yogesh requested attendees read the draft and provide feedback for discussion in a future session.
+
+*   **CoSERF (Concise Selector for Endorsements and Reference Values) (draft-ietf-rats-coserf)**
+    *   Presented by Paul Wouters and Thomas Fossati.
+    *   **Relevance**: Addresses the conveyance of endorsement and reference values to the verifier, a critical part of the RATS architecture (RFC 9334) and a real industry requirement (e.g., Nvidia RIM, AMD KDS). Aims to address fragmentation in proprietary APIs and data formats.
+    *   **Motivation**: Provide guidance to the industry for better alignment, standards, and common tooling. CoSERF is a "baby step" focused on a tailored data format for RATS artifacts.
+    *   **Guiding Principles**:
+        *   Decouple message from transport (HTTP, CoAP).
+        *   Support both simple "get all" and efficient delta/pub-sub models (for caching).
+        *   Optimize data volume and minimize client-side processing for constrained nodes.
+        *   Specialized for RATS (endorsements, reference values, trust anchors), not arbitrary.
+        *   Align with existing RATS designs, including a CDDL data model.
+        *   Allow distributors to aggregate from multiple sources, supporting flexible trust models (fully trust or "trust-but-verify" with auditability).
+    *   **CoSERF Internals (Thomas Fossati)**:
+        *   A CBOR map wrapping a query and a corresponding result set.
+        *   **Usage**: Requestor encodes a CBOR query, base64-URL encodes it into an HTTP GET request URL. The distributor computes the result set, updates the CoSERF object, signs it, and sends it back, setting appropriate cache control headers. The signed query/result blob becomes a cacheable, end-to-end secure web resource.
+        *   **Query**: Describes desired artifact types (e.g., trust anchors, reference values) and attestor environment selectors (class, instance, group IDs, reused from the RATS type system).
+        *   **Result Set**: A map with an explicit expiration time and a list of selected artifacts. Each artifact is expressed as a QUIC/RATS triple plus the asserting authority (a "quad").
+    *   **Prototyping**: Work is underway using Verison as an experimental platform, leveraging its QUIC package. A CoSERF API endpoint is being implemented as a new front-end to Verison services.
+    *   **Next Steps**: Encouragement to start a discussion thread on the RATS mailing list or contact authors for collaboration.
+
+*   **TLS Protocol and Remote Attestation (draft-ietf-rats-attested-tls)**
+    *   Presented by Muhammad Usama.
+    *   **Context**: This draft was proposed for adoption in the TLS WG (with a focus on confidential computing). Formal analysis by the FAT team indicated it breaks the server authentication property of TLS. Solutions for intra-handshake (TLS WG concern) and post-handshake (RATS WG concern) are being developed.
+    *   **Terminology**: Acknowledged the issue of inconsistent terminology across groups. The presentation used a simplified model where verifier and relying party are combined.
+    *   **Core Problem**:
+        *   **Privacy**: Claims (potentially containing hardware-level info) become visible to passive adversaries.
+        *   **Security (Relay Attack)**: A malicious attestor can relay a nonce from the verifying party to a genuine Trusted Execution Environment (TEE), obtain valid evidence, and relay it back, tricking the verifying party. This necessitates a secure channel like TLS.
+    *   **TLS vs. Remote Attestation**: These are complementary: TLS provides identity guarantees via Certification Authorities (CAs), while remote attestation guarantees the integrity of the software stack via hardware manufacturers.
+    *   **Remote Attestation Only (without TLS authentication)**: The draft's Section 6.1 proposed this.
+        *   **Issue**: Without PKI certificates, there is no identity authentication. A client connecting to "cloud.example.com" and only receiving attestation evidence is vulnerable. If a single machine *anywhere in the world* with the same measurements is compromised (and its certificate not yet revoked), it can impersonate the intended server. The vulnerability window for revocation is typically large.
+    *   **Proposed Solution**: Combine PKI (identity) and Evidence (integrity) to get stronger guarantees.
+        *   **TLS Challenge**: The TLS certificate message is not easily extensible for evidence.
+        *   **Intra-handshake Limitations**: While proposed in TLS, intra-handshake solutions have inherent complexity and offer freshness guarantees only at the handshake time. They do not address subsequent changes or claims that might only become available later (runtime measurements).
+            *   **Discussion**: Thomas Fossati noted that intra and post-handshake are not mutually exclusive; one could run intra, then perform post-handshake checks. Usama sought clarification on how to perform post-handshake checks within an existing intra-handshake-established session. Usama asked for feedback on what runtime measurements are typically available at handshake time for confidential computing use cases.
+        *   **Post-handshake Solution (based on RFC 9261)**: Perform a standard TLS handshake with long-term CA-certified keys, then follow with an RFC 9261-based post-handshake authentication. The client sends an authenticator request with a nonce; the server generates evidence based on the nonce and sends it back in the authenticator message (within the certificate message part). This provides proof of possession for both the long-term key and an ephemeral key generated within the TEE.
+            *   **Discussion**: Ned questioned the use of "ephemeral key in the certificate verify message" in TLS terminology, finding it confusing as ephemeral keys don't typically have certificates in the traditional sense. Usama explained it relates to self-asserted evidence signed by a hardware-protected attestation key. Ned suggested clarifying how evidence is tunneled.
+    *   **Open Problems**:
+        *   **Diversion Attack within CSP**: Even within a Cloud Service Provider (CSP), a compromised machine can impersonate a legitimate one, despite the client checking its trust store, if the compromised machine's attestation key (or public key) is also in the trust store.
+        *   **Trustee (Provisioning Long-Term Key to TEE)**: A key challenge is securely provisioning the long-term key (often held by an untrusted host) into the TEE's protected region. If a CSP diverts to a compromised machine, it could use its compromised attestation key to sign valid-looking evidence, leading to decryption key leakage for the workload. A blocking question is "who owns the private part of the long-term key" when it's placed in an encrypted workload.
+        *   **Identifiers and Versioning**: Platform instance identifiers or owner identity fields are often null or spoofable. Security Version Numbers (SVNs) only help after vulnerabilities are known, fixed, and patches applied, leaving a vulnerability window.
+        *   **CSP out of TCB**: Questioned the conventional confidential computing threat model assumption that the CSP is entirely out of the Trusted Computing Base (TCB), noting limitations in various cloud providers (e.g., closed-source VM firmware, vTPM outside confidential VMs, inability to fetch raw evidence directly).
+    *   **Open Questions for RATS WG**:
+        *   What is the boundary between remote attestation and attested TLS (e.g., channel binding)?
+        *   Can remote attestation be implemented on its own without any secure channel in confidential computing contexts (e.g., Key Broker Services)?
+        *   How to satisfy regulatory requirements for server location (data must remain within a specific location)?
+    *   **Next Steps**: Muhammad Usama plans to thoroughly analyze the threat model, compare intra and post-handshake solutions from security and privacy perspectives. He also asked if the interaction model draft would cover runtime measurements or if a separate draft on security properties of remote attestation is needed.
+        *   **Discussion**: Hank suggested runtime integrity could be covered by repeated post-handshake procedures or TCB subscriptions. He offered to work with Usama on text in the interaction model draft but cautioned against making it too prescriptive.
+
+## Decisions and Action Items
+
+*   **Decision**: A virtual interim meeting will be scheduled to wrap up outstanding discussion points, particularly those related to the attested TLS draft and runtime measurements.
+*   **Action Item**: Ned and Kathleen (chairs) will plan the virtual interim meeting and use the chat discussion information to refine the agenda.
+*   **Action Item**: Working group participants with explicit topics for the interim meeting are requested to send messages to the RATS mailing list (or Ned and Kathleen directly) to help refine the agenda.
+*   **Action Item**: Participants are encouraged to read `draft-sarangi-rats-multi-verifier-architecture` and `draft-ietf-rats-coserf` and provide comments/feedback.
+*   **Action Item**: Muhammad Usama will incorporate feedback on TLS/Confidential Computing terminology into the next version of `draft-ietf-rats-attested-tls`.
+*   **Action Item**: Muhammad Usama and Hank will discuss offline the specific requirements for runtime measurements in confidential computing and whether the interaction model draft needs adjustments.
+
+## Next Steps
+
+The RATS WG will organize a virtual interim meeting to continue technical discussions on the multi-verifier architecture, CoSERF, and especially the attested TLS draft, focusing on security properties, threat models, and runtime attestation aspects. Participants are encouraged to review the drafts and contribute to the mailing list discussions in preparation for the interim.

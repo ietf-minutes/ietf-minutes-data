@@ -1,0 +1,52 @@
+# [RATS](../wg/rats.html)
+
+## Summary
+
+This RATS interim session focused on discussing existing libraries and implementations relevant to RATS architecture and standards, identifying gaps, and informing future work such as hackathons or community contributions. Three presentations were given: an overview of the Verison stack (Golang/Rust), the C-based EAT stack, and a discussion on gaps and solutions for Attested TLS. Key discussion points included interoperability, runtime integrity, and the need for structured ways to track implementation status and relationships.
+
+## Key Discussion Points
+
+*   **Session Introduction**: The session aimed to identify RATS libraries in use, existing gaps, and areas for community contribution to support the expansion of RATS work to other working groups, especially given the absence of a dedicated code contributor like Jim Shad.
+*   **Verison Stack (Thomas)**:
+    *   Presented Verison, an open-source, open-governance platform in Golang and Rust for experimenting with RATS architecture and emerging standards.
+    *   Deliverables include standalone components (libraries for data formats like Quim/SWID, Coe/Coserve; emulators for RATS roles) and a complete, extensible attestation verifier called Verison Services.
+    *   Standards covered: Quim (SWID), Coe (Coserve) are fully implemented in Golang, with Rust catching up. It-based claims (CCA, PSA profiles) are in Golang, with CCA tokens in Rust. TCG DICE/COV/TPM are also supported.
+    *   R4C (earliest version of AR4C) is widely adopted, with implementations in Golang, Python, and C, used by projects like Confidential Containers and Keylime.
+    *   Miscellaneous: Includes Go-Cozy for COSE (sign, countersign, claims), a reference implementation of CMW (draft 15), and a Rust CMW implementation in progress.
+    *   API: An Appraisal API is inspired by the RATS reference interaction document. Golang client-side APIs support appraisal, reference value/endorsement provisioning, and policy manipulation.
+    *   Emulators: Command-line tools (EVcli, Pockley) enable tester, relying party, and verifier owner roles. An experimental system daemon (with Oracle, Google) handles composite attestation evidence collection.
+    *   Verison Services Architecture: Frontends communicate via gRPC with a core engine ('vitis') which uses a plugin interface for scheme-specific attestation verification (e.g., It, DICE, TCG).
+    *   **Discussion on Composite Attestation**: A question was raised about combining different plugins (e.g., CCA token with DICE for attestation keys). Thomas confirmed this is not currently supported but is actively being discussed. The architecture is evolving to allow 'vitis' to understand and dispatch composite verification to individual plugins.
+    *   Deployment options include Docker, AWS, RPM/DBN packages, and native (systemd/launchd).
+    *   Verison targets technologists and students, offering a Linux Foundation-sponsored mentorship program.
+*   **C-based EAT Stack (Lawrence Lenblade)**:
+    *   Introduced a C-based stack for EAT, suitable for constrained and embedded environments, comprising four GitHub repositories.
+    *   Components: QCBOR (CBOR encoder, v1 stable, v2 alpha with serialization/determinization improvements), TCOSE (COSE implementation, v1 stable for single signer, v2 alpha for encryption/multiple signers/recipients), CToken (CWT/EAT/UCCS), and XClaim (CLI tool for CWT/EAT/UCCS/JWT).
+    *   Key features: Minimal library dependencies, small code size, stack-based memory allocation (no `malloc`), and a focus on commercial quality with good test coverage and security procedures.
+    *   **Discussion on COSE Interoperability**: Hank suggested rekindling COSE interoperability checks between TCOSE and Go-Cozy at an upcoming IETF, potentially IETF 123. Lawrence expressed interest, constrained by time, and Kathleen offered to help with planning.
+    *   Partial implementation of CoHPKE exists in a branch, not planned for TCOSE v2 release due to complexity.
+*   **Attested TLS: Gaps and Solutions (Usama)**:
+    *   Presented a continuation of previous work on Attested TLS, categorizing attestation signatures relative to the TLS handshake into Pre-handshake, Intra-handshake, and Post-handshake.
+    *   **Pre-handshake (e.g., Intel's RTLS, CSR Attestation draft)**: Limitations include lack of per-session freshness, no runtime integrity (claims before VM execution), reliance on CAs for evidence guarantees, and susceptibility to diversion attacks. Not recommended for standardization.
+    *   **Intra-handshake (e.g., TLS-Attest draft)**: Shares the runtime integrity problem. Requires invasive changes to the TLS protocol. Specific proposals might also be vulnerable to diversion attacks.
+    *   **Post-handshake**: Requires application layer changes and introduces a small latency impact (one round trip after TLS completion). However, it enables critical runtime integrity checks, as claims reflect the *current* VM state, and can be repeated as often as needed. This approach uses RFC 9261 for freshness.
+    *   **Discussion on Runtime Integrity**: Lawrence questioned the importance of runtime integrity given the small time difference between handshake phases. Usama clarified that for VM-based Trusted Execution Environments (TEEs), components can be loaded/unloaded *during* runtime, making continuous checks vital. Gary further clarified that this refers to TCB changes, not general process health. Usama confirmed it covers changes in both platform and VM.
+    *   **Discussion on Evidence Size**: Hank raised concerns about sending large event logs (megabytes) as part of evidence over TLS. Usama suggested sending a hash over TLS and logs separately, possibly asynchronously.
+    *   **Conclusion**: A preliminary proof suggests the post-handshake solution best satisfies TLS properties, freshness (via RFC 9261), and composition goals. Participants were invited to a follow-up BOF.
+*   **General Discussion**:
+    *   Participants found the session useful, suggesting similar updates could be presented when there's significant status change.
+    *   Thomas proposed a more structured/dynamic way, beyond mailing list posts, to socialize and track the status and interrelationships of RATS implementations and libraries (e.g., a wiki or tooling). Kathleen offered organizational support.
+    *   Hank suggested exploring Software Bill of Materials (SBOMs) as a dependency document for libraries, noting that while removed from a US executive order, they are required by European regulations (e.g., EURA). Yash confirmed EUR requirements, emphasizing SBOMs' role in vulnerability assessment.
+
+## Decisions and Action Items
+
+*   **Interop Testing**: Lawrence and Hank will coordinate to plan renewed interoperability checks for COSE libraries (e.g., TCOSE and Go-Cozy), potentially aiming for IETF 123. Kathleen offered planning assistance.
+*   **Implementation Status Tracking**: Thomas and Kathleen will discuss further in Madrid the potential for a structured, dynamic method (e.g., a wiki or dedicated tooling) to report and visualize the status, relationships, and progress of RATS-related implementations and libraries.
+*   **SBOM Exploration**: The working group will consider the utility of SBOMs as a dependency document for libraries, acknowledging their role in European regulatory requirements for vulnerability assessment.
+
+## Next Steps
+
+*   Presenters and other contributors are encouraged to share additional library efforts and updates via the RATS mailing list.
+*   Proponents of Attested TLS will continue BOF discussions.
+*   The community will explore options for a more structured approach to track RATS implementation status and interrelationships.
+*   Requests for presentations for the July interim session should be sent to the chairs.

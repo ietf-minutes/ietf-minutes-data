@@ -1,0 +1,81 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held a virtual interim meeting to discuss several open issues and plan future work. Key discussions included soliciting presentations for Montreal, specifically on ABR and ad insertion, and clarifying the nature of control message parameters (hop-by-hop vs. end-to-end). Decisions were made to maintain the current control message framing and to remove the "fetch too large" error code, indicating a preference for simplifying protocol behavior where possible. A significant action item is the formation of a design team to holistically address DDoS protection strategies for MOQ.
+
+## Key Discussion Points
+
+*   **Montreal Talks & Adaptive Bitrate (ABR) / Ad Insertion:**
+    *   The Chair noted a need for proposals and analysis regarding server-side ABR and ad insertion requirements, identifying them as largely unexplored areas in the specification.
+    *   An individual recalled previous ABR discussions suggesting unsubscribe/subscribe mechanisms are often sufficient, especially with small Time-to-Expiry (TTE), but acknowledged many corner cases. Offered to repackage a previous presentation.
+    *   An individual emphasized the need for a concrete proposal on *how* to implement server-side ABR to facilitate discussion on *whether* to adopt it.
+    *   An individual stated that the current specification does not prevent server-side ABR, but it lacks direct mechanisms beyond priorities. Suggested an extension could add capabilities like requesting "one of these five tracks, the best one." A proposal for such an extension would be helpful.
+    *   The editor requested assistance from the Working Group to resolve existing ABR-related issues (e.g., atomic switching, padding), as clear guidance was needed.
+    *   An individual highlighted a key limitation for server-side ABR: relays typically lack knowledge of the content they transport (e.g., bitrate).
+    *   A sense of those present indicated that progress on ABR is linked to resolving subscription filters and multi-subscribe mechanisms. An individual suggested a design team for a proposal.
+
+*   **Control Message Framing (Issues #915 & #1212):**
+    *   The editor presented two proposals for control message framing:
+        *   Issue #915: Length field first, including the type field's length, to simplify parsing.
+        *   Issue #1212: Keep type first, but only include a length field for complex messages to save bytes on simpler ones.
+    *   The existing status quo uses a Type-Length-Value (TLV) format with a length field on every control message.
+    *   An individual felt that changing the order would not significantly impact deployment success.
+    *   Several individuals expressed a preference for maintaining the status quo, citing that bandwidth for control messages is not a primary concern, and that consistency (having a length field everywhere) simplifies parsing. There was also a sentiment against unnecessary changes to already agreed-upon text.
+    *   A poll of the room indicated a strong preference for keeping the current framing.
+
+*   **Parameter Hop-by-Hop vs. End-to-End:**
+    *   The editor initiated a discussion on whether message parameters are hop-by-hop (processed by each relay) or end-to-end (forwarded unaltered to the ultimate destination).
+    *   **Subscriber-sent parameters:** The editor suggested these are primarily hop-by-hop, with relays making decisions, rather than being propagated to the original publisher. An individual agreed with the principle but cautioned against literal phrasing that might contradict existing text on relay behavior. Another individual noted that multi-to-one aggregation inherently limits forwarding of contradictory parameters.
+    *   An individual proposed defining parameters by whether they "make sense to be preserved" beyond a hop, rather than strict hop-by-hop/end-to-end labels.
+    *   The editor proposed a definition: an end-to-end parameter *must* be forwarded; anything else is hop-by-hop (receiver decides). By this definition, there was a general agreement that *no subscriber-sent parameters are end-to-end* to the publisher.
+    *   **Publisher-sent parameters:** The editor suggested `delivery_timeout`, `publisher_priority`, `group_order`, and `dynamic_groups` appear end-to-end, while `max_cache_duration`, `largest_object`, and `object_expires` might not be.
+    *   An individual argued `expires` and `max_cache_duration` should be end-to-end to avoid confusion for the publisher. The nuance of `auth` parameters was also discussed, with individuals noting cases where it might be removed or forwarded depending on relay policy.
+    *   The editor encouraged review of an existing straw-man Pull Request (PR) on this topic. The question of "custom and unknown published parameters" and whether relays must understand them was raised as an outstanding issue.
+
+*   **Ephemeral and Long-Lived Request IDs / DDoS Protection:**
+    *   The editor reviewed the history of request IDs in MOQ, from initial absence to current use for all requests creating state (e.g., `Subscribe`, `Fetch`, `TrackStatus`, `PublishNamespace`) to mitigate DDoS attacks.
+    *   **Problem:** The current unified `request_ID` budget limits publisher control over specific resource types (e.g., subscriptions vs. `SubscribeUpdate`). If all IDs are consumed by subscriptions, other essential control messages cannot be sent.
+    *   An individual proposed a "stream per subscription" model, leveraging QUIC's stream mechanisms, to mitigate `request_ID` complexity and other related issues (e.g., delayed `Unsubscribe` processing).
+    *   An individual suggested stepping back to consider a holistic DDoS prevention strategy, identifying protected resources, and potentially allocating different budgets for different ID types.
+    *   An individual cautioned against over-complicating the system, citing HTTP priority complexities. Suggested using existing QUIC flow control and simple error codes (e.g., `SubscribeError` "try again later") for point solutions, to avoid reintroducing rapid reset vulnerabilities.
+    *   An individual supported the "stream per subscription" idea, seeing it as leveraging QUIC more fully.
+    *   The editor agreed with the need for a holistic view on DDoS and requested a volunteer to lead a design team for requirements gathering. An individual volunteered.
+
+*   **Track Namespace Conventions:**
+    *   A question was raised whether MOQ should define conventions for `track_namespace` tuples.
+    *   An individual argued that defining such conventions would be valuable for local relays (e.g., in a home access point) that operate without explicit policy configuration, allowing them to infer where to forward traffic (similar to HTTP proxies using origin domain names). This was framed as part of a larger, long-standing "discovery" issue.
+    *   The editor suggested this use case might align more with a proxy or gateway rather than a `MOQT` "Relay" as strictly defined in the draft. It was noted that `track_namespace` is essentially a byte string, allowing applications to define their own conventions, or it could be a negotiated extension.
+    *   The editor indicated this issue might be outside the core transport scope for now.
+
+*   **Fetch Response for No Objects:**
+    *   The editor presented the existing ambiguity: two ways to indicate no objects for a fetch request:
+        1.  `Fetch OK` followed by an empty response stream.
+        2.  `Fetch Error` with a "no objects" error code.
+    *   Concerns were raised about having two ways to do the same thing, especially when one is an "error" but not truly an error state. HTTP's "unsatisfiable range" was noted as an analogy.
+    *   After some clarification of the options, a show of hands was taken.
+    *   A poll of the room indicated a strong preference for simplifying the behavior.
+
+*   **Fetch Too Large Error Code (Issue #746 / PR 1109):**
+    *   Discussion on a proposed `fetch too large` error code and how a client would interpret it (i.e., what size *would* work).
+    *   The editor recalled a proposal for a `fetch_max_groups` setup parameter.
+    *   An individual argued against adding this error code, stating that QUIC's flow control should handle large fetches. HTTP handles large downloads without such specific errors. Policy-based rejections (e.g., `permission denied`) could be used instead. Adding `max_fetch_size` was seen as hard to specify and leading to pointless client-side splitting.
+    *   An individual, initially concerned about providing guidance to clients for retries, re-evaluated and agreed that the error code might not be necessary, aligning with the view that QUIC flow control should be sufficient. The DDoS prevention use case (client requests huge data, disconnects) was acknowledged but deemed manageable by existing mechanisms.
+    *   A strong sense of the room indicated that this error code was not needed.
+
+## Decisions and Action Items
+
+*   **Control Message Framing:** The Working Group decided to **maintain the current control message framing** (Type-Length-Value with a length field on every control message). Issues #915 and #1212 will be closed.
+*   **Fetch Response for No Objects:** The Working Group decided to **remove the `fetch error + no objects` error code**. `Fetch OK` followed by an empty stream will be the sole mechanism to indicate no objects for a fetch request. The editor will prepare or finalize the corresponding PR.
+*   **Fetch Too Large Error Code:** The Working Group decided to **close the PR and issue #746** related to a `fetch too large` error code. This error code will not be added to the specification.
+
+## Next Steps
+
+*   **ABR and Ad Insertion:** Individuals interested in preparing concrete proposals or analyses for server-side ABR and ad insertion for presentation at the Montreal IETF meeting are encouraged to volunteer.
+*   **Parameter Hop-by-Hop vs. End-to-End:** All participants are encouraged to review the existing straw-man PR regarding parameter behavior and provide specific feedback on individual parameters.
+*   **DDoS Protection Design Team:** The Chair will send an email soliciting members for a new design team to holistically address the DDoS threat model for MOQ, with an individual volunteering to lead this effort.
+*   **Draft-14 Consensus Call:** The consensus call for Draft-14 will close on November 9th. Participants are urged to review the diff.
+*   **February Interim:** Comments on the proposed Denver area venue and time for the hybrid interim in February are due by November 20th.
+*   **Draft-15 Release:** Draft-15 is expected to be cut shortly before the next interim meeting (a week from Monday).
+*   **Outstanding PRs:** Participants are encouraged to review and provide feedback on open PRs, especially those recently submitted based on agreements from previous in-person meetings.
+*   **New Issues/Requirements:** Any participant with a long-standing desired change or new requirement for MOQ is strongly encouraged to file an issue outlining their needs.

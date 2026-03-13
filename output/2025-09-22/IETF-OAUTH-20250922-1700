@@ -1,0 +1,53 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This interim meeting focused on the "Client ID Metadata Document" draft. Aaron Parecki presented the motivation, technical details, and various use cases for the document, emphasizing its role in addressing limitations of traditional client registration and Dynamic Client Registration (DCR) in specific ecosystems. The discussion covered its application to confidential and public clients, native apps via attestation services, and its current deployments. After a thorough discussion highlighting the draft's utility in solving problems not adequately addressed by existing mechanisms, the working group decided to proceed with a Call for Adoption for the "Client ID Metadata Document" draft.
+
+## Key Discussion Points
+
+*   **Client ID Metadata Document Overview:**
+    *   The draft proposes a pattern for clients to publish their metadata at a well-known URL, analogous to how authorization servers (AS) and resource servers publish their metadata.
+    *   This metadata document (a JSON object) leverages existing Dynamic Client Registration (DCR) vocabulary.
+    *   The URL of this document is intended to be used directly as the `client_id` in OAuth authorization requests.
+    *   It can include information like client name, homepage, logo, and crucially, a list of redirect URIs.
+*   **Motivation and Problem Statement:**
+    *   Addresses scenarios where pre-registration is not feasible (e.g., open-source self-hosted applications like Mastodon/WordPress, federations, or ecosystems like MCP where clients connect to arbitrary servers).
+    *   Traditional DCR presents significant operational challenges: AS must maintain registrations indefinitely, public endpoints are vulnerable to rate limiting/abuse without authentication, and cleanup processes can lead to invalid client IDs causing dead ends in flows.
+    *   The "software statements" feature in DCR for providing signed client metadata is viewed as complex to standardize and could bifurcate the ecosystem.
+*   **Client ID Metadata as a Solution:**
+    *   Provides a flexible solution for both open and controlled ecosystems.
+    *   For open ecosystems, an AS can fetch the metadata and display client information to the user.
+    *   For controlled ecosystems, the client can include a `jwks_uri` in its metadata, allowing it to act as a confidential client by using private keys for client authentication (e.g., per RFC 9278). This enables an AS to enforce policies (e.g., allow/block specific clients) while the client developer doesn't need to implement special logic.
+    *   The mechanism supports AS administrators pre-registering allowed client ID URLs or domains for tighter control, including potential approval queues for new applications.
+*   **Native Apps and Attestation:**
+    *   Native apps cannot directly host public metadata documents.
+    *   The proposal leverages platform attestation services (e.g., iOS/Android) in conjunction with a "client attester backend" service.
+    *   The client attester backend validates platform attestations, holds private keys, and publishes public keys via a `jwks_uri` linked from the app's website (which hosts the static client ID metadata document). This allows native apps to prove their identity.
+*   **Current Deployments and Use Cases:**
+    *   Already implemented in Blue Sky's OAuth service, where the consent screen displays the client's domain name.
+    *   Plays well with FedCM.
+    *   Under consideration for adoption in Mastodon and the MCP ecosystem.
+    *   Simplifies operational aspects in the Identity Assertion Authorization Grant flow, especially where applications do not have prior relationships but share a common identity provider.
+*   **Client ID Prefix Discussion:**
+    *   The current draft assumes the `client_id` is directly the metadata URL.
+    *   A prefix for the `client_id` could indicate to the AS which resolution method to use (e.g., direct fetch vs. `.well-known` discovery, potentially for interoperability with other URL-based ID mechanisms like OpenID Federation).
+    *   The sense of those present was that the "Client ID Metadata Document" draft should not be tied to the separate prefix document, as it has valid use cases as a plain URL.
+*   **Security and Trust Considerations:**
+    *   AS can implement various levels of trust, from simply displaying the client's domain to validating privacy policies or only displaying an icon if approved by a moderator.
+    *   The mechanism is not considered a Distributed Denial-of-Service (DDoS) vector, as AS fetches are generally 1:1, and AS can implement caching and forbidden URL lists (as seen in Blue Sky).
+*   **Ephemeral Clients and Expiration:**
+    *   An open issue remains on how to signal the ephemeral nature or expiration of client ID metadata documents, particularly for development environments or temporary clients. A `client_expires_at` or similar property within the document was suggested.
+*   **Remaining Challenges:**
+    *   The mechanism, even with attestation, still does not fully solve the challenge of client identity for desktop applications that lack built-in platform attestation services.
+
+## Decisions and Action Items
+
+*   **Decision:** The OAUTH Working Group chairs will initiate a Call for Adoption on the mailing list for the "Client ID Metadata Document" draft.
+*   **Action Item:** Chairs to send the Call for Adoption email to the OAUTH mailing list.
+
+## Next Steps
+
+*   Working group members are encouraged to review the "Client ID Metadata Document" draft and provide feedback during the Call for Adoption.
+*   Further discussion is needed on open issues, including the mechanism for signaling ephemeral client IDs and path requirements for metadata URLs.
+*   Engagement with implementers from communities like Mastodon, who have expressed interest, will be pursued to gather their feedback on the document.

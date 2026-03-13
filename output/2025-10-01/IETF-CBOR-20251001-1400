@@ -1,0 +1,51 @@
+# [CBOR](../wg/cbor.html)
+
+## Summary
+
+The CBOR working group met to discuss the draft pull request for Common Deterministic Encoding (CDE). Key discussions revolved around the definition and scope of encoding constraints, specifically the implications of including map validity and text string (UTF-8) validity within CDE. Participants also considered how CDE interacts with existing RFC 8949 rules, edge cases like non-trivial NANs, and the broader context of security considerations for CBOR applications. Action items were identified for clarifying specific technical points and preparing for the upcoming IETF 124 deadline.
+
+## Key Discussion Points
+
+*   **CDE Draft Pull Request Status**: The draft pull request is available but has not yet been submitted as an Internet Draft due to remaining redundancies. It is based on two axioms: no technical changes to RFC 8949 and no extension to defining new terms within the scope of this document.
+*   **Encoding Constraints Definition**:
+    *   The document proposes using "encoding constraints" rather than "encoding constraint sets."
+    *   CDE is defined as the conjunction of three constraints: preferred serialization, definite length only, and lexicographic map sorting.
+    *   A question was raised about the preferred notation for combining these constraints (e.g., AND vs. UNION symbols).
+*   **Definite Length Only (DLO) Constraint**:
+    *   DLO is proposed as an independent interoperability constraint, useful for partial implementations that want to avoid handling indefinite length encoding (e.g., for zero-allocation decoders).
+    *   This distinguishes DLO from preferred serialization, which is generally for encoder efficiency and not an interoperability requirement.
+*   **Map Validity (Duplicate Keys)**:
+    *   RFC 8949 defines map validity (no duplicate keys) as a "validity" requirement, not a "well-formedness" requirement, due to the implementation burden on streaming encoders.
+    *   However, when implementing lexicographic map sorting, an encoder must already be aware of map keys, making the duplicate key check trivial during serialization.
+    *   A discussion point emerged on whether to include map validity as a requirement for CDE. If CDE requires lexicographic map sorting, the check for duplicate keys becomes significantly cheaper.
+    *   A concern was raised by Joe about map keys that are themselves maps, where semantically identical keys might have different encodings, complicating duplicate key detection when operating on the encoded version.
+*   **Text String Validity (UTF-8)**:
+    *   The discussion explored whether to include UTF-8 validity as a requirement for CDE, similar to map validity, to cover all basic validity requirements.
+    *   Arguments were made regarding the cost of checking UTF-8 validity for both encoders and checking decoders versus the security benefits of preventing malformed input.
+    *   The point was made that while modern UTF-8 checkers can be fast, ensuring correct implementation is still tricky.
+*   **Role of Decoder Checking**:
+    *   It was clarified that checking decoders are optional for general CBOR use.
+    *   However, for security protocols, a checking decoder is often necessary to avoid attackers exploiting malformed input.
+    *   Two main approaches for conformance checking were outlined: checking during decode, or decoding, re-encoding, and comparing bytes.
+*   **Non-trivial NANs**:
+    *   Non-trivial NANs were characterized as an unusual edge case.
+    *   The current RFC 8949 preferred serialization might lose information for non-trivial NANs.
+    *   A suggestion was made to use a new tag for non-trivial NANs to make it an encoding decision rather than a data model decision, potentially allowing preferred serialization to remain a good default.
+    *   Joe indicated that some existing implementations might already lose information when handling non-trivial NANs.
+*   **RFC 8949 Erratum for NANs**: Joe identified an error in RFC 8949 Section 5.6.1, paragraph 3, which defines when NAN values are "the same." The current text does not account for the sign bit, meaning two NANs with the same significand but different sign bits could be incorrectly considered identical.
+*   **Security Considerations for CBOR in General**: Ira suggested the need for a separate document or guidance on "sharp edges" and additional checks required when using CBOR in security-sensitive contexts, beyond what CDE or RFC 8949 validity covers. It was debated whether such guidance belongs in a separate document or a wiki page, to avoid bloat in the CDE specification.
+
+## Decisions and Action Items
+
+*   **Karsten**: Will incorporate both options for the text string validity (UTF-8) requirement into the CDE document for further review and discussion.
+*   **Karsten**: Will clarify the wording in the CDE document regarding map validity, emphasizing that it applies when combined with lexicographic map sorting, but not necessarily for lexicographic sorting in isolation.
+*   **Karsten**: Will address the identified error in RFC 8949 Section 5.6.1, paragraph 3, concerning the definition of "same significant" for NAN values, to include consideration of the sign bit.
+*   **Karsten**: Will create a wiki page to collect best practices and additional checks for security-sensitive CBOR applications, as a general resource for the community.
+*   **Joe**: Will create an issue to clarify the implications and implementation challenges of map validity checking, especially when map keys are complex items that might have semantically equivalent but differently encoded forms.
+
+## Next Steps
+
+*   **Karsten**: Will perform further editorial work on the CDE pull request to remove remaining redundancies by the end of this week.
+*   **Working Group Members**: Are encouraged to provide feedback on the CDE pull request, particularly after the editorial cleanup.
+*   **Interim Meeting**: Another interim meeting will be scheduled in two weeks to review progress on the CDE document and to plan the agenda for IETF 124.
+*   **Further Discussion**: Continue discussion on the handling of non-trivial NANs and other remaining contention points in the CDE document.

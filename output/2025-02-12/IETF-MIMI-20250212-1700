@@ -1,0 +1,78 @@
+# [MIMI](../wg/mimi.html)
+
+## Summary
+
+The MIMI interim meeting focused on updates to the `draft-ietf-mimi-app-contents` and related drafts, particularly around room policy and application components. A significant portion of the meeting involved a detailed discussion comparing two approaches to role management and authorization rules within a room, highlighting implications for interoperability, GUI editing, and sub-room functionality. The working group also conducted a scrub of open issues on the `draft-ietf-mimi-content` repository and discussed the status of a PR for pseudonym-based mode.
+
+## Key Discussion Points
+
+*   **App Components and Draft Updates**:
+    *   Rowan provided an update on `draft-ietf-mimi-app-contents`, which defines four app components: Room Data, Participant List, Role Definitions & Capabilities, and Pre-authorization Rules.
+    *   These components are conveyed via an "app data dictionary" extension in MLS group contexts and updated using an "app data update" proposal, now merged into MLS extensions.
+    *   PRs were submitted to move Room Data and Participant List into `draft-ietf-mimi-protocol`, and Role Definitions & Capabilities and Pre-authorization Rules into `draft-ietf-mimi-room-policy`.
+
+*   **Comparison of Room Policy Approaches**:
+    *   **Rowan's "App Components" Approach (current draft)**:
+        *   Users have exactly one explicit role.
+        *   No fixed roles, except Role 0 for non-participants and a capability for banning based on Role Index 1 name ("ban").
+        *   Explicit matrix of allowed role transitions.
+        *   Banning and external senders are integral, treated as other roles with specific capabilities.
+        *   Supports complex, multi-organizational admin structures (e.g., admins for specific domains, plus a super-admin).
+        *   Easier for client evaluation (single role, single set of capabilities).
+        *   Requires careful design of role sets, potentially needing linter tools; difficult to reverse-engineer for GUI editing.
+    *   **Teemo's Proposed Approach**:
+        *   Fixed, predefined roles (restricted, regular, moderator, admin, owner) with an implicit admin role.
+        *   Custom roles exist outside this hierarchy.
+        *   Built-in protection from lower levels modifying higher-level users.
+        *   Separate ban checking step and separate rules for external senders.
+        *   Aimed at easier GUI development for role definitions, similar to Discord's model.
+        *   Prioritizes interoperability for common roles (moderator, admin) across providers.
+        *   Supports the concept of "sub-rooms" or "topics" with different permissions, potentially via a tagging system and translation tables from main room roles to sub-room roles. A moderator in one sub-room might not be in another.
+
+*   **Further Discussion on Room Policy Implications**:
+    *   **Participant Counting**: How to count members in a room, especially banned users? Rowan suggested the participant list includes all roles (banned, external senders), while active participants are derived from MLS users with credentials. Teemo noted counting banned members as "members" might be counter-intuitive for some users.
+    *   **Sub-rooms/Topics**: Teemo clarified his concept of sub-rooms/topics as having translation tables that map main room roles (and potentially tags) to permissions within the topic, rather than defining their own roles. Tim suggested generalizing this policy evaluation to any participant joining any room, not just sub-rooms. A sense of the room indicated a need to define specific use cases for sub-rooms.
+    *   **Provider Interoperability and GUIs**: Discussion on how providers with different UIs (e.g., WhatsApp with few toggles vs. Discord with complex role editing) would interoperate. The prevailing sentiment was that the Mimi spec should allow complex role sets to be expressed and authorized by all clients, even if a client's native UI doesn't expose all modification options. Clients of a "foreign" Hub might not be able to change policy, but should be able to faithfully execute and authorize based on it.
+
+*   **MIMI Content Draft Issue Scrub (`draft-ietf-mimi-content`)**:
+    *   **Issue 37: `content type mismatch between notation and CBOR`**: Rowan to address the changes.
+    *   **Issue 34: `should expiration tag be extensible beyond absolute and relative`**: Discussion deferred; Rowan to continue investigation.
+    *   **Issue 28: `CBOR encoding: decide if timestamps should use time tags`**: Remains open. This issue is dependent on resolving time stamp resolution in `mimi-protocol` (milliseconds vs. higher precision).
+    *   **Issue 27: `if Hub accepted timestamp (mimi-protocol) is mandatory, can we get rid of last_seen`**: Closed, as `last_seen` has been removed.
+    *   **Issue 13: `sender timestamp in delivery reports`**: Remains open. This is related to issue 28 and depends on the server timestamp resolution in `mimi-protocol`.
+    *   **Issue 26: `Rollback/challenge problems for additional hash in in_reply_to`**: PR 36 was merged. The group agreed to close this issue if no further objections are raised within a week. The discussion around history syncing was acknowledged as relevant for future revisiting.
+    *   **Issue 25: `Great reference via RFC 2392 URI and disposition inline`**: Remains open. Teemo clarified the need for rules on how `CID:part_index@local.invalid` references behave in terms of attachment display. Rowan to incorporate Teemo's clarifying text.
+    *   **Issue 24: `Move franking assertion from mimi-protocol into mimi-content`**: Ready for a PR.
+    *   **Issue 23: `Advanced features with markdown without changing markdown version` (reopened for discussion)**: Teemo raised questions about representing polls, spoilers, and timed content using Markdown's inline image syntax. The group suggested splitting these into separate, dedicated issues, potentially with specific content types for polls.
+
+*   **Pseudonym-Based Mode PRs**:
+    *   Conrad reported on PRs against `mimi-architecture` (for inclusion of pseudonym-based mode) and `mimi-protocol` (for technical details), noting a lack of feedback.
+    *   The PR includes TODOs regarding connections and `tree-wrap`. Conrad offered to fill in details for connections and convert `tree-wrap` TODOs into future work notes or issues.
+    *   The group suggested Conrad send a "threaten to merge" email to the mailing list to solicit feedback.
+
+*   **Further Granular Permissions**:
+    *   Teemo proposed considering highly granular permissions, such as limiting user reactions (e.g., only positive reactions), and user timeouts.
+    *   The group suggested these be discussed as architectural issues, particularly regarding the responsibilities of Hubs vs. clients for enforcement and implications for time synchronization.
+
+## Decisions and Action Items
+
+*   **Rowan**:
+    *   Address `content type mismatch between notation and CBOR` (Issue 37).
+    *   Continue investigating `should expiration tag be extensible beyond absolute and relative` (Issue 34).
+    *   Incorporate Teemo's clarifying text into the `Great reference via RFC 2392 URI and disposition inline` (Issue 25) resolution/PR.
+    *   Review Conrad's PRs for pseudonym-based mode within the next week and a half.
+*   **Tim**:
+    *   Create an issue on the `mimi-architecture` repository for "Should MIMI support history syncing?" and link to `Rollback/challenge problems for additional hash in in_reply_to` (Issue 26).
+    *   Create an issue on the `mimi-architecture` repository for "How to support user timeouts (e.g., for X minutes)?"
+    *   Create separate issues on the `mimi-content` repository for "How to represent polls in MIMI content?" and "How to represent spoilers in MIMI content?" and "How to represent timed content in MIMI content?".
+*   **Conrad**:
+    *   Fill in concrete proposal details for connection aspects in the pseudonymity PRs.
+    *   Convert `tree-wrap` TODOs in the pseudonymity PRs into notes for future work or separate issues.
+    *   Send an email to the MIMI mailing list "threatening to merge" the pseudonymity PRs to solicit further review and feedback, after updating the PRs.
+*   **Working Group**:
+    *   Review Conrad's pseudonymity PRs once updated and announced on the mailing list.
+    *   Provide input on the new issues to be opened by Tim regarding history syncing, user timeouts, and advanced markdown features.
+
+## Next Steps
+
+The chairs will coordinate the opening of new issues as discussed. Participants are encouraged to review the updated PRs, especially for the pseudonym-based mode, and provide feedback on the mailing list. Further discussion on the proposed policy approaches and granular permissions is anticipated, likely requiring more detailed use cases for sub-rooms/topics and timeouts.

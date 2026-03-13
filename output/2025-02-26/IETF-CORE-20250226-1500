@@ -1,0 +1,63 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE Working Group held an interim meeting to discuss progress on several drafts. Key discussions included terminology alignment and payload optimization in CoAP PubSub, the proposal to extend BIRT (Blockwise extension for Reliable Transport) to unreliable transports, and several outstanding issues for the CoAP URI-Scheme (CoUIS) document nearing the Internet-Draft submission deadline. Decisions were made regarding conflict resolution in CoUIS options and the handling of the initial IANA registry table.
+
+## Key Discussion Points
+
+*   **CoAP PubSub (`draft-ietf-core-pubsub`)**
+    *   **Terminology Alignment:** A recently merged pull request (PR) was reviewed. It unifies terminology, replacing terms like "parameter" and "topic configuration" with "topic property" and adding its definition. Minor capitalization fixes and explicit type definitions for values were also included.
+    *   **Payload Optimization - `CT` attribute removal:** Discussion focused on examples in another PR that remove the `CT` (Content-Format) attribute from link format representations in CoAP PubSub collection and topic resources.
+        *   **Rationale for removal:** `CT` is an optional attribute. The `RT` (Resource Type) for these resources (e.g., `core.ps.coll`, `core.ps.dat`) implicitly defines `CT=40` (link-format), making `CT` redundant. This reduces payload size, beneficial for constrained environments.
+        *   **Compatibility with 7252:** While RFC 7252 doesn't explicitly define such an optimization, it also doesn't forbid it. `CT` is optional, and clients can rely on `RT`.
+        *   **Future Evolution:** New content formats would be advertised explicitly; legacy clients would still assume `CT=40`.
+        *   **Document Clarity:** The current examples, which omit `CT`, could be misinterpreted as prescriptive. There was a suggestion to add text clarifying that servers *may* optimize this way, but it is not a requirement, and it serves as a "typical" or "constrained-friendly" example.
+    *   **Payload Optimization - `RT` and `Observable` attribute removal for internal queries:** For queries directly on PubSub resources (not well-known core), examples omitted `RT` and `Observable` attributes.
+        *   **Rationale:** The specification mandates certain behaviors (e.g., topics are always observable, `RT` is always `core.ps.dat` for data items), making these attributes redundant when repeated across many links.
+        *   **Concern:** Omitting links back to the topic resource in some queries could make it difficult for clients to find associated metadata. It was noted that this particular query pattern might be less practical in real-world scenarios due to skipping discovery steps.
+
+*   **BIRT over Unreliable Transport (`draft-ietf-core-coral` and `RFC7959` updates)**
+    *   **Background:** BIRT (Blockwise extension for Reliable Transport) was originally defined in RFC 8323 for reliable transports only (CoAP over TCP/TLS/WebSockets). This limitation was a historical concession to get the specification approved in 2016.
+    *   **Problem:** Modern IoT ecosystems and networks (e.g., 6LoWPAN, Power over Ethernet, jumbo datagrams, OSCORE segmentation) now support larger datagrams, making BIRT beneficial for unreliable transports as well.
+    *   **Technical Challenge:** How to negotiate BIRT capability for datagram transports? (Simply sending BIRT and expecting an error is a crude method; more intelligent negotiation is needed).
+    *   **Procedural Question:** Should this extension be included in `draft-ietf-core-coral` (CoAP Corrections and Clarifications) or a separate new document?
+        *   `CoRAL` is intended for corrections and clarifications, but extending BIRT is more of "gap-filling" or new functionality.
+        *   Concerns were raised about `CoRAL` being a long-lived standards track document and whether "gap-filling" changes belong there permanently.
+        *   A sense of those present indicated that it feels like new functionality that should eventually reside in a separate document.
+
+*   **CoAP URI-Scheme (CoUIS) Head-Final (`draft-ietf-core-cous`)**
+    *   **CoAP Option Combinations:** An explicit rule is needed for handling conflicts when both a full `URI-Host` (proxy replacement) and a `URI-Scheme` number are present in a CoAP message. Since these are critical options, ignoring one is not an option.
+    *   **IANA Registry Reference Column:** Clarification was sought on the expected content for the `Reference` column in the CoUIS scheme number IANA registry. For the initial ~1000 entries, the reference would be the CoUIS document itself, potentially leading to inconsistencies with future, specific references.
+    *   **Editorial/Technical Items:** Several open issues were discussed, including:
+        *   Encouraging definite length encoding for CIS when possible (PR 110).
+        *   Cleaning up Section 2, which is a mix of concepts, addressing constraints with extended CIS, and fixing examples (PRs 107, 110).
+    *   **Registry Table Removal:** The large table of initial scheme number assignments will be removed from `draft-ietf-core-cous-09` (the upcoming version), instead referencing the previous revision (`-08`). The rationale is that this table is not needed in the final RFC (as IANA will manage the registry) and avoids ISG review of many pages of mappings.
+    *   **"Greenspan's 10th Rule" Reference:** A reference to this quote in the document's introduction was added, acknowledging it might be debated during ISG review but helps explain the context.
+
+## Decisions and Action Items
+
+*   **CoAP PubSub:**
+    *   The terminology alignment pull request is considered merged and acceptable.
+    *   **Action Item (Esco):** Propose a PR soon to add explanations for the payload changes (especially regarding `CT` and `RT` omission), clarifying that optimizations are optional for typical/constrained cases and not prescriptive.
+    *   **Action Item (Esco):** Provide a comment on the missing link-back issue for internal PubSub queries, where metadata about the parent topic resource is lost.
+    *   **Action Item (Himer):** Merge Esco's proposed PR for PubSub explanations by Friday.
+
+*   **BIRT over Unreliable Transport:**
+    *   **Decision:** The concept of extending BIRT to unreliable transports will be developed within the `draft-ietf-core-coral` document for a short period, with the explicit intent to spin it off into a separate standards track document later.
+
+*   **CoAP URI-Scheme (CoUIS):**
+    *   **Decision:** If conflicting URI-Scheme related options (e.g., `URI-Host` and `URI-Scheme` number) are present in a CoAP message, the server should respond with an error (breakage), as these are critical options.
+    *   **Decision:** The document will not provide overly explicit rules for the `Reference` column in the IANA registry, relying on the IANA designated expert's discretion. It is acceptable to have multiple references in the column.
+    *   **Decision:** The `draft-ietf-core-cous-09` will remove the large table of initial scheme number assignments, pointing instead to `draft-ietf-core-cous-08` for this information. The final RFC will rely on the IANA registry.
+    *   **Action Item (Carsten):** Continue working on Marco's and Christian's comments regarding CoUIS.
+    *   **Action Item (Carsten):** Create new PRs for any remaining items from comments.
+    *   **Action Item (Carsten):** Submit `draft-ietf-core-cous-09` by Monday (before the I-D submission deadline).
+    *   **Action Item (Reviewers):** Review PR 112 (CoUIS editorial changes).
+
+## Next Steps
+
+*   **IETF 122 Bangkok Session:** A 2-hour CORE session is scheduled for Tuesday, March 18, 2:30-4:30 UTC.
+*   **Interim Meetings:** Interim meetings will resume after IETF 122, starting April 9, on a bi-weekly cadence until the IETF 123 cut-off.
+*   **Working Group Last Calls:** Two documents are currently in WG Last Call until Friday, [CoAP-TLS](https://datatracker.ietf.org/doc/draft-ietf-core-coap-dtls/) and [DNS-over-CoAP](https://datatracker.ietf.org/doc/draft-ietf-core-dnscoap/). Reviewers are encouraged to provide feedback.
+*   This was the last interim meeting before IETF 122 Bangkok.

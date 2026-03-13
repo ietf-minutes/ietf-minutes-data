@@ -1,0 +1,48 @@
+# [NETCONF](../wg/netconf.html)
+
+## Summary
+
+The NETCONF and NETMOD Working Groups held a joint virtual interim to discuss the status and future direction of documents related to Yang push telemetry. The meeting aimed to unblock current NETMOD documents that have normative dependencies on NETCONF protocol extensions. Key discussions focused on the Notification Envelope, Yang Push Transport Capabilities, and an initial proposal for Yang Push Light. Consensus was reached on the implementation approach for the Notification Envelope and the use of RFC 9196 for transport capabilities discovery. The chairs announced plans to initiate working group adoption calls for both the Notification Envelope and Transport Capabilities drafts following this interim.
+
+## Key Discussion Points
+
+*   **NETMOD Context and Dependencies:** NETMOD requires progress on its Yang push documents, which depend on protocol extensions defined in NETCONF. The focus is on a pragmatic approach to achieve Minimum Viable Product (MVP) goals by reusing existing IETF work and addressing current gaps in integration and interoperability.
+*   **Yang Push Architecture:** Thomas presented an overview of the Yang push architecture, highlighting dependencies between various documents related to subscription capabilities (RFC 9196), transport protocols, notification envelopes, schema discovery, data validation, and telemetry measurement.
+*   **Document Consolidation:** The `draft-ietf-netconf-yang-push-observation-time` document has been merged into `draft-ietf-netconf-notif-envelope`, reducing the number of separate drafts. This was welcomed by the working groups as it addresses previous concerns about too many small documents.
+*   **Notification Envelope (`draft-ietf-netconf-notif-envelope`):**
+    *   The draft proposes a new structure for Yang push notifications to add metadata (e.g., host name, sequence number, observation time) applicable to both configured and dynamic subscriptions.
+    *   Discussion focused on the mechanism for enabling/disabling the notification envelope: a global, configurable read-write node was favored over an RPC, simplifying management and avoiding complex handling of existing dynamic subscriptions.
+    *   The default value for enabling the envelope was discussed, with a preference for `false` to ensure backward compatibility with RFC 5277 during software upgrades.
+    *   The merger of observation time stamping into this draft was supported. Minor editorial changes, including updating the XML namespace and shortening the `notification-contents` element, were also discussed.
+*   **Yang Push Transport Capabilities (`draft-ietf-netconf-yang-push-transport-capabilities`):**
+    *   This draft aims to address discoverability requirements for transport protocols, encodings, and encryption for *configured subscriptions*.
+    *   The history of `RFC 8639` Section 7 (which mandates a default encoding or mechanism for transports like UDP-NOTIF) and its errata was reviewed in the context of this new discovery mechanism.
+    *   There was a strong indication of consensus that `RFC 9196`-based capabilities are the appropriate mechanism for generic server capability discovery, distinguishing it from Yang Library features.
+*   **Yang Push Light (`draft-ietf-netconf-yang-observability`):**
+    *   Rob Wilton presented an initial proposal for "Yang Push Light," a lighter and refined version of Yang Push. The goal is to strip out complex features (e.g., dampening, QoS, event frequency negotiation) and incorporate useful extensions.
+    *   The approach involves creating a new, self-contained document with a new Yang module namespace to allow coexistence with existing Yang Push implementations.
+    *   Proposed changes include:
+        *   Simplified path filtering (using an instance data path with regex/wildcards instead of XPath).
+        *   The ability for a device to decompose a filter into simpler filters for more performant notification generation.
+        *   Simplified on-change events and the removal of client-configurable dampening and replaying of buffered events.
+        *   A new combined update notification for both on-change and periodic subscriptions.
+        *   Streamlined configuration of receivers, transports, and encodings, moving towards greater alignment between configured and dynamic subscriptions.
+    *   The continued need for dynamic subscriptions was affirmed by several participants for operational flexibility.
+    *   The simplification of XPath filtering was particularly welcomed by implementers and operators.
+
+## Decisions and Action Items
+
+*   **Decision (Notification Envelope Configuration):** The working group agreed that the notification envelope should be enabled/disabled via a global, writable configuration option (a read-write leaf in Yang). When this option is changed, all existing subscriptions (configured and dynamic) will be restarted and will subsequently use the new notification envelope format.
+*   **Decision (Notification Envelope Default Value):** The notification envelope will default to `false` to maintain backward compatibility with `RFC 5277`.
+*   **Decision (Observation Time Stamp Merger):** The merger of the observation time stamp functionality into the `draft-ietf-netconf-notif-envelope` is accepted as the correct approach.
+*   **Decision (Transport Capabilities Discoverability):** A poll indicated clear consensus (10 Yes, 4 No Opinion) that `draft-ietf-netconf-yang-push-transport-capabilities` addresses the discoverability requirements and that its approach, utilizing `RFC 9196`-based capabilities, is the right way forward.
+*   **Action Item (Chairs Ken and Per):** Initiate working group adoption calls for both `draft-ietf-netconf-notif-envelope` and `draft-ietf-netconf-yang-push-transport-capabilities` later this week.
+*   **Action Item (Alex):** Update the `draft-ietf-netconf-notif-envelope` draft to reflect the decisions made regarding the global writable configuration option, its default value, and consider shortening the `notification-contents` element name to `contents`.
+*   **Action Item (Rob Wilton):** Publish an updated version of the `draft-ietf-netconf-yang-observability` (Yang Push Light) document before IETF 122. Convene interested authors to further develop the draft, particularly focusing on areas needing more discussion (e.g., handling of multiple updates in a single message, subscription ID naming).
+
+## Next Steps
+
+*   The NETCONF chairs will initiate working group adoption calls for the Notification Envelope and Transport Capabilities drafts.
+*   Authors of the `notif-envelope` draft will incorporate the agreed-upon changes.
+*   Authors of the `yang-observability` (Yang Push Light) draft will refine the document and engage with contributors to prepare for further discussions and potential hackathon activities at IETF 122.
+*   The IETF 122 Hackathon will include a focus on Yang push implementations, particularly involving the new notification envelope and capabilities.

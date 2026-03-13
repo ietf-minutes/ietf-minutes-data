@@ -1,0 +1,64 @@
+# [SCONE](../wg/scone.html)
+
+## Summary
+
+The SCONE working group held its first interim meeting since Madrid, focusing on finalizing the protocol specification. Key discussions revolved around the initial indication mechanism, handling of network-inserted packets, and the semantics of throughput advice, including enforcement intervals and how endpoints should react to changing advice. Several pull requests were discussed and decisions were made to merge them into the draft, with a plan to further test these resolutions at the upcoming hackathon and leading up to the Montreal meeting. The working group also considered its charter milestones, particularly the timeline for Protocol Specification (PS) readiness and the role of deployment experience.
+
+## Working Group Status Update
+
+*   **Workstreams**: Two workstreams continue: one targeting input to the SCONE base protocol, and a semantical workstream also contributing to the applicability chart item.
+*   **Interim Meetings**: The current meeting is the first interim since Madrid. The next interim is scheduled for September 17, with a potential additional meeting in October if needed.
+*   **Milestones**:
+    *   The SCONE base protocol has been adopted as a working group draft prior to Madrid.
+    *   Good progress is noted on the applicability chart item, which will receive more attention at the next interim.
+    *   The milestone date for the next deliverable (applicability/manageability) is currently November 2025; the AD suggested pushing this out, acknowledging the focus on completing the protocol around the Montreal timeframe. This will be addressed offline.
+
+## Key Discussion Points
+
+### Initial Indication Mechanism
+
+*   **Proposal**: To indicate potential SCONE support, a client appends two bytes to the end of a packet.
+*   **Mechanism**: A tool was used to generate a unique, random two-byte code point for this purpose.
+*   **Limitations**: This mechanism is not applicable to migrated QUIC flows, as they use short headers, which interfere with the authentication tag. For migrated flows, SCONE packets would be sent directly.
+*   **Decision**: The related pull request, which solved this issue, was merged into the editor's copy. A new document version will be rolled to the data tracker after all current PRs are resolved.
+
+### Network Inserted Packets (PR 48)
+
+*   **Discussion**: The possibility of network elements inserting SCONE packets to signal policy to endpoints was debated.
+    *   **Arguments for allowing/silence**: Endpoints send SCONE packets frequently, providing ample opportunity for network signals. Explicitly forbidding it might encourage unexpected behavior, and ultimately, it's "advice."
+    *   **Arguments against/for forbidding**: Allowing arbitrary insertion could create interoperability issues, especially with multiple network elements, and raises weird edge cases (e.g., different SCONE capabilities on multiple connections in the same flow). Not stating anything could lead to implementers building systems dependent on a behavior that might be restricted later.
+*   **Consensus**: A sense of those present indicated a preference for a simple statement discouraging network elements from inserting SCONE packets. This avoids interoperability troubles while acknowledging it's an advice-based protocol.
+*   **Decision**: Pull request 48, which adds text stating that network elements "SHOULD NOT insert SCONE packets," was merged. The language will be reviewed to ensure it's guidance rather than a strict enforcement.
+
+### Throughput Advice Semantics and Enforcement Intervals (PR 46, 55, 24)
+
+*   **Core Problem**: How should network elements update SCONE packets (every packet vs. less frequently), and how should endpoints react to changes in advice, especially reductions?
+*   **"Forgetfulness" Issue**: If an endpoint's throughput advice is suddenly reduced (e.g., 10 Mbps to 5 Mbps), and it was sending at the higher rate, it would need to stop sending for a period to align with the new, lower advice. Some described this as "forgetting" previous accounting.
+    *   **Marcus's view**: Endpoints should simply scrap previous accounting and move on. Over-complication is unnecessary; it's a rare situation.
+    *   **Kazua's criticism**: Expressed concerns about the fragility of this "forgetting" mechanism.
+*   **Network Element Update Frequency**:
+    *   If network elements don't update every packet, there's a risk of stale or missed advice, potentially leading to an endpoint using an "unbounded" or "infinite" rate if it only sees the default.
+    *   **Minimum Filter (PR 46)**: A proposal suggests that network elements must update at least once within a given window (e.g., 67 seconds) for the advice to remain active. Endpoints would take the minimum advice seen over this window. This would allow robustness against reroutes (ECMP) and dropped updates.
+    *   **"Unknown" vs. "Unlimited"**: Discussed changing the default signal from "unlimited" to "unknown" to allow clients to distinguish between no advice and actively unlimited advice. However, if all an endpoint receives is "unknown," its congestion controller would operate unconstrained, effectively making "unknown" similar to "unlimited."
+*   **Endpoint Discretion**: Endpoints are free to send SCONE packets more frequently if they want fresher information or to respond more quickly to changes.
+*   **Over-Specification Concerns**: Wesley expressed a concern that the working group might be over-specifying this advice mechanism, as it's not chartered to develop an enforcement mechanism. The protocol defines "advice," not a contract.
+*   **Path with Multiple Network Elements**: The protocol needs to be robust to scenarios with multiple network elements on the path, which could lead to conflicting or misleading advice if not handled carefully.
+*   **Decision**: A poll of the room indicated a preference to merge PR 46 (which includes the min-filter approach and timeout for advice) as a baseline. This approach will be tested at the hackathon and leading up to the Montreal meeting to uncover "unknown unknowns." The chairs will review and soften the language to clarify that this is guidance, not strict enforcement. The distinction between "unknown" and "unlimited" might be addressed orthogonally.
+
+### Greasing
+
+*   **Discussion**: Brief discussion on how SCONE relates to QUIC greasing mechanisms.
+*   **Conclusion**: Since SCONE uses QUIC versions, existing QUIC version greasing (e.g., sending undefined versions) is the primary method. It was deemed not a specific SCONE problem.
+*   **Decision**: The issue was closed, acknowledging it had been considered.
+
+## Next Steps
+
+*   **Document Roll**: A new version of the SCONE document will be rolled to the data tracker once the discussed pull requests have been merged.
+*   **October Interim Meeting**: An interim meeting will be scheduled in October, with a focus on preparing for the hackathon (Montreal) and identifying testable predicates for SCONE implementation and evaluation. Participants are encouraged to think about corner cases and how to stress-test the time constants and advice mechanisms.
+*   **Charter Milestone Review (PS Readiness)**:
+    *   The AD inquired about the timeline for the Protocol Specification (PS) milestone.
+    *   There was a discussion regarding submitting the draft to the ISG around the Montreal timeframe (November) as "realistic," but potentially holding the RFC publication to gather real-world deployment experience. This would allow the working group to test the protocol in practice before finalizing it.
+    *   A sense of those present indicated strong support for this approach.
+*   **Action for Chairs**:
+    *   Propose a specific date for PS submission to the ISG, incorporating the idea of holding for deployment experience, and discuss this on the mailing list.
+    *   Review and soften the language in the recently merged PRs (especially PR 46 and 48) to emphasize that the protocol provides guidance rather than strict requirements.

@@ -1,0 +1,79 @@
+# [RADEXT](../wg/radext.html)
+
+## Summary
+
+The RADEXT working group held an interim meeting to discuss the remaining open issues for the `draft-ietf-radext-radius-tls-dtls` document. Key topics included the document's scope, handling of DTLS records, guidance from external TLS RFCs, managing general RADIUS issues within the TLS/DTLS context, and the relationship with dynamic discovery. Several decisions were made regarding text updates and scope exclusions, with an aim to prepare a new draft version for potential Working Group Last Call.
+
+## Key Discussion Points
+
+*   **Draft Update (Version 0.4):**
+    *   A new draft version (0.4) was published just prior to the interim.
+    *   Changes included minor word smithing, typo fixes, and section reordering to improve flow, moving TLS-specific text to more general sections where applicable.
+    *   Several pull requests remain open on GitHub, including one from Fabian for the loopback attack text, which requires further addressal.
+    *   The editor noted that not all conclusions from the previous interim (IETF 121) have been fully executed yet.
+
+*   **Scope of the Document:**
+    *   **Decision:** Reaffirmed previous rough consensus that anything related to proxying, load balancing, and general RADIUS issues (e.g., "what is the same server") is out of scope for this document. These issues are planned for a new, independent document.
+    *   **Server Name Indication (SNI):** The need for explicit text on SNI was discussed. It was noted to be useful for dynamic discovery and scenarios where a single server hosts multiple RADIUS sites.
+    *   **Unwanted Packets (e.g., Accounting):** Discussion on whether handling unwanted packets (especially accounting) is within scope. While a general RADIUS issue, the use of a single port for authentication and accounting in RADIUS/DTLS makes it more pertinent.
+
+*   **DTLS Records and RADIUS Packets:**
+    *   **Decision:** Explicitly mention that each RADIUS packet should be sent in one DTLS record. This terminology is now in the new draft version.
+    *   It was noted that common DTLS implementations (e.g., OpenSSL) generally handle this correctly, generating one DTLS record per write call (with size limitations) and reading one DTLS record at a time.
+    *   **Action Item (Alan, Chairs):** Alan will bring general DTLS implementation issues (e.g., what the DTLS RFCs explicitly state vs. common implementation behavior regarding record handling) to the UTA working group mailing list.
+    *   **Decision:** For this document, the text stating "each DTLS record can only contain one RADIUS packet; RADIUS packets are not split across DTLS packets; multiple DTLS records can appear in one UDP packet" is deemed sufficient. Deeper DTLS implementation correctness is out of scope for RADEXT.
+
+*   **Referencing RFC 9325 (TLS Best Current Practice):**
+    *   The document currently references RFC 9325 for TLS guidance, particularly for cipher suites and session resumption.
+    *   **Decision:** Include text suggesting the use of Server Name Indication (SNI) as it provides substantial benefits, including in multi-tenant or cloud environments and for mitigating some selfie attack scenarios.
+    *   **Recommendation:** Also reference BCP 195 (the overarching standard for TLS best practices) to avoid needing updates for new cipher suite mandates/prohibitions.
+    *   **Action Item (Participants):** Volunteers are encouraged to provide phrasing suggestions for the SNI text via pull requests.
+    *   **ALPN:** It was recommended to avoid mentioning ALPN as it's not part of this specification.
+
+*   **Handling General RADIUS Issues:**
+    *   The principle is to avoid fixing general RADIUS issues in this document.
+    *   **Unwanted Accounting Packets:**
+        *   The current RFC 6614/7360 guidance to reply with an accounting response containing an error cause attribute is rarely implemented or used.
+        *   **Proposal (Fabian):** Recommend responding with a "Protocol Error" RADIUS type, which is backward compatible as older clients would ignore it. This specifically addresses the DTLS issue of using a single port for different packet types.
+        *   **Decision:** The working group generally agreed to recommend the "Protocol Error" RADIUS type. The editor will raise this on the mailing list to check for any reliance on the previous (unimplemented) behavior, but anticipates it not being a breaking change.
+        *   **Action Item (Janfred):** Discuss the client behavior upon receiving a Protocol Error – specifically, whether the client should stop sending accounting requests. Initial thought is "yes," but further definition is needed.
+    *   **Forwarding between UDP and TCP (Duplicates/Retransmissions):** These are considered general RADIUS issues.
+        *   **Decision:** The document should note that "there be dragons" regarding these issues, but defer the detailed solutions to a future proxy document.
+    *   **Aggregating Local RADIUS Applications:**
+        *   **Decision:** Remove the paragraph recommending aggregating local RADIUS applications to a machine-local proxy, as this is a general architectural concern, not specific to RADIUS/TLS or DTLS.
+
+*   **Dynamic Discovery (RFC 7585):**
+    *   RFC 7585 is experimental. Options for referencing it were discussed: a downref, changing its status, or writing a `-bis` document.
+    *   **Decision:** Issue a downref to RFC 7585 (experimental). Incorporate SNI as a useful mechanism for dynamic discovery scenarios, without implying a change to 7585's status.
+
+*   **Implementation/Configuration Guidance:**
+    *   The document currently includes an appendix with implementation overviews for Radiator and radsecproxy, providing historical context from experimental RFCs.
+    *   **Decision:** Remove the appendix section listing configuration updates for specific implementations (Radiator, FreeRADIUS, radsecproxy). This is a substantial effort and generally out of scope for a standards-track document. Changes can be briefly summarized in a point-form list, but not detailed implementation guides.
+
+*   **TLS 1.3 Post-Handshake Certificate Request:**
+    *   A participant noted that TLS 1.3 includes a post-handshake Certificate Request message feature, which HTTP/2 RFCs state is not needed.
+    *   **Decision:** It should be noted that this feature is not needed in the RADIUS/TLS context due to mandatory mutual authentication.
+
+## Decisions and Action Items
+
+*   **Decision:** Proxying, load balancing, and general RADIUS issues (e.g., "what is the same server") are explicitly out of scope for `draft-ietf-radext-radius-tls-dtls`.
+*   **Decision:** The document must explicitly state that each RADIUS packet should be sent in one DTLS record, and RADIUS packets are not split across DTLS packets.
+*   **Decision:** The document will explicitly reference RFC 9325 for TLS guidance and recommend the use of Server Name Indication (SNI). BCP 195 should also be referenced. ALPN will not be included.
+*   **Decision:** For unwanted accounting packets received on RADIUS/DTLS connections, the document will recommend responding with a "Protocol Error" RADIUS type, replacing the previous guidance to use an accounting response with an error cause attribute.
+*   **Decision:** The paragraph recommending aggregation of local RADIUS applications to a machine-local proxy will be removed.
+*   **Decision:** The document will issue a downref to RFC 7585 (experimental) for dynamic discovery.
+*   **Decision:** The appendix section detailing configuration updates for specific RADIUS implementations will be removed.
+*   **Decision:** The document will note that the TLS 1.3 post-handshake Certificate Request message feature is not needed due to mandatory mutual authentication.
+*   **Action Item (Janfred):** Incorporate all discussed changes, address remaining to-dos, and push a new document version before the upcoming ID cut-off (within the next week).
+*   **Action Item (Janfred):** Draft text on client behavior when receiving a "Protocol Error" for unwanted accounting packets, specifically regarding stopping subsequent requests.
+*   **Action Item (Janfred):** Draft a brief paragraph on DTLS fragmentation issues, noting that DTLS may be more suitable for LAN environments.
+*   **Action Item (Alan):** Bring general DTLS implementation issues (specifically, whether DTLS RFCs explicitly mandate one-packet-per-record) to the UTA WG mailing list.
+*   **Action Item (Participants):** Review the draft and provide specific wording suggestions for SNI text via pull requests.
+
+## Next Steps
+
+*   The editor (Janfred) will complete the document update, incorporating all decisions and addressing remaining open items and pull requests.
+*   A new draft version will be submitted before the ID cut-off for the Bangkok meeting.
+*   A brief presentation and update on the document's status will be given at the Bangkok IETF meeting.
+*   Following the Bangkok meeting, if no major issues are raised, the document will proceed to Working Group Last Call. The Last Call period will be extended to allow for review after the meeting.
+*   Consider sending the document for early review by review teams (e.g., TLS experts, security teams) before WGLC.

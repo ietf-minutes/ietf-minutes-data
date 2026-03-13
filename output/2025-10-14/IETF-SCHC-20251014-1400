@@ -1,0 +1,72 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+This interim meeting focused on two key technical areas: a proposed optimized seed allocation strategy for SCHC YANG data model elements and an ongoing discussion on SCHC terminology for the architecture document. Laurent presented a method to manually allocate IANA-assigned seeds to reduce message overhead. A significant debate ensued regarding whether to allocate seeds for existing CoAP options that might be obsoleted by a future Universal Option, or to wait for a revised RFC 9363-bis. The terminology discussion reviewed proposed terms like "SCHC datagram," "SCHC control header," and "SCHC data header," and then delved into defining "domains" or "areas" for sets of SCHC nodes. There was a consensus to adopt "area" over "domain" and to define "instance area" and keep "administrative domain" in the upcoming architecture draft update.
+
+## Key Discussion Points
+
+*   **Administrative and Logistics:**
+    *   The meeting started with standard IETF boilerplate.
+    *   Alexander was temporarily absent.
+    *   The Montreal IETF meeting is scheduled for Tuesday, 5 p.m. local time, in room Agora. Pascal will not be able to attend due to surgery; Alexander and Laurent will cover.
+    *   The draft cutoff for Montreal is Monday, November 20th.
+*   **Draft Status and Protocol Numbers:**
+    *   New versions of the SCHC Protocol Numbers draft have been published.
+    *   Carles highlighted text added by Bob in the protocol numbers draft, requesting a UDP port for SCHC to support compression using UDP data units with a SCHC stratum below UDP, specifically for the `chiclow` draft (SCHC over 15.4).
+    *   Brief mention of a Madrid side meeting discussion contrasting SCHC within the stack versus SCHC as a daemon outside the stack, noting that a single port might be insufficient for dispatching SCHC in user domain processes.
+*   **SCHC Seed Allocation Strategies (Laurent's Presentation):**
+    *   **Context:** IANA allocated a range of 400 seeds (2550-2950) for SCHC YANG data model elements.
+    *   **Problem:** Default seed allocation (sequential) can lead to large delta values (e.g., >23) when CBOAR encoding is used in messages, resulting in 2-byte encoding for common rule elements (e.g., L2 word size, ALL_ID values). This increases message overhead.
+    *   **Proposed Solution:** A manual, optimized seed allocation strategy to ensure deltas remain <= 23, minimizing CBOAR encoding to single bytes where possible. This was shown to save 7 bytes on a 392-byte rule example.
+    *   **Future Considerations:** The presentation discussed potential revisions to RFC 9363 (SCHC YANG data model) to incorporate new elements from group work, including:
+        *   OSCORE (RFC 8424-bis) identities.
+        *   IPv6/ICMPv6 identities.
+        *   Universal Option (which may obsolete current CoAP options).
+        *   Management RPCs.
+        *   CompanaC elements.
+    *   **Core Dilemma:** How to handle seed allocation given the evolution of the YANG model and potential obsolescence of some elements (e.g., CoAP options by Universal Option).
+        *   **Option 1:** Produce a seed file for RFC 9363 as is, including current CoAP options.
+        *   **Option 2:** Wait to produce a `9363-bis` revision that incorporates all new elements (8824, Universal Option, CompanaC, ICMPv6) and then perform a single optimized allocation.
+        *   **Option 3:** Produce a seed file for RFC 9363 but omit CoAP options, anticipating their obsolescence.
+    *   **Discussion:**
+        *   Pascal questioned the urgency and cost of waiting or omitting values.
+        *   The Universal Option was noted as having been adopted by the group.
+        *   Alex strongly argued against omitting current CoAP options from allocation. He stated that if an RFC defines a data model, its elements should be allocated seeds unless the RFC is formally obsoleted. Omitting them creates ambiguity and potential interoperability issues, as current implementations might use these elements. He viewed it as a premature optimization.
+        *   Laurent suggested that if current CoAP options are to be removed, the Universal Option document should explicitly state their obsolescence.
+*   **Terminology Discussion:**
+    *   **Recap from Madrid Side Meeting:**
+        *   `SCHC datagram`: A collective term for "Schick header plus payload" representing a bunch of bits SCHC can decompress. This was favored over "SCHC packet."
+        *   `SCHC control header`: A new term for the part of the SCHC header that controls SCHC operations (e.g., instance information), often elided (previously `SCHC Stratum header`).
+        *   `SCHC data header`: A new term for the part of the SCHC header that carries information about the packet being compressed/restored (e.g., Rule ID, previously `SCHC payload`).
+        *   `Payload`: Refers to the residue and uncompressed bytes (previously `User payload`).
+    *   **Domain/Area Discussion:**
+        *   The need for a term to describe a "set of nodes that can talk together, with the same administration, possibly sharing rules." The term `domain` was initially considered.
+        *   **Eric's input:** `Domain` is overloaded in IETF contexts; `area` or `zone` would be preferable.
+        *   **Proposed types of areas:**
+            1.  `Instance area` (previously `Instance domain`): Nodes actively participating in the same SCHC instance (e.g., P2P, P2MP, or stateless MP2MP).
+            2.  `Stratum area` (previously `Stratum domain`): All nodes for which a SCHC instance *may* be created at a given stratum level (e.g., all LoRa devices in a network).
+            3.  `Administrative domain`: Nodes administered by the same entity. This term is well-known and generally accepted.
+        *   **Discussion on MP2MP (Chiclo):** Anna expressed skepticism about Chiclo being described as multipoint-to-multipoint, believing instances are point-to-point. Pascal clarified that MP2MP refers to a stateless operation where any node can compress and decompress (e.g., IP over 15.4) without prior instance establishment.
+        *   **Discussion on `Stratum area`:** Laurent questioned the necessity of defining `stratum area`, suggesting it might be over-complex. Quentin provided an example of a single device operating in two different "stratum domains" (e.g., LoRa L2 compression and CoAP application layer compression) to justify the distinction.
+        *   **Marion's input:** Noted the "SCHC Minimal Architecture" draft could serve as a testing ground for terminology and provide concrete examples for discussion.
+*   **Preparation for Montreal:** Participants were encouraged to read the "SCHC Minimal Architecture" draft before the Montreal meeting.
+
+## Decisions and Action Items
+
+*   **Decision:** The working group will proceed with publishing an updated SCHC Architecture draft (`draft-ietf-schc-architecture`) before the IETF Montreal draft cutoff (Monday, November 20th).
+*   **Decision:** The updated architecture draft will incorporate the agreed-upon terminology changes:
+    *   `SCHC datagram`
+    *   `SCHC control header`
+    *   `SCHC data header`
+    *   `Payload`
+*   **Decision:** For concepts related to groups of nodes, the term "area" will be used instead of "domain" (e.g., `instance area`). `Administrative domain` will be retained as it is a widely understood term in the IETF.
+*   **Decision:** The definition of `instance area` will be included in the upcoming architecture draft. The definition of `stratum area` may be postponed for further discussion due to ongoing complexities and questions about its necessity.
+*   **Action Item (Pascal):** Publish the updated `draft-ietf-schc-architecture` with the agreed terminology changes before Monday, November 20th.
+*   **Action Item (All):** Review the "SCHC Minimal Architecture" draft (`draft-schc-minimal-architecture`) before the Montreal meeting to inform further terminology discussions.
+
+## Next Steps
+
+*   Further discussion on the mailing list regarding the optimal seed allocation strategy, particularly the treatment of CoAP options in light of the Universal Option.
+*   Continued refinement of SCHC terminology at the Montreal meeting, utilizing the "SCHC Minimal Architecture" draft as a reference.
+*   Discussion on the "bump in the stack" concept for dispatching SCHC processing.
