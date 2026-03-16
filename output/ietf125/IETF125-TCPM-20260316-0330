@@ -1,0 +1,75 @@
+# [TCPM](../wg/tcpm.html)
+
+## Summary
+The TCPM working group met at IETF 125 to discuss progress on active working group documents and several new individual proposals. Key highlights include the publication of RFC 9637, the nearing completion of the TCP ACK Rate Request (TARR) option, and discussions on enhancing TCP resets with diagnostic payloads. The group also deliberated on extending TCP Authentication Option (TCP-AO) to support Post-Quantum Cryptography (PQC) and a proposal for a TCP Provenance Identifier.
+
+## Key Discussion Points
+
+### Working Group Status Update
+Presented by Yoshifumi Nishida.
+[Slide Deck: chair slide](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-chair-slide-00)
+
+*   **RFC Published:** RFC 9637 (formerly draft-ietf-tcpm-6937bis) has been published.
+*   **Accurate ECN:** `draft-ietf-tcpm-accurate-ecn` is currently in AUTH48.
+*   **TCP Extended Data Offset (EDO):** `draft-ietf-tcpm-edo` remains a long-term item due to the complexity of extending the TCP option space.
+*   **Ghost ACKs:** The chairs are waiting for a new version of `draft-ietf-tcpm-tcp-ghost-acks` from the authors before considering a Working Group Last Call (WGLC).
+
+---
+
+### TCP ACK Rate Request (TARR)
+Presented by Carles Gomez.
+[Slide Deck: TCP ACK Rate Request (TARR)](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-ack-rate-request-tarr-00)
+Draft: `draft-ietf-tcpm-ack-rate-request`
+
+*   **Overview:** The draft proposes an option to allow a sender to request a specific ACK rate from the receiver to optimize performance in various congestion window scenarios.
+*   **Updates:** Version 11 adds an informational Section 7 on Socket API considerations, defining options such as `TCP_ACK_RATE_REQUEST_ENABLE`, `TCP_ACK_RATE_REQUEST_PROCESS`, and `TCP_ACK_RATE_REQUEST_SET`.
+*   **Implementation:** Michael Tuexen noted a prototype implementation exists for FreeBSD. Carles Gomez mentioned initial implementation work for Linux is underway.
+*   **Discussion:** Yoshifumi Nishida queried the behavior of the API if negotiation fails. Carles Gomez clarified that the socket remains usable, though the rate cannot be set. 
+
+---
+
+### TCP RST Diagnostic Payload
+Presented by Haiming Gui (Jason).
+[Slide Deck: IETF 125 draft-boucadair-tcpm-rst-diagnostic-payload](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-ietf-125-draft-boucadair-tcpm-rst-diagnostic-payload-00)
+Draft: `draft-boucadair-tcpm-rst-diagnostic-payload`
+
+*   **Overview:** This draft adds a diagnostic payload to TCP Reset (RST) packets to help operators understand why a connection was terminated.
+*   **Updates:** The format was simplified from CBOR to a compact plain-text/binary format. The intended status was changed from Standards Track to Experimental.
+*   **Discussion:** 
+    *   Jeff Haas and Lars Eggert expressed significant security concerns regarding the "freeform description" format (UTF-8), citing risks associated with parsing complex character sets in the network stack.
+    *   Michael Tuexen indicated he had only implemented the compact form in FreeBSD and did not intend to support the freeform version.
+    *   There was a strong sense among those present to remove the freeform description and stick to the compact "reason code" format.
+
+---
+
+### TCP Provenance Identifier Option
+Presented by the author.
+[Slide Deck: TCP Provenance Identifier Option](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-provenance-identifier-option-00)
+
+*   **Overview:** Proposes a TCP option to carry a provenance identifier (Host IP + Process ID) to track the origin of connections across middleboxes (NATs, L7 proxies) in managed environments like data centers.
+*   **Discussion:** 
+    *   Lars Eggert and Magnus Westerlund questioned the need for an IETF standard for a solution intended for controlled, single-operator data centers where middleboxes could be configured without a new TCP option.
+    *   Zhong Lenli raised privacy concerns regarding the leakage of internal Process IDs (PIDs) in plain text.
+    *   Mia Killevein suggested looking at QUIC connection migration and its privacy-preserving mechanisms as a point of comparison.
+
+---
+
+### TCP Authentication Option (TCP-AO) and PQC
+Presented by Tony Lee.
+[Slide Deck: tcp-ao](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-ao-00)
+
+*   **Overview:** Discussion on adding Post-Quantum Cryptography (PQC) algorithms to TCP-AO to protect BGP sessions.
+*   **Technical Constraint:** Some PQC algorithms require hash lengths that exceed the 40-byte TCP option limit, necessitating "untruncated" versions which require an extended option space.
+*   **Discussion:** 
+    *   Magnus Westerlund argued that 128-bit truncated tags are likely sufficient for symmetric authentication and that the focus should be on standardizing a reasonable set of modern algorithms.
+    *   Alice Mencken supported the move to modern algorithms but encouraged seeking more input from security experts (CFRG) regarding truncation.
+    *   Lars Eggert cautioned against "rubber-stamping" requirements from specific customers if they mandate solutions that break standard TCP option limits without a clear technical necessity.
+
+## Decisions and Action Items
+*   **`draft-ietf-tcpm-ack-rate-request`**: Authors to refine the draft based on API feedback and coordinate with Linux implementers before moving to WGLC.
+*   **`draft-boucadair-tcpm-rst-diagnostic-payload`**: The author will remove the freeform description format in the next revision based on security feedback.
+
+## Next Steps
+*   The chairs will conduct a poll on the mailing list regarding the adoption of `draft-boucadair-tcpm-rst-diagnostic-payload` after the requested edits are made.
+*   The discussion on TCP-AO and PQC requirements, specifically the necessity of untruncated tags and extended option space, will continue on the mailing list.
+*   Authors of the TCP Provenance Identifier proposal are encouraged to refine the use case and address privacy/middlebox-transparency concerns.
