@@ -1,0 +1,56 @@
+# [IRTFOPEN](../wg/irtfopen.html)
+
+## Summary
+The IRTFOPEN session at IETF 125 focused on the intersection of networking research and Artificial Intelligence (AI). Dirk Kutscher (IRTF Chair) opened the session by highlighting the goal of identifying how the IRTF can constructively contribute to AI research, specifically regarding distributed computing, protocol design, and the "agentic" evolution of the internet stack. The session featured three technical presentations: a disaggregated architecture for LLM inference (Mooncake), reliability engineering for AI clusters, and the networking requirements for AI agent communication.
+
+## Key Discussion Points
+
+### [Disaggregated Architecture for LLM Inference (Mooncake)](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-disaggregated-architecture-for-llm-inference-mooncake-01)
+**Presenter: Mingshin Chou**
+
+*   **Context:** LLM inference is shifting toward "agentic" workflows involving long contexts (64K–128K+ tokens) and multi-turn interactions, making inference costs significantly higher than training.
+*   **Architecture:** Mooncake utilizes a disaggregated architecture to handle the two stages of LLM inference:
+    *   **Pre-fill:** Computation-bounded; optimized for Time-to-First-Token (TTFT).
+    *   **Decode:** Bandwidth-bounded; optimized for Time-Per-Token (TPT).
+*   **KV-Cache Centricity:** The system treats KV-cache as a primary resource, pooling DRAM and SSD across GPU servers to maximize reuse and reduce re-computation.
+*   **Technical Innovations:**
+    *   **Transfer Engine:** A zero-copy engine using RDMA and GPU-Direct RDMA.
+    *   **Unified Abstraction:** Treats DRAM, VRAM, and SSD as logical memory segments in a global namespace.
+    *   **Adaptive Scheduling:** Implements per-packet dynamic routing and congestion-aware scheduling to handle heterogeneous network paths (e.g., NVLink vs. RDMA).
+*   **Discussion:** **Dave Oran** inquired whether the architecture was applicable beyond KV-cache. Mingshin Chou clarified that it also handles model weights in reinforcement learning and CPU checkpointing for agents. **Xinjiang** asked about network awareness and congestion control; the presenter noted that the new version of the engine implements telemetry-driven adaptive scheduling to mitigate P99 latency issues in "Elastic EP" (Expert Parallelism) traffic.
+
+### [Reliability Engineering – Challenges in Networking for AI](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-reliability-engineering-challenges-in-networking-for-ai-00)
+**Presenter: Hong Xu**
+
+*   **The Problem:** The scale of AI infrastructure (100k+ GPUs) and the complexity of hardware/software co-design make manual troubleshooting impossible. Distributed training is highly sensitive to "hiccups," which cause massive financial losses.
+*   **Autonomous Troubleshooting Vision:**
+    *   **Open Arena:** A proposed open system for failure injection and reproducible benchmarking.
+    *   **Agentic NetOps:** Using LLM-based agents to diagnose incidents.
+*   **Key Systems Introduced:**
+    *   **TS-Guard:** A diagnostic agent developed with Microsoft Azure that uses a tiered approach (Pattern Matching -> RAG-based Reasoning -> Slow-path Hypothesis Testing).
+    *   **Mycroft:** A fine-grained tracing system for collective communications that detects "stuck" operations in real-time with less than 1% overhead.
+*   **Discussion:** **Dave Oran** asked about the overhead of data collection. Hong Xu noted the overhead is minimal (<1%). **Roberta** raised concerns regarding hallucinations in generative agents when reading hard log data. Hong Xu emphasized the need for "scaffolding"—mandating that agents verify possibilities against actual benchmarking scripts.
+
+### [On AI Agent Communication](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-on-ai-agent-communication-01)
+**Presenter: Lisha Zhang**
+
+*   **Networking for Agents:** Argued that agents represent a "new front" of networking. While communication patterns (one-to-many, etc.) aren't new, the requirements for scale, dynamics (transient agents), and multi-party interactions are unprecedented.
+*   **Security and Identity:**
+    *   Current security solutions (CAs, tokens, firewalls) are fragmented and tied to centralized cloud providers.
+    *   Agents require decentralized identity and trust management to handle autonomous delegation chains.
+*   **Proposed Solution:**
+    *   **Unified Namespace:** Use DNS names for all entities (users, devices, and agents).
+    *   **Localized Trust:** Move away from global CAs toward trust anchors managed by the entity owners.
+*   **Discussion:** **Arjua** questioned if total accountability leads to global surveillance. Lisha Zhang responded that semantic naming (hierarchical DNS) allows for better-defined security policies and scopes. **Dave Oran** challenged the need for independent agent identities, suggesting they should simply inherit the owner's identity. Lisha Zhang argued that for accountability and delegation, a distinct but linked identity is required.
+
+## Decisions and Action Items
+*   The IRTF will continue the discussion on whether to form a specific activity or Research Group focusing on AI networking challenges.
+*   A follow-up session is scheduled for the second IRTFOPEN slot of the week to synthesize these topics.
+
+## Next Steps
+*   **Dirk Kutscher** to summarize the technical themes from this session:
+    *   Data sets and evaluation arenas for AI networking.
+    *   System designs for KV-cache centricity and unified abstractions.
+    *   Agent communication patterns (group comms, low latency).
+    *   Decentralized security, naming, and trust delegation.
+*   Interested participants are encouraged to engage with the **Decentralized Infrastructure Research Group (DINRG)** regarding naming and trust management for agents.
