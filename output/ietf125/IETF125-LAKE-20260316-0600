@@ -1,0 +1,77 @@
+# [LAKE](../wg/lake.html)
+
+**IETF 125 - Bangkok, Thailand**
+**Monday, March 24, 2025**
+
+## Summary
+
+The LAKE working group met to discuss the status of its active drafts and several new individual contributions focused on post-quantum cryptography (PQC). All six adopted documents were updated prior to the meeting. A significant portion of the session was dedicated to formal analysis reports for `draft-ietf-lake-edhoc-psk` and `draft-ietf-lake-ra`, resulting in identified protocol improvements. The group also discussed a major architectural shift in `draft-ietf-lake-authz` to address a potential information leak. The chairs announced upcoming Working Group Last Calls (WGLC) for multiple documents and the formation of a design team for PQC-EDHOC.
+
+## Key Discussion Points
+
+### 1. Working Group Status and Administration
+*   **Chairs:** Malisa Vucinic, Stephen Farrell.
+*   **AD:** Paul Wouters (outgoing), Roman Danyliw (incoming).
+*   **Status:** All six adopted drafts updated. `draft-ietf-lake-edhoc-grease` is ready for WGLC following a successful hackathon report.
+*   **Rechartering:** The new charter allows for new EDHOC methods (including KEM-based authentication) and maintenance for transport overhead reduction.
+
+### 2. EDHOC with Pre-Shared Keys (PSK)
+**Presentations:**
+*   [01-Mahmoud-Formal Analysis of EDHOC-PSK](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-formal-analysis-of-edhoc-psk-01) - **Decra Mahmoud**
+*   [02-Lopez-EDHOC Authenticated with Pre-Shared Keys](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-edhoc-authenticated-with-pre-shared-keys-00) - **Elsa Lopez**
+
+*   **Formal Analysis:** Analysis using Tamarin and ProVerif identified that forward secrecy is not achieved if a discrete logarithm oracle is available. A passive attacker can break the unlinkability of the responder by comparing failure scenarios.
+*   **Binding Concerns:** Jonathan Hoyland and Decra Mahmoud raised concerns regarding whether the `ID_CRED_PSK` is cryptographically bound to the PSK. Current draft logic relies on secure provisioning, but participants suggested clarifying these requirements to prevent misconfiguration attacks.
+*   **Updates:** Test vectors have been updated to include `ID_CRED_I` and `ID_CRED_R` in key derivations. The authors will address the identity protection concerns raised in the formal analysis before proceeding to WGLC.
+
+### 3. Remote Attestation over EDHOC
+**Presentations:**
+*   [03-Lopez-Formal Analysis of Remote attestation over EDHOC](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-formal-analysis-of-remote-attestation-over-edhoc-00) - **Elsa Lopez**
+*   [04-Sardar-From formal analysis of attested TLS to attested EDHOC](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-formal-analysis-of-attested-edhoc-00) - **Osama Sardar**
+*   [05-Song-Remote Attestation over EDHOC](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-remote-attestation-over-edhoc-01) - **Yushuan Song**
+
+*   **Binding Vulnerability:** Formal analysis by Elsa Lopez revealed that `draft-ietf-lake-ra` (v03) lacked a cryptographic binding between attestation evidence and the authentication session. This allows an attacker to relay evidence from one session to another.
+*   **Mitigation:** The authors proposed an "attestation binder" (a hash of Message 1 and Message 2) to be included in the signed evidence. For Message 4 (Responder attestation), the binder is derived via the EDHOC exporter.
+*   **Conflicting Analysis:** Osama Sardar presented analysis suggesting that attacks found in Attested TLS (e.g., handshake secret independence) apply to EDHOC. Yushuan Song and Malisa Vucinic requested that Osama share the specific formal models/traces to validate these claims, as TLS and EDHOC have different key schedules.
+
+### 4. Lightweight Authorization (ELA)
+**Presentation:** [06-Fedrecheski-Lightweight Authorization using Ephemeral Diffie-Hellman Over COSE](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-lightweight-authorization-using-ephemeral-diffie-hellman-over-cose-ela-01) - **Giovanna Fedrecheski**
+
+*   **Protocol Shift:** To address a vulnerability where an attacker could probe a device's authorization status (information leak), the authorization request was moved from Message 1/2 to Message 3/4.
+*   **Impact:** This shift ensures the device is authenticated before it is authorized. However, Christian Amsüss noted this might negatively impact the efficiency of the Constrained Join Protocol (CoJP) and suggested investigating other mitigations to preserve the original flow.
+
+### 5. Implementation Considerations and Application Profiles
+**Presentations:**
+*   [07-Tiloca-Implementation Considerations for Ephemeral Diffie-Hellman Over COSE (EDHOC)](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-implementation-considerations-for-ephemeral-diffie-hellman-over-cose-edhoc-00) - **Marco Tiloca**
+*   [08-Tiloca-Coordinating the Use of Application Profiles for Ephemeral Diffie-Hellman Over COSE (EDHOC)](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-coordinating-the-use-of-application-profiles-for-ephemeral-diffie-hellman-over-cose-edhoc-00) - **Marco Tiloca**
+
+*   **`draft-ietf-lake-edhoc-impl-cons`:** Added content on provisional trust for credentials learned on-the-fly and requirements for tracking expected EAD items.
+*   **`draft-ietf-lake-app-profiles`:** Updated with "advertise" flags for EAD1 and support for DNS SVCB resource records.
+*   **WGLC Status:** Both documents are considered feature-complete by the authors and chairs.
+
+### 6. Post-Quantum EDHOC (Individual Drafts)
+**Presentations:**
+*   [09-10-Pocero-Updates on KEM-based Authentication methods for EDHOC](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-updates-on-kem-based-authentication-methods-for-edhoc-00) - **Lydia Pocero**
+*   [11-Papon-Post-Quantum EDHOC - Initiator and Responder using signature and/or KEM](https://datatracker.ietf.org/meeting/125/materials/slides-125-lake-post-quantum-edhoc-initiator-and-responder-using-signature-andor-kem-00) - **Clément Papon**
+
+*   **Approach:** Proposals for new EDHOC methods (4, 5, and 6) using KEMs for authentication to reduce the overhead of PQ signatures (e.g., Dilithium/ML-DSA).
+*   **KEM Security:** Discussion on the need for CCA2-secure KEMs and protecting against re-encapsulation attacks.
+*   **Analysis:** Preliminary Tamarin results show session key secrecy and agreement hold for these methods.
+
+## Decisions and Action Items
+
+| Action Item | Responsible | Status |
+| :--- | :--- | :--- |
+| Launch WGLC for `draft-ietf-lake-edhoc-grease` | Chairs | Pending |
+| Launch WGLC for `draft-ietf-lake-edhoc-impl-cons` | Chairs | Sequential |
+| Launch WGLC for `draft-ietf-lake-app-profiles` | Chairs | Sequential |
+| Share formal models/attack traces for `draft-ietf-lake-ra` | Osama Sardar | Open |
+| Discuss ELA flow (M1/2 vs M3/4) off-list to resolve CoJP concerns | Giovanna Fedrecheski, Christian Amsüss | Open |
+| Form a Design Team for Post-Quantum EDHOC | Chairs | **New** |
+
+## Next Steps
+
+1.  **WGLC Pipeline:** The chairs will launch WGLCs sequentially for GREASE, Implementation Considerations, and Application Profiles to avoid reviewer fatigue.
+2.  **Attestation Binding:** Authors of `draft-ietf-lake-ra` will finalize the inclusion of the attestation binder.
+3.  **PQC Interim:** An interim meeting will be scheduled for May 2025 to focus specifically on KEM-based authentication and PQC-EDHOC methods.
+4.  **PSK Updates:** Authors of `draft-ietf-lake-edhoc-psk` will clarify `ID_CRED_PSK` binding requirements.

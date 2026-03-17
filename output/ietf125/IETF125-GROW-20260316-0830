@@ -1,0 +1,91 @@
+# [GROW](../wg/grow.html)
+
+## Summary
+The GROW working group met at IETF 125 to discuss various enhancements to the BGP Monitoring Protocol (BMP), RPKI monitoring requirements, and operational issues surrounding RPKI Route Origin Validation (ROV). Key themes included the transition toward TLV-based BMP headers, the integration of BMP with YANG-based network telemetry, and mechanisms for more granular statistics and event logging.
+
+## Key Discussion Points
+
+### 1. BMP YANG Model for Network Telemetry Messages
+**Presenter:** Thomas Graf
+**Slides:** [BMP YANG Model for Network Telemetry Messages](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-bmp-yang-model-for-network-telemetry-messages-00)
+**Draft:** `draft-ietf-grow-bmp-yang`
+
+*   **Content:** Thomas presented a framework to integrate BMP data into message brokers (like Apache Kafka or Pulsar) using YANG schemas. The goal is to allow network engineers to query routing data using SQL-like interfaces rather than CLI `show` commands.
+*   **Discussion:** 
+    *   **Prasad Miriyala** asked if translation happens on the router or the collector. Thomas confirmed it happens at the collector.
+    *   Thomas noted that while BMP-to-JSON translation is common, using YANG preserves semantic information defined by the IDR working group.
+*   **Questions for the WG:** Should this work live in GROW or NMOP? The authors are seeking feedback on the unified schema approach for BMP and IPFIX.
+
+### 2. Requirements for Monitoring RPKI-Related Processes
+**Presenter:** Shu Huo
+**Slides:** [Requirements for Monitoring RPKI-Related Processes on Routers Using BMP](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-requirements-for-monitoring-rpki-related-processes-on-routers-using-bmp-00)
+
+*   **Content:** An update on monitoring RPKI activities on routers across four stages: data acquisition, validation rules, validation state, and routing impact. 
+*   **Updates:** The requirements now include multiple RPKI data sources (RTR, BGP, static), "Route Features" to describe large-scale rule sets efficiently, and a dedicated RPKI impact message.
+*   **Discussion:** The draft addresses comments regarding scope creep (RTR vs. BMP) by focusing on the effect of the data on routing decisions rather than the RTR protocol itself.
+
+### 3. BMP v4: TLV Support
+**Presenter:** Paolo Lucente
+**Slides:** [BMP v4: TLV Support](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-bmp-v4-tlv-support-00)
+**Draft:** `draft-ietf-grow-bmp-tlv`
+
+*   **Content:** The draft now incorporates the "SNTS" (Sequence Number/Timestamp) functionality. Timestamps are now effectively mandatory, and extended flags have been added.
+*   **Discussion:** 
+    *   The WG is discussing whether TLVs should be ordered by code point. Paolo (as a consumer) expressed that ordering is irrelevant for processing, but some exporters prefer it. 
+    *   **Job Snijders** questioned the computational cost of ordering versus the future utility of ordered data.
+
+### 4. BMP Route Event Logging (REL)
+**Presenter:** Paolo Lucente
+**Slides:** [BMP Route Event Logging](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-bmp-route-event-logging-00)
+**Draft:** `draft-ietf-grow-bmp-rel`
+
+*   **Content:** This draft introduces event-driven messages for BMP (e.g., alerts or health events) to avoid the need for full RIB differential analysis.
+*   **Discussion:** **Prasad Miriyala** suggested merging this with generic event notification work to cover non-routing events like neighbor state changes.
+
+### 5. Log More Routing Events in BMP
+**Presenter:** Nan Geng
+**Slides:** [Log More Routing Events in the BGP Monitoring Protocol](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-log-more-routing-events-in-the-bgp-monitoring-protocol-00)
+
+*   **Content:** Proposed new code points for the REL log action to support BGP FlowSpec (redirection/validation failures) and BGP SR Policy (invalid candidate paths).
+*   **Discussion:** **Jeff Haas** cautioned against the use of free-form UTF-8 text strings in protocol elements due to parsing challenges, recommending structured data instead. **Prasad Miriyala** warned about "chatty" events that could overwhelm the protocol if stability issues occur.
+
+### 6. BMP Enhancements for RIB View Synchronization
+**Presenter:** Nan Geng
+**Slides:** [BGP Monitoring Protocol (BMP) Enhancements for RIB View Synchronization and Monitoring Options Notification](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-bgp-monitoring-protocol-bmp-enhancements-for-rib-view-synchronization-and-monitoring-options-notification-00)
+
+*   **Content:** Introduces a "Route Refresh" message for BMP to synchronize RIB views without session disruption and a "Monitoring Options" message to notify collectors of changes in reporting (e.g., enabling/disabling Adj-RIB-In).
+*   **Discussion:** **Prasad Miriyala** noted similar previous work by Luuk Hendriks and suggested the authors coordinate.
+
+### 7. Extension for BMP Peer Header
+**Presenter:** Changwang Lin
+**Slides:** [Extension for BMP Peer Header](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-extension-for-bmp-peer-header-00)
+
+*   **Content:** Addresses the issue of parallel EBGP sessions using IPv6 link-local addresses, which currently cannot be distinguished in BMP. The proposal adds an interface index to the peer header.
+*   **Discussion:** **Jeff Haas** suggested that extending the peer address field (e.g., to 20 octets) might be a cleaner way to include the interface index, similar to SNMP.
+
+### 8. BMP Statistics TLVs (Informational, Policy-based, and EVPN)
+**Presenter:** Mukul Srivastava
+**Slides:** [BMP Statistics Information TLV Draft](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-bmp-statistics-information-tlv-draft-00), [Route Change Statistics Based on Policy](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-route-change-statistics-based-on-policy-00), [EVPN specific BMP RIB statistics](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-evpn-specific-bmp-rib-statistics-00)
+
+*   **Informational TLV:** Proposed adding mean, median, min, and max values to statistics reports to capture network "churn" that occurs between periodic snapshot intervals.
+*   **Policy-based Statistics:** Proposed tracking which BGP attributes are modified by policies. **Sue Hares** requested clarification on what constitutes a "modification" (e.g., in-memory vs. on-the-wire).
+*   **EVPN Statistics:** Updated to include per-EVI (EVPN Instance) route statistics, aligning with the EVPN YANG model.
+
+### 9. Operational Issues: RPKI ROV "Bad Data"
+**Presenter:** Sue Hares / Job Snijders
+**Slides:** [Open Microphone segment: Operational issues - RPKI ROV Bad data from Origin](https://datatracker.ietf.org/meeting/125/materials/slides-125-grow-operational-issues-rpki-rov-bad-data-from-origin-00)
+
+*   **Content:** Discussion on "bad" (technically valid but unintended) RPKI data.
+*   **Discussion:** 
+    *   **Job Snijders** clarified that "bad data" is often just "valid data with incorrect intent" (e.g., a typo in a ROA). 
+    *   Job noted that RPKI ROA propagation typically takes about an hour. 
+    *   The high number of "Invalid" routes seen in some monitors is often statistical noise caused by unfiltered route collector views or unused IP space.
+    *   Automation via IPAM (IP Address Management) systems is the recommended way to prevent misconfiguration.
+
+## Decisions and Action Items
+*   **`draft-ietf-grow-bmp-tlv`**: The SNTS (Sequence Numbers and Timestamps) draft has been merged into this document.
+*   **Adoption Requests**: Mukul Srivastava requested adoption for the Statistics Information TLV and Policy-based Statistics drafts; chairs will consider this for the mailing list.
+
+## Next Steps
+*   Authors of various BMP enhancement drafts (Route Refresh, Peer Header, REL) were encouraged to coordinate where use cases overlap (e.g., `draft-ietf-grow-bmp-loc-peer`).
+*   The working group will continue the discussion on TLV ordering and BMP header versioning on the mailing list.

@@ -1,0 +1,49 @@
+# [RPP](../wg/rpp.html)
+
+## Summary
+
+The RPP working group met at IETF 125 to discuss the progress of the RESTful Provisioning Protocol. The chairs noted that consensus has been reached on `draft-ietf-rpp-requirements`. The primary focus of the session was on updating the core architecture, data object models, and the JSON mapping specification. Key discussions centered on service discovery, security practices regarding authentication credentials, and the potential adoption of new HTTP methods like `QUERY`.
+
+## Key Discussion Points
+
+### [01 - Chair slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-rpp-01-chair-slides-01)
+* **Gavin Brown** opened the session, noting the consensus on `draft-ietf-rpp-requirements`.
+* The group is now shifting focus to `draft-ietf-rpp-architecture`, core extensions, and domain name provisioning.
+* There is a pending milestone regarding the mapping between RPP and EPP; the chairs requested feedback on whether a dedicated document is needed or if this is covered within existing drafts.
+
+### [IETF 125 RPP Architecture Update](https://datatracker.ietf.org/meeting/125/materials/slides-125-rpp-ietf-125-rpp-architecture-update-00)
+* **Pavel Kowalik** presented updates to `draft-ietf-rpp-architecture` (version 01/02).
+* **Message Validation:** The default was changed from lenient to strict handling. **James Gould** queried the utility of lenient validation; the editors will take the discussion of whether to remove the optionality entirely to the mailing list.
+* **Service Discovery:** Discussion on how clients should fetch discovery documents (static vs. dynamic). Options include mutual signaling of versions or standard HTTP caching. **James Gould** expressed skepticism regarding caching in provisioning protocols, noting that discovery documents are similar to RDAP help resources.
+* **Security & Auth:** Discussion on carrying over RFC 8807 (Login Security) functionality. Since RPP is sessionless, the "login" concept is replaced by per-request authentication or delegated OIDC/OAuth.
+* **HTTP Methods:** **James Gould** suggested leveraging the ongoing work in HTTPbis regarding the `QUERY` method to support complex message bodies in read-only requests (e.g., extensibility checks), rather than overloading `GET`. **Pavel Kowalik** and **Maarten Wullink** noted that implementation support for `QUERY` in common libraries is currently limited.
+
+### [IETF 125 Kowalik RPP Data Objects](https://datatracker.ietf.org/meeting/125/materials/slides-125-rpp-ietf-125-kowalik-rpp-data-objects-00)
+* **Pavel Kowalik** detailed the abstract data model, integrating DNS models and Redemption Grace Period (RGP) processes.
+* **DNSSEC Urgent Flag:** The group discussed whether to keep the "urgent" flag from EPP. **James Gould** recommended keeping it optional for transition parity, while others suggested it may be obsolete given modern zone publishing cycles.
+* **Authorization Information:** Strong consensus emerged that sending `authInfo` (passwords/tokens) in cleartext within every `info` response (as EPP does) is a poor security practice. **Gavin Brown** and **Maarten Wullink** supported moving this to a dedicated sub-resource or requiring specific flags to retrieve it.
+* **Contact Data:** Discussion on the legacy EPP "internationalized" vs. "localized" address split. **Stefan Santesson** and **Gavin Brown** noted the continued need to support both Latin and local scripts for postal delivery, though the terminology and strict ASCII requirements for the "international" set may be updated.
+
+### [RPP - Core Updates](https://datatracker.ietf.org/meeting/125/materials/slides-125-rpp-rpp-core-updates-00)
+* **Maarten Wullink** discussed bootstrapping and discovery.
+* **Bootstrapping:** Options include IANA registries for RPP servers or DNS SRV records. **Stefan Santesson** and **James Gould** argued that bootstrapping might be unnecessary given the existing contractual/business relationships between registrars and registries.
+* **Profiles:** Introduced to allow clients to signal a set of supported features/versions in a single string (e.g., via a `RPP-Profile` header or media type parameter). **Stefan Santesson** preferred a dedicated HTTP header over media type parameters.
+
+### [RPP - JSON Update](https://datatracker.ietf.org/meeting/125/materials/slides-125-rpp-rpp-json-update-00)
+* **Maarten Wullink** presented the mapping of data objects to JSON Schema.
+* **Validation:** JSON Schema is used to enforce strict validation, including cardinality and required properties.
+* **Object Ordering:** **Werner Wilhelm** raised concerns about the lack of mandated property ordering in JSON, referencing painful experiences in RDAP. He suggested recommending an order to aid human readability and debugging. **Andy Newton** countered that forcing order at the protocol level might limit use cases and that ordering should be handled by profiles if necessary.
+
+## Decisions and Action Items
+
+* **Decision:** The working group will park the work on delegated end-user authentication for transfers unless a contributor steps forward to lead the proposal.
+* **Decision:** The default message validation in the architecture draft is now "Strict."
+* **Action:** Editors to move the `authInfo` (authorization information) out of the general object info response into a more secure mechanism (sub-resource or gated attribute).
+* **Action:** The chairs will request an early review from the HTTP Directorate regarding the use of status codes and the potential adoption of the `QUERY` method.
+
+## Next Steps
+
+* Sync the RPP Core and JSON drafts with the updated Data Objects model.
+* Call for adoption of the Data Objects and JSON mapping documents once synchronization is complete.
+* Review the necessity of the bootstrapping mechanism based on the feedback that manual configuration is standard in the industry.
+* Continue the discussion on the mailing list regarding JSON object element ordering and the use of the `QUERY` method.
