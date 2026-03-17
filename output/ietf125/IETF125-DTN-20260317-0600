@@ -1,0 +1,77 @@
+# [DTN](../wg/dtn.html)
+
+## Summary
+The DTN Working Group met for its second session at IETF 125 to discuss progress on various convergence layers, security extensions, and architectural updates. Key topics included the advancement of CoAP over BP, the integration of manifest blocks in the BPSEC COSE context, and several new proposals for network OAM (Echo, ARP) and inter-domain peering. The session concluded with a discussion on the necessity of updating the DTN Architecture (RFC 4838).
+
+## Key Discussion Points
+
+### 1. CoAP over BP
+**Presenter:** Carlos Gomez
+**Slides:** [Openflow over BP](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-sessb-openflow-over-bp-00) (Note: Slide deck contains CoAP content)
+
+*   **Updates:** Carlos Gomez presented version -02 of the CoAP over BP draft. Key updates include refined CoAP block-wise transfer parameters, specifically the `max-payloads` default value, to account for deep space vs. terrestrial characteristics. 
+*   **Security:** Added section 11.3 on security requirements, specifying that responses should have at least the same protection level as requests. Discussions are ongoing regarding the use of the new padding option from the CORE working group to mitigate traffic analysis.
+*   **Discussion:** Ed Birrane inquired about reference implementations. Carlos noted an implementation exists at UPC (Universitat Politècnica de Catalunya) and will share the link.
+
+### 2. BPSEC COSE Context (S-BAM)
+**Presenter:** Behrouz Z. Alizadeh (Baguja)
+**Draft:** [draft-ietf-dtn-bpsec-cose](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-sessb-sipos-all-topics-00)
+**Slides:** [Sipos all-topics](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-sessb-sipos-all-topics-00)
+
+*   **Design:** S-BAM (Security Block Authentication Mechanism) provides end-to-end security guarantees even when intermediaries discard security blocks. It introduces "auditing" (source-added records) and "reporting" (intermediary-added records).
+*   **Integration:** The draft now incorporates the "Manifest Block" design. It uses an "audit pair" (Manifest + BIB) at the source and a "report pair" at intermediaries.
+*   **Discussion:** 
+    *   **Key Identifiers:** A question was raised about requiring key identifiers as byte strings in the security context to avoid collisions. Rick Taylor suggested that while `9173` might be weak here, the COSE context handles this better. Brian Sipos noted that key IDs here serve correlation rather than just lookup.
+    *   **Architecture:** Brian Sipos and Ed Birrane supported the use of manifest blocks as it reuses standard BPSEC mechanisms.
+
+### 3. BP Echo Service
+**Presenter:** Rick Taylor
+**Slides:** [Sipos all-topics](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-sessb-sipos-all-topics-00) (Note: Slide deck contains Echo content)
+
+*   **Concept:** A simple reflector service using a well-known service number (proposed IPN service number 128) to measure RTT and verify connectivity.
+*   **Mechanism:** The service swaps source and destination EIDs but preserves the creation timestamp and lifetime to allow the sender to correlate the reflected bundle.
+*   **Discussion:** 
+    *   Scott Burley raised concerns about how manipulating the primary block (swapping EIDs) affects [draft-ietf-dtn-bpsec-cose](https://datatracker.ietf.org/meeting/125/materials/draft-ietf-dtn-bpsec-cose) (BPSec) integrity checks (BIBs). 
+    *   Felix Walter suggested that a simple Application Data Unit (ADU) reflection might be cleaner than full bundle reflection to avoid violating `9171` rules regarding creation timestamps.
+
+### 4. BP ARP (Address Resolution Protocol)
+**Presenter:** Rick Taylor
+**Slides:** [Sipos all-topics](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-sessb-sipos-all-topics-00) (Note: Slide deck contains ARP content)
+
+*   **Problem:** Some Convergence Layers (CLAs) like LTP do not provide the Node ID of the remote peer in-band.
+*   **Proposal:** BP ARP allows a node to probe a CLA adjacency to learn the remote Node ID. It involves a slight loosening of the "local node" (IPN !.0) rules to allow one-hop discovery bundles.
+*   **Discussion:** Felix Walter recommended using an AnyCast group ID for "all nodes" instead of overloading the "local node" semantics. Rick Taylor agreed this was a more robust approach.
+
+### 5. DTN Peering Protocol (DPP)
+**Presenter:** Rick Taylor
+**Slides:** [Sipos all-topics](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-sessb-sipos-all-topics-00) (Note: Slide deck contains DPP content)
+
+*   **Overview:** A BGP-like protocol for DTN to manage routing between different administrative domains (e.g., NASA and ESA).
+*   **Design:** Uses gRPC for the control plane (terrestrial) and DNS-based identity (SVCB records) to assert ownership of DTN prefixes. It uses distance-vector logic for loop avoidance and supports [draft-ietf-dtn-eid-pattern](https://datatracker.ietf.org/meeting/125/materials/draft-ietf-dtn-eid-pattern) for route matching.
+
+### 6. BTPU Updates and Convergence Layers
+**Presenter:** Eric Travis
+**Drafts:** [draft-ietf-dtn-btpu](https://datatracker.ietf.org/meeting/125/materials/draft-ietf-dtn-btpu), [draft-ietf-dtn-btpu-fec](https://datatracker.ietf.org/meeting/125/materials/draft-ietf-dtn-btpu-fec)
+**Slides:** [BTPU Updates](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-sessb-btpu-updates-00) and [Reliability Considerations for DTN Update](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-reliability-considerations-for-dtn-update-00)
+
+*   **Ethernet CL:** Discussed transmitting bundles directly over Ethernet for links without IP configurations. Eric Travis suggested this is ready for adoption/last call.
+*   **QUIC CL:** Proposed a mapping of bundle transfers to QUIC streams (one bundle per stream).
+*   **Discussion:** Seyed Mahdi Jameii (Season) raised concerns regarding the synchronous nature of TLS handshakes in QUIC when applied to deep space links with high latency. Eric noted the initial focus is terrestrial but timer adjustments (via TipTop) could be explored.
+
+### 7. RFC 4838bis: DTN Architecture Update
+**Presenter:** Scott Burley
+**Slides:** [4838bis Discussion](https://datatracker.ietf.org/meeting/125/materials/slides-125-dtn-4838bis-discussion-00)
+
+*   **Motivation:** RFC 4838 is 19 years old and out of alignment with modern protocol specifications like BPv7. 
+*   **Goal:** Create an updated architectural overview to provide accurate information for the increasing number of spaceflight operations adopting DTN.
+*   **Discussion:** The working group generally supports the "bis" effort. Scott outlined concepts to retain (store-and-forward), remove (obsolete naming constraints), and add (modern security and management models).
+
+## Decisions and Action Items
+*   **BP Echo:** Rick Taylor to simplify the draft to focus on ADU reflection versus full bundle reflection based on feedback from Felix Walter and Scott Burley.
+*   **BP ARP:** Rick Taylor to pivot the addressing mechanism from "local node" to a well-known AnyCast group ID.
+*   **CoAP over BP:** Carlos Gomez to provide the link to the UPC implementation on the mailing list.
+
+## Next Steps
+*   **Peering Protocol:** Working group to review the DPP draft on the datatracker.
+*   **4838bis:** Discussion to continue on the mailing list to identify the core set of architectural principles to be updated.
+*   **QUIC CL:** Address the handshake latency concerns raised by Seyed Mahdi Jameii on the mailing list.
