@@ -1,0 +1,89 @@
+# [MOQ](../wg/moq.html)
+
+**IETF 125 - Session 1**
+**Date:** Monday, March 24, 2025 (IETF 125 Week)
+**Chairs:** Magnus Westerlund, Martin Duke
+
+## Summary
+The Media over QUIC (MOQ) Working Group met for its first session at IETF 125. The session focused on significant updates to the core transport protocol (MoQT), the simplification of the URI scheme, end-to-end security for objects, and authorization frameworks (Privacy Pass and DPoP). A major portion of the discussion centered on Dynamic Track Switching (server-side ABR) and how to manage the growing number of technical issues and PRs across the various working group documents.
+
+## Key Discussion Points
+
+### 1. MOQT Update
+**Presenter:** Alan Frindell
+**Slides:** [MOQT Update](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-moqt-update-02)
+
+Alan Frindell summarized the significant changes in [draft-ietf-moq-transport](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-moqt-update-02). 
+*   **Wire Image Change:** The control plane has moved from a single bi-directional stream to a pair of unidirectional streams for setup and `GOAWAY`. Other requests now use their own bi-directional streams.
+*   **Terminology:** "Setup parameters" are now "setup options." "Object extensions" are now "properties."
+*   **Properties vs. Parameters:** Track properties are end-to-end, whereas message parameters are hop-by-hop.
+*   **Delta Encoding:** Most fields (ranges, options, IDs) are now delta-encoded to reduce overhead.
+*   **Issue Management:** To manage the high volume of comments on complex features (Filters, Switch, Rewind), the editors are tracking technical threads in the authors' specific repositories rather than the main WG repo to avoid GitHub noise, though this raised IPR concerns.
+
+**Discussion:**
+*   Cullen Jennings expressed concern that moving discussions to private or author-owned repositories might bypass IETF IPR archiving and transparency requirements.
+
+### 2. moqt:// URI Scheme
+**Presenter:** Alan Frindell
+**Slides:** [moqt://](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-moqt-01)
+
+Alan proposed simplifying the `moqt://` URI scheme by removing the transport-specific suffixes (`+q` for native QUIC and `+wt` for WebTransport).
+*   The consensus was that transport selection should be handled via ALPN and protocol negotiation rather than the URI string itself.
+*   **Fragments:** A discussion ensued regarding the use of fragments in URIs for application-level instructions (e.g., track selection). Ted Hardie cautioned that fragments are traditionally defined by MIME types, which MoQT does not currently utilize in its scheme. Will Law argued that fragments are useful for passing information to the client application that should not be visible to the server/relay.
+
+### 3. End-to-End Secure Objects
+**Presenter:** Cullen Jennings
+**Slides:** [Secure Objects](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-secure-objects-00)
+**Draft:** [draft-ietf-moq-secure-objects](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-secure-objects-00)
+
+Cullen detailed the Additional Authenticated Data (AAD) construction to prevent cut-and-paste attacks.
+*   **Track Properties:** There is an open question on how to handle encryption and integrity for track properties. 
+*   **Options discussed:** 
+    1. Do nothing (no end-to-end protection for track properties).
+    2. Hash the properties into the key (suggested by Richard Barnes).
+    3. Include properties as an encrypted blob in the first object of a group.
+    4. Design a separate track-level encryption scheme.
+*   **Varint Encoding:** Discussion on whether to enforce minimal varint encoding or allow fixed-length (64-bit) for AAD consistency.
+
+### 4. Privacy Pass Authentication for MoQ
+**Presenter:** Tibeau
+**Slides:** [Privacy-Pass-MOQT](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-privacy-pass-moqt-00)
+**Draft:** [draft-ietf-moq-privacy-pass-auth](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-privacy-pass-auth-00)
+
+The presentation covered the use of Privacy Pass to provide unlinkable authorization tokens.
+*   **Reverse Flow:** A mechanism where a relay can reissue tokens to a client to maintain session longevity without repeatedly contacting an external issuer.
+*   **Relay Chaining:** It was noted that tokens are hop-by-hop. In a multi-relay environment, each hop would likely require its own token negotiation.
+
+### 5. Application-Agnostic DPoP Proof for C4M
+**Presenter:** Suhas Nandakumar
+**Slides:** [Application-Agnostic DPoP Proof for C4M](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-application-agnostic-dpop-proof-for-c4m-01)
+**Draft:** [draft-ietf-moq-c4m](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-c4m-01) (Context)
+
+Suhas presented a framework for sender-constrained tokens using DPoP (Demonstrating Proof-of-Possession) to prevent bearer token theft by malicious relays.
+*   The work bridges the gap between the HTTP-centric DPoP (RFC 9449) and MoQT verbs.
+*   The group needs to decide if this work stays in MOQ or moves to the OAuth Working Group.
+
+### 6. Dynamic Track Switching (DTS)
+**Presenter:** Will Law
+**Slides:** [Dynamic Track Switching for relays - v2](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-dynamic-track-switching-for-relays-v2-00)
+
+Will presented a design for server-side ABR (Adaptive Bit Rate) where the relay selects the appropriate track based on observed throughput.
+*   **Simplified Parameters:** Discussion favored removing the "waiting" timer to simplify the server-side implementation.
+*   **Activation:** Proposed replacing the separate `DTS Activation` parameter with a flag within the `Switching Set Assignment`.
+*   **Publisher vs. Client Control:** While the current draft focuses on client-driven thresholds, a publisher-defined property was proposed for simple "thin" clients.
+
+### 7. Other Topics
+*   **MSF & CMSF:** Updates were briefly provided on [draft-ietf-moq-msf](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-msf-cmsf-update-shenzhen-v1-00) and [draft-ietf-moq-cmsf](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-msf-cmsf-update-shenzhen-v1-00).
+*   **LOC:** Updates on [draft-ietf-moq-loc](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-loc-00).
+*   **QMUX:** A brief discussion occurred regarding MoQT over [QMUX](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-moqt-over-qmux-01), with more technical details deferred to the QUIC WG session.
+
+## Decisions and Action Items
+*   **Decision:** Remove the `+q` and `+wt` suffixes from the `moqt://` URI scheme. The generic scheme will rely on ALPN for transport negotiation.
+*   **Action Item (Chairs):** Resolve the IPR and transparency issues regarding tracking technical discussions/issues in external author repositories.
+*   **Action Item (Cullen Jennings):** Expand the `secure-objects` issue tracker to include three proposed solutions for varint encoding (minimal, fixed, or wire-original).
+*   **Action Item (Suhas/Chairs):** Coordinate with the OAuth WG chairs and ADs to determine the appropriate home for the DPoP/Sender-constrained token work.
+
+## Next Steps
+*   **Interim Meetings:** Virtual interims are scheduled for Mondays starting in April, with a hybrid interim in London (Cloudflare offices) in June.
+*   **Draft 18:** Targeted for publication in approximately eight weeks, serving as the next interoperability target.
+*   **DTS Development:** Will Law to continue refining the Dynamic Track Switching draft, incorporating feedback to remove the timer and simplify activation.
