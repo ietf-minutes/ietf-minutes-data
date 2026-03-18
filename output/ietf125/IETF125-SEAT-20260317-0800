@@ -1,55 +1,47 @@
 # [SEAT](../wg/seat.html)
 
-**IETF 125 - SEAT Working Group Meeting Minutes**
-
 ## Summary
-The SEAT working group met to discuss the progress of use cases, security analysis of different attestation timings, and various protocol proposals. A primary focus of the meeting was the security of intra-handshake attestation versus post-handshake attestation and ensuring that any proposed extensions remain within the scope of the group's charter—specifically avoiding modifications to the TLS state machine or key schedule. The chairs emphasized that the adoption of a use cases document is the immediate priority to provide a foundation for subsequent protocol work.
+
+The SEAT (Secure Extension for Attested TLS) Working Group met at IETF 125 to discuss progress on use cases, security analyses of different attestation timing models, and several protocol proposals. A significant portion of the meeting focused on the security properties of intra-handshake attestation versus post-handshake attestation, specifically regarding relay and diversion attacks. The chairs emphasized that the use cases document should form the foundation for future protocol work. Formal verification (using Proverif) was a recurring theme in evaluating the security of the proposed binders.
 
 ## Key Discussion Points
 
-### 1. Chair's Introduction and Admin
-*   **Chairs:** Yaroslav Rosomakho, Nancy Cam-Winget.
-*   **Slides:** [Chairs slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-chairs-slides-00)
-*   The chairs noted a strict enforcement of slide submission deadlines for future meetings.
-*   **Use Cases:** A poll was taken regarding the readiness of the use cases draft (`draft-ietf-seat-use-cases`) for adoption. The sense of the room was generally positive (7 Yes, 0 No, 13 No Opinion), and an adoption call will be issued on the mailing list.
-*   **Charter Compliance:** The chairs reminded the group that per the charter, SEAT will not modify the TLS protocol messages or the key schedule.
+### Working Group Administration and Use Cases
+*   **Hannes Tschofenig** (Chair) reminded participants of the "Note Well" and established the priority of the use cases draft.
+*   A poll was taken regarding the readiness of the use cases draft (currently `draft-ietf-seat-use-cases`) for adoption. The result showed 7 in favor, 0 against, and 13 with no opinion. An official adoption call will be moved to the mailing list.
 
-### 2. Security Analysis: Pre, Intra, and Post-Handshake Attestation
-*   **Presenter:** Usama Mansour
-*   **Slides:** [security analysis](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-security-analysis-00)
-*   **Discussion:** Usama presented a taxonomy of attestation timings. Formal analysis using Proverif identified that intra-handshake attestation is vulnerable to relay and diversion attacks if the evidence is bound to an unauthenticated peer (i.e., before the TLS server authentication is complete).
-*   **Technical Detail:** The analysis suggested that binding to the Handshake Traffic Secret (HTS) is insufficient; binding must ideally reach the Application Traffic Secret level.
-*   **Feedback:** Thiru Senthilkumar questioned the threat model regarding private key leakage. Usama clarified that the model considers vulnerabilities in the code within a TEE (e.g., Heartbleed-style leaks) rather than a total compromise of the TEE itself.
+### Security Analysis of Attestation Timing
+**Presentation:** [security analysis](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-security-analysis-00)
+*   **Osama Abbas** presented a security comparison between pre-, intra-, and post-handshake attestation. 
+*   The analysis focused on "intra-handshake" attestation, deriving security goals from the "Agentic AI" use case. Formal analysis identified relay and diversion attacks on several existing intra-handshake implementations.
+*   The core technical issue identified was binding evidence to an unauthenticated peer, as the server is not yet authenticated when the evidence is generated in many intra-handshake schemes.
+*   **Tiru Reddy** questioned the threat model regarding private key leakage, arguing that if long-term keys are stolen, most protections fail. **Osama Abbas** clarified that the model distinguishes between ephemeral keys in a TEE and long-term cloud provider keys.
 
-### 3. FACTS: Factor-based Attestation and Credentials Transport Scheme
-*   **Presenter:** Nathaniel McCallum
-*   **Slides:** [FACTS SEAT IETF 125 Slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-facts-seat-ietf-125-slides-00)
-*   **Draft:** `draft-mccallum-seat-facts`
-*   **Discussion:** This is a hybrid intra-handshake proposal using Key Encapsulation Mechanisms (KEM) to bind nonces to evidence. It aims for resilience even if two out of three keys (identity, attestation, or ephemeral) are compromised.
-*   **Validation:** Nathaniel used the formal models provided by Usama Mansour to verify the security properties. He noted that the binder proposed in the latest version of the early attestation draft (`draft-fossati-tls-attestation-03`) also appears to mitigate relay/diversion attacks.
+### Factor-based Attestation and Credentials Transport Scheme (FACTS)
+**Presentation:** [FACTS SEAT IETF 125 Slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-facts-seat-ietf-125-slides-00)
+*   **Nathaniel** introduced `draft-l-seat-facts`, a hybrid intra-handshake protocol designed to avoid modifying the TLS state machine or key schedule.
+*   FACTS uses Key Encapsulation Mechanisms (KEM) to encapsulate nonces, providing a third layer of protection that allows security to hold even if two out of three keys (identity, attestation, or ephemeral) are compromised.
+*   **Nathaniel** performed formal modeling using Proverif, finding that the binders in both FACTS and the latest version of Early Attestation (`draft-sheffer-seat-early-attestation-03`) appear to mitigate relay and diversion attacks.
 
-### 4. Remote Attestation with Exported Authenticators (Expat)
-*   **Presenters:** Thiru Senthilkumar, Usama Mansour
-*   **Slides:** [seat expat](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-seat-expat-00)
-*   **Draft:** `draft-ietf-seat-exported-authenticators`
-*   **Discussion:** This draft uses Exported Authenticators (RFC 9161) for post-handshake attestation. It is designed to be a "clean" solution that does not touch the TLS handshake.
-*   **Technical Critique:** Jonathan Hoyland pointed out that if multiple exported authenticators are used on the same channel, they are bound to the session but not necessarily to each other, which may affect specific re-attestation scenarios. Usama responded that continuous measurements in the TPM/TEE provide the necessary state binding.
-*   **Request:** The authors requested a working group adoption call.
+### Remote Attestation with Exported Authenticators (X-PAT)
+**Presentation:** [seat expat](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-seat-expat-00)
+*   **Tiru Reddy** and **Osama Abbas** presented `draft-ietf-seat-remote-attestation-exported-authenticators`.
+*   This is a post-handshake mechanism extending RFC 9261 (Exported Authenticators). It requires no changes to the TLS handshake and supports both background check and passport RATS models.
+*   The draft allows for "re-attestation" during long-lived sessions without renegotiating the entire TLS connection.
+*   **Jonathan Hammell** raised a technical question regarding whether the certificate request context provides bidirectional freshness/nonces. **Osama Abbas** clarified that in mutual attestation, both sides would exchange authenticator requests containing respective nonces.
 
-### 5. Early Attestation
-*   **Presenter:** Yaron Sheffer
-*   **Slides:** [Early Attestation](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-early-attestation-01)
-*   **Draft:** `draft-fossati-tls-attestation`
-*   **Discussion:** The draft has been updated to version -03 to align with the SEAT charter. It now uses a TLS extension within the Certificate message rather than a new handshake message. The binder is cryptographically decoupled from the TLS key schedule.
-*   **Charter Debate:** Usama Mansour raised concerns that the use of HKDF functions for nonce derivation might still be interpreted as a key schedule modification. Yaron Sheffer and Nathaniel McCallum argued that HKDF is a standard primitive and its use here does not alter the core TLS key tree.
-*   **Architecture:** Yaron highlighted the "adaptation layer" between the TLS stack and the TEE, noting that this layer itself should ideally be measured.
+### Early Attestation
+**Presentation:** [Early Attestation](https://datatracker.ietf.org/meeting/125/materials/slides-125-seat-early-attestation-01)
+*   **Yaron Sheffer** presented updates to `draft-sheffer-seat-early-attestation`.
+*   To comply with the WG charter, the authors replaced the custom "attestation message" with an extension to the TLS Certificate message and decoupled the cryptographic binder from the TLS key schedule.
+*   **Osama Abbas** challenged the claim of charter compliance, arguing that using KDFs to derive values still constitutes a modification or involvement with the key schedule. 
+*   **Nathaniel** suggested that changing the terminology (avoiding the word "secret") might resolve the charter concerns while maintaining the same security properties.
 
 ## Decisions and Action Items
-*   **Action:** Chairs to initiate a formal adoption call for `draft-ietf-seat-use-cases` on the mailing list.
-*   **Action:** Authors of `draft-fossati-tls-attestation` and `draft-ietf-seat-exported-authenticators` to continue refining the binders and addressing the formal analysis findings.
-*   **Decision:** The working group will prioritize the adoption of the use cases document before officially adopting specific protocol solutions.
+*   **Poll on Use Cases:** A sense of the room was taken regarding the adoption of `draft-ietf-seat-use-cases`. (7 Yes, 0 No).
+*   **Protocol Consideration:** The chairs noted that protocol adoption will follow the formal adoption of the use cases document.
 
 ## Next Steps
-*   Further discussion on the mailing list regarding the interpretation of "modifying the key schedule" as it relates to the charter.
-*   Continued formal modeling of the proposed binders to ensure resistance to relay attacks.
-*   Participants are encouraged to read the latest revisions of `draft-fossati-tls-attestation` and the use cases draft.
+*   **Mailing List:** The chairs will initiate a formal adoption call for the use cases draft on the SEAT mailing list.
+*   **Charter Review:** The WG will continue to evaluate if intra-handshake proposals like `draft-sheffer-seat-early-attestation` and `draft-l-seat-facts` strictly adhere to the charter's prohibition on modifying the TLS key schedule.
+*   **Formal Verification:** **Osama Abbas** and **Nathaniel** will collaborate offline to review and align their Proverif models for the various binding mechanisms.

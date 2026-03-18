@@ -1,53 +1,50 @@
 # [WEBTRANS](../wg/webtrans.html)
 
 ## Summary
-The WEBTRANS working group met at IETF 125 to discuss the status of core protocol drafts and coordination with the W3C WebTransport working group. The primary focus was the announcement of Working Group Last Call (WGLC) for the three main documents: [draft-ietf-webtrans-overview](https://datatracker.ietf.org/doc/draft-ietf-webtrans-overview/), [draft-ietf-webtrans-http3](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http3/), and [draft-ietf-webtrans-http2](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http2/). Technical discussions centered on HTTP status code semantics for unsupported resources and updates on interoperability testing.
+The WEBTRANS working group met at IETF 125 to discuss the progress of the core protocol specifications and interop status. The W3C WebTransport API is nearing a candidate recommendation with a target release in late 2026 and has been selected for the "Interop 2026" focus area. On the IETF side, the working group has entered Working Group Last Call (WGLC) for its three main documents. Discussion focused on refining HTTP status code responses for unsupported WebTransport requests and coordinating with the HTTP Directorate.
 
 ## Key Discussion Points
 
 ### W3C WebTransport Update
-**Will Law** presented an update on the W3C WebTransport API (Slides: [IETF125 slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-webtrans-ietf125-slides-00), Slide 2).
-*   A new working draft was published on February 4, 2024. The group is targeting a release candidate by mid-2024 and finalization in 2026.
-*   Recent changes include integration with the Fetch API, which enables header support—a highly requested feature.
-*   WebTransport has been selected as an **Interop 2026** focus area by major browser vendors, which is expected to significantly improve cross-browser compatibility.
-*   The W3C spec is moving into the "wide review" phase.
+**Will Law** presented the [W3C WebTransport group update](https://datatracker.ietf.org/meeting/125/materials/slides-125-webtrans-ietf125-slides-00) (Slides 3-8).
+*   **Status:** A new working draft was published on February 4th. The charter is extended to June 30th, with a release target of August 2026.
+*   **Fetch Integration:** WebTransport now integrates at the highest level of Fetch, enabling header support in the constructor and inheritance of future Fetch improvements.
+*   **Stats & Security:** New statistics for bytes acknowledged were added. Content Security Policy (CSP) now includes `unsafe-webtransport-hashes`.
+*   **Interop:** WebTransport is now a focus area for "Interop 2026," ensuring deep cross-browser implementation commitment.
 
-### Protocol Drafts and WGLC
-**Eric Kinnear** provided updates on the IETF drafts (Slides: [IETF125 slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-webtrans-ietf125-slides-00), Slide 8).
+### IETF Draft Updates
+**Eric Kinnear** provided updates on the active IETF drafts (Slides 9-19).
 
-*   **[draft-ietf-webtrans-overview](https://datatracker.ietf.org/doc/draft-ietf-webtrans-overview/):** Editorial cleanup completed; no open technical issues.
+*   **[draft-ietf-webtrans-overview](https://datatracker.ietf.org/doc/draft-ietf-webtrans-overview/):** Editorial cleanup only. The document is in WGLC.
 *   **[draft-ietf-webtrans-http3](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http3/):**
-    *   Security considerations updated regarding server-initiated streams and resource limits.
-    *   `MAX_SESSIONS` has been removed as previously decided.
-    *   The `SETTINGS_WEBTRANSPORT_MAX_SESSIONS` is now server-only (except for draft version negotiation).
-    *   New error codes added: `WEBTRANSPORT_ALPN_ERROR` and `WEBTRANSPORT_REQUIREMENTS_NOT_MET`.
-    *   Guidance added on the capsule-based protocol, emphasizing that native H3 streams should be preferred.
+    *   Updated security considerations regarding server-initiated stream limits.
+    *   "Max sessions" was removed; WebTransport support is now indicated by the server via a setting (though clients still send it for draft version negotiation).
+    *   New error codes: `ALPN Error` (mismatched protocol) and `WebTransport Requirements Not Met` (missing mandatory features like datagrams).
+    *   Clarified that capsule-based protocols should be avoided over HTTP/3 in favor of native WebTransport streams.
 *   **[draft-ietf-webtrans-http2](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http2/):**
-    *   Security and flow control updates parallel to the H3 draft.
-    *   Alignment of error code sizes with H3.
-    *   Split settings for initial max stream data into local and remote variants to match QUIC semantics.
+    *   Parallel security and flow control updates to the H3 draft.
+    *   Split settings for initial max stream data into local and remote initiated bidirectional streams to align with QUIC.
+    *   Disallowed large error codes to maintain consistency with HTTP/3.
 
-### Discussion: HTTP Status Codes for Unsupported Resources
-A technical discussion occurred regarding the appropriate HTTP status code to return when a resource exists but does not support WebTransport.
-*   **Lucas Pardue** noted that 406 (Not Acceptable) is technically for media types and might be inappropriate.
-*   **Christian Huitema** raised privacy concerns and asked how to handle authenticated clients who are denied WebTransport access.
-*   **Mike Bishop** suggested 403 (Forbidden) is sufficient if the denial is based on identity, but noted 405 (Method Not Allowed) is technically incorrect as the method (CONNECT) is allowed, just not the protocol.
-*   **Ben Schwartz** (quoting Mark Nottingham) suggested using a generic 4xx code rather than over-specifying, as implementers should follow existing HTTP RFCs.
-*   **Ted Hardie** and **Colin Jones** argued that providing a unique signal to the client is necessary for interoperability and to prevent client confusion.
-*   **Lucas Pardue** suggested looking into "Problem Details" (RFC 9457) or specific header fields to clarify the error.
+### Technical Discussion: HTTP Status Codes
+The group discussed which status code to return when a resource exists but does not support WebTransport.
+*   **Lucas Pardue** questioned the current use of `406` (Not Acceptable), noting it traditionally refers to media types.
+*   **Mike Bishop** and **Eric Kinnear** discussed `405` (Method Not Allowed), but noted ambiguity regarding whether "Method" refers to `CONNECT` or the extended protocol.
+*   **Ben Schwartz** suggested following HTTP Directorate advice to use generic `4xx` categories rather than mandating specific codes.
+*   **Ted Hardie** expressed concern that without a specific code or header, clients cannot distinguish between a missing method and missing WebTransport support.
+*   **Lucas Pardue** suggested looking into "Problem Details" (RFC 9457) or a specific protocol pseudo-header extension to provide a unique signal to the client.
 
-### Interoperability Testing
-**Martin Seemann** presented updates on the WebTransport Interop Runner (Slides: [IETF125 slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-webtrans-ietf125-slides-00), Slide 23).
-*   The runner now includes four implementations: Chrome, Firefox, WebTransport Go, and one additional server.
-*   Current test cases cover the handshake, ALPN negotiation, uni/bidirectional streams, and datagrams.
-*   Future tests will include multiplexing, stream resets (including partially reliable resets), and connection close capsules.
+### Interoperability Status
+**Marten Seemann** updated the group on the [WebTransport Interop Runner](https://datatracker.ietf.org/meeting/125/materials/slides-125-webtrans-ietf125-slides-00) (Slide 20).
+*   Four implementations are currently participating: Chrome, Firefox, WebTransport-go, and a second server implementation.
+*   Current tests cover handshakes, ALPN negotiation, unidirectional/bidirectional streams, and datagrams.
+*   Future tests will include multiplexing and stream resets (including partially reliable resets).
 
 ## Decisions and Action Items
-*   **Working Group Last Call (WGLC):** WGLC is officially open for [draft-ietf-webtrans-overview](https://datatracker.ietf.org/doc/draft-ietf-webtrans-overview/), [draft-ietf-webtrans-http3](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http3/), and [draft-ietf-webtrans-http2](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http2/).
-*   **Action Item:** The chairs and editors will consult with the HTTP Directorate regarding the best practice for status codes when an extended CONNECT sub-protocol is unsupported.
-*   **Action Item:** Martin Seemann to share pointers/links for the Interop Runner Docker requirements to the mailing list to encourage more implementations.
+*   **Status Codes:** The editors will consult with the HTTP Directorate to determine the best approach for signaling unsupported WebTransport on an existing resource (e.g., status code vs. header field vs. problem types).
+*   **Draft Dependencies:** The chairs noted that `draft-ietf-webtrans-http3` has a dependency on the "Reliable Stream Resets" work in the QUIC WG. These will likely progress to the IESG together.
 
 ## Next Steps
-*   Participants are encouraged to conduct a full review of the documents during the WGLC period.
-*   The working group will monitor the progress of the "Reliable Resets" (QUIC) dependency, as it is required for the finalization of the H3 draft.
-*   The chairs will evaluate the results of the WGLC to determine if a second last call or immediate progression to the IESG is warranted.
+*   **Working Group Last Call (WGLC):** Participants are urged to review the full text of `draft-ietf-webtrans-overview`, `draft-ietf-webtrans-http3`, and `draft-ietf-webtrans-http2`.
+*   **Implementation:** Implementers are encouraged to join Marten Seemann’s interop runner to validate the latest draft changes, particularly regarding flow control and settings.
+*   **Publication:** Pending the resolution of the status code issue and completion of WGLC, the chairs will move the documents toward IESG submission.

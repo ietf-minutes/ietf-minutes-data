@@ -1,54 +1,67 @@
 # [MAPRG](../wg/maprg.html)
 
+**IETF 120 - Measurement and Analysis for Protocols (maprg) Session**
+**Date:** July 24, 2024
+**Location:** Vancouver, Canada
+**Chairs:** Dave Plonka, Mirja Kühlewind
+
 ## Summary
-The Measurement and Analysis for Protocols Research Group (MAPRG) session at IETF 125 featured a robust agenda focused on bridging academic research and IETF protocol engineering. The session included five invited presentations of papers recently published at the ACM Internet Measurement Conference (IMC) 2023/2024, alongside targeted talks on DNS vulnerabilities, IPv6 de-preference in VPNs, and NTP ecosystem security. Key themes included the systemic vulnerabilities in DNS implementations, the hurdles remaining for full RPKI/ROA adoption, the complexities of internationalized X.509 certificates, and the centralization of email and time synchronization infrastructures.
+The MAPRG session at IETF 120 featured a series of technical presentations focusing on internet-scale measurements of core protocols, including DNS, RPKI, IPv6, Email delivery, X.509 certificates, and NTP. Many of the presentations were invited talks based on papers accepted for the Internet Measurement Conference (IMC) 2023 and 2024. The session highlighted systemic vulnerabilities in protocol implementations and suggested paths for standardization to mitigate discovered risks.
 
 ## Key Discussion Points
 
-### [Heads-up Talk: Measurement of Systemic DNS Resolver Vulnerabilities (Informing Six DNSOP I-Ds)](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-heads-up-talk-measurement-of-systemic-dns-resolver-vulnerabilities-informing-six-dnsop-i-ds-01)
-**Presenter: Yuxi (Tsinghua University)**
-* **Technical Content:** The presentation detailed systemic vulnerabilities in DNS resolvers arising from flexible specifications. The research identified over 90 CVEs and novel attacks (e.g., DNSBomb, NRBurst) with high amplification factors. 
-* **Discussion:** Six drafts have been submitted to the DNSOP working group to address these gaps, covering cache delegation, query handling, and packet preprocessing. Examples include proposing response pacing to mitigate aggregation-based DoS and state tracking for EDNS Client Subnet (ECS) to prevent cache poisoning.
+### 1. [Heads-up Talk: Measurement of Systemic DNS Resolver Vulnerabilities (Informing Six DNSOP I-Ds)](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-heads-up-talk-measurement-of-systemic-dns-resolver-vulnerabilities-informing-six-dnsop-i-ds-01)
+*   **Presenter:** Yuxi Chen
+*   **Technical Summary:** The presentation detailed how ambiguities in DNS specifications lead to exploitable divergences in resolver implementations. The research identified six novel attacks (e.g., DNSBomb, NRB-Style) with high amplification factors. 
+*   **Mitigation:** The work informs six drafts in the DNSOP working group covering cache delegation, query handling (specifically addressing RFC 7871), and packet preprocessing.
+*   **Discussion:** The presenter highlighted that these are not "bad coding" issues but "systematic attack surfaces" created when high-level principles lack standardized implementation checks.
 
-### [Are you RPKI Ready: The Road Left to Full ROA Adoption](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-are-you-rpki-ready-the-road-left-to-full-roa-adoption-01)
-**Presenter: Deepak (Georgia Tech)**
-* **Technical Content:** While RPKI adoption has surpassed 50%, the remaining prefixes face significant technical and non-technical barriers. Challenges include complex sub-prefix management, inter-organizational communication hurdles for reallocated space, and policy issues (particularly within ARIN/DoD jurisdictions).
-* **Tooling:** The researchers introduced the "Are You RPKI Ready" dashboard to provide operators with visibility into their authority to issue ROAs and technical recommendations for specific prefixes.
+### 2. [Are you RPKI Ready: The Road Left to Full ROA Adoption](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-are-you-rpki-ready-the-road-left-to-full-roa-adoption-01)
+*   **Presenter:** Deepak Kumar
+*   **Technical Summary:** While RPKI Route Origin Authorization (ROA) adoption has exceeded 50%, the remaining 50% faces significant technical and organizational hurdles. Issues include complex inter-organizational reallocations and the risk of invalidating more specific sub-prefixes.
+*   **Findings:** Approximately 20% of non-covered prefixes (notably in ARIN, involving entities like the US DoD) have high policy barriers and haven't signed up for RPKI.
+*   **Tooling:** The researchers introduced a platform, "Are you RPKI Ready," to help operators navigate ROA planning and provide recommendations to avoid routing outages.
 
-### [RScope: Unveiling Global ROV Deployments and Dependencies in the Post-ROV Era](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-rscope-unveiling-global-rov-deployments-and-dependencies-in-the-post-rov-era-00)
-**Presenter: Weitong (Virginia Tech)**
-* **Technical Content:** Measuring Route Origin Validation (ROV) is becoming harder as more ASes filter invalid prefixes. RScope uses a "divide and conquer" method by controlling a custom RPKI publication point to feed unique ROAs to specific Relying Parties (RPs).
-* **Findings:** Higher-ranked ASes typically deploy their own RPs, while lower-ranked ASes rely on upstream filtering. A significant number of ASes depend on a single RP, contrary to redundancy best practices.
-* **Discussion:** **Deepak** questioned if using multiple RPs with inconsistent ROAs would introduce noise; **Weitong** noted that while complex, they can test for consistency requirements across RP deployments.
+### 3. [RScope: Unveiling Global ROV Deployments and Dependencies in the Post-ROV Era](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-rscope-unveiling-global-rov-deployments-and-dependencies-in-the-post-rov-era-00)
+*   **Presenter:** Waitong
+*   **Technical Summary:** RScope is a framework designed to measure Route Origin Validation (ROV) deployment without relying on globally visible invalid prefixes. By using a custom publication point and selective ROA distribution to specific Relying Parties (RPs), the researchers can isolate which ASes are performing filtering.
+*   **Findings:** Many ASes rely on a single RP server, despite RFC recommendations for redundancy. Lower-ranked ASes typically benefit from upstream filtering rather than deploying ROV themselves.
+*   **Discussion:** Deepak Kumar queried how the system handles networks using multiple RPs that might have inconsistent ROA data. Waitong noted that while testing all combinations is difficult, they have identified several ASes that require consistency across RPs.
 
-### [What IPv6 RFCs Don’t Say About VPNs](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-what-ipv6-rfcs-dont-say-about-vpns-02)
-**Presenter: Yejin Cho (USC/ISI)**
-* **Technical Content:** The research highlights "IPv6 de-preference" in VPNs. Due to RFC 6724 (Default Address Selection for IPv6), IPv4 private addresses are often preferred over IPv6 Unique Local Addresses (ULAs). VPNs using ULAs for tunnel interfaces unintentionally cause clients to prefer IPv4 for dual-stack traffic.
-* **Discussion:** 
-    * **Lorenzo Colitti** suggested that assigning Global Unicast Addresses (GUAs) or shared /64s is preferable to maintain end-to-end connectivity.
-    * **Suresh Krishnan** advised moving this discussion to the 6MAN working group, noting that creating a new address class (Tunnel Local Address) would require significant protocol action and updates to address selection rules.
+### 4. [What IPv6 RFCs Don’t Say About VPNs](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-what-ipv6-rfcs-dont-say-about-vpns-02)
+*   **Presenter:** Ye-jin Cho
+*   **Technical Summary:** The research explores "IPv6 de-preference" in VPNs. Due to RFC 6724 (Default Address Selection), clients often prefer IPv4 private addresses over IPv6 Unique Local Addresses (ULAs). VPN providers frequently use ULAs for internal tunnel addresses, causing clients to default to IPv4.
+*   **Proposed Solutions:** 
+    1. Assigning unique Global Unicast Addresses (GUAs).
+    2. Assigning shared static GUAs.
+    3. Creating a new "Tunnel Local Address" class.
+    4. Modifying RFC 6724 prioritization rules.
+*   **Discussion:** Lorenzo Colitti argued for GUA assignment to preserve end-to-end connectivity and mentioned RFC 7934. Suresh Krishnan recommended bringing the proposal for a new address class to the 6man working group, as it involves protocol actions and address selection changes.
 
-### [Understanding and Characterizing Intermediate Paths of Email Delivery](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-understanding-and-characterizing-intermediate-paths-of-email-delivery-01)
-**Presenter: Shibo Cui (Tsinghua University)**
-* **Technical Content:** Using "Received" headers from a large-scale dataset, the study mapped email "middle nodes" (hosting, security, and signature providers).
-* **Findings:** Email delivery is highly centralized, with Microsoft (Outlook) participating in ~70% of intermediate paths globally. The study also revealed strong regional dependencies, such as the reliance of Commonwealth of Independent States (CIS) countries on Russian infrastructure.
+### 5. [Understanding and Characterizing Intermediate Paths of Email Delivery](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-understanding-and-characterizing-intermediate-paths-of-email-delivery-01)
+*   **Presenter:** Shibo Cui
+*   **Technical Summary:** Using 2 billion Received headers from Coremail, the study analyzed the shift from end-to-end delivery to "segment-to-segment" delivery involving middle nodes (hosting, security, and signature providers).
+*   **Findings:** Extreme centralization around Microsoft (Outlook.com), which participates in ~70% of intermediate paths. The study also highlighted regional dependencies, such as the reliance of South American traffic on North American infrastructure and the domestic isolation of Russian email infrastructure.
 
-### [Analyzing Compliance and Complications of Integrating Internationalized X.509 Certificates](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-analyzing-compliance-and-complications-of-integrating-internationalized-x509-certificates-01)
-**Presenter: Mingming Zhang (Zhongguancun Laboratory)**
-* **Technical Content:** The study examined "Unicerts" (certificates containing internationalized content). Using a tool called RFCGPT, the researchers identified 50 compliance rules missing from current linters.
-* **Findings:** 65% of non-compliant Unicerts were issued by publicly trusted CAs. Issues included malformed IDNs, lack of Unicode normalization, and inconsistent parsing across TLS libraries (OpenSSL, GnuTLS, etc.), which could lead to certificate spoofing.
-* **Discussion:** **Mirja Kühlewind** asked about outreach; the authors have contacted Let's Encrypt and other CAs, but noted that resolving IDN discrepancies requires cross-group coordination (DNS/TLS/CAB Forum).
+### 6. [Analyzing Compliance and Complications of Integrating Internationalized X.509 Certificates](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-analyzing-compliance-and-complications-of-integrating-internationalized-x509-certificates-01)
+*   **Presenter:** Mingming Zhang
+*   **Technical Summary:** An investigation into "unicerts" (certificates containing internationalized content). Using a tool called RFC-GPT to extract 95 rules from scattered specifications, the study found 250,000 non-compliant certificates in Certificate Transparency (CT) logs.
+*   **Findings:** Widespread issuance of malformed Internationalized Domain Names (IDNs) and inconsistent parsing across TLS libraries. Major issues include improper character checks and lack of Unicode NFC normalization.
+*   **Security Impact:** Demonstrated potential for user spoofing via malformed bidirectional characters in warning pages (Chrome/Firefox) and misleading CT monitoring.
 
-### [Measuring the Time Source Vulnerabilities in the NTP Ecosystem](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-measuring-the-time-source-vulnerabilities-in-the-ntp-ecosystem-05)
-**Presenter: Zhenxian Huang (Tsinghua University)**
-* **Technical Content:** A large-scale scan revealed widespread "bad timekeepers" (offsets > 10s) in the NTP ecosystem. Vulnerabilities include "single source" dependency (millions of servers relying on one upstream) and "dangling IPs" where cloud-based NTP server IPs are reclaimed and potentially weaponized by attackers.
-* **Solution:** The authors proposed **NTSMon**, a monitoring system that ranks NTS/NTP servers by accuracy and availability to help clients select better sources.
-* **Discussion:** **Karen O'Donoghue** (NTP WG Chair) expressed interest in seeing this presented in the NTP WG and noted ongoing work to support Network Time Security (NTS) in the NTP Pool.
+### 7. [Measuring the Time Source Vulnerabilities in the NTP Ecosystem](https://datatracker.ietf.org/meeting/125/materials/slides-125-maprg-measuring-the-time-source-vulnerabilities-in-the-ntp-ecosystem-05)
+*   **Presenter:** Genshin (Jinchen Huang)
+*   **Technical Summary:** Measurement of 7 million NTP servers revealed significant "bad timekeeping" (offset >10s), even among Stratum 0 sources. 
+*   **Vulnerabilities:** 
+    1. **Single Source Vulnerability:** Over 2 million servers rely on a single upstream time source.
+    2. **Dangling IP Address:** Risks associated with static IP configurations for cloud-hosted NTP servers that may be reassigned.
+*   **Solution:** The researchers proposed **NTS-mon**, a system that scores NTS-enabled servers based on accuracy and availability, providing a dynamic, load-adjusted list for clients.
+*   **Discussion:** Karen O'Donoghue invited the presenter to bring this work to the NTP working group and noted ongoing efforts to add NTS support to the NTP Pool.
 
 ## Decisions and Action Items
-* **Follow-up:** Authors of the Internationalized X.509 Certificates work and the VPN/IPv6 work were encouraged to engage with relevant working groups (6MAN, 6LOWPAN, LAMPS, or DNSOP) to address specific protocol gaps identified in their research.
-* **Outreach:** **Karen O'Donoghue** to follow up with **Zhenxian Huang** regarding a presentation in the NTP working group.
+*   **Ye-jin Cho (IPv6/VPNs):** Action to take the discussion regarding Tunnel Local Addresses and RFC 6724 updates to the **6man** working group.
+*   **Genshin (NTP):** Action to follow up with the **NTP** working group regarding time source vulnerabilities and the NTS-mon proposal.
 
 ## Next Steps
-* The chairs (**Dave Plonka** and **Mirja Kühlewind**) will continue to invite researchers from top-tier venues (IMC, USENIX Security, etc.) to present work that impacts IETF protocol design.
-* Future sessions may include "after-action" updates on how previously presented research has influenced IETF standards or implementation practices.
+*   Chairs Dave Plonka and Mirja Kühlewind will look into tracking the "after-effects" of MAPRG presentations (e.g., interaction with CAs or working groups) to report at future meetings, such as IETF 121 in Vienna.
+*   Presenters from the IMC community are encouraged to share preprints and code on the MAPRG mailing list to facilitate further IETF review.

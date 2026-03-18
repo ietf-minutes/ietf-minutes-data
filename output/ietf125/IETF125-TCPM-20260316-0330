@@ -1,75 +1,56 @@
 # [TCPM](../wg/tcpm.html)
 
+**IETF 125 Session Minutes**
+
 ## Summary
-The TCPM working group met at IETF 125 to discuss progress on active working group documents and several new individual proposals. Key highlights include the publication of RFC 9637, the nearing completion of the TCP ACK Rate Request (TARR) option, and discussions on enhancing TCP resets with diagnostic payloads. The group also deliberated on extending TCP Authentication Option (TCP-AO) to support Post-Quantum Cryptography (PQC) and a proposal for a TCP Provenance Identifier.
+
+The TCPM working group met to discuss the status of active drafts and several new proposals. Key updates included the publication of RFC 9937 (formerly RFC 6937 bis) and the progress of Accurate ECN toward completion. The session featured a deep dive into the socket API for TCP ACK Rate Request (TARR), a revamped proposal for TCP Reset diagnostics, a new provenance identifier option for data center observability, and a discussion on extending TCP-AO for Post-Quantum Cryptography (PQC).
 
 ## Key Discussion Points
 
 ### Working Group Status Update
-Presented by Yoshifumi Nishida.
-[Slide Deck: chair slide](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-chair-slide-00)
+*   **RFC 9937** (formerly `draft-ietf-tcpm-rfc6937bis`) has been published.
+*   **Accurate ECN**: Currently in AUTH48; final minor updates are being processed.
+*   **EDO**: Discussion continues regarding the extension of TCP option space.
+*   **[draft-ietf-tcpm-tcp-ghost-acks](https://datatracker.ietf.org/doc/draft-ietf-ietf-tcpm-tcp-ghost-acks/)**: The chairs are awaiting a new version from authors before considering a Working Group Last Call (WGLC).
+*   **[draft-ietf-tcpm-ack-rate-request](https://datatracker.ietf.org/doc/draft-ietf-ietf-tcpm-ack-rate-request/)**: Nearing completion; focus has shifted to the socket API.
 
-*   **RFC Published:** RFC 9637 (formerly draft-ietf-tcpm-6937bis) has been published.
-*   **Accurate ECN:** `draft-ietf-tcpm-accurate-ecn` is currently in AUTH48.
-*   **TCP Extended Data Offset (EDO):** `draft-ietf-tcpm-edo` remains a long-term item due to the complexity of extending the TCP option space.
-*   **Ghost ACKs:** The chairs are waiting for a new version of `draft-ietf-tcpm-tcp-ghost-acks` from the authors before considering a Working Group Last Call (WGLC).
+### [TCP ACK Rate Request (TARR)](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-ack-rate-request-tarr-00)
+**Presenter: Carles Gomez**
+*   **Content**: Introduced Section 7 covering Socket API considerations. New options include `TCP_ACK_RATE_REQUEST_ENABLE`, `TCP_ACK_RATE_REQUEST_PROCESS`, and `TCP_ACK_RATE_REQUEST_SET`.
+*   **Implementation**: A prototype exists for FreeBSD (led by Michael Tuxen), and initial work has begun for Linux.
+*   **Discussion**:
+    *   Yoshiro Yoneya (Yoshi) questioned the behavior of `setsockopt` if negotiation fails. Michael Tuxen clarified that it should return `EINVAL` but allow the socket to remain functional.
+    *   Stuart Cheshire and Michael Tuxen emphasized the need for Linux-side feedback on the API before finalizing the draft.
 
----
+### [IETF 125 draft-boucadair-tcpm-rst-diagnostic-payload](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-ietf-125-draft-boucadair-tcpm-rst-diagnostic-payload-00)
+**Presenter: Jason Xing**
+*   **Content**: The draft has been moved to "Experimental" status. CBOR has been replaced by a more compact plain-text format. It includes a 1-byte magic number, a Reason Code, and an optional Private Enterprise Number (PEN).
+*   **Discussion**:
+    *   **Free-form Text**: Jeff Haas, Lars Eggert, and Michael Tuxen strongly advised removing the free-form UTF-8 description field due to security risks (e.g., UTF-8 encoding vulnerabilities), complexity, and MTU/option space concerns.
+    *   **Consensus**: There was general agreement among commenters that the compact format (PEN + Reason Code) is sufficient. Jason Xing agreed to consider removing the free-form description.
 
-### TCP ACK Rate Request (TARR)
-Presented by Carles Gomez.
-[Slide Deck: TCP ACK Rate Request (TARR)](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-ack-rate-request-tarr-00)
-Draft: `draft-ietf-tcpm-ack-rate-request`
+### [TCP Provenance Identifier Option](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-provenance-identifier-option-00)
+**Presenter: Bowen Liang**
+*   **Content**: Proposed an 8-byte Provenance ID (Host IP + PID) to maintain observability in complex data center networks where NATs or L7 proxies obscure original source identities.
+*   **Discussion**:
+    *   Lars Eggert questioned the need for an IETF standard for an intra-data-center solution, suggesting that if the operator controls all middleboxes, they can configure them without a standard.
+    *   Magnus Westerlund raised concerns about the 12-byte consumption of TCP option space and potential privacy leaks if these packets egress to the open internet.
+    *   Mirja Kuehlewind suggested reviewing QUIC Connection ID migration for privacy-preserving identification techniques.
 
-*   **Overview:** The draft proposes an option to allow a sender to request a specific ACK rate from the receiver to optimize performance in various congestion window scenarios.
-*   **Updates:** Version 11 adds an informational Section 7 on Socket API considerations, defining options such as `TCP_ACK_RATE_REQUEST_ENABLE`, `TCP_ACK_RATE_REQUEST_PROCESS`, and `TCP_ACK_RATE_REQUEST_SET`.
-*   **Implementation:** Michael Tuexen noted a prototype implementation exists for FreeBSD. Carles Gomez mentioned initial implementation work for Linux is underway.
-*   **Discussion:** Yoshifumi Nishida queried the behavior of the API if negotiation fails. Carles Gomez clarified that the socket remains usable, though the rate cannot be set. 
-
----
-
-### TCP RST Diagnostic Payload
-Presented by Haiming Gui (Jason).
-[Slide Deck: IETF 125 draft-boucadair-tcpm-rst-diagnostic-payload](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-ietf-125-draft-boucadair-tcpm-rst-diagnostic-payload-00)
-Draft: `draft-boucadair-tcpm-rst-diagnostic-payload`
-
-*   **Overview:** This draft adds a diagnostic payload to TCP Reset (RST) packets to help operators understand why a connection was terminated.
-*   **Updates:** The format was simplified from CBOR to a compact plain-text/binary format. The intended status was changed from Standards Track to Experimental.
-*   **Discussion:** 
-    *   Jeff Haas and Lars Eggert expressed significant security concerns regarding the "freeform description" format (UTF-8), citing risks associated with parsing complex character sets in the network stack.
-    *   Michael Tuexen indicated he had only implemented the compact form in FreeBSD and did not intend to support the freeform version.
-    *   There was a strong sense among those present to remove the freeform description and stick to the compact "reason code" format.
-
----
-
-### TCP Provenance Identifier Option
-Presented by the author.
-[Slide Deck: TCP Provenance Identifier Option](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-provenance-identifier-option-00)
-
-*   **Overview:** Proposes a TCP option to carry a provenance identifier (Host IP + Process ID) to track the origin of connections across middleboxes (NATs, L7 proxies) in managed environments like data centers.
-*   **Discussion:** 
-    *   Lars Eggert and Magnus Westerlund questioned the need for an IETF standard for a solution intended for controlled, single-operator data centers where middleboxes could be configured without a new TCP option.
-    *   Zhong Lenli raised privacy concerns regarding the leakage of internal Process IDs (PIDs) in plain text.
-    *   Mia Killevein suggested looking at QUIC connection migration and its privacy-preserving mechanisms as a point of comparison.
-
----
-
-### TCP Authentication Option (TCP-AO) and PQC
-Presented by Tony Lee.
-[Slide Deck: tcp-ao](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-ao-00)
-
-*   **Overview:** Discussion on adding Post-Quantum Cryptography (PQC) algorithms to TCP-AO to protect BGP sessions.
-*   **Technical Constraint:** Some PQC algorithms require hash lengths that exceed the 40-byte TCP option limit, necessitating "untruncated" versions which require an extended option space.
-*   **Discussion:** 
-    *   Magnus Westerlund argued that 128-bit truncated tags are likely sufficient for symmetric authentication and that the focus should be on standardizing a reasonable set of modern algorithms.
-    *   Alice Mencken supported the move to modern algorithms but encouraged seeking more input from security experts (CFRG) regarding truncation.
-    *   Lars Eggert cautioned against "rubber-stamping" requirements from specific customers if they mandate solutions that break standard TCP option limits without a clear technical necessity.
+### [tcp-ao](https://datatracker.ietf.org/meeting/125/materials/slides-125-tcpm-tcp-ao-00)
+**Presenter: Tony Li**
+*   **Content**: Discussed the need to update TCP-AO to support Post-Quantum Cryptography (PQC), specifically for BGP security. The proposal handles both truncated and untruncated tags.
+*   **Discussion**:
+    *   **Truncation**: Magnus Westerlund noted that symmetric algorithms (like those used in AO) are generally resilient to quantum attacks, questioning the requirement for very long (untruncated) tags that exceed the 40-byte TCP option limit.
+    *   **Requirements**: Tony Li noted that certain "mission-critical" customers insist on untruncated tags despite the technical overhead.
+    *   **Next Steps**: Allison Mankin supported the move toward modernizing algorithms. Yoshiro Yoneya suggested potentially splitting the draft into truncated and non-truncated versions to simplify the path forward.
 
 ## Decisions and Action Items
-*   **`draft-ietf-tcpm-ack-rate-request`**: Authors to refine the draft based on API feedback and coordinate with Linux implementers before moving to WGLC.
-*   **`draft-boucadair-tcpm-rst-diagnostic-payload`**: The author will remove the freeform description format in the next revision based on security feedback.
+*   **draft-ietf-tcpm-ack-rate-request**: Authors to refine Section 7 (API) to clarify error handling (e.g., `EINVAL`) and solicit feedback from Linux kernel developers.
+*   **draft-boucadair-tcpm-rst-diagnostic-payload**: Authors to remove the free-form UTF-8 description field in the next revision based on technical feedback regarding security and complexity.
 
 ## Next Steps
-*   The chairs will conduct a poll on the mailing list regarding the adoption of `draft-boucadair-tcpm-rst-diagnostic-payload` after the requested edits are made.
-*   The discussion on TCP-AO and PQC requirements, specifically the necessity of untruncated tags and extended option space, will continue on the mailing list.
-*   Authors of the TCP Provenance Identifier proposal are encouraged to refine the use case and address privacy/middlebox-transparency concerns.
+*   **Ghost ACKs**: Awaiting version -04 of `draft-ietf-tcpm-tcp-ghost-acks` for chair review.
+*   **TARR**: Finalize API alignment across FreeBSD and Linux before moving to WGLC.
+*   **TCP-AO**: Continue discussion on the mailing list regarding the necessity of untruncated tags and the mechanism for extending option space if required.

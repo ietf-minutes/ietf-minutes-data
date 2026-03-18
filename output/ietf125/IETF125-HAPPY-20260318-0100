@@ -2,60 +2,40 @@
 
 ## Summary
 
-The HAPPY working group met at IETF 125 to discuss updates to the core Happy Eyeballs Version 3 specification, implementation reports from Firefox, and a proposal for signaling connection selection outcomes to the network. The primary focus of the meeting was refining the handling of IPv6-only and VPN scenarios in [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/), discussing a major structural reorganization of the draft, and evaluating the privacy and feasibility of using ICMP for path selection observability.
+The HAPPY working group met at IETF 125 to discuss progress on the main algorithm specification, implementation experience in Firefox, and new proposals for path selection observability. Significant focus was placed on refining the behavior of `draft-ietf-happy-happyeyeballs-v3` in complex network environments, such as IPv6-only networks with NAT64 and split-tunnel VPNs. Firefox shared details on their new Rust-based implementation of Happy Eyeballs v3 (HEv3) and their plans for public telemetry. A new experimental proposal for signaling path selection failures via ICMP was also introduced.
 
 ## Key Discussion Points
 
-### Happy Eyeballs v3 Update
-**Presenters: Nidhi Vyas and Tommy Pauly**
-**Slides: [Happy Eyeballs v3](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-happy-eyeballs-v3-01)**
+### Happy Eyeballs v3
+**Nidhi** and **Tommy Pauly** presented updates on [Happy Eyeballs v3](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-happy-eyeballs-v3-01).
 
-Nidhi Vyas summarized recent changes to [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/):
-*   **TLS Handshake:** Changed from "may" to "should" wait for the TLS handshake before declaring a connection successful.
-*   **0-RTT/Resumption:** Clarified that resumption attempts should not be unfairly advantaged or disadvantaged in the race; connection attempt delays remain the same.
-*   **Historical Data:** Clarified that historical data should not be used across different interfaces but can be reused if a client reliably identifies it has returned to a previously used network.
-
-**IPv6-only and VPN Scenarios:**
-Jen Linkova presented a proposal to handle NAT64, DNS64, and VPN split-tunneling scenarios. The discussion focused on using Provisioning Domains (PvDs) to better model configurations where DNS resolution occurs on one interface (e.g., a VPN) but traffic is routed elsewhere. 
-*   **Proposal:** If a global IPv6 address is present in the PvD, ask for AAAA. If native IPv4 or a NAT64 prefix is discovered, ask for A. 
-*   **Decision:** There was general agreement to move toward using "PvD" terminology instead of "interface" to better handle complex routing cases.
-
-**Document Restructuring:**
-Ben Schwartz proposed a major restructuring of the draft to clearly separate normative requirements for interoperability/network safety from the "Recommended Algorithm" (which might be viewed as a BCP or informational example).
-*   Tommy Pauly noted that many "requirements" are actually inherited from other RFCs (e.g., address sorting).
-*   Ben Schwartz suggested the algorithm should be more "algorithmic," perhaps including pseudo-code or functional signatures for inputs and outputs.
-*   The chairs and authors will work to ensure the text distinguishes between what is mandatory for a "good citizen" on the internet and what is implementation guidance.
+*   **Recent Changes:** The draft now recommends a "should" for waiting for TLS handshakes. It clarifies that connection attempt delays should not change for resumed connections (0-RTT). Text was added to address MTU issues and the handling of historical data across network changes.
+*   **IPv6-only and VPN Scenarios:** **Jen Linkova** summarized a proposal to handle split-tunnel VPNs and NAT64 environments. The proposed logic suggests that if a global IPv6 address exists in the Provisioning Domain (PVD), the client should request AAAA; if a NAT64 prefix is discovered or a non-loopback IPv4 address exists, it should request A. Synthesized IPv6 addresses should be treated as IPv4 candidates for racing purposes.
+*   **Scope and PVDs:** **Ben Schwartz** questioned whether multi-interface/VPN logic was in scope. **Lorenzo Colitti** and **Tommy Pauly** suggested using the term "PVD" instead of "interface" to better describe consistent configuration sets, noting that split-tunnels often involve multiple interfaces within one logical PVD.
+*   **Document Structure:** **Ben Schwartz** proposed a significant refactoring of the draft to separate normative requirements from the example algorithm. He argued for making the requirements more abstract and the algorithm more "algorithmic" (potentially using pseudo-code). **Tommy Pauly** and **Lorenzo Colitti** discussed the distinction between a Standards Track document and a Best Current Practice (BCP), noting that much of HE is focused on user experience rather than protocol interoperability.
 
 ### HEv3 in Firefox
-**Presenter: Max (Mozilla)**
-**Slides: [HEv3 in Firefox](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-hev3-in-firefox-00)**
+**Max Resing** presented on [HEv3 in Firefox](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-hev3-in-firefox-00).
 
-Max reported on the implementation of HEv3 in Firefox Nightly. 
-*   **Implementation:** Written as a standalone, deterministic Rust library with no external dependencies (available on GitHub).
-*   **Telemetry:** Mozilla plans to collect and share public telemetry, focusing on Time to First Byte (TTFB), number of connection attempts, and the position of the winning connection in the candidate list.
-*   **Platform Issues:** Firefox encounters challenges accessing HTTPS DNS records on certain versions of macOS and Windows 10, whereas Android support is available via `res_nsend`.
-*   Stuart Cheshire (Apple) emphasized that while browsers implement this, the ideal location for Happy Eyeballs is the OS networking stack to benefit all applications (e.g., Matter/Home Automation).
+*   **Implementation:** Firefox has implemented HEv3 as a standalone, deterministic Rust library (available on GitHub). It is currently in Firefox Nightly (disabled by default) and supports HTTPS DNS RRs and DNS over HTTPS (DoH).
+*   **Telemetry:** Mozilla plans to collect public telemetry on Time to First Byte (TTFB), resolution delays, and the number of connection attempts.
+*   **OS vs. Application:** **Stewart Cheshire** emphasized that Happy Eyeballs should ideally be implemented in the OS network stack so all applications benefit, citing the difference between iOS (stack-level) and Android (historically browser-level). **Lorenzo Colitti** noted the difficulty for cross-platform applications like Chrome or Firefox to rely on OS libraries that may not support the necessary cross-layer (DNS/TLS/QUIC) optimizations.
 
 ### Slow Alternate Detection and Path Selection Observability
-**Presenter: Brian Trammell**
-**Slides: [Slow Alternate Detection and Path Selection Observability](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-slow-alternate-detection-and-path-selection-observability-00)**
+**Brian Trammell** presented [Slow Alternate Detection and Path Selection Observability](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-slow-alternate-detection-and-path-selection-observability-00).
 
-Brian Trammell introduced a thought experiment on using ICMP to signal to the network/server when a path was *not* selected by Happy Eyeballs.
-*   **Mechanism:** A new ICMP type/code to report a "slow alternate." It would include a hash of the DNS answer and a sampling rate.
-*   **Concerns:** 
-    *   **Privacy:** Ben Schwartz and Lars Eggert raised significant concerns regarding the hash; even a hashed DNS name is often reversible, potentially leaking SNI/ECH information to the path.
-    *   **Feasibility:** Modern operating systems often restrict user-space applications from sending raw ICMP packets.
-    *   **Alternatives:** Lucas Pardue suggested using Network Error Logging (NEL) or in-band HTTP signaling (like `Alt-Used`).
+*   **Proposal:** An experimental mechanism using a new ICMP type/code to signal to the network and server when a path was "slow" or not selected by the Happy Eyeballs algorithm.
+*   **Technical Details:** The signal would include a hashed DNS answer to link the failure to a specific domain without leaking full SNI/ECH information. It includes a sample rate parameter to prevent ICMP spam.
+*   **Feedback:** **Ben Schwartz** and **Lars Eggert** raised significant privacy concerns regarding the hashed DNS answer, noting it could still leak destination information. **Lars Eggert** also questioned the feasibility of userspace applications sending ICMP on modern restricted operating systems. **Lucas Pardue** suggested that in-band signaling (e.g., HTTP/2 frames or QUIC error codes) might be more actionable for server operators.
 
 ## Decisions and Action Items
 
-*   **PvD Integration:** The working group agreed to transition the terminology in [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/) from "interfaces" to "Provisioning Domains (PvDs)" to better support VPN and multi-homed scenarios.
-*   **Action Item:** Jen Linkova and Andre (via GitHub) to provide updated text for the IPv6-only/NAT64/VPN section.
-*   **Action Item:** Eric Kinnear to file an issue regarding the global reference and use of PvDs throughout the draft.
+*   **Terminology Change:** The working group reached a sense of the room to move away from the word "interface" and instead use "Provisioning Domain" (PVD) to describe the scope of the algorithm's inputs. **Tommy Pauly** will file an issue to track this.
+*   **VPN/IPv6-only Text:** **Jen Linkova** and **Andre Mesarovic** (via GitHub) will refine the text regarding A/AAAA query triggers and the treatment of synthesized addresses to ensure split-tunnel VPN cases are handled correctly.
+*   **Restructuring:** **Tommy Pauly**, **Nidhi**, and **Ben Schwartz** will collaborate on a compromise for the document structure that improves clarity between normative requirements and implementation guidance without unnecessary repetition.
 
 ## Next Steps
 
-*   **Draft Restructuring:** Authors (Tommy Pauly, Nidhi Vyas, etc.) will work with Ben Schwartz to refine the document structure to improve clarity between normative requirements and recommended implementation.
-*   **Firefox Telemetry:** Max will share initial telemetry data from Firefox Nightly at IETF 126 to help tune the recommended delay values in the draft.
-*   **Observability Discussion:** Discussion on path signaling (slow alternate detection) will move to the mailing list, specifically addressing the privacy risks and looking for alternative transports (e.g., QUIC transport bits or HTTP headers).
-*   **Web Tester:** The group will invite the TU Munich researchers to present updates on the Happy Eyeballs web tester at the next meeting.
+*   **Main Draft:** The authors will incorporate the PVD terminology and the agreed-upon VPN/IPv6-only logic into `draft-ietf-happy-happyeyeballs-v3`.
+*   **Implementation Feedback:** **Max Resing** will share initial telemetry results from Firefox Nightly at IETF 126 to help tune recommendation values (e.g., resolution delays).
+*   **Observability:** Discussion on path signaling will continue on the mailing list, specifically looking at privacy-preserving alternatives to ICMP.
