@@ -1,0 +1,57 @@
+# [KEYTRANS](../wg/keytrans.html)
+
+## Summary
+
+The KEYTRANS working group met at IETF 125 to discuss updates to the core architecture and protocol specifications. The Architecture document has successfully passed Working Group Last Call (WGLC). The session focused on technical refinements to handling state loss and data deletion in the architecture, algorithmic improvements for pruning in the protocol, and detailed reports from two independent Rust implementations and a formal verification project.
+
+## Key Discussion Points
+
+### Working Group Status
+* **Shivan Sahib** (Chair) noted that [draft-ietf-keytrans-architecture](https://datatracker.ietf.org/doc/draft-ietf-keytrans-architecture/) passed WGLC. A document shepherd is needed to progress the draft to publication.
+
+### Architecture & Protocol Updates
+**Brendan McMillion** presented updates on [Architecture & Protocol Updates](https://datatracker.ietf.org/meeting/125/materials/slides-125-keytrans-architecture-protocol-updates-00).
+
+* **Architecture Updates ([draft-ietf-keytrans-architecture](https://datatracker.ietf.org/doc/draft-ietf-keytrans-architecture/)):**
+    * **State Loss:** Added a section addressing security risks when users lose state (e.g., clearing browser cache). If a user consumes a label version before it is audited, the log could potentially lie. Recommendation: Configure transparency log parameters (monitoring window/lag time) to be significantly shorter than the expected duration between state loss events.
+    * **Privacy Law Compliance:** Updated pruning recommendations for GDPR and the California Delete Act. Instead of anonymizing prefix tree entries, the draft now recommends using the `maximum lifetime` protocol mechanism. Deleting data in the most recent prefix tree ensures it flushes through the log and is gone within the compliance timeline (e.g., 30 days).
+    * **Discussion:** **Felix Linker** inquired about the legal definition of deletion. **Brendan McMillion** clarified the goal is to reach a state where no evidence remains that the user ever existed.
+
+* **Protocol Updates ([draft-ietf-keytrans-protocol](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol/)):**
+    * **Fixed Version Search:** Updated the algorithm to improve pruning. When a search hits an expired log entry, it now proceeds to the right child by default. Validity is determined at the end by checking if the result is to the right of any unexpired distinguished log entry.
+    * **Wire Format Changes:** 
+        * Added transparency log configuration to the `update TBS` (To-Be-Signed) structure to bind service operator updates to a specific log.
+        * Included the label version in the commitment body.
+        * Renamed `Update Prefix` to `Update Suffix` and moved it to the end of the structure to ensure signatures follow the data they sign.
+    * **Implementation Progress:** Brendan's Rust implementation is ~95% complete. Current proof sizes range from 1.5KB (stateful client with recent distinguished entry) to 5KB (stateless).
+
+### Implementation In Rust
+**Guy Fishman** presented [Implementation In Rust](https://datatracker.ietf.org/meeting/125/materials/slides-125-keytrans-implementation-in-rust-00).
+
+* **Performance Metrics:** Using a 1-million user tree, search latency was ~342 microseconds, and monitoring was ~182 microseconds. The VRF evaluation dominates traversal time.
+* **Findings:**
+    * The binary ladder is highly effective, compressing version discovery to $O(\log N)$.
+    * Fixed version search becomes slower than greatest version search after approximately 50 versions due to ladder depth.
+    * Ed25519 VRF performed significantly faster than P-256 on the tested hardware (M4 chip).
+* **Recommendations:** Suggested adding pseudo-code for combined tree proofs to the protocol draft, documenting batcher patterns for high-throughput writes, and clarifying the interactions between maximum lifetime and distinguished nodes.
+* **Interoperability:** **Shivan Sahib** and **Felix Linker** discussed the need for test vectors to facilitate interop testing between the various implementations (Go, Rust, Java).
+
+### Key Transparency Verification Update
+**Felix Linker** presented [Key Transparency Verification Update](https://datatracker.ietf.org/meeting/125/materials/slides-125-keytrans-key-transparency-verification-update-00).
+
+* **Formal Verification:** A master's student (Kwok-Wai Lui) verified a simplified version of the greatest version search algorithm.
+* **Results:** The project successfully identified and proved necessary invariants on the binary ladder and prefix tree search.
+* **Next Steps:** Generalize the proof methodology to handle different epochs and more complex monitoring properties.
+
+## Decisions and Action Items
+
+* **Decisions:** [draft-ietf-keytrans-architecture](https://datatracker.ietf.org/doc/draft-ietf-keytrans-architecture/) is ready for shepherding and progression to the IESG.
+* **Action Item:** Chairs to identify a document shepherd for [draft-ietf-keytrans-architecture](https://datatracker.ietf.org/doc/draft-ietf-keytrans-architecture/).
+* **Action Item:** **Brendan McMillion** to address feedback from **Rowan** regarding the architecture document.
+* **Action Item:** Implementers to coordinate on test vectors for [draft-ietf-keytrans-protocol](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol/).
+
+## Next Steps
+
+* Continue implementation and validation of [draft-ietf-keytrans-protocol](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol/).
+* Conduct interoperability testing for the protocol draft once implementations are sufficiently mature.
+* Advance [draft-ietf-keytrans-protocol](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol/) toward Working Group Last Call following successful interop/validation.
