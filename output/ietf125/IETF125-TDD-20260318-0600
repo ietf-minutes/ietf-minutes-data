@@ -1,0 +1,46 @@
+# [TDD](../wg/tdd.html)
+
+## Summary
+The Technology Deep Dive (TDD) session at IETF 125 focused on the technical foundations, evolution, and operational realities of routing security. The session covered the transition from early routing registries to the Resource Public Key Infrastructure (RPKI), the distinction between origin and path validation, and the challenges of managing RPKI as a globally distributed database. Key speakers provided perspectives on why routing security is historically difficult to achieve, the current state of RPKI deployment, and the trade-offs between cryptographic "purity" and operational pragmatism.
+
+## Key Discussion Points
+
+### 1. The Fundamental Difficulty of Routing Security
+**Geoff Huston** presented [Background to Routing Security and Why It is So Hard](https://datatracker.ietf.org/meeting/125/materials/slides-125-tdd-sessa-background-to-routing-security-and-why-it-is-so-hard-00), outlining the history of BGP as a "rumor propagation" protocol.
+*   **The Problem of Ground Truth:** BGP has no inherent mechanism to verify the validity of a route or the authority of an announcer. Early attempts to solve this, such as the Routing Arbiter database and the Routing Policy Specification Language (RPSL), lacked a strong authority model and were prone to stale or inaccurate data.
+*   **Economic and Risk Misalignment:** Security deployment often fails because it requires collective action without immediate individual benefit. Early adopters of IPv6 or BGP security often bear costs without seeing a reduction in their own risk until a critical mass is reached.
+*   **Historical Approaches:** Discussion of S-BGP (RFC 4271 extension) and soBGP (Signatures on BGP), noting that the high computational overhead and complexity led to the development of the more modular SIDR approach.
+
+### 2. The SIDR Approach: RPKI, ROV, and Path Validation
+**Keyur Patel** presented [The SIDR Approach and Alternatives](https://datatracker.ietf.org/meeting/125/materials/slides-125-tdd-sessa-the-sidr-approach-and-alternatives-02), detailing the technologies developed within the Secure Inter-Domain Routing (SIDR) working group.
+*   **Route Origin Validation (ROV):** Uses RPKI to verify that an Autonomous System (AS) is authorized to originate a specific prefix. This is widely considered the "minimum viable product" for routing security.
+*   **BGPsec (RFC 8205):** Provides cryptographic path validation but is computationally expensive and requires replacing the standard AS_PATH attribute.
+*   **Autonomous System Provider Authorization (ASPA):** Discussed as a more pragmatic approach to path validation (referencing `draft-ietf-sidrops-aspa-profile` and `draft-ietf-sidrops-aspa-verification`). ASPA validates path integrity based on AS relationships (customer-provider) rather than per-hop cryptographic signatures.
+
+### 3. RPKI as a Distributed Database Problem
+**Job Snijders** presented [Internet routing security, a distributed database problem](https://datatracker.ietf.org/meeting/125/materials/slides-125-tdd-sessa-internet-routing-security-a-distributed-database-problem-01), shifting the focus from routing protocols to the infrastructure required to support them.
+*   **Operational Success:** ROV has demonstrably reduced the "blast radius" of routing accidents. A 2024 routing leak by a large carrier was mitigated by ROV, preventing the global downtime seen in the 2008 Pakistan Telecom/YouTube incident.
+*   **Database Characteristics:** RPKI currently consists of approximately 500,000 objects with high churn (180,000 changes daily). Managing this globally distributed database involves significant challenges in data consistency, replication latency, and synchronization protocols.
+*   **Evolution of Transport:** The community is moving away from Rsync due to scaling issues, favoring the RPKI Repository Delta Protocol (RRDP, RFC 8182). However, RRDP itself is undergoing optimizations to handle "thundering herd" effects and inefficient retransmissions.
+*   **Tooling and Monitoring:** Introduction of the Canonical Cache Representation (CCR) for RPKI validators to help debug inconsistencies between different relying party software.
+
+### 4. Q&A and Community Discussion
+*   **Centralization vs. Distribution:** **Linga Jia** questioned the centralized nature of RPKI (Trust Anchors held by RIRs). **Geoff Huston** and **Job Snijders** clarified that while the trust model is hierarchical, the data distribution is globally distributed. Operators have the technical ability to choose which Trust Anchors they honor.
+*   **Geopolitical Resilience:** Discussion on whether RPKI is vulnerable to political attacks (e.g., an RIR being forced to revoke certificates). The panel noted that while the architecture allows for alternative trust anchors, reputation and community consensus are the primary drivers of which anchors are used.
+*   **Pragmatism vs. Purity:** **Sue Hares** and **Geoff Huston** discussed whether partial security (ROV without path validation) is worth the high cost. **Geoff Huston** expressed skepticism about "half a pony," while **Job Snijders** argued that stopping accidental "fat-finger" errors is a major victory worth the investment.
+*   **Non-Routing Uses:** Mention of RPKI Signed Checklists (RSC, RFC 9323) as a way to use the infrastructure for verifying address ownership outside of BGP.
+
+## Decisions and Action Items
+*   **Implementation Requirement:** It was noted that the SIDROPS working group now requires multiple implementations of a specification before it can progress to RFC, aiming to avoid "pipe dream" standards that are impossible to deploy at scale.
+
+## Next Steps
+*   **Protocol Optimization:** Ongoing work to improve the efficiency of RPKI data synchronization (beyond current RRDP) to support high-latency or lossy links.
+*   **ASPA Deployment:** Continued focus on moving AS Path Authorization toward operational maturity.
+*   **Future Deep Dives:** **Warren Kumari** (Chair) requested community input for future Technology Deep Dive topics, specifically looking for foundational technologies that serve as building blocks for the IETF.
+
+---
+**Reference Slides:**
+1. [Chair Slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-tdd-sessa-chair-slides-00)
+2. [Background to Routing Security and Why It is So Hard](https://datatracker.ietf.org/meeting/125/materials/slides-125-tdd-sessa-background-to-routing-security-and-why-it-is-so-hard-00)
+3. [The SIDR Approach and Alternatives](https://datatracker.ietf.org/meeting/125/materials/slides-125-tdd-sessa-the-sidr-approach-and-alternatives-02)
+4. [Internet routing security, a distributed database problem](https://datatracker.ietf.org/meeting/125/materials/slides-125-tdd-sessa-internet-routing-security-a-distributed-database-problem-01)

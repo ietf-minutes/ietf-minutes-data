@@ -1,52 +1,49 @@
 # [JMAP](../wg/jmap.html)
 
+**IETF 125 Session Minutes**
+
 ## Summary
-The JMAP working group meeting focused on the progress of calendaring and contact specifications (jointly with CALEXT), the maintenance of existing vCard standards, and several JMAP extensions including file storage, blob management, and mail sharing. Key outcomes included a plan to move several JS-Calendar-related documents to the IESG, the start of work on a vCard 4.0 revision to address long-standing errata, and technical refinements to the JMAP File Storage data model.
+The JMAP working group met in a joint session with CALEXT to discuss the progression of JScalendar, JSContact, and various JMAP extensions. Key outcomes included the decision to pursue a "bis" update for vCard 4.0 to resolve long-standing errata and align with JSContact, and a technical consensus to shift the JMAP File Storage model toward a more POSIX-like mutable structure. Progress was reported on several JMAP extensions, including Mail Sharing and Metadata, with implementations currently being tested in the Stalwart and Fastmail servers.
 
 ## Key Discussion Points
 
-### CALEXT and JS-Calendar/Contact Progress
-*   **Robert Stepanek** provided updates on several drafts. The JS-Calendar drafts (`draft-ietf-calext-jscalendar` and related) are nearly ready and were aligned with JS-Contact definitions.
-*   The `draft-ietf-jmap-vcard-4-bis` (JS-Contact/vCard conversion) call for adoption concluded without objections and will be formally adopted.
-*   **JS-Contact Profiles:** Robert noted that the document was unblocked following a discussion with Area Directors and should progress from SECDIR review.
-*   **Next Steps:** Robert expects to submit JS-Calendar documents to the IESG before the next IETF meeting in July.
-*   **Slide Reference:** [calext-jscalendar-jscontact](https://datatracker.ietf.org/meeting/125/materials/slides-125-jmap-calext-jscalendar-jscontact-00)
+### CALEXT Updates: JScalendar and JSContact
+Robert Stepanek provided an update on the JScalendar and JSContact suites ([Slides: calext-jscalendar-jscontact](https://datatracker.ietf.org/meeting/125/materials/slides-125-jmap-calext-jscalendar-jscontact-00)).
+*   **JScalendar:** Documents are undergoing minor tweaks to align with JSContact definitions and IANA sections. Submission to the IESG is expected before July.
+*   **JSContact:** `JSContact-profiles` is now unblocked in the IESG review process. `JSContact-UID` is nearing the Auth48 stage. 
+*   **RFC 9553-bis:** This document aims to align JSContact/vCard conversion with the JScalendar/iCalendar conversion patterns. Adoption is expected imminently.
 
-### vCard 4.0 Revision Proposal
-*   **Rick van Rein** presented a proposal for a revision of vCard 4.0 (vCard 4.0-bis). The current RFC is aging and has 33 reported errata.
-*   Key issues include ambiguities regarding commas and semicolons, and a mismatch in UID types between version 3 (Text) and version 4 (URI), which complicates the upgrade path.
-*   **Ken Murchison** expressed strong support for this work to help big vendors move away from hybrid V-Card 3/4 implementations.
-*   The working group agreed to adopt this maintenance work, focusing on applying errata and clarifying membership indicators.
-*   **Slide Reference:** [vcard-4.0-bis-proposal](https://datatracker.ietf.org/meeting/125/materials/slides-125-jmap-vcard-40-bis-proposal-00)
+### vCard 4.0-bis Proposal
+Rick proposed a refresh of the vCard 4.0 specification ([Slides: vcard-4.0-bis-proposal](https://datatracker.ietf.org/meeting/125/materials/slides-125-jmap-vcard-40-bis-proposal-00)).
+*   **Problem:** The current spec has 33 reported errata. Significant confusion exists regarding UID types (text vs. URI) and membership indicators, which complicates the upgrade path from vCard 3.0 and synchronization with JSContact.
+*   **Discussion:** Ken and others supported the effort to clean up the specification to discourage vendors from creating non-standard vCard 3.0 extensions.
+*   **Consensus:** There was strong support for adopting this work within the working group to maintain the standard.
 
 ### JMAP File Storage and Blob Extensions
-*   **Bron Gondwana** discussed `draft-ietf-jmap-filenode` and proposed a new draft for blob extensions (`draft-ietf-jmap-blobext`).
-*   **File Node Mutability:** There was a significant discussion on whether `blobId`, `size`, and `type` should be immutable once a file node is created. **Neil Jenkins** and **Ben** argued that making files writable (allowing the `blobId` to change while the `nodeId` remains constant) is essential for POSIX-like behavior, permission management, and efficiency (e.g., avoiding multiple HTTP calls for small writes). Bron agreed to relax the immutability restriction.
-*   **Roles:** New roles for file nodes were discussed, including `root`, `temp`, `trash`, and a suggested `pictures` role.
-*   **Blob Extensions (Blobext):** This draft introduces chunking, server-side resizing (thumbnails), and resumable uploads. **Ken Murchison** and **Ben** supported the conversion/thumbnail features as highly useful for clients.
-*   **Slide Reference:** [filenode-blobext](https://datatracker.ietf.org/meeting/125/materials/slides-125-jmap-filenode-blobext-00)
+Bron Gondwana presented updates on `draft-ietf-jmap-filenode` and the proposed Blobext ([Slides: filenode-blobext](https://datatracker.ietf.org/meeting/125/materials/slides-125-jmap-filenode-blobext-00)).
+*   **Filenode Roles:** Bron proposed standard roles: `root`, `home`, `temp`, and `trash`. Ben suggested adding a `pictures` role.
+*   **Mutablity Debate:** The current draft used immutable `blobId`, `size`, and `type`. Neil Jenkins and Ben argued that allowing these properties to change on a single FileNode ID (POSIX-like) is more efficient for clients, sharing permissions, and avoiding unnecessary round-trips for small writes (e.g., SQLite `fsync`). Bron agreed to update the draft to allow mutability.
+*   **Blobext:** Discussion centered on chunked uploads and `Blob/convert` for thumbnails. While Ken questioned the historical lack of adoption for IMAP CONVERT, Bron noted that thumbnailing is a critical requirement for modern file clients.
+*   **Resumable Uploads:** The group discussed leveraging the ongoing HTTP Resumable Uploads work rather than reinventing a JMAP-specific mechanism.
 
-### Other JMAP Extensions
-*   **Mario Loffredo** provided status updates on:
-    *   `draft-ietf-jmap-mail-sharing`
-    *   `draft-ietf-jmap-metadata`
-    *   `draft-ietf-jmap-refplus`
-*   **JMAP over CBOR vs. JSON Compression:** Mario suggested exploring CBOR or dictionary-based JSON compression (RFC 9852) to improve efficiency. **Neil Jenkins** cautioned that previous benchmarks showed negligible gains over standard compression once browser overhead was considered, and requested benchmarks before proceeding with new extensions.
-*   **JMAP Email Delivery Push Notifications:** `draft-ietf-jmap-emailpush` is adopted but waiting for implementation experience. Mario noted he has an implementation in progress.
+### JMAP Extensions: Mail Sharing, Metadata, and Refplus
+Mario Loffredo provided updates on three drafts:
+*   **`draft-ietf-jmap-mail-sharing`:** Implemented in Stalwart; considered stable and ready for review.
+*   **`draft-ietf-jmap-metadata` and `draft-ietf-jmap-refplus`:** Mario is seeking further feedback before proceeding with full implementation. Neil Jenkins committed to reviewing the latest versions.
+*   **CBOR and Compression:** Mario suggested exploring CBOR for JMAP or using Compression Dictionary Transport (RFC 9842) to optimize JSON payloads. Neil Jenkins requested benchmarks to demonstrate significant wins over standard compressed JSON before adding protocol complexity.
 
-### Tasks and S/MIME
-*   **Hans-Jörg Happel** reported that work on JMAP Tasks has been slow but is still on the roadmap. He will refresh the expired draft.
-*   **Alexey Melnikov** plans to coordinate with Philip Brüll regarding the S/MIME sender draft.
+### JMAP Email Push
+Neil Jenkins updated the group on `draft-ietf-jmap-emailpush`.
+*   **Status:** The document is adopted. Mario Loffredo confirmed partial implementation in Stalwart. The next step is full end-to-end testing of payload delivery.
 
 ## Decisions and Action Items
-*   **Decision:** Relax the immutability of `blobId`, `size`, and `type` in `draft-ietf-jmap-filenode` to support updating existing file nodes.
-*   **Decision:** Proceed with the adoption of the vCard 4.0-bis maintenance work.
-*   **Action (Bron Gondwana):** Issue a formal call for adoption for `draft-ietf-jmap-blobext`.
-*   **Action (Robert Stepanek):** Submit JS-Calendar and related documents to the IESG.
-*   **Action (Hans-Jörg Happel):** Re-submit a non-expired version of the JMAP Tasks draft.
+*   **Decision:** The working group will adopt a new work item to produce a vCard 4.0-bis document (Rick to lead).
+*   **Action:** Bron Gondwana to update `draft-ietf-jmap-filenode` to move away from the immutable content model to a POSIX-like model where the `blobId` can change for a stable Node ID.
+*   **Action:** Hans-Joerg to refresh the expired JMAP Tasks draft and determine if checklist features are ready for inclusion.
+*   **Action:** Bron Gondwana to issue a call for adoption for the JMAP Blobext draft.
+*   **Action:** Alexey to review the S/MIME sender draft in coordination with Philippe.
 
 ## Next Steps
-*   Refine `draft-ietf-jmap-filenode` based on the mutability discussion.
-*   Wait for implementation experience for `draft-ietf-jmap-emailpush` and JMAP Calendars.
-*   Update milestones in the Datatracker to reflect new adoption targets (vCard 4.0-bis, Blobext).
-*   Review the branding/protocol badge ideas provided by the Occupop designers when available.
+*   **WGLC:** `draft-ietf-jmap-mail-sharing` will likely proceed to Working Group Last Call soon following final reviews.
+*   **Implementation:** Mario Loffredo will set up a public Stalwart instance to allow client developers to test `draft-ietf-jmap-refplus` and `draft-ietf-jmap-emailpush`.
+*   **Milestones:** Bron Gondwana to update the Datatracker milestones, including shifting the `draft-ietf-jmap-filenode` submission date to June and adding Blobext milestones.

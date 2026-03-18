@@ -1,47 +1,53 @@
 # [PLANTS](../wg/plants.html)
 
+**IETF 125 Session Minutes**
+
 ## Summary
-The PLANTS (Post-Quantum Low-Latency Archives for Network Security) working group held its first official meeting at IETF 125. The session focused on the administrative transition of the core Merkle Tree Certificate (MTC) specification to a working group item, the adoption of a GitHub contribution policy, and technical discussions regarding monitoring, architecture, and experimental deployment results.
+The PLANTS (Post-Quantum Low-Latency ArchiTecture for Network Security) working group held its first official meeting at IETF 125. The session focused on the recently adopted `draft-ietf-plants-merkle-tree-certs`, establishing working group procedures for GitHub, discussing the forthcoming architecture document, and reviewing early experimental results from a Chrome-Cloudflare deployment. Key technical discussions included log generations for incident recovery, verifiable server monitoring, and the use of Merkle Tree Certificates (MTC) in private PKI contexts.
 
 ## Key Discussion Points
 
-### Working Group Status and GitHub Policy
-*   **Chairs' Introduction**: The chairs (Ross Bush and Tom Ritter) noted that the WG charter is finalized and the main document has been adopted as `draft-ietf-plants-merkle-tree-certs`.
-*   **GitHub Policy**: The chairs presented [PLANTS GitHub policy](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-plants-github-policy-00). The WG reached a consensus to use the "Issue Discussion Mode" as defined in RFC 8874.
-    *   **Mike Ounsworth** emphasized the need to summarize GitHub discussions back to the mailing list to ensure visibility for those not tracking individual issues.
+### WG Introduction and GitHub Policy
+*   **Presenters:** Tom Ritter and Russ Housley (Chairs)
+*   **Slides:** [PLANTS WG Chair Introduction](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-plants-wg-chair-introduction-00), [PLANTS GitHub policy](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-plants-github-policy-00)
+*   The group discussed how to manage technical work. Tom Ritter proposed the "Issue Discussion Mode" for GitHub usage, where substantive technical matters can be discussed in GitHub issues, provided major decision points and summaries are brought back to the mailing list.
+*   Mike (participation via queue) supported the use of GitHub but emphasized that the mailing list remains the primary point of entry for many participants and requires proactive summaries from authors.
 
 ### Document Update: draft-ietf-plants-merkle-tree-certs
-David Benjamin presented [Lettuce Get To Work](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-lettuce-get-to-work-00), covering the latest updates to the core draft:
-*   **Terminology Changes**: "Full certificate" renamed to **Standalone certificate**; "Signature list" renamed to **Landmark certificate**.
-*   **Architecture Document**: Discussion on splitting the current draft to create a separate architecture document. The architecture doc will provide a non-normative overview of how MTC fits into the broader transparency ecosystem (e.g., interaction with T-Log and static CT APIs).
-*   **Log Generations**: To address incident recovery (e.g., CA state corruption or loss of cosigner quorum), the proposal is to treat a CA as a sequence of numbered logs rather than a single log. This allows a CA to "reset" into a new generation if the previous one becomes stuck.
-*   **Trust Anchor Formats**: A need was identified for a standard format for MTC Trust Anchors to support non-transparency-enforcing clients and legacy tools.
+*   **Presenter:** David Benjamin
+*   **Slides:** [Lettuce Get To Work](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-lettuce-get-to-work-00)
+*   **Terminology:** The draft has been updated to use "standalone certificate" (formerly full certificate) and "landmark certificate" (formerly signatureless).
+*   **Architecture Document:** Per the charter, the current "jumbo" draft needs to be split. The new architecture document will clarify where MTC fits into the broader log transparency ecosystem (e.g., relationship with Tlog) and identify applicable application contexts.
+*   **Log Generations:** David proposed a mechanism to allow CAs to recover from state failures (e.g., bit flips or database resets) by using a sequence of numbered logs. This prevents a CA from being permanently "locked out" by cosigners if it commits to an inconsistent state. 
+*   **Trust Anchors:** Discussion on how to represent an MTC CA for non-transparency-enforcing relying parties, potentially using a new Subject Public Key Info (SPKI) type or critical extensions in self-signed certificates.
 
 ### Server Monitoring
-Brendan McMillian presented [Server Monitoring](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-server-monitoring-00), focusing on how site operators can verify their certificates are correctly logged.
-*   **Security Model**: Current CT monitoring often relies on third-party monitors. McMillian argued that for MTC, monitoring should ideally use the same cosigner quorum as the browser to ensure a consistent security model.
-*   **Proposed Mechanism**: Adding a new "accumulated log entry type" to the CA log containing verifiable index root hashes. A counter for these entries would allow efficient verifiable searching by monitors.
-*   **Discussion**: **Filippo Valsoda** and **David Benjamin** discussed the granularities of these counters and whether the CA or a third party should operate the verifiable index.
+*   **Presenter:** Brendan McMillian
+*   **Slides:** [Server Monitoring](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-server-monitoring-00)
+*   Brendan highlighted a security gap: current monitoring often relies on unvetted third-party services. He proposed aligning monitoring security with browser security by adding "accumulated" log entries to CA logs. These entries would contain verifiable index root hashes cosigned by the same quorum the browser trusts.
+*   A PR is open to add a counter to log entries to allow for verifiable, efficient searching of these index updates.
+*   **Discussion:** Filippo Valsorda and David Benjamin discussed the granularity of these counters and whether they should be per-index-operator or batched.
 
-### Experimental Results
-Luke Valenta presented [MTC experiment early results](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-mtc-experiment-early-results-01) from a collaborative trial between Chrome and Cloudflare.
-*   **Performance**: At the median, MTC handshakes were ~9% faster than traditional RSA/ECDSA chains due to reduced bytes on the wire. This gap is expected to widen significantly with Post-Quantum (PQ) signatures.
-*   **Reliability**: Most clients were able to update landmarks within hours. Stale landmark rates were around 1%.
-*   **Middleboxes**: No major interference was observed, as the server certificate is encrypted in TLS 1.3. When failures occur, the system gracefully downgrades to standard certificates.
+### MTC Experiment: Early Results
+*   **Presenter:** Luke Valenta
+*   **Slides:** [MTC experiment early results](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-mtc-experiment-early-results-01)
+*   Luke presented data from a joint Chrome and Cloudflare experiment using landmark MTCs over 1,000 domains.
+*   **Performance:** Even with classical signatures, MTC handshakes were ~9% faster at the median (105ms vs 116ms) due to reduced bytes on the wire compared to traditional X.509 + CT chains.
+*   **Reliability:** 99% of clients successfully updated landmarks within a few hours. No significant middlebox interference was observed, largely because the server certificate is encrypted in TLS 1.3.
 
-### MTC for Private PKI and Pruning
-Filippo Valsoda presented [Pruning MTC](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-pruning-mtc-00), demonstrating how MTC can scale down for constrained or private environments.
-*   **Isomorphic to X.509**: By reducing the "sub-tree size" to 1 and using a single signature, MTC becomes functionally identical to a standard signature algorithm (e.g., "MTCDSA").
-*   **Extensibility**: This allows private PKIs to start with basic MTC and incrementally add features like transparency, cosigning, or HSM optimization (sub-tree signing) as needed.
-*   **Discussion**: **Deirdre Connolly**, **Victor Vasiliev**, and **John Gray** expressed interest in exploring MTC for client certificates and private PKIs, particularly to handle large PQ signature sizes.
+### Pruning MTC for Diverse Environments
+*   **Presenter:** Filippo Valsorda
+*   **Slides:** [Pruning MTC](https://datatracker.ietf.org/meeting/125/materials/slides-125-plants-pruning-mtc-00)
+*   Filippo demonstrated that MTC is modular. By setting the subtree size to one and using standalone certificates without cosigners, MTC becomes isomorphic to a standard X.509 signature (e.g., "MTCDSA").
+*   This "degenerate" case allows private PKIs or constrained environments to use the same PQ-capable code path as the Web PKI without the overhead of transparency logs or interactive landmark protocols. Features like audit logs and cosigning can then be added back as needed.
 
 ## Decisions and Action Items
-*   **Decision**: The Working Group will use GitHub "Issue Discussion Mode."
-*   **Decision**: Accepted terminology changes: "Standalone certificate" and "Landmark certificate."
-*   **Action (Authors/Chairs)**: Begin splitting the architecture content from `draft-ietf-plants-merkle-tree-certs` into a new draft.
-*   **Action (Chairs)**: Coordinate with the IETF Secretariat to finalize the WG GitHub organization.
+*   **GitHub Policy:** The working group will adopt "Issue Discussion Mode" for GitHub. This will be confirmed on the mailing list.
+*   **Terminology:** The names "standalone certificate" and "landmark certificate" were accepted by the room.
+*   **Draft Splitting:** The authors will begin the process of splitting `draft-ietf-plants-merkle-tree-certs` into the core protocol document and an architecture document.
 
 ## Next Steps
-*   **Mailing List Discussion**: Further refine the "Log Generations" recovery strategy and the "Accumulated Log Entry" proposal for monitoring.
-*   **Cross-WG Coordination**: Engage with the **TLS** and **LAMPS** working groups regarding Trust Anchor IDs and OID allocations for MTC types.
-*   **Private PKI**: Initiate a dedicated thread on the mailing list to discuss the architecture for private PKI use cases.
+*   **Architecture Document:** Initial drafting and scope definition for the architecture deliverable.
+*   **Log Generations:** Continued discussion on the mailing list regarding the maximum number of generations and enforcement by relying parties.
+*   **Private PKI:** Based on interest from Viktor Dukhovni, Deirdre Connolly, and John Gray, the group will further explore how MTC applies to client certificates and private/internal PKIs.
+*   **External Coordination:** Coordination with the TLS, ACME, and LAMPS working groups regarding Trust Anchor IDs and certificate negotiation.

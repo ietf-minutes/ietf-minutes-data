@@ -1,48 +1,67 @@
 # [MBONED](../wg/mboned.html)
 
-**IETF 125 Session Minutes**
+**IETF 125 - Brisbane, Australia**
+**Chairs:** Lenny Giuliano, Greg Shepherd
+**In-room Delegate:** Jeffrey Zhang
+
+---
 
 ## Summary
-The MBONED working group met to discuss the status of active drafts, new use cases for multicast in Large Language Model (LLM) synchronization, a proposal for dynamic internet multicast tunneling using BGP, and a real-world deployment report on using Automatic Multicast Tunneling (AMT) for high-profile sports streaming. Three documents are currently in Working Group Last Call (WGLC), and the chairs emphasized the need for broader community feedback to advance them.
+The MBONED working group met to discuss the status of active documents, new use cases for multicast in Large Language Model (LLM) synchronization, a proposal for dynamic internet multicast tunneling, and a report on real-world multicast deployment for professional sports streaming. Several documents are currently in Working Group Last Call (WGLC), and the chairs emphasized the need for community feedback to advance them.
+
+---
 
 ## Key Discussion Points
 
-### Working Group Document Status
-*   **draft-ietf-mboned-multicast-yang-model**: Currently in a second WGLC ending this Friday. A new YANG Doctor's review was requested. The chairs noted a lack of feedback from non-authors and stressed that consensus cannot be determined without it.
-*   **draft-ietf-mboned-redundant-ingress-failover**: In a second WGLC following extensive updates from directorate reviews.
-*   **draft-ietf-mboned-non-source-routed-sr-mcast**: Just entered WGLC. Jeffrey Zhang (co-author) noted its importance as an informational guide for deployment options in Segment Routing (SR) networks.
-*   **draft-ietf-mboned-dorms**: Waiting on a Security Directorate review. The request has been reopened after previous attempts went unanswered.
-*   **draft-ietf-mboned-cbacc** and **draft-ietf-mboned-ambi**: These drafts are being "parked" due to a lack of current interest or being overtaken by other technologies like Quick extensions.
+### Working Group Status and Draft Updates
+*   **draft-ietf-mboned-multicast-yang-model**: Currently in WGLC (ends Friday). The draft was updated following extensive off-list feedback. Chairs noted a lack of on-list responses from non-authors and stressed that consensus cannot be determined without broader participation.
+*   **draft-ietf-mboned-redundant-ingress-failover**: In WGLC for a few more weeks. Updated recently after directorate reviews.
+*   **draft-ietf-mboned-non-source-routed-sr-mcast**: Just entered WGLC. This is an informational document regarding deployment options in Segment Routing networks.
+*   **draft-ietf-mboned-multicast-security**: No recent updates; authors were not present.
+*   **draft-ietf-mboned-dorms**: Awaiting Security Directorate review. The request was recently reopened after previous attempts were unsuccessful.
+*   **Parking of Documents**: The authors of **draft-ietf-mboned-cbacc** and **draft-ietf-mboned-ambi** suggested parking these documents due to a lack of current implementation interest or the drafts being overtaken by other technologies (e.g., Multicast extensions for QUIC).
 
-### LLM Multicast Use Cases
-**Sandy Zhang** presented [update-llmsyn-multicast](https://datatracker.ietf.org/meeting/125/materials/slides-125-mboned-update-llmsyn-multicast-00).
-*   **Context**: Synchronizing large models (70GB to 1TB) across thousands of distributed GPU clouds.
-*   **Challenges**: High concurrency leads to IO bottlenecks at storage repositories and significant "cold start" latency for inference services.
-*   **Proposal**: Use multicast (PIM, SR-P2MP, or BIER) to improve transmission efficiency and minimize latency.
-*   **Discussion**: Sandy Zhang requested feedback on whether this work should reside in MBONED, BIER, PIM, or RTG working groups.
+### Multicast for LLM Synchronization
+**Presentation:** [update-llmsyn-multicast](https://datatracker.ietf.org/meeting/125/materials/slides-125-mboned-update-llmsyn-multicast-00)
+**Presenter:** Sandy Zhang
+
+*   **Use Case**: Delivering large-scale models (70GB to 1TB) from central repositories to distributed GPU clouds for real-time inference.
+*   **Challenges**: High concurrency leads to I/O bottlenecks at storage points; "cold start" latency affects inference service availability.
+*   **Technical Analysis**: 
+    *   PIM-SM and SR-P2MP are suitable for fixed destination sets.
+    *   BIER provides a stateless, dynamic alternative for evolving sets of destination GPU clouds.
+*   **Discussion**: The presenter is seeking the appropriate working group for this work (options include MBONED, BIER, PIM, or RTGWG).
 
 ### Dynamic Internet Multicast Tunneling
-**Lenny Giuliano** presented [Dynamic Internet Multicast Tunneling](https://datatracker.ietf.org/meeting/125/materials/slides-125-mboned-dynamic-internet-multicast-tunneling-00).
-*   **Problem**: Connecting multicast islands over the unicast-only internet traditionally requires manual GRE configuration and complex routing.
-*   **Solution**: Use BGP Extended Communities to dynamically discover AMT relays. The relay IP is encoded in the BGP route to the source.
-*   **Benefits**: Supports "middle-mile" tunneling between routers, acting as zero-config compared to GRE.
-*   **Feedback**: Early feedback from IDR experts suggested that Extended Communities might not be the best transport for this data across the global internet; the authors are considering a new BGP attribute instead.
-*   **Deployment**: This extends the TreeDN architecture (RFC 9706) to support router-to-router tunneling.
+**Presentation:** [Dynamic Internet Multicast Tunneling](https://datatracker.ietf.org/meeting/125/materials/slides-125-mboned-dynamic-internet-multicast-tunneling-00)
+**Presenter:** Lenny Giuliano
 
-### Industry Experience: Australian Open
-**Sanjay Mishra** presented [Aircast's Internet Multicast Experience for the Australian Open](https://datatracker.ietf.org/meeting/125/materials/slides-125-mboned-aircasts-internet-multicast-experience-for-the-australian-open-00).
-*   **Performance**: Achieved glass-to-glass latency of 500ms–900ms globally using a flow-based (rather than chunk-based) approach. This was 18 seconds faster than standard US broadcast TV and minutes faster than traditional web streaming.
-*   **Technical Setup**: Used AMT relays (Juniper MX204) and a specialized SDK. Due to on-site networking restrictions, they had to wrap GRE in WireGuard to reach the internet.
-*   **Future Needs**: Need for standardized multicast authentication, encryption (scaling to millions), and rate adaptation for the last mile.
-*   **Discussion**: 
-    *   Sandy Zhang questioned the necessity of AMT in the middle-mile if BGP/MVPN could be used. Jeffrey Zhang explained that the proposal aims for a more dynamic, less cumbersome setup than traditional MVPN for cross-provider connectivity.
-    *   Stig Venaas and Jeffrey Zhang discussed the "PIM Light" mode as an alternative to AMT, focusing on how tunnel endpoints and encapsulations (GRE vs. UDP) are handled when discovery is dynamic.
+*   **Problem**: While Automatic Multicast Tunneling (AMT) is effective for the last mile, it lacks a standard mechanism for routers to dynamically discover which relay to use for specific sources in the "middle mile."
+*   **Proposal**: Use a BGP Extended Community to encode the AMT relay IP address within the route advertisement for the multicast source.
+*   **Technical Benefits**: Allows core routers to act as AMT gateways/relays dynamically, connecting "multicast islands" across a unicast-only internet without manual GRE tunnel configuration.
+*   **Feedback**: Early feedback from IDR experts suggests that a new BGP attribute might be more appropriate than an extended community for internet-wide propagation. The authors will update the draft to reflect this.
+*   **WG Placement**: The chairs believe MBONED is the correct home as it pertains to relay discovery, similar to RFC 8777 (Dryad).
+
+### Aircast's Internet Multicast Experience: Australian Open
+**Presentation:** [Aircast's Internet Multicast Experience for the Australian Open](https://datatracker.ietf.org/meeting/125/materials/slides-125-mboned-aircasts-internet-multicast-experience-for-the-australian-open-00)
+**Presenter:** Sanjay Mishra
+
+*   **Deployment**: Aircast Live utilized AMT to stream live 1080p/30fps video from the Australian Open to global participants.
+*   **Performance**: Achieved glass-to-glass latency of 500ms–900ms (Melbourne to Boston/India), significantly faster than traditional chunk-based streaming (which ranged from 18 seconds to 2 minutes).
+*   **Implementation Hurdles**: 
+    *   Lack of external IP addresses at the venue required a complex stack: Wireguard -> GRE -> AMT.
+    *   VLC 4.0 had issues with Variable Bitrate (VBR) over RTP, requiring a fallback to Constant Bitrate (CBR).
+*   **Next Steps**: Focus on security/authentication between gateways and relays, multicast encryption for content protection, and adaptive bitrate support.
+
+---
 
 ## Decisions and Action Items
-*   **WGLC Feedback**: Working group members are urged to review and provide "support/do not support" feedback for `draft-ietf-mboned-multicast-yang-model`, `draft-ietf-mboned-redundant-ingress-failover`, and `draft-ietf-mboned-non-source-routed-sr-mcast`.
-*   **Document Parking**: `draft-ietf-mboned-cbacc` and `draft-ietf-mboned-ambi` are officially parked until further interest is shown.
+*   **Decision**: **draft-ietf-mboned-cbacc** and **draft-ietf-mboned-ambi** are officially parked due to lack of interest.
+*   **Action Item**: Working Group members are urged to review and comment on **draft-ietf-mboned-multicast-yang-model**, **draft-ietf-mboned-redundant-ingress-failover**, and **draft-ietf-mboned-non-source-routed-sr-mcast** before their respective WGLC deadlines.
+
+---
 
 ## Next Steps
-*   **Dynamic Tunneling**: Authors will update the draft to address BGP attribute feedback before seeking adoption.
-*   **LLM Sync**: Authors to determine the appropriate home for the draft after socialising it in RTGWG and BIER.
-*   **Aircast**: Sanjay Mishra to continue providing industry reports as more high-profile events are supported.
+*   Lenny Giuliano and Jeffrey Zhang to update the Dynamic Internet Multicast Tunneling draft based on IDR feedback regarding BGP attributes vs. extended communities.
+*   Sanjay Mishra and Craig (Aircast) to continue investigating multicast encryption and authentication mechanisms for future deployments.
+*   The chairs will monitor the security directorate review for **draft-ietf-mboned-dorms**.
