@@ -1,0 +1,61 @@
+# [HAPPY](../wg/happy.html)
+
+## Summary
+
+The HAPPY working group met at IETF 125 to discuss updates to the core Happy Eyeballs Version 3 specification, implementation reports from Firefox, and a proposal for signaling connection selection outcomes to the network. The primary focus of the meeting was refining the handling of IPv6-only and VPN scenarios in [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/), discussing a major structural reorganization of the draft, and evaluating the privacy and feasibility of using ICMP for path selection observability.
+
+## Key Discussion Points
+
+### Happy Eyeballs v3 Update
+**Presenters: Nidhi Vyas and Tommy Pauly**
+**Slides: [Happy Eyeballs v3](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-happy-eyeballs-v3-01)**
+
+Nidhi Vyas summarized recent changes to [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/):
+*   **TLS Handshake:** Changed from "may" to "should" wait for the TLS handshake before declaring a connection successful.
+*   **0-RTT/Resumption:** Clarified that resumption attempts should not be unfairly advantaged or disadvantaged in the race; connection attempt delays remain the same.
+*   **Historical Data:** Clarified that historical data should not be used across different interfaces but can be reused if a client reliably identifies it has returned to a previously used network.
+
+**IPv6-only and VPN Scenarios:**
+Jen Linkova presented a proposal to handle NAT64, DNS64, and VPN split-tunneling scenarios. The discussion focused on using Provisioning Domains (PvDs) to better model configurations where DNS resolution occurs on one interface (e.g., a VPN) but traffic is routed elsewhere. 
+*   **Proposal:** If a global IPv6 address is present in the PvD, ask for AAAA. If native IPv4 or a NAT64 prefix is discovered, ask for A. 
+*   **Decision:** There was general agreement to move toward using "PvD" terminology instead of "interface" to better handle complex routing cases.
+
+**Document Restructuring:**
+Ben Schwartz proposed a major restructuring of the draft to clearly separate normative requirements for interoperability/network safety from the "Recommended Algorithm" (which might be viewed as a BCP or informational example).
+*   Tommy Pauly noted that many "requirements" are actually inherited from other RFCs (e.g., address sorting).
+*   Ben Schwartz suggested the algorithm should be more "algorithmic," perhaps including pseudo-code or functional signatures for inputs and outputs.
+*   The chairs and authors will work to ensure the text distinguishes between what is mandatory for a "good citizen" on the internet and what is implementation guidance.
+
+### HEv3 in Firefox
+**Presenter: Max (Mozilla)**
+**Slides: [HEv3 in Firefox](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-hev3-in-firefox-00)**
+
+Max reported on the implementation of HEv3 in Firefox Nightly. 
+*   **Implementation:** Written as a standalone, deterministic Rust library with no external dependencies (available on GitHub).
+*   **Telemetry:** Mozilla plans to collect and share public telemetry, focusing on Time to First Byte (TTFB), number of connection attempts, and the position of the winning connection in the candidate list.
+*   **Platform Issues:** Firefox encounters challenges accessing HTTPS DNS records on certain versions of macOS and Windows 10, whereas Android support is available via `res_nsend`.
+*   Stuart Cheshire (Apple) emphasized that while browsers implement this, the ideal location for Happy Eyeballs is the OS networking stack to benefit all applications (e.g., Matter/Home Automation).
+
+### Slow Alternate Detection and Path Selection Observability
+**Presenter: Brian Trammell**
+**Slides: [Slow Alternate Detection and Path Selection Observability](https://datatracker.ietf.org/meeting/125/materials/slides-125-happy-slow-alternate-detection-and-path-selection-observability-00)**
+
+Brian Trammell introduced a thought experiment on using ICMP to signal to the network/server when a path was *not* selected by Happy Eyeballs.
+*   **Mechanism:** A new ICMP type/code to report a "slow alternate." It would include a hash of the DNS answer and a sampling rate.
+*   **Concerns:** 
+    *   **Privacy:** Ben Schwartz and Lars Eggert raised significant concerns regarding the hash; even a hashed DNS name is often reversible, potentially leaking SNI/ECH information to the path.
+    *   **Feasibility:** Modern operating systems often restrict user-space applications from sending raw ICMP packets.
+    *   **Alternatives:** Lucas Pardue suggested using Network Error Logging (NEL) or in-band HTTP signaling (like `Alt-Used`).
+
+## Decisions and Action Items
+
+*   **PvD Integration:** The working group agreed to transition the terminology in [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/) from "interfaces" to "Provisioning Domains (PvDs)" to better support VPN and multi-homed scenarios.
+*   **Action Item:** Jen Linkova and Andre (via GitHub) to provide updated text for the IPv6-only/NAT64/VPN section.
+*   **Action Item:** Eric Kinnear to file an issue regarding the global reference and use of PvDs throughout the draft.
+
+## Next Steps
+
+*   **Draft Restructuring:** Authors (Tommy Pauly, Nidhi Vyas, etc.) will work with Ben Schwartz to refine the document structure to improve clarity between normative requirements and recommended implementation.
+*   **Firefox Telemetry:** Max will share initial telemetry data from Firefox Nightly at IETF 126 to help tune the recommended delay values in the draft.
+*   **Observability Discussion:** Discussion on path signaling (slow alternate detection) will move to the mailing list, specifically addressing the privacy risks and looking for alternative transports (e.g., QUIC transport bits or HTTP headers).
+*   **Web Tester:** The group will invite the TU Munich researchers to present updates on the Happy Eyeballs web tester at the next meeting.
