@@ -1,52 +1,73 @@
 # [IEPG](../wg/iepg.html)
 
-**Meeting Minutes: IEPG at IETF 125**
+**IETF 119 Meeting Minutes**  
+**Session:** IEPG  
+**Chairs:** Warren Kumari, Jen Linkova (Remote)  
+
+---
 
 ## Summary
-The IEPG meeting at IETF 125 focused on operational DNS measurements, root server traffic analysis, and the impact of malformed or "broken" DNS configurations on resolver behavior. Key topics included the resource requirements for local root implementations, the behavior of resolvers when encountering nameserver records pointing to the root (.), the observation of bit-flipping errors in queries to `root-servers.net`, and a large-scale measurement of DNS reachability over IPv6.
+The IEPG meeting at IETF 119 focused almost exclusively on DNS operational measurements and research. Key topics included the traffic implications of deploying local root zones, resolver behaviors when encountering broken authoritative servers (specifically the `NS .` proposal), the prevalence of bitflipping in root server queries, and large-scale measurements of DNS resolution over IPv6 transport.
+
+---
 
 ## Key Discussion Points
 
-### 1. Global Local Root
-**Slide Title:** [Global Local Root](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-global-local-root-00)
+### 1. Administrivia
+*   **Presenter:** Warren Kumari
+*   **Slides:** [Administrivia](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-administrivia-00)
+*   The meeting was noted as being heavily DNS-centric, though IEPG traditionally covers broader operational topics.
 
-*   **Traffic Analysis:** The presentation discussed baseline traffic for root server instances. **Ralph Dolmans** (Akamai) questioned the traffic baselines, noting that resolvers typically query multiple root servers, which might lead to underestimating the total traffic per source.
-*   **Optimization:** **William Casper** suggested that GZIP compression and aggressive NSEC caching (as discussed in `draft-ietf-dnsop-rfc8109bis`) would significantly reduce traffic for local root users. He noted that without aggressive NSEC caching, resolvers continue to "leak" negative answers to the actual root servers.
-*   **Architectural Perspective:** **Richard Barnes** argued that fetching the root zone over TLS/HTTPS is isomorphic to DNSSEC security properties and preferred moving the zone to the edge via web distribution.
-*   **Root Zone as a Web Object:** **Jeff Huston** emphasized that the root zone should be treated as a signed web object. Using ZoneMD (`draft-ietf-dnsop-zonemd`), a resolver can verify the authenticity of a zone file retrieved from any source (even a "garbage trucker"). He argued against trying to fix this within the DNS protocol itself, noting that the web ecosystem handles petabytes of data easily and the root zone is a tiny object in comparison.
+### 2. Global Local Root
+*   **Presenter:** Willem Toorop
+*   **Slides:** [Global Local Root](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-global-local-root-00)
+*   **Discussion:** 
+    *   This research assessed the traffic impact of the local root Best Current Practice (referencing `draft-ietf-dnsop-rfc8806bis`). 
+    *   Baseline traffic for a resolver is approximately 1 MB per day. Early tests with Unbound showed an outlier of 105 MB/day due to aggressive HTTP fetching (48 updates/day), which has since been fixed via ETag/If-None-Match implementation.
+    *   Knot Resolver uses roughly 2.2 MB/day by fetching once daily.
+    *   The research explored "incremental signing" of the root zone, which could theoretically reduce daily traffic below the current baseline.
+    *   **Job Snijders** recommended using gzip compression for HTTP transfers to save ~56% of bandwidth.
+    *   **Dwayne Wessels** noted that comparing "clean" local root behavior to "real-world" root traffic (where 90% of queries are junk) might be an unfair baseline.
+    *   **Geoff Huston** argued that the root zone should be treated as a standard signed web object, moving distribution away from the DNS protocol to more efficient web delivery ecosystems.
 
-### 2. Testing Resolver Behaviours With Broken Authoritative Servers
-**Slide Title:** [Testing Resolver Behaviours With Broken Authoritative Servers](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-testing-resolver-behaviours-with-broken-authoritative-servers-00)
+### 3. Testing Resolver Behaviours With Broken Authoritative Servers
+*   **Presenter:** Wes Hardaker
+*   **Slides:** [Testing Resolver Behaviours With Broken Authoritative Servers](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-testing-resolver-behaviours-with-broken-authoritative-servers-00)
+*   **Discussion:**
+    *   Research explored the proposal (originally by Joe Abley, related to `draft-abley-dnsop-delegation-dot`) to point Name Server (NS) records to the root (`.`) for non-delegated strings like `.internal`.
+    *   Using 5,000 Ripe Atlas probes, Hardaker tested several failure modes: non-existent parents, broken bailiwicks, and `NS .`.
+    *   **Findings:** All error conditions cause increased traffic. `NS .` results in `SERVFAIL`, which current resolvers do not cache effectively, causing repeat queries. However, `NS .` was found to be "no worse" than existing broken infrastructure (e.g., lame delegations).
+    *   **Conclusion:** An empty zone (returning `NXDOMAIN`) remains the best way to control negative caching TTLs, whereas `NS .` is a useful signal but currently triggers un-cached `SERVFAIL` responses.
+    *   Hardaker noted strange traffic remnants like A6 and CNAME queries for non-existent records.
 
-*   **Experiment Design:** **Wes Hardaker** presented results from testing how resolvers handle nameserver (NS) records pointing to "dot" (.), a concept proposed in Joe Abley's draft (`draft-ably-dnsop-any-to-dot`). The test used 5,000 RIPE Atlas probes across `.com` and `.games`.
-*   **Findings:**
-    *   All error conditions (NXDOMAIN, ServeFail) cause more traffic than successful queries.
-    *   NS records pointing to "." result in ServeFails. While these aren't cached long (leading to repeated queries), they are no more damaging to the infrastructure than existing "broken" internal or external Ballywicks prevalent on the internet today.
-    *   Empty zones are technically superior because they allow operators to control negative caching TTLs via the SOA record.
-*   **Anomalies:** Hardaker noted "strange things" in the data, including queries for deprecated A6 (IPv6) records and CNAME queries for records that only had A records.
+### 4. Bitflipping root-servers.net
+*   **Presenter:** Peter Thomassen
+*   **Slides:** [Bitflipping root-servers.net](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-bitflipping-root-serversnet-00)
+*   **Discussion:**
+    *   Inspired by previous work on "bitquatting," Thomassen registered 48 bitflip variations of `root-servers.net` to see if resolvers would latch onto them due to memory errors.
+    *   Significant traffic was observed, particularly for `r-k-o-t-servers.net`. 
+    *   Data analysis revealed "resolution cascades" from specific sources, notably car navigation systems (Volvo, Ford) and older systems like G-Book. These systems appeared to have structural memory defects rather than random flips.
+    *   **Lorenzo Colitti** questioned if the flips were network-induced, but the structural consistency of the flips suggested hardware/client memory issues.
+    *   Thomassen implemented "fake root servers" (proxied to K-root) to further observe behavior. The research concluded that while interesting, the volume is low enough that it doesn't represent a massive threat, though the names are now registered to prevent malicious exploitation.
 
-### 3. Bitflipping root-servers.net
-**Slide Title:** [Bitflipping root-servers.net](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-bitflipping-root-serversnet-00)
+### 5. Measuring DNS over IPv6
+*   **Presenter:** Geoff Huston
+*   **Slides:** [Measuring DNS over IPv6](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-measuring-dns-over-ipv6-00)
+*   **Discussion:**
+    *   Huston used APNIC’s ad-based measurement system to test the viability of IPv6-only authoritative name servers (referencing the context of `RFC 3901`).
+    *   Approximately 66-67% of users can resolve a name if the authoritative server only answers over IPv6. 
+    *   The research highlighted the "glueless delegation" problem: some regions (e.g., North Africa, Algeria) effectively block resolution of names that require additional glueless lookups.
+    *   **Findings:** The DNS is a "massive feedback amplification system" where ~40% of queries are "bullshit" (no user is waiting for the answer). Simple models of resolver/stub behavior are failing to capture the complexity of modern traffic (replays, log-playing, and aggressive pre-fetching).
+    *   **Wes Hardaker** and **Job Snijders** discussed the persistence of DNS queries and the potential for memory bitflips to actually serve as a "natural" end to infinite query loops.
 
-*   **Observation:** **Peter Thomason** registered bit-flipped variations of `root-servers.net` to measure how often memory errors (cosmic rays or hardware defects) lead to incorrect DNS queries.
-*   **Traffic Patterns:** The experiment captured millions of queries. Interestingly, certain bit-flips were more common than others, suggesting structural hardware defects in specific devices rather than purely random cosmic rays.
-*   **Specific Use Cases:** Significant traffic was observed from car navigation systems (Garmin, Volvo, Ford/Autonomic). Some devices appeared to be in permanent failure loops, potentially due to faulty memory chips in the automotive hardware.
-*   **Discussion:** **Duane Wessels** noted the clever use of different IP addresses for priming vs. single-address queries to distinguish resolver behavior. **Lorenzo Colitti** and **Marco Davids** questioned if these could be network transmission errors; Thomason argued the "resolution cascades" (follow-up queries) suggested the bit-flip happened inside the resolver's memory before the query was sent.
-
-### 4. Measuring DNS over IPv6
-**Slide Title:** [Measuring DNS over IPv6](https://datatracker.ietf.org/meeting/125/materials/slides-125-iepg-sessa-measuring-dns-over-ipv6-00)
-
-*   **Methodology:** **Jeff Huston** used ad-based measurements (45M samples/day) to test V6 transport. The experiment used a dual-stacked web object where the DNS was only resolvable via IPv6.
-*   **Results:** Approximately 67% of users can resolve a name if the authoritative server is V6-only.
-*   **Regional Anomalies:** In North Africa (Algeria, Libya, Egypt), glueless delegation is often blocked. Many ISPs there appear to use middleboxes or specific configurations that refuse to resolve names requiring glueless fetches.
-*   **DNS Noise:** Huston noted that the DNS is a "massive feedback amplification system." Approximately 40% of queries seen at authoritative servers are "bullshit"—meaning no user is actually waiting for the answer (replays, aggressive cache refreshing, or stale queries).
-*   **Protocol Issues:** The discussion touched on the fact that DNSSEC does not protect the delegation path, only the final answer. Huston expressed skepticism about the need for complex new delegation protections (like those discussed in the DELEG working group) if the end-to-end signature is valid.
+---
 
 ## Decisions and Action Items
-*   **Local Root Optimization:** Recognition that aggressive NSEC caching is a prerequisite for efficient local root operation to prevent leaking negative queries.
-*   **Bit-flip Domains:** Peter Thomason has currently registered the bit-flipped domains to mitigate potential hijacking, though it was noted this is an ongoing cost.
+*   **Willem Toorop** noted that Unbound has already been patched to include ETag support for root zone fetching over HTTPS to reduce redundant traffic.
+*   **Peter Thomassen** will continue monitoring the bitflipped domains, though they are currently "parked" for security.
+
+---
 
 ## Next Steps
-*   **Continued Measurement:** Peter Thomason will look into further refining bit-flip data by country/AS and checking if source addresses are open resolvers.
-*   **DELEG vs. End-to-End Security:** The community continues to debate whether the focus should be on securing the delegation path or simply relying on ZoneMD and end-to-end DNSSEC signatures.
-*   **Future IEPG Topics:** The chairs requested proposals for non-DNS related operational topics for the next meeting.
+*   Participants were encouraged to bring non-DNS operational topics (e.g., BGP, routing) to future IEPG meetings to balance the agenda.
+*   Future research on `DELEG` (referencing `draft-ietf-dnsop-deleg`) and its impact on the "path" of DNS resolution was suggested as an area for further measurement.
