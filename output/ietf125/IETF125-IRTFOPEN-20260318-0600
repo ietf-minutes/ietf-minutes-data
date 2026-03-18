@@ -1,0 +1,59 @@
+# [IRTFOPEN](../wg/irtfopen.html)
+
+## Summary
+The IRTFOPEN session at IETF 125 featured two Applied Networking Research Prize (ANRP) award presentations and a strategic discussion on internetworking challenges for Artificial Intelligence (AI). The first ANRP talk by **Tianji Gao** focused on Secure Message Transport (SMT), a protocol designed to provide transport-level encryption for data centers while avoiding head-of-line blocking. The second ANRP talk by **Xiangjie Huang** presented ACE, a sending burstiness control mechanism for high-quality real-time communication (RTC). The final segment of the meeting, led by **Dirk Kutscher**, summarized previous discussions on AI workloads and solicited community feedback on potential research directions for the IRTF.
+
+## Key Discussion Points
+
+### Administration and IRTF Updates
+*   **Dirk Kutscher** (IRTF Chair) reviewed the IPR policy, Code of Conduct (RFC 7154), Anti-Harassment procedures (RFC 7776), and Research Ethics (RFC 9775).
+*   Reported on the CoNEXT workshop on networking challenges for AI and the HKUST Internet Research Workshop.
+*   Announced travel grants for the upcoming meeting in Vienna (Deadline: March 27) and the Call for Papers for the Applied Networking Research Workshop (ANRW), due April 17.
+
+### ANRP: Designing Transport-Level Encryption for Data Center Networks
+**Tianji Gao** presented research on Secure Message Transport (SMT), aiming to bring TLS 1.3-level security to data center RPC workloads without the performance penalties of TCP-based TLS. [Chair's Presentation](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-chairs-presentation-02).
+
+*   **Problem:** Standard TLS/TCP suffers from head-of-line (HoL) blocking and high software overhead, which is unsuitable for microsecond-scale data center latencies.
+*   **SMT Design:** Uses a message-based abstraction allowing out-of-order delivery. It leverages existing hardware offloading (TSO/TLS offload) by mimicking TCP header structures for the NIC while using a non-TCP protocol number.
+*   **Security:** Implements per-message record sequence number spaces (Composite ID: 48-bit Message ID + 16-bit Record Index) to ensure replay protection in an out-of-order environment.
+*   **Evaluation:** Shows 20–30% improvement in unloaded latency and up to 77% improvement in P50 latency for NVMe-over-Fabric compared to Kernel TLS (KTLS).
+*   **Discussion:**
+    *   **Speaker 1 (Rod)** questioned the underlying threat model within the data center. **Tianji Gao** cited malicious insiders, compromised tenants, and NSA-level snooping as primary drivers.
+    *   **Stewart Cheshire** referenced the "minion" protocol and noted that HoL blocking is often rare in well-managed data centers (e.g., those using DCTCP), but **Tianji Gao** argued that HoL still occurs at the CPU/core level when multiple connections share resources.
+    *   **Antoine Fressancourt** inquired about key exchange latency. **Tianji Gao** confirmed SMT uses standard TLS handshakes with session resumption to minimize establishment delays.
+
+### ANRP: Sending Burstiness Control for High-Quality Real-Time Communication
+**Xiangjie Huang** presented ACE, a framework to manage pacing delays in RTC systems. [Chair's Presentation](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-chairs-presentation-02).
+
+*   **Problem:** In RTC, pacing delay (delay at the sender’s queue) has become a primary component of tail latency as network RTTs shrink. Strict pacing prevents network congestion but increases sender delay for large video frames.
+*   **ACE Design:**
+    *   **ACE-N (Network):** Adaptively controls burstiness using a token bucket. It probes the network's ability to handle small bursts without overflowing the bottleneck buffer.
+    *   **ACE-C (Complexity):** Adjusts video encoding complexity. For oversized "tail" frames, it increases encoding CPU time to produce a smaller compressed frame, thereby reducing pacing delay.
+*   **Results:** Reduced P95 latency by 33% compared to WebRTC's native pacing while maintaining similar quality.
+*   **Discussion:**
+    *   **Christian Huitema** noted the tension between CC algorithms and pacing, suggesting that while ACE trades CPU for bandwidth/latency, it must interact carefully with the pacing rates determined by algorithms like BBR or GCC.
+    *   **Stewart Cheshire** mentioned that L4S deployment makes pacing critical, as bursty flows may be penalized by queue protection functions.
+    *   **Mike** inquired about bottleneck buffer estimation; **Xiangjie Huang** explained ACE uses a "packet pair" approach (delay × rate) to estimate available space.
+
+### Internetworking Challenges for AI
+**Dirk Kutscher** summarized three topics from a previous workshop to identify future IRTF work:
+1.  **[Disaggregated Architecture for LLM Inference (Mooncake)](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-disaggregated-architecture-for-llm-inference-mooncake-01):** Utilizing KV cache-centric architectures to scale workloads.
+2.  **[Reliability Engineering – Challenges in Networking for AI](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-reliability-engineering-challenges-in-networking-for-ai-00):** Focusing on failure detection and benchmarks.
+3.  **[On AI Agent Communication](https://datatracker.ietf.org/meeting/125/materials/slides-125-irtfopen-on-ai-agent-communication-01):** Naming, identity, and trust delegation for autonomous agents.
+
+**Community Discussion:**
+*   **Rod:** Questioned if "AI" is a unique technical driver or if these are broader microservices/system challenges.
+*   **Dave Plonka:** Emphasized the distinction between "trust delegation" and the responsibility of the human deployer; warned against delegating trust to untrustworthy agents.
+*   **Brian Trammell:** Highlighted a missing "on behalf of" primitive in the IETF stack and expressed strong interest in the agent communication challenge.
+*   **Wes Hardaker:** Suggested the need for a gap analysis to determine why existing token-based authentication (OAuth2) and naming (DNS/DANCE) are insufficient for agents.
+*   **Lisha Jiang:** Argued that AI agents change the system qualitatively (from passive "eyeballs" to collaborative groups) and require cloud-independent, low-latency communication.
+*   **Christian Huitema:** Cautioned that focusing on naming might be looking "under the lamppost," whereas the real challenge is the massive centralization required for LLM training.
+*   **Lars Eggert & Colin Perkins:** Supported the IRTF as a venue for connecting researchers and standards engineers on these topics, noting high interest from new participants in AI-related mentoring.
+
+## Decisions and Action Items
+*   **SMT:** Authors plan to submit an internet-draft for SMT to a future IETF meeting.
+*   **AI Research:** The IRTF will continue using its mailing list to refine the three identified research pillars (Testbeds/Benchmarks, Naming/Trust, and Distributed Computing Co-design).
+
+## Next Steps
+*   Participants are encouraged to join the IRTF announcement and discussion mailing lists to follow up on the AI internetworking topics.
+*   A call for more formal gap analysis regarding agent authentication and delegation was noted as a precursor to potential new research group work.
