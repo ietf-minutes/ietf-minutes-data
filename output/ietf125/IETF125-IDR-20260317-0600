@@ -1,103 +1,75 @@
-# [IDR](../wg/idr.html) - Meeting Minutes (IETF 125)
+# [IDR](../wg/idr.html) - Inter-Domain Routing Working Group
+
+**IETF 125 - Session B**
+**Chairs:** Susan Hares, Jeff Haas, Keyur Patel
+**AD:** Ketan Talaulikar
+
+---
 
 ## Summary
-The Inter-Domain Routing (IDR) Working Group met at IETF 125 to discuss the status of existing documents, proposed extensions for AI/ML data center networking, SRv6 policy optimizations, and a major update to the working group charter. Key themes included the push for draft implementations, the debate over BGP's role in non-routing signaling (e.g., neighbor discovery and port IDs), and the transition of the BGP YANG model toward publication.
+
+The IDR Working Group met to discuss the status of active drafts, review several new proposals related to AI/ML data center networking, and discuss the proposed update to the WG charter. Key themes included traffic engineering in high-performance fabrics, BGP extensions for Segment Routing (SRv6) and Flexible Algorithms, and security policy signaling. Significant discussion occurred regarding the necessity of new BGP communities where existing mechanisms (like link-bandwidth) might suffice, and the jurisdictional boundaries between IDR and other working groups like SPRING and SIDROPS.
+
+---
 
 ## Key Discussion Points
 
-### 1. IDR Chairs' Slides
-**Presenter:** Susan Hares
-**Slides:** [1-0. IDR WG Chairs' slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-1-0-idr-wg-chairs-slides-02)
+### WG Status and Charter
+*   **Susan Hares** reported that `draft-ietf-idr-vpn-ora` has been sent to the IESG. Six additional drafts are in the post-Working Group Last Call (WGLC) shepherd phase, including `draft-ietf-idr-sr-policy-ifit`, `draft-ietf-idr-sr-policy-nrp`, `draft-ietf-idr-nhc`, and `draft-ietf-idr-rt-derived-community`.
+*   **Charter Update:** The proposed charter aims for more detail to avoid late-stage IESG concerns. A primary focus is maintaining BGP scaling and interoperability as more information is shoved into the protocol. **Jeff Haas** (via chat) and **Susan Hares** discussed the challenge of BGP being a "shared technology" and the risks of "breaking" the protocol with non-routing data.
 
-*   **Document Status:** 
-    *   `draft-ietf-idr-vpn-orf` has been sent to the IESG.
-    *   Post-Working Group Last Call (WGLC) write-ups are in progress for `draft-ietf-idr-sr-policy-nrp`, `draft-ietf-idr-nhc`, and `draft-ietf-idr-rt-derived-community`.
-    *   The chairs issued a plea for more comments on adoption and WGLC calls to help move the queue.
-*   **Charter Update:** The new charter draft is more detailed than previous versions. A key point of discussion is how IDR maintains protocol scaling and interoperability while various SAFI/AFI extensions carry non-routing information.
+### 1-2. [BGP Deterministic Path Forwarding (DPF)](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-2-bgp-deterministic-path-forwarding-dpf-00)
+*   **Presenter:** Kevin Wang
+*   **Discussion:** The proposal introduces "colored" EBGP sessions and routes to partition physical fabrics into logical ones, targeting AI/ML workloads (RDMA/ROCEv2).
+*   **Technical Points:** Supports strict mode (OPEN capability negotiation) and loose mode (route matching). Provides mechanisms for primary/backup path selection and load balancing across fabrics.
+*   **Q&A:** **Nan Geng** asked about existing routing policy precedence; Kevin confirmed local policy takes precedence. **Sandy Zhang** suggested using communities alone rather than session-based restrictions. **Jeff Tantsura** questioned whether backup paths are BGP constructs or data-plane implementations, urging the authors to be specific about how these routes are installed in the FIB.
 
-### 2. BGP YANG Model
-**Presenter:** Jeff Haas
-**Slides:** [1-1. BGP YANG](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-bgp-yang-00)
-**Draft:** `draft-ietf-idr-bgp-model`
+### 1-1. [BGP YANG](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-bgp-yang-00)
+*   **Presenter:** Jeff Haas
+*   **Draft:** [draft-ietf-idr-bgp-model](https://datatracker.ietf.org/doc/draft-ietf-idr-bgp-model/)
+*   **Discussion:** Jeff provided an update on version 18, which includes cleanup for the Broadband Forum and NMOP. Significant fixes were made to community regular expressions and the filtering language. A point of contention remains regarding the use of submodules vs. top-level modules. Jeff Haas announced he will step down from BGP YANG roles once this draft is published.
 
-*   **Status:** Version 18 was published in October 2023. Recent work focused on cleanup, regex updates for communities, and alignment with OpenConfig models.
-*   **Controversy:** There is ongoing debate regarding the use of submodules, which may limit external visibility of some groupings. The authors are considering whether to address this before or after RFC publication.
-*   **Announcement:** Jeff Haas announced he will be stepping down as a contributor to the BGP YANG work once this draft is published.
+### 1-3. [BGP PORT EC for AIDC](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-3-bgp-port-ec-for-aidc-pdf-00)
+*   **Presenter:** Zhuang Rui
+*   **Discussion:** Proposes a new BGP Extended Community to carry Port IDs to avoid last-hop congestion in AI data centers. This allows senders to negotiate bandwidth with the destination leaf before transmitting.
+*   **Q&A:** **Krity** questioned the necessity of BGP for this function. **Jeff Tantsura** raised concerns about scaling and the impact of route aggregation on port-specific communities.
 
-### 3. BGP Deterministic Path Forwarding (DPF)
-**Presenter:** Kevin Wang
-**Slides:** [1-2. BGP Deterministic Path Forwarding (DPF)](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-2-bgp-deterministic-path-forwarding-dpf-00)
-**Draft:** `draft-wang-idr-bgp-dpf-00` (referencing context of `draft-ietf-idr-linklocal-capability` and others)
+### 1-4. Data Center Efficiency Proposals
+*   **Presenter:** Xiao Hu
+*   **1-4-1. [Fully Adaptive Routing Ethernet using BGP](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-4-1-fully-adaptive-routing-ethernet-using-bgp-01):** Focuses on path bandwidth for multihoming. **Stephane Litkowski** and **Jeff Tantsura** strongly questioned the need for a new community, arguing the existing Link Bandwidth/DMZ community is already deployed and sufficient.
+*   **1-4-2. [BGP Neighbor Discovery](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-4-2-bgp-neighbor-discovery-02):** Targets OCS-based data centers. **Stephane Litkowski** questioned if this belongs in IDR, as it describes a non-BGP protocol for neighbor discovery. Susan Hares noted that auto-configuration work had previously moved to other groups (e.g., LSVR).
 
-*   **Technical Details:** DPF aims to partition physical IP fabrics into logical fabrics (colored fabrics) for AI/ML workloads (e.g., RDMA/RoCEv2 pinning).
-*   **Modes:** Supports "Strict Mode" (session negotiation via BGP Open capability) and "Loose Mode" (route filtering based on communities).
-*   **Discussion:** Jeff Haas and Stephane Litkowski questioned the choice of a new BGP Open capability versus using existing coloring mechanisms. Kevin Wang noted that DPF allows for primary/backup path signaling and ECMP across specific logical planes.
+### 1-5. [BGP Extensions for Inter-Domain Flexible Algorithm with SRv6](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-5-bgp-extensions-for-inter-domain-flexible-algorithm-with-segment-routing-over-ipv6-srv6-00)
+*   **Presenter:** Li Yan
+*   **Discussion:** Proposes a "Flex-Algo Extended Community" to maintain algorithm consistency across AS boundaries.
+*   **Q&A:** **Krishnaswamy** and **Stephane Litkowski** pointed out that Color Prefix Routing (CPR - RFC 9273) already addresses this in a more generic way, especially for multi-administration scenarios where Algo IDs might clash.
 
-### 4. BGP Port EC for AIDC
-**Presenter:** Junru (John) Ren
-**Slides:** [1-3. BGP PORT EC for AIDC (PDF)](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-3-bgp-port-ec-for-aidc-pdf-00)
-**Draft:** `draft-ren-idr-port-id-extended-community-00`
+### 1-6. [BGP Signaling for Multipath Traffic Engineering Junction States](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-mpte-bgp-00)
+*   **Presenter:** Jeffrey Zhang
+*   **Discussion:** Introduces a new MPTE SAFI to signal Directed Acyclic Graph (DAG) tunnels. Reuses and extends the Tunnel Encapsulation Attribute (RFC 9012) to describe P-hops and N-hops. A new "Any Encapsulation Tunnel" type was proposed for native forwarding.
 
-*   **Purpose:** To avoid last-hop congestion in AI data centers by signaling the specific destination Port ID via BGP Extended Communities. This allows source servers to negotiate bandwidth before sending heavy traffic.
-*   **Discussion:** Susan Hares noted that while the ingress might need port information, it is debatable whether BGP is the appropriate protocol for this. Jeffrey Zhang raised concerns about route aggregation, as unique port IDs would prevent efficient prefix compression.
+### 1-7. [SRv6 Policy SID List Optimization Advertisement](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-srv6-policy-sid-list-optimization-advertisement-draft-ali-idr-srv6-policy-sl-opt-distribution-00)
+*   **Presenter:** Zafar Ali
+*   **Discussion:** This work follows the adoption of the base requirement in the SPRING WG ([draft-ietf-spring-srv6-policy-resource-optimization](https://datatracker.ietf.org/doc/draft-ietf-spring-srv6-policy-resource-optimization/)). It adds a flag to BGP-LS to indicate when a node SID has been optimized (skipped) by the ingress. Susan Hares noted the request for adoption but emphasized that WGLCs for existing drafts take priority.
 
-### 5. Fully Adaptive Routing Ethernet using BGP
-**Presenter:** Xiaohu Xu
-**Slides:** [1-4-1. Fully Adaptive Routing Ethernet using BGP](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-4-1-fully-adaptive-routing-ethernet-using-bgp-01)
-**Draft:** `draft-xu-idr-neighbor-discovery-00` (Related to `draft-ietf-idr-bgp-generic-metric`)
+### 1-8. [BGP Communities for Security Policy Intent](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-8-bgp-communities-for-security-policy-intent-00)
+*   **Presenter:** Yangfei Guo
+*   **Discussion:** Proposes a BGP Large Community ("ROA strict") to signal that a downstream AS should drop routes if RPKI ROV result is "not found" or "invalid."
+*   **Q&A/Decision:** **Susan Hares** and **Stephane Litkowski** clarified that security mechanisms involving RPKI expectations fall under the jurisdiction of the **SIDROPS** Working Group. The authors were directed to present there.
 
-*   **Updates:** Added considerations for multi-homing to better utilize upstream link bandwidth.
-*   **Discussion:** Stephane Litkowski and Jeff Haas challenged the need for a new "past bandwidth" extended community, arguing that the existing Link Bandwidth (DMZ) community used in `draft-ietf-idr-nhc` is already widely deployed and sufficient. The presenter argued that five-stage Clos networks require more granular identification than the current community provides.
-
-### 6. BGP Neighbor Discovery
-**Presenter:** Xiaohu Xu
-**Slides:** [1-4-2. BGP Neighbor Discovery](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-4-2-bgp-neighbor-discovery-02)
-
-*   **Proposal:** Using BGP hello messages on adjacency interfaces for network automation, specifically for Optical Circuit Switches (OCS) in AI fabrics.
-*   **Discussion:** Stephane Litkowski questioned if this falls within the IDR charter, as it describes a discovery mechanism rather than a routing protocol. Susan Hares noted that similar auto-configuration work was previously moved to the LSVR Working Group.
-
-### 7. Inter-Domain Flex-Algo with SRv6
-**Presenter:** Liuyan Han
-**Slides:** [1-5. BGP Extensions for Inter-Domain Flexible Algorithm with Segment Routing over IPv6 (SRv6)](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-sessb-5-bgp-extensions-for-inter-domain-flexible-algorithm-with-segment-routing-over-ipv6-srv6-00)
-**Draft:** `draft-han-idr-inter-domain-flex-algo-00`
-
-*   **Proposal:** A new BGP Transitive Opaque Extended Community to carry Flex-Algo IDs across AS boundaries to maintain consistent constraints (e.g., low latency).
-*   **Discussion:** Krishna (Cisco) and Stephane Litkowski pointed out that Color-Prefix Routing (CPR) already provides a generic solution for mapping colors to algorithms across domains. The authors argued their approach is a simpler, incremental method for Flex-Algo-specific scenarios.
-
-### 8. BGP Signaling for Multi-path Traffic Engineering (MPTE)
-**Presenter:** Jeffrey Zhang
-**Slides:** [1-6. BGP Signaling for Multipath Traffic Engineering Junction States](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-mpte-bgp-00)
-**Draft:** `draft-zhang-idr-mpte-bgp-00`
-
-*   **Technical Details:** Introduction of an MPTE SAFI to signal Directed Acyclic Graphs (DAGs) for TE tunnels. It reuses the Tunnel Encapsulation Attribute (`draft-ietf-idr-rfc4360-bis`) to specify hop-by-hop forwarding branches.
-*   **Status:** Proof-of-concept implementations exist in Junos and FRR.
-
-### 9. SRv6 Policy SID List Optimization
-**Presenter:** Zafar Ali
-**Slides:** [1-7. SRv6 Policy SID List Optimization Advertisement](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-srv6-policy-sid-list-optimization-advertisement-draft-ali-idr-srv6-policy-sl-opt-distribution-00)
-**Draft:** `draft-ali-idr-srv6-policy-sl-opt-distribution-00`
-
-*   **Purpose:** Optimizing SRv6 SID lists by allowing the ingress node to skip the last node SID when it is redundant with the service SID.
-*   **Signaling:** Uses a flag in BGP-LS within the SR Policy TLV.
-*   **Cooperation:** Susan Hares noted that for SR-related drafts, authors should include a section explaining how the function maps to SPRING requirements and interacts with other components like PCE.
-
-### 10. BGP Communities for Security Policy Intent
-**Presenter:** Yangfei Guo
-**Slides:** [1-8. BGP Communities for Security Policy Intent](https://datatracker.ietf.org/meeting/125/materials/slides-125-idr-8-bgp-communities-for-security-policy-intent-00)
-**Draft:** `draft-guo-idr-security-policy-community-00`
-
-*   **Proposal:** Standardizing BGP Large Communities to signal an origin AS's intent regarding RPKI Route Origin Validation (ROV) results (e.g., "drop if invalid").
-*   **Discussion:** Stephane Litkowski suggested this work belongs in SIDEROPS. Susan Hares confirmed that security-related protocol control often falls under SIDEROPS's purview and advised the authors to present there.
+---
 
 ## Decisions and Action Items
-*   **BGP YANG:** The chairs and AD (Ketan Talaulikar) will push for final resolution on the submodule issue to publish `draft-ietf-idr-bgp-model`.
-*   **Charter:** The chairs will set a deadline (approximately three weeks) for final feedback on the new charter text.
-*   **Cross-WG Coordination:**
-    *   `draft-han-idr-inter-domain-flex-algo-00` authors must review and reference the Color-Prefix Routing (CPR) work.
-    *   `draft-guo-idr-security-policy-community-00` is referred to the SIDEROPS Working Group.
-    *   Authors of SRv6-related drafts (e.g., Zafar Ali) are requested to add sections detailing mapping to SPRING architecture.
+
+1.  **Jurisdiction:** `draft-guo-idr-security-policy-intent` (Security Policy Intent) must be handled in SIDROPS.
+2.  **SR-Related Drafts:** Authors of drafts using SR functions are requested to include a section explaining the mapping to SPRING functions and interactions with other controllers like PCE.
+3.  **BGP YANG:** The authors of [draft-ietf-idr-bgp-model](https://datatracker.ietf.org/doc/draft-ietf-idr-bgp-model/) will resolve the submodule issue with NMOP authors to finalize the draft for publication.
+
+---
 
 ## Next Steps
-*   Finalizing the FlowSpec v2 base draft (`draft-ietf-idr-fsv2-ip-basic`) in the coming months.
-*   Interim editing sessions for FlowSpec v2 are scheduled for April/May.
-*   A second IDR session is scheduled for Friday of the IETF 125 week to cover Link-State extensions and additional FlowSpec topics.
+
+1.  **Charter Finalization:** The chairs will set a deadline (approximately three weeks) for final comments on the new WG charter.
+2.  **Flowspec v2:** An editing session is scheduled for Wednesday to finalize the base draft ([draft-ietf-idr-fsv2-ip-basic](https://datatracker.ietf.org/doc/draft-ietf-idr-fsv2-ip-basic/)) by April/May.
+3.  **Adoption Queue:** Participants are encouraged to comment on active WGLCs to clear the queue for new adoption calls.
+4.  **Technical Follow-up:** Authors of the Path Bandwidth proposal ([draft-hu-idr-bgp-adaptive-routing](https://datatracker.ietf.org/doc/draft-hu-idr-bgp-adaptive-routing/)) need to provide stronger justification for not using the existing link-bandwidth community.
