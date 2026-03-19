@@ -1,0 +1,77 @@
+# [SIDROPS](../wg/sidrops.html)
+
+**IETF 121 - SIDROPS Working Group Minutes**
+
+## Summary
+The SIDROPS Working Group met at IETF 121 to discuss the continued evolution of the Resource Public Key Infrastructure (RPKI) and BGP security. Key highlights included the progress of Autonomous System Provider Authorization (ASPA) documents toward Working Group Last Call (WGLC), updates on synchronization protocols (Erik), and new proposals regarding Source Address Validation (SAV), Mapping Origin Authorizations (MOAs), and priority-based RPKI validation. The group also explored a proposal for BGP authentication over TLS and mechanisms for archiving and materializing RPKI data for research.
+
+## Key Discussion Points
+
+### WG Status and Administration
+**Keyur Patel** provided an update on the group's progress:
+*   The updated charter was approved by the IESG.
+*   The following documents are ready for WGLC: [draft-ietf-sidrops-aspa-profile](https://datatracker.ietf.org/doc/draft-ietf-sidrops-aspa-profile/), [draft-ietf-sidrops-aspa-verification](https://datatracker.ietf.org/doc/draft-ietf-sidrops-aspa-verification/), and [draft-ietf-sidrops-8210bis](https://datatracker.ietf.org/doc/draft-ietf-sidrops-8210bis/).
+*   [draft-ietf-sidrops-publication-server-bcp](https://datatracker.ietf.org/doc/draft-ietf-sidrops-publication-server-bcp/) is ready for submission to the IESG.
+*   [draft-ietf-sidrops-constraining-rpki-trust-anchors](https://datatracker.ietf.org/doc/draft-ietf-sidrops-constraining-rpki-trust-anchors/) has been adopted by the WG.
+*   [draft-ietf-sidrops-avoid-rpki-state-in-bgp](https://datatracker.ietf.org/doc/draft-ietf-sidrops-avoid-rpki-state-in-bgp/) passed WGLC and is awaiting shepherd write-up.
+
+### RPKI Data Materialization
+**Job Snijders** presented [The RPKISPOOL format for materializing RPKI data (slidedeck v3)](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-the-rpkispool-format-for-materializing-rpki-data-slidedeck-v3-00).
+*   **RPKI Spool** (Generation 2 of RPKI Views) aims to archive the entire RPKI history efficiently using Zstandard compressed tarballs and daily checkpoints.
+*   The approach achieves 98-99% compression, making it affordable to store global RPKI state changes (~1GB/day).
+*   The format is intended to be documented as an Informational RFC to facilitate research and debugging of RPKI repository inconsistencies.
+
+### Mapping Origin Authorizations (MOA)
+**Chongfeng Xie** provided an update on [A Profile for Mapping Origin Authorizations (MOAs)](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-a-profile-for-mapping-origin-authorizations-moas-00) ([draft-ietf-sidrops-moa-profile](https://datatracker.ietf.org/doc/draft-ietf-sidrops-moa-profile/)).
+*   The draft defines an RPKI object to verify IPv4-to-IPv6 mapping in IPv6-only backbone scenarios.
+*   **Discussion:** **Luigi Iannone** noted that an implementation report and a definition for the RPKI-to-Router (RTR) Protocol Data Unit (PDU) are required before moving to WGLC. **Dima Postnikov** suggested exploring changes to manifest handling for efficiency; **Job Snijders** strongly objected to changing the manifest structure due to its complexity and existing industry consensus.
+
+### Erik Synchronization Protocol
+**Job Snijders** presented [Update on the Erik Synchronization Protocol for use with RPKI](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-update-on-the-erik-synchronization-protocol-for-use-with-rpki-00) ([draft-ietf-sidrops-rpki-erik-protocol](https://datatracker.ietf.org/doc/draft-ietf-sidrops-rpki-erik-protocol/)).
+*   Erik uses Merkle trees and HTTP for efficient RPKI cache synchronization, avoiding the full history replication costs of RRDP.
+*   New updates include compressed snapshots (concatenated DER objects) and an experimental "tail queue" for speculative pre-fetching.
+*   Implementations exist in Perl and C, with Rust and Haskell versions planned.
+
+### YANG Data Model for RTR
+**Jishnu** presented the [YANG Data Model for RPKI to Router Protocol](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-yang-data-model-for-rpki-to-router-protocol-00) ([draft-ietf-sidrops-rtr-yang](https://datatracker.ietf.org/doc/draft-ietf-sidrops-rtr-yang/)).
+*   Recent changes include nomenclature updates (ROA to Validated ROA Payload - VRP) and the inclusion of Canonical Cache Representation (CCR) hashing.
+*   **Decision:** The chairs will request an early YANG doctor review. An implementation report is required for future progress.
+
+### RRDP Delta Retention
+**Li-Bin Liu** presented [RPKI Repository Delta Protocol (RRDP) Delta File Retention Policy](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-rpki-repository-delta-protocol-rrdp-delta-file-retention-policy-01) ([draft-liu-sidrops-rrdp-delta-retention-policy](https://datatracker.ietf.org/doc/draft-liu-sidrops-rrdp-delta-retention-policy-00)).
+*   The draft proposes adaptive delta pruning based on client access patterns to save server storage.
+*   **Discussion:** **Job Snijders** expressed concerns regarding the complexity of tracking clients across distributed (anycasted) endpoints versus the relatively low cost of storage for static delta files.
+
+### TLS Authentication for BGP
+**Jeff Haas** and **Bob Beck** presented [TLS Authentication for BGP](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-tls-authentication-for-bgp-00) ([draft-haas-sidrops-tls-bgp](https://datatracker.ietf.org/doc/draft-haas-sidrops-tls-bgp-01)).
+*   The proposal introduces a purpose-built PKI for BGP over TLS/QUIC, using certificates containing AS IDs in the Subject Alternative Name (SAN).
+*   **Discussion:** **Job Snijders** suggested a short-lived, cross-area WG might be the best home for this work. **Weitong** inquired about using RPKI Signed Checklists (RSC) for signing; the authors clarified they wish to keep the BGP peering trust model distinct from the RPKI route authorization model.
+
+### ASPA Verification for BGP Export
+**Jia Ge** presented [ASPA-based AS_PATH Verification for BGP Export](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-aspa-based-as-path-verification-for-bgp-export-00) ([draft-ietf-sidrops-aspa-verification](https://datatracker.ietf.org/doc/draft-ietf-sidrops-aspa-verification/)).
+*   Egress verification acts as a "safety net" for partial deployments where ingress routers may not yet support ASPA.
+*   The Only to Customer (OTC) attribute remains the primary mechanism and takes priority over egress ASPA checks.
+
+### Prioritized Resource Data
+**Jia Ge** presented [RPKI-based Validation with Prioritized Resource Data](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-rpki-based-validation-with-prioritized-resource-data-00) ([draft-ge-sidrops-rpki-prioritized-resource-data](https://datatracker.ietf.org/doc/draft-ge-sidrops-rpki-prioritized-resource-data-00)).
+*   Proposes adding priority levels to validation data (e.g., highly trusted RPKI ROAs vs. lower-priority AI-inferred data).
+*   **Discussion:** Feedback from the mailing list suggested using multiple RTR sessions/tables (as seen in BIRD) rather than complicating the RTR protocol itself.
+
+### Source Address Validation (BAR-SAV)
+**Miling Jia** presented [Source Address Validation Using Source Origin Authorizations (SOAs)](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-source-address-validation-using-source-origin-authorizations-soas-00) ([draft-ietf-sidrops-bar-sav](https://datatracker.ietf.org/doc/draft-ietf-sidrops-bar-sav/)).
+*   Uses a "Source Origin Authorization" (SOA) object to prevent IP spoofing by authorizing specific ASes to transit traffic for a prefix.
+*   **Discussion:** **Nangang** and **Lanzhen** raised concerns about the economic model (subscriber paying providers), the naming of the object (as it contains path info, not just origin), and whether public RPKI repositories are the right place for non-public path data.
+
+### ROV Deployment Transparency
+**Sitong Liang** presented [A Profile for ROV Deployment Transparency](https://datatracker.ietf.org/meeting/125/materials/slides-125-sidrops-a1-a-profile-for-rov-deployment-transparency-00) ([draft-liu-sidrops-rov-transparency-profile](https://datatracker.ietf.org/doc/draft-liu-sidrops-rov-transparency-profile-00)).
+*   Introduces an RPKI "ROV Tag" to signal that an AS performs Route Origin Validation.
+*   **Discussion:** **Job Snijders** cautioned against self-asserted deployment signals, noting that similar efforts in PeeringDB were rejected due to the difficulty of maintaining accuracy and the binary nature of the signal versus complex operational realities.
+
+## Decisions and Action Items
+*   **ASPA/8210bis:** Chairs to initiate WGLC for [draft-ietf-sidrops-aspa-profile](https://datatracker.ietf.org/doc/draft-ietf-sidrops-aspa-profile/), [draft-ietf-sidrops-aspa-verification](https://datatracker.ietf.org/doc/draft-ietf-sidrops-aspa-verification/), and [draft-ietf-sidrops-8210bis](https://datatracker.ietf.org/doc/draft-ietf-sidrops-8210bis/).
+*   **YANG:** Chairs to request early YANG doctor review for [draft-ietf-sidrops-rtr-yang](https://datatracker.ietf.org/doc/draft-ietf-sidrops-rtr-yang/).
+*   **CCR:** [draft-ietf-sidrops-rpki-ccr](https://datatracker.ietf.org/doc/draft-ietf-sidrops-rpki-ccr/) noted as stable; awaiting additional implementation before WGLC.
+
+## Next Steps
+*   Authors of [draft-ietf-sidrops-moa-profile](https://datatracker.ietf.org/doc/draft-ietf-sidrops-moa-profile/) and [draft-ietf-sidrops-rtr-yang](https://datatracker.ietf.org/doc/draft-ietf-sidrops-rtr-yang/) to prepare implementation reports.
+*   Further mailing list discussion required for the Erik protocol, BAR-SAV, and prioritized validation proposals.
