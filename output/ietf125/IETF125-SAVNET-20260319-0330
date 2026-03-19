@@ -1,0 +1,67 @@
+# [SAVNET](../wg/savnet.html)
+
+**IETF 125 Session Minutes**
+
+## Summary
+The SAVNET Working Group met to discuss progress on inter-domain and intra-domain problem statements, the definition of authoritative information for Source Address Validation (SAV), and the proposed Traffic Origin Authorization (TOA) RPKI object. A significant portion of the session focused on the technical trade-offs between using existing Route Origin Authorizations (ROAs) versus a new TOA object for authorizing source addresses in scenarios where prefixes are not announced in BGP or are used in Direct Server Return (DSR) environments.
+
+## Key Discussion Points
+
+### 1. Inter-domain SAV Problem Statement
+**Presenter:** Libin Liu
+**Slides:** [The Updates on the Gap Analysis, Problem Statement, and Requirements for Inter-domain SAV](https://datatracker.ietf.org/meeting/125/materials/slides-125-savnet-the-updates-on-the-gap-analysis-problem-statement-and-requirements-for-inter-domain-sav-00)
+
+*   **Status Update:** [draft-ietf-savnet-inter-domain-problem-statement](https://datatracker.ietf.org/doc/draft-ietf-savnet-inter-domain-problem-statement/) has reached Version 15 following Working Group Last Call (WGLC) feedback.
+*   **Major Changes:**
+    *   **Requirement Language:** Shifted "must" requirements from absolute improvements to a baseline comparison (e.g., new mechanisms must not be worse than existing methods and must have less overhead than ACLs). General improvements (avoiding improper blocking) moved to "should."
+    *   **Scope:** Explicitly defined as SAV on AS-to-AS interfaces carrying EBGP sessions. Out-of-scope: Packet-modifying approaches.
+    *   **Terminology:** Revised "SAV-related" and "SAV-specific" information to be more implementation-neutral (including RIB/FIB and RPKI objects) rather than RPKI-centric.
+*   **Discussion:**
+    *   **Nan Geng** noted that terminology in the architecture drafts ([draft-ietf-savnet-intra-domain-architecture](https://datatracker.ietf.org/doc/draft-ietf-savnet-intra-domain-architecture/) and [draft-ietf-savnet-inter-domain-architecture](https://datatracker.ietf.org/doc/draft-ietf-savnet-inter-domain-architecture/)) will be updated to align with the problem statement.
+    *   **Rüdiger Volk** inquired if another WGLC was needed for Version 15. The Chairs (Joe) stated they would review the mailing list consensus before deciding.
+
+### 2. Traffic Origin Authorizations (TOAs)
+**Presenter:** Lancheng
+**Slides:** [Traffic Origin Authorizations (TOAs)](https://datatracker.ietf.org/meeting/125/materials/slides-125-savnet-traffic-origin-authorizations-toas-01)
+
+*   **Concept:** Distinguishes between "Root Origin" (authorized for BGP routes) and "Traffic Origin" (authorized to source data packets). TOA is a proposed RPKI-signed object specifically for source authorization.
+*   **Use Cases:** Unidirectional traffic, hidden prefixes, and scenarios where traffic origin is not the root origin.
+*   **Operational Guidance:** Operators should not register a TOA that is identical to or covered by an existing ROA to avoid duplication.
+
+### 3. Considerations on Authoritative Information for SAV
+**Presenter:** Lancheng
+**Slides:** [Considerations on Authoritative Information for Source Address Validation](https://datatracker.ietf.org/meeting/125/materials/slides-125-savnet-considerations-on-authoritative-information-for-source-address-validation-01)
+
+*   **Draft:** [draft-ietf-savnet-general-sav-capabilities](https://datatracker.ietf.org/doc/draft-ietf-savnet-general-sav-capabilities/)
+*   **Framework:** Defines criteria for authoritative information (verifiability, integrity, etc.) and discusses handling missing information via non-authoritative sources (e.g., rate-limiting or monitoring instead of outright blocking).
+*   **Discussion:** **Rüdiger Volk** pointed out that "timeliness" is difficult in RPKI, as objects represent strategy rather than real-time operational status.
+
+### 4. Analysis of TOA vs. ROA
+**Presenter:** Sriram
+**Slides:** [Analysis of TOA vs. ROA for Prefixes Not Announced in BGP but Used for Source Addresses](https://datatracker.ietf.org/meeting/125/materials/slides-125-savnet-analysis-of-toa-vs-roa-for-prefixes-not-announced-in-bgp-but-used-for-source-addresses-00)
+
+*   **Core Debate:** Whether to use a "ROA-only" approach or a "ROA + TOA" approach for prefixes that are not announced in BGP but are used for source addresses (e.g., CDN DSR).
+*   **Sriram's Analysis:** Argued that the "ROA-only" method is often sufficient. Registering a ROA for an AS without announcing it in BGP allows SAV mechanisms like [draft-ietf-sidrops-bar-sav](https://datatracker.ietf.org/doc/draft-ietf-sidrops-bar-sav/) to discover the prefix. TOA adds complexity for marginal gains in forged-origin protection, which is already addressed by ASPA.
+*   **Discussion:**
+    *   **Lancheng** disagreed with Sriram's semantics, stating ROA only authorizes routes, and TOA is necessary for an explicit packet authorization semantic.
+    *   **Jeff Haas** noted that AS0 ROAs signify a route is "invalid," which is technically distinct from the requirement of "sourceable but not routable."
+    *   **Igor Lubashev** argued that TOA provides better safety against BGP leaks/misconfigurations where a "hidden" prefix might accidentally be propagated if a ROA exists.
+
+### 5. Intra-domain SAV Problem Statement
+**Presenter:** Lancheng
+**Slides:** [Intra-domain SAVNET Problem Statement](https://datatracker.ietf.org/meeting/125/materials/slides-125-savnet-intra-domain-savnet-problem-statement-00)
+
+*   **Draft:** [draft-ietf-savnet-intra-domain-problem-statement](https://datatracker.ietf.org/doc/draft-ietf-savnet-intra-domain-problem-statement/)
+*   **Refinements:**
+    *   **Scope:** Clarified to focus only on SAV at internal non-BGP interfaces to avoid conflict with the inter-domain draft.
+    *   **Requirements:** Aligned "must/should" language with the inter-domain draft to focus on improvements over existing baselines.
+    *   **Structure:** Split the security section into "Authentication of information" and "Vulnerability prevention."
+
+## Decisions and Action Items
+*   **Inter-domain Problem Statement:** The Chairs will determine if the revisions in Version 15 require a short supplemental WGLC or if they can proceed to publication.
+*   **Intra-domain Problem Statement:** Authors will submit the updated draft addressing the scope and requirement language changes discussed.
+
+## Next Steps
+*   **TOA Adoption:** The authors of the TOA draft requested a Working Group adoption call in SAVNET before potentially taking the work to the SIDROPS Working Group for RPKI object definition.
+*   **Authoritative Information:** Authors of [draft-ietf-savnet-general-sav-capabilities](https://datatracker.ietf.org/doc/draft-ietf-savnet-general-sav-capabilities/) to refine principles for using non-authoritative information to fill gaps in deployment.
+*   **TOA vs. ROA Debate:** Discussion to continue on the mailing list to reach a consensus on the necessity of a new RPKI object versus leveraging existing ROA semantics.
