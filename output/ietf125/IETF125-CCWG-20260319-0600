@@ -1,0 +1,49 @@
+# [CCWG](../wg/ccwg.html)
+
+## Summary
+The Congestion Control Working Group (CCWG) met at IETF 125 to discuss progress on core drafts and several new proposals. Key topics included updates to [draft-ietf-ccwg-bbr](https://datatracker.ietf.org/doc/draft-ietf-ccwg-bbr), refinements to the SCReAM v2 algorithm for media, a "Rapid Start" proposal to improve slow start performance, Christian Huitema’s "C4" congestion control algorithm, and an analysis of LEO satellite mobility effects on congestion control. The chairs also issued a call to action for the working group to review recent changes to [draft-ietf-ccwg-ratelimited-increase](https://datatracker.ietf.org/doc/draft-ietf-ccwg-ratelimited-increase).
+
+## Key Discussion Points
+
+### Working Group Drafts
+*   **[draft-ietf-ccwg-ratelimited-increase](https://datatracker.ietf.org/doc/draft-ietf-ccwg-ratelimited-increase)**: The chairs noted that non-trivial changes were made after the last call. The working group was asked to review the latest version to ensure continued consensus.
+*   **[BBR Updates](https://datatracker.ietf.org/meeting/125/materials/slides-125-ccwg-bbr-updates-00)** (regarding [draft-ietf-ccwg-bbr](https://datatracker.ietf.org/doc/draft-ietf-ccwg-bbr)):
+    *   **Ian Swett** presented recent logic refinements, including improved pacing text, handling loss recovery when SACK is unavailable, and an exit condition for the DRAIN phase (after 3 RTTs) to prevent flows from getting stuck.
+    *   Editorial work continues to remove TCP-specific language to better support QUIC and other transports.
+    *   A Pull Request (PR) for standardized test cases is in progress to help implementers avoid common pitfalls.
+    *   **Yusuf Guven** and **Ian Swett** discussed a paper regarding BBRv3 vs. Cubic coexistence, noting that while BBRv3 fixes bugs from v2, work continues to optimize fairness.
+
+### Media Congestion Control
+*   **[SCReAM V2](https://datatracker.ietf.org/meeting/125/materials/slides-125-ccwg-scream-v2-01)**:
+    *   **Ingemar Johansson** detailed updates to the SCReAM algorithm, focusing on adaptive reference window overhead and L4S support.
+    *   **Stuart Cheshire** questioned the prescriptive nature of discarding late frames, noting that dropping a single late P-frame can destroy the decoding pipeline. **Ingemar Johansson** agreed that the draft needs to clarify when discarding is appropriate.
+    *   **Harald Alvestrand** confirmed that Google has a WebRTC implementation in Chrome (Canary) and intends to push SCReAM as a standard for WebRTC if experiments succeed.
+    *   **Polls:** The room showed strong interest in continuing work on media congestion control and using SCReAM v2 as a starting point.
+
+### Startup Phase Improvements
+*   **[Rapid Start](https://datatracker.ietf.org/meeting/125/materials/slides-125-ccwg-rapid-start-00)**:
+    *   **Kazuho Oku** proposed three changes to slow start: full RTT pacing in the first RTT, a 3x (rather than 2x) growth rate until queue buildup is detected, and a smoother reduction of the congestion window upon entering recovery.
+    *   Production data from a CDN showed significant Time to Last Byte (TTLB) reductions (10–20%).
+    *   **Martin Duke** requested simulations on how Rapid Start interacts with other flows at a bottleneck.
+    *   **Neal Cardwell** noted that the algorithm's requirements (bytes acked/lost per ACK) are available in Linux TCP and suggested looking at how these ideas could apply to BBR.
+    *   **Polls:** There was significant interest in the working group adopting work on slow start improvements based on this proposal.
+
+### New Algorithms and Research
+*   **[Presenting C4 (Christian’s CC Code)](https://datatracker.ietf.org/meeting/125/materials/slides-125-ccwg-presenting-c4-christians-cc-code-02)**:
+    *   **Christian Huitema** presented C4, a "simple" algorithm using ECN, Max RTT, and pacing. It uses sensitivity curves to enable Multiplicative Increase Multiplicative Decrease (MIMD) to converge toward fairness.
+    *   **Lars Eggert** suggested that a new general-purpose congestion control algorithm should undergo academic peer review (e.g., at a conference like SIGCOMM or IMC) before being adopted by the IETF.
+    *   **Suhas Nandakumar** mentioned Cisco is experimenting with C4 for Media-over-QUIC (MoQ) due to its performance in high-jitter environments like Wi-Fi.
+
+*   **[Analysis for the Adverse Effects of LEO Mobility on Internet Congestion Control](https://datatracker.ietf.org/meeting/125/materials/slides-125-ccwg-analysis-for-the-adverse-effects-of-leo-mobility-on-internet-congestion-control-00)**:
+    *   **Zonglun Li** discussed measurements from Starlink, showing that LEO satellite mobility causes "Path Phase Boundaries" (PPB)—sharp shifts in RTT and bandwidth every ~15 seconds due to satellite handovers.
+    *   Existing CCAs often misinterpret these as congestion. The author suggested the transport layer may need explicit signaling for path-phase changes to prevent stale estimates in algorithms like BBR.
+
+## Decisions and Action Items
+*   **Review Request:** Working group members are tasked with reviewing [draft-ietf-ccwg-ratelimited-increase](https://datatracker.ietf.org/doc/draft-ietf-ccwg-ratelimited-increase) following recent updates.
+*   **BBR Development:** The editors of [draft-ietf-ccwg-bbr](https://datatracker.ietf.org/doc/draft-ietf-ccwg-bbr) will prioritize finishing the PR for test cases.
+*   **SCReAM Clarification:** Ingemar Johansson will clarify the logic regarding frame discarding in the next version of the SCReAM draft.
+
+## Next Steps
+*   The chairs will take the adoption/interest polls for SCReAM v2 and Rapid Start to the mailing list to confirm consensus.
+*   The C4 algorithm and LEO mobility analysis will likely continue as discussion topics within ICCRG and CCWG to determine future standardization potential.
+*   Lars Eggert encouraged proponents of new slow start or CC algorithms to share specific metrics for telemetry so other implementers (e.g., Mozilla) can perform apples-to-apples comparisons.

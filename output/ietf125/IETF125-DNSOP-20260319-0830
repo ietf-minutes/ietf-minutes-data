@@ -1,0 +1,52 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+The DNSOP Working Group met for its second session to discuss various proposals regarding root zone distribution, error transparency for filtered DNS, and protocol ordering. The session also included a "DNS Dispatch" function to evaluate whether new work items regarding Dynamic DNS and AI Discovery belong within DNSOP or elsewhere.
+
+## Key Discussion Points
+
+### Root Zone Distribution: Root Cache and Local Root
+Paul Hoffman presented [Root Cache](https://datatracker.ietf.org/meeting/125/materials/slides-125-dnsop-sessb-chairs-slides-session-i-00) (as an update to RFC 8806), followed by Wes Hardaker presenting [Local Root](https://datatracker.ietf.org/meeting/125/materials/slides-125-dnsop-sessb-chairs-slides-session-i-00).
+
+*   **Technical Approach:** Both proposals aim to modernize RFC 8806 using ZoneMD and DNSSEC validation. Paul’s "Root Cache" focuses on "cache stuffing" (treating the zone as if queries were already made), while Wes’s "Local Root" allows for either authoritative-like behavior or cache filling.
+*   **Motivations:** Paul argued for operational safety in failure cases (falling back to normal DNS), while Wes emphasized reducing dependency on the Root Server System (RSS) infrastructure.
+*   **Concerns:** 
+    *   **Ossification:** Dwayne Wessels expressed concern that widespread deployment might hinder the evolution of the root zone (e.g., deployment of `draft-ietf-dnsop-delext` or DELEG).
+    *   **Sustainability:** Ray Bellis (RSO) questioned the claim that the current RSS model is unsustainable, stating RSOs do not currently see scalability issues.
+    *   **Problem Statement:** Joe Abley, Jim Reid, and Robert (Rob) requested a clearer problem statement, questioning if the privacy and reliability benefits justify the effort.
+    *   **HTTP Review:** Mark Nottingham suggested an early review from the HTTP Directorate due to the use of HTTPS for zone fetching.
+
+### DNS Filtering Transparency
+Mark Nottingham presented [Considerations for Protective DNS Server Operators](https://datatracker.ietf.org/meeting/125/materials/slides-125-dnsop-considerations-for-protective-dns-server-operators-00), discussing `draft-nottingham-dnsop-dns-filtering-transparency`.
+
+*   **Pivot in Design:** The draft has moved away from registering individual resolvers to registering "Filtering Incident Databases" (e.g., Lumen). This mitigates the risk of privileging specific resolvers.
+*   **Implementation:** The draft layers on [draft-ietf-dnsop-structured-dns-error](https://datatracker.ietf.org/doc/draft-ietf-dnsop-structured-dns-error/). Chrome has a preliminary implementation behind a flag.
+*   **Discussion:** Support for the transparency goals was voiced by Vittorio Bertola, Ralf Weber, and Giampaolo Scalone, particularly for legally mandated filtering (e.g., Italy’s Piracy Shield). Robert cautioned that such mechanisms could be abused to broadcast "censorship" messages for non-compliance with laws (e.g., GDPR geofencing).
+
+### Ordering of RRsets in DNS Message Sections
+Joe Abley presented [Clarifications to the DNS Ranking Data](https://datatracker.ietf.org/meeting/125/materials/slides-125-dnsop-clarifications-to-the-dns-ranking-data-00), referencing `draft-abley-dnsop-rrset-ordering`.
+
+*   **Problem:** In January 2024, a change in RRset packing on Cloudflare’s 1.1.1.1 caused failures in glibc and Cisco switches because the CNAME was not ordered before the target record in the answer section.
+*   **Proposed Fix:** A narrow clarification that CNAME and DNAME processing must result in an ordered list in the response.
+*   **Discussion:** Stuart Cheshire noted that while this fix is pragmatic for old devices, client implementations should still be made more robust. André Surikov (Chair) questioned if a full rewrite of RFC 1034/1035 might be better than "bug-fix" RFCs.
+
+### DNS Dispatch: Dynamic DNS Update Protocol
+Joe Abley presented on behalf of Andrea regarding [Delegation Mgmt via DDNS](https://datatracker.ietf.org/meeting/125/materials/slides-125-dnsop-delegation-mgmt-via-ddns-00).
+
+*   **Proposal:** Standardize the "DynDNS2" protocol (a common REST-like HTTP update method) to replace the 25+ variations used by CPE devices.
+*   **Discussion:** Stuart Cheshire argued that standard DNS Update (RFC 2136) is more efficient and already exists. Ralf Weber and Peter Thomassen suggested this is an application-layer issue, not for DNSOP. Ted Hardie suggested a BoF in Vienna to see if implementers would actually converge on a single standard.
+
+### DNS Dispatch: AI Discovery using DNS
+Nick Williams presented a proposal for [AI Discovery using DNS](https://datatracker.ietf.org/meeting/125/materials/slides-125-dnsop-sessb-chairs-slides-session-i-00).
+
+*   **Proposal:** Use the `_agents` label and SVCB/TXT records to discover AI agents within a domain (e.g., `_agents.example.com`).
+*   **Discussion:** Paul Hoffman and Ralf Weber argued that the DNS should not be used for complex semantic discovery of AI capabilities and recommended this work move to a specialized BoF or the Applications area. Jim Reid advised against the abuse of TXT records.
+
+## Decisions and Action Items
+*   **Root Zone Proposals:** The Chairs will look for volunteers to coordinate a requirements/problem statement document to reconcile the "Root Cache" and "Local Root" efforts.
+*   **DNS Filtering Transparency:** There was significant support for adoption; the Chairs will take the call for adoption of `draft-nottingham-dnsop-dns-filtering-transparency` to the mailing list.
+*   **RRset Ordering:** The author will produce a -01 version narrowing the scope to CNAME/DNAME processing based on mailing list feedback.
+
+## Next Steps
+*   **AI Discovery / DynDNS2:** These items were dispatched out of DNSOP. Proponents are encouraged to seek a BoF or discuss with Area Directors for a more appropriate home (likely Applications or a new WG).
+*   **Zone Transfer URI:** Wes Hardaker’s proposed XFR URI scheme may be split off and progressed independently as it has utility beyond the Local Root use case.
