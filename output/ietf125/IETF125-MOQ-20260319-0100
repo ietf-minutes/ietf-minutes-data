@@ -1,0 +1,58 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+The MOQ working group met at IETF 125 in Shenzhen to discuss the progression of the core transport protocol, streaming formats, and production implementation experiences. Key highlights included a report on production usage at Alibaba, updates on the MOQT Streaming Format (MSF), and a deep dive into filtering mechanisms and transport-level issue resolution for `draft-ietf-moq-transport`.
+
+## Key Discussion Points
+
+### Hackathon and Interop Status
+*   Mike English (Cloudflare) reported on the [interop test runner](https://englishm.github.io/moq-interop-runner), which now includes automated tests for various client and relay implementations.
+*   **Discussion on Versioning:** Alan Frindell suggested that while Draft 17 is available, the working group should target Draft 18 for the next major interop milestone (London interim). This is due to the significant changes between Draft 16 and 17. Mike English will initiate a list discussion to confirm this transition plan.
+
+### MOQT Streaming Format (MSF) and CMSF
+*   Will Law (Akamai) presented [MSF & CMSF update - Shenzhen - v1](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-msf-cmsf-update-shenzhen-v1-02) regarding `draft-ietf-moq-msf` and `draft-ietf-moq-cmsf`.
+*   **Renaming:** "Warp" is now formally MSF; "CARP" (CMAF-compliant) is now CMSF.
+*   **URL Format:** A fragment-based scheme (e.g., `#msf:`) is proposed to identify namespace and track metadata.
+*   **New Features:** Added support for variable substitution in catalogs (for caching/personalization), media timeline tracks for scrubbing, and SCTE-35/caption tracks.
+*   **Discussion:** Benjamin raised questions regarding the necessity of authorization for receiving tracks if content is encrypted. Will Law clarified that authorization (using CAT or Privacy Pass) controls access to the relay resources, not just the content.
+
+### MOQ Production at Alibaba
+*   Minghui presented [MOQ production at Alibaba](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-moq-production-at-alibaba-00), highlighting deployments in voice search, cloud rendering, and AI assistants.
+*   Performance data showed significantly lower latency compared to WebRTC and WebSocket.
+*   **New Draft Proposal:** Proposed a multimodal feedback mechanism (using a dedicated MoQ track) to allow clients to report delivery status and buffer levels to the publisher for ABR and AI inference adaptation.
+
+### MOQT over QMUX
+*   Suhas Nandakumar presented [MOQT-over-QMUX](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-moqt-over-qmux-01). 
+*   The goal is to provide a TCP fallback for MOQ in environments where UDP/QUIC is blocked. 
+*   **Negotiation:** Discussion focused on whether to use a specific ALPN or a layered approach similar to WebTransport. Alan Frindell expressed a preference for a single MoQ ALPN that implies the QMUX version.
+
+### Low Overhead Container (LOC)
+*   Mo Zanaty provided an update on [LOC](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-loc-01) (`draft-ietf-moq-loc`).
+*   **Metadata:** Metadata has been split into public properties (in the MoQ header) and private properties (within the MoQ payload) to better support encryption and relay opacity.
+*   **Timescale:** Added a timescale property to define timestamp denominators (e.g., 90kHz for video).
+
+### Filters
+*   Mo Zanaty presented [Filters](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-filters-01), focusing on PR 1518.
+*   **Track Selection Filter:** Introduced a "Top N" filter for namespaces, enabling use cases like active speaker switching at the relay.
+*   **Relay Protection:** Discussed the inherent asymmetry of filters (simple client request vs. complex relay processing). New error codes like `conflicting-filters` and `namespace-too-large` were introduced to allow relays to protect resources.
+*   **Discussion:** Alan Frindell and Ian Swett noted concerns regarding recursion and state management. Mo Zanaty clarified that relays could explicitly signal deselection using `forward=0`.
+
+### Transport Issues (`draft-ietf-moq-transport`)
+*   Alan Frindell led a discussion on [MOQT PRs and Issues](https://datatracker.ietf.org/meeting/125/materials/slides-125-moq-moqt-prs-and-issues-00).
+*   **Variant Encodings:** A debate occurred regarding whether to enforce minimal encoding for the new MoQ variable-length integers (VI64). 
+    *   **Poll:** "Should minimal encoding be a MUST?" 
+        *   Result: 4 in favor, 22 against. 
+    *   **Poll:** "Should 7-byte variants remain disallowed (for extensibility)?" 
+        *   Result: 15 in favor, 5 against. This will be followed up on the mailing list.
+*   **VI64 vs V64:** The group agreed to use the name "VI64" for the variant type.
+
+## Decisions and Action Items
+*   **Transport:** The `REQUEST_OK` message will be updated to include a properties field to maintain consistency with other track-related messages.
+*   **Transport:** Variant encoding requirements will remain a "SHOULD" for minimal encoding, following the behavior of QUIC.
+*   **Interops:** Mike English will coordinate on the mailing list to target Draft 18 for the London Hackathon.
+*   **Naming:** The variable-length integer type will be officially named **VI64**.
+
+## Next Steps
+*   **Interim Meeting:** Scheduled for March 30, 2025, at 16:30 UTC (to include a demo of server-side ABR).
+*   **London Interim:** A hybrid interim meeting is planned for June in London.
+*   **Draft Progression:** Editors will incorporate the decided changes into `draft-ietf-moq-transport` and `draft-ietf-moq-loc`.
