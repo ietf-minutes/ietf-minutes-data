@@ -1,0 +1,88 @@
+# [INTAREA](../wg/intarea.html) - IETF 125 Meeting Minutes
+
+**Date:** IETF 125  
+**Chairs:** Wassime Haddad, Juan Carlos Zúñiga  
+**AD:** Erik Vyncke  
+
+---
+
+## Summary
+
+The INTAREA working group met at IETF 125 to discuss active drafts, security vulnerabilities related to ICMP, and new proposals for ICMP extensions and DHCP options. Key topics included a challenge-confirm mechanism for ICMP error authentication, a generic ICMP node information query, and extensions for multi-path discovery. The Area Director provided updates on several drafts nearing completion and discussed the organizational future of DNS-related work within the IETF.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status and AD Update
+**Presenter:** Wassime Haddad & Erik Vyncke  
+**Slides:** [Chairs Slides](https://datatracker.ietf.org/meeting/125/materials/slides-125-intarea-chairs-slides-01)
+
+*   **draft-ietf-intarea-rfc8335bis**: Currently waiting for an updated version from authors following Working Group Last Call (WGLC) before submission to the IESG.
+*   **AD Updates (Erik Vyncke):** 
+    *   The Proxy ARP draft is in IESG evaluation and likely to be approved in April.
+    *   The Node ID draft is awaiting a revised ID (pending for >180 days).
+    *   The IPv4 Next Hop via IPv6 draft has completed AD review; the last call is starting soon.
+*   **Note:** Chairs emphasized the requirement for at least five substantive reviews to progress drafts through WGLC.
+
+### 2. Cross-Layer Vulnerabilities and ICMP Authentication
+**Presenters:** Li Zhaoxi, Ao Wang  
+**Slides:** [Problem Statement for Cross-Layer Vulnerabilities due to Forged ICMP Errors & Enhancing ICMP/ICMPv6 Error Message Authentication Using Challenge-Confirm Mechanism](https://datatracker.ietf.org/meeting/125/materials/slides-125-intarea-problem-statement-for-cross-layer-vulnerabilities-due-to-forged-icmp-errors-enhancing-icmpicmpv6-error-message-authentication-us-00)
+
+*   **Technical Problem:** ICMP error messages are easily forged, leading to information disclosure (IPID side channels), state desynchronization (MTU/fragmentation injection), semantic validation deficiencies (redirect hijacking), and source authentication failures.
+*   **Proposed Solution:** A "challenge-confirm" mechanism. Upon receiving an ICMP error, the host embeds a stateless nonce (hash of a secret key and flow info) in the next outgoing packet. A legitimate on-path router reflects this nonce; an off-path attacker cannot.
+*   **Discussion:** 
+    *   **Ron Bonica** questioned how the secret key is shared. **Ao Wang** clarified it is a system-level secret (similar to SYN cookies) and not explicitly shared between hosts, targeting off-path attackers who cannot observe the traffic.
+
+### 3. ICMP Query for IP Node Information
+**Presenter:** Ron Bonica  
+**Slides:** [ICMP Query for IP Node Information](https://datatracker.ietf.org/meeting/125/materials/slides-125-intarea-icmp-query-for-ip-node-information-00)
+
+*   **Proposal:** Introduce two new ICMP messages: Query Request and Query Response. These use an ICMP extension structure to ask generic questions of a node (e.g., IOAM configuration state). 
+*   **Security/Efficiency:** Messages must be rate-limited. Responses must not exceed the size of the request to prevent amplification attacks.
+*   **Discussion:**
+    *   **Jen Linkova** raised concerns about configuration and security: whether routers should default to "deny all" for such queries to avoid leaking sensitive information.
+    *   **Dave Thaler** noted similarities to RFC 4620 (IPv6 Node Information Queries) and suggested the draft include a "Prior Work" section to justify why a new mechanism is needed over the existing experimental RFC. 
+    *   **Ron Bonica** acknowledged the feedback and will add comparisons to RFC 4620 and **draft-ietf-intarea-rfc8335bis** (PROBE).
+
+### 4. Broadband Network User Plane (UP) Specific DHCP Suboption
+**Presenter:** Chenyang Wen  
+**Slides:** [4. Broadband Network UP-Specific Information Suboption for the DHCP Relay Agent Option](https://datatracker.ietf.org/meeting/125/materials/slides-125-intarea-4-broadband-network-up-specific-information-suboption-for-the-dhcp-relay-agent-option-00)
+
+*   **Proposal:** A new suboption for DHCP Relay Agent Option 82 to carry User Plane (UP) identifiers and Subscriber Group (SGRP) IDs. This allows a DHCP server to allocate addresses from specific segments to facilitate address aggregation at the UP in separated control/user plane architectures.
+*   **Discussion:**
+    *   **Erik Vyncke** noted that the draft currently focuses on DHCPv4 and must include DHCPv6 support to pass IESG evaluation. He also suggested clarifying terminology (UP = User Plane) as it is 3GPP-specific.
+    *   There is a possibility this work moves to the DHC working group in the future.
+
+### 5. Extending ICMP for Multi-path
+**Presenter:** Li Zhang  
+**Slides:** [5. Extending ICMP for Multi-path](https://datatracker.ietf.org/meeting/125/materials/slides-125-intarea-5-extending-icmp-for-multi-path-00)
+
+*   **Technical Problem:** Standard traceroute only identifies one path in a multi-path (ECMP) topology.
+*   **Proposal:** A new ICMP extension object ("Multi-path Interface Information Object") that allows a router to report multiple interfaces/next-hops capable of reaching a destination.
+*   **Discussion:**
+    *   **Erik Vyncke** sought clarification on the mechanism. **Li Zhang** explained that if a router (e.g., Router B) has two ECMP paths to a destination, the extension would return information for both interfaces. Erik suggested adding clearer topology diagrams and examples to the draft.
+
+### 6. DNS@IETF Considerations
+**Presenters:** Erik Vyncke, Wes Hardaker  
+**Slides:** [DNS@IETF Considerations](https://datatracker.ietf.org/meeting/125/materials/slides-125-intarea-dnsietf-considerations-01)
+
+*   **Context:** Discussion on how to effectively manage DNS-related work across different working groups to avoid silos and scheduling conflicts.
+*   **Discussion:** 
+    *   The "DNS Dispatch" model was discussed as a way to route drafts to the appropriate working group (e.g., operations vs. protocol development). 
+    *   **Wes Hardaker** noted that the dispatch function helps provide an early indication of where a draft is headed, allowing interested parties to track work across the IETF more effectively.
+
+---
+
+## Decisions and Action Items
+
+*   **ICMP Query:** Ron Bonica to update the draft with a "prior work" section comparing the proposal to RFC 4620 and RFC 8335.
+*   **DHCP UP Suboption:** Authors to add DHCPv6 support and clarify acronyms (UP, SGRP, AN).
+*   **Multi-path ICMP:** Authors to refine diagrams and explain the router's role in returning multiple next-hop interfaces.
+
+---
+
+## Next Steps
+
+*   The chairs will continue to monitor **draft-ietf-intarea-rfc8335bis** for the required update.
+*   Discussion on new proposals (ICMP Query, Multi-path ICMP, and DHCP UP Suboption) will continue on the INTAREA mailing list to gauge interest for adoption.
