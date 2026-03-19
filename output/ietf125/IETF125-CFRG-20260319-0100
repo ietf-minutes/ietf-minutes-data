@@ -1,0 +1,60 @@
+# [CFRG](../wg/cfrg.html)
+
+## Summary
+The Crypto Forum Research Group (CFRG) met at IETF 125 to discuss a broad range of cryptographic primitives and their applications within IETF protocols. Key themes included the ongoing migration to post-quantum (PQ) cryptography, specifically focusing on compact alternatives to ML-KEM, hybrid signature constructions, and security considerations for ML-DSA. The session also explored advanced topics such as Zero-Knowledge (ZK) proofs for identity, Fully Homomorphic Encryption (FHE), and remote key generation algorithms.
+
+## Key Discussion Points
+
+### [Two-lane model](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-two-lane-model-03)
+* **Presenter:** Nick Sullivan
+* **Discussion:** Nick Sullivan presented a proposed Best Current Practice (BCP) for how the IETF and CFRG should handle the standardization of cryptographic primitives. The "two-lane" model suggests that for primitives needed by three or more working groups (e.g., ML-KEM for TLS, MLS, and JOSE), a dedicated working group should be formed to handle code points and parameterization, while CFRG provides the underlying security analysis.
+* **Q&A:** Eric Rescorla (ekr) sought clarification on how this model distinguishes between assessing a primitive's internal security and providing guidance on its protocol-level "shape." Nick Sullivan noted that for non-standardized primitives (like NTRU), the Crypto Review Panel would play a larger role in assessing safety before protocol adoption.
+
+### [Longfellow ZK](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-longfellow-zk-00)
+* **Presenter:** Abhi Shelat
+* **Discussion:** This work addresses the need for ZK proofs in identity systems (e.g., proving age > 18) without leaking metadata or using "super-cookies" common in SD-JWT or mDL. Longfellow is post-quantum secure, relying only on SHA-256. Recent benchmarks show it can prove possession of an ML-DSA-44 signature in ~850ms on mobile devices.
+* **Q&A:** Bas Westerbaan inquired about comparisons to VOLE-in-the-head; Abhi Shelat argued Longfellow scales better for larger circuits due to sumcheck techniques. Eric Rescorla noted that sub-second performance is sufficient for most age-verification use cases and asked about supporting complex predicates.
+
+### [NTRU based Public Key Encryption](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-ntru-based-public-key-encryption-02)
+* **Presenter:** Yizhen
+* **Discussion:** The presenters introduced "Dawn," a compact NTRU-based PKE. They argued that while ML-KEM is the current standard, its size (>1000 bytes) can cause IP fragmentation in protocols like IKEv2. Dawn offers a ~30% reduction in size compared to ML-KEM-768/1024.
+* **Q&A:** Bas Westerbaan and John Mattsson emphasized that while the performance is promising, the scheme needs more "bake time" and analysis before deployment. Nick Sullivan asked if the authors would contribute a security considerations draft for this family of KEMs.
+
+### [Recent Advances in Fully Homomorphic Encryption](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-recent-advances-in-fully-homomorphic-encryption-01)
+* **Presenter:** Senhui
+* **Discussion:** An overview of FHE progress, noting that bootstrapping is now orders of magnitude faster than in 2009. Current work focuses on "transciphering" (converting symmetric ciphertext to FHE ciphertext) to reduce communication overhead.
+* **Q&A:** Stanislav Smyshlyaev (Chair) requested the authors bring specific use cases to the mailing list to determine if there is sufficient IETF/IRTF demand to justify a dedicated research effort.
+
+### [Low-latency PQ authentication](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-low-latency-pq-authentication-02)
+* **Presenter:** Xingshu
+* **Discussion:** "Luma" targets cloud/data center environments where low latency is critical. It uses an online-offline signature paradigm (combining Dilithium with WOTS+) to move heavy PQ computations off the critical path.
+* **Q&A:** Andre Popov (Microsoft) questioned why this is preferred over externally provisioned Pre-Shared Keys (PSK) in TLS. Xingshu clarified that Luma is intended for full handshakes between peers that may not have pre-existing shared secrets but have access to a key distribution service.
+
+### [HMAC Based Key Combiners for Multiple Keys](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-hmac-based-key-combiners-for-multiple-keys-00)
+* **Presenter:** Guilin Wang
+* **Discussion:** Presentation of `HKCV1` and `HKCV2` for combining multiple keys (e.g., in hybrid PQ/Classical key exchanges). The authors presented performance data comparing their HMAC-based approach to NIST and ETSI standards.
+* **Q&A:** Deirdre Connolly requested that the authors provide publicly available proofs (e.g., on ePrint) and clarify the specific security properties (e.g., IND-CCA) they aim to achieve. Scott Fluhrer suggested considering SHAKE/XOFs over HMAC to avoid counter-based constructions.
+
+### [Hybrid Digital Signatures with Strong Unforgeability](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-pq-kems-02) (Presented as Hybrid Signatures)
+* **Presenter:** Lucas Prebell
+* **Discussion:** Discussion of `draft-prebell-cfrg-hybrid-signatures`, focusing on achieving Strong Unforgeability (SUF-CMA). The draft proposes a black-box construction (signing the message concatenated with the first signature) and a non-black-box Fiat-Shamir construction.
+* **Q&A:** Scott Fluhrer expressed a strong preference for black-box constructions to avoid the risks of modifying internal PQ algorithm logic.
+
+### [The Asynchronous Remote Key Generation (ARKG) algorithm](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-arkg-01)
+* **Presenter:** Emil Lundberg
+* **Discussion:** Presentation of `draft-lundberg-cfrg-arkg`. ARKG allows a client to derive an unlimited number of public keys from a single "seed" without further interaction with a hardware security module (HSM), while the HSM can still derive the corresponding private keys. Use cases include EUDI wallets and batch-issued single-use keys.
+
+### [Relay Attacks](https://datatracker.ietf.org/meeting/125/materials/slides-125-cfrg-relay-attacks-00)
+* **Presenter:** Usama
+* **Discussion:** Analysis of remote attestation within TLS. The presenter argued that "intra-handshake" attestation is vulnerable to relay attacks and proposed using post-handshake attestation (bound to TLS exporters via RFC 9261) to ensure the evidence is tied to a fully authenticated connection.
+* **Q&A:** Usama requested guidance on whether symbolic analysis (ProVerif) is sufficient or if the group recommends computational proofs (CryptoVerif).
+
+## Decisions and Action Items
+* **ML-DSA Security Considerations:** Deirdre Connolly announced the publication of `draft-connolly-cfrg-mldsa-security-considerations`.
+* **Crypto Review Panel:** Stanislav Smyshlyaev announced a call for nominations for the Crypto Review Panel rotation starting in approximately one month.
+
+## Next Steps
+* **FHE Discussion:** Authors to post specific IETF-relevant use cases for FHE to the mailing list to gauge interest.
+* **NTRU/Dawn:** Authors to consider writing a security considerations draft for NTRU-based KEMs as part of the broader PQ KEM analysis effort in CFRG.
+* **ARKG:** The chairs noted the author's interest in working group adoption; discussion to continue on the mailing list.
+* **Key Combiners:** Authors of the HMAC combiner draft to provide formal proof links and address security property clarifications on the list.
