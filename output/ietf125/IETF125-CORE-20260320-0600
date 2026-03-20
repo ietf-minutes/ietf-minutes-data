@@ -1,0 +1,94 @@
+# [CORE](../wg/core.html)
+
+**IETF 115 - Constrained RESTful Environments (CORE) WG Session**
+
+**Chairs:** Marco Tiloca, Jaime Jiménez, Carsten Bormann  
+**Scribes:** Christian Amsüss, Rikard Höglund  
+
+---
+
+## Summary
+
+The CORE Working Group met at IETF 115 to discuss the status of active drafts and progress technical work on CoAP management, URI optimizations, publish-subscribe architectures, and security enhancements via OSCORE. Key outcomes included the conclusion of the Working Group Last Call (WGLC) for the CoAP Pub-Sub draft, progress on the KUDOS (Key Update for OSCORE) state machine, and ongoing efforts to reduce "technical debt" via corrections and clarifications to the base CoAP specifications.
+
+---
+
+## Key Discussion Points
+
+### 1. CORECONF and Corrections/Clarifications
+**Presenter:** Carsten Bormann  
+**Slides:** [Coreconf, corr-clar](https://datatracker.ietf.org/meeting/125/materials/slides-125-core-coreconf-corr-clar-00)
+
+*   **CORECONF & SID Files:** Discussions regarding the "choice case exception" for SID file identifiers have reached a conclusion. An errata report is being prepared to update YANG descriptions in the YANG-CBOR repository. Work continues to ensure the Pyang tool correctly implements [draft-ietf-core-sid].
+*   **CoMI:** [draft-ietf-core-comi] is being updated to use the SX structure extension instead of RESTCONF YANG data for error reports to align with RFC 9290. 
+*   **YANG Metadata:** [draft-ietf-core-yang-metadata] (v00) is now a WG document. It introduces Tag 109 to allow metadata annotations in YANG-CBOR. The chairs called for implementer feedback to move toward WGLC.
+*   **Stand-in Tags:** A proposal was discussed to represent common YANG types (Date/Time, UUID, MAC address) in binary CBOR form using tags. Carsten Bormann proposed a "stand-in file" to negotiate these tags between clients and servers.
+*   **Corrections and Clarifications:** [draft-ietf-core-corr-clar] continues to address technical debt. 
+    *   **Issue 52 (4.02 error case):** This normative change (allowing 4.02 for non-confirmable requests to assist negotiation) has been moved to [draft-ietf-core-uri-path-abbrev].
+    *   **Issues 48/54:** Addressing inconsistencies regarding piggybacked responses in non-confirmable requests.
+
+### 2. URI-Path Abbreviation in CoAP
+**Presenter:** Christian Amsüss  
+**Slides:** [URI-Path abbreviation in CoAP](https://datatracker.ietf.org/meeting/125/materials/slides-125-core-uri-path-abbreviation-in-coap-00)
+
+*   [draft-ietf-core-uri-path-abbrev] aims to shorten long well-known paths.
+*   The author removed complex normative requirements for proxies to simplify the specification.
+*   Implementation status: Supported in `aiocoap` (server side) and `libcoap`.
+*   **Interoperability:** The WG discussed organizing an interop test between Christian Amsüss and John Preuß Mattsson's implementations before the next interim.
+
+### 3. Publish-Subscribe Architecture for CoAP
+**Presenter:** Jaime Jiménez  
+**Slides:** [Publish-subscribe architecture for CoAP](https://datatracker.ietf.org/meeting/125/materials/slides-125-core-draft-ietf-core-coap-pubsub-19-01)
+
+*   [draft-ietf-core-coap-pubsub] (v19) has addressed WGLC comments.
+*   Key updates: Added the `INITIALIZE` property to skip the "half-created" state, clarified content format consistency for notifications (per RFC 7641), and made topic data properties mutable.
+*   The document is ready for the shepherding phase (Esko Dijk as shepherd) once v20 (containing minor editorial fixes) is submitted.
+
+### 4. CoAP over Bundle Protocol (BP)
+**Presenter:** Carles Gomez  
+**Slides:** [CoAP over BP](https://datatracker.ietf.org/meeting/125/materials/slides-125-core-coap-over-bp-00)
+
+*   [draft-ietf-core-coap-bp] (v02) updates include guidance on the `MAX_PAYLOADS` parameter for blockwise transfer, noting that default values for the terrestrial internet may not apply to deep space environments.
+*   The draft now suggests using the Padding option from [draft-ietf-core-cacheable-oscore] to mitigate traffic analysis risks when using message aggregation.
+*   The authors requested a well-known service number for CoAP from IANA for the `ipn` scheme.
+
+### 5. OSCORE Key Update (KUDOS)
+**Presenter:** Rikard Höglund  
+**Slides:** [OSCORE Key Update (KUDOS)](https://datatracker.ietf.org/meeting/125/materials/slides-125-core-slides-kudos-core-ietf-125-00)
+
+*   [draft-ietf-core-oscore-key-update] (v13) describes a state machine (IDLE, BUSY, PENDING) for renewing OSCORE master secrets.
+*   **Major Change:** SCHC compression descriptors for the extended OSCORE option were moved from the SCHC WG documents into this draft to streamline references.
+*   The design is considered stable. Implementation work is ongoing in Java and C (Contiki-NG).
+
+### 6. OSCORE-capable Proxies
+**Presenter:** Marco Tiloca  
+**Slides:** [OSCORE-capable Proxies](https://datatracker.ietf.org/meeting/125/materials/slides-125-core-oscore-capable-proxies-00)
+
+*   [draft-ietf-core-oscore-capable-proxies] enables OSCORE protection between clients and proxies or between proxies.
+*   Recent updates added support for the `URI-path-abbrev` option and clarified how to handle Partial IVs in non-first responses to prevent AEAD nonce reuse.
+*   A discussion occurred regarding how proxies can discover if a server supports OSCORE/EDHOC. Christian Amsüss suggested using SVCB resource records, though nesting layers remain a challenge to signal.
+
+### 7. Stand-in Key Identifier and Encrypted Partial IV in the OSCORE Option
+**Presenter:** Marco Tiloca  
+**Slides:** [Stand-in Key Identifier and Encrypted Partial IV in the OSCORE Option](https://datatracker.ietf.org/meeting/125/materials/slides-125-core-stand-in-key-identifier-and-encrypted-partial-iv-in-the-oscore-option-00)
+
+*   This individual submission proposes a method to obfuscate the OSCORE Partial IV and Key ID (KID) to prevent tracking of devices across networks.
+*   New terminology: "Obfuscating" vs. "Incognito" security contexts.
+*   The WG discussed the trade-off with SCHC: in some cases, SCHC's "obfuscation by elision" is more efficient than the XOR-based obfuscation proposed here.
+
+---
+
+## Decisions and Action Items
+
+1.  **[draft-ietf-core-coap-pubsub]:** Authors to submit v20 with editorial fixes. Esko Dijk to begin shepherd write-up.
+2.  **[draft-ietf-core-corr-clar]:** Carsten Bormann to continue processing PRs for issues 48 and 54.
+3.  **[draft-ietf-core-uri-path-abbrev]:** Chairs to consider WGLC following a successful interop report.
+4.  **[draft-ietf-core-yang-metadata]:** Authors to seek formal input from the NETMOD working group.
+5.  **KUDOS/BP/Proxies:** Implementers (Rikard Höglund, Carles Gomez, Marco Tiloca) to sync on cross-implementation testing.
+
+---
+
+## Next Steps
+
+*   **Interim Meetings:** Resuming April 22nd, continuing every other Wednesday until IETF 126.
+*   **Focus Areas:** Finalizing the Pub-Sub and URI-path abbreviation drafts; progressing the OSCORE security suite (KUDOS, Capable Proxies, Key Limits).
