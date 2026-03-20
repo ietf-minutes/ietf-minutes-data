@@ -1,0 +1,57 @@
+# [DKIM](../wg/dkim.html)
+
+## Summary
+
+The DKIM Working Group met at IETF 125 to advance the DKIM2 specification and associated documents. The session focused on refining the structure of the message instance and signature headers, deciding between JSON and tag-value formats for various components, and establishing a plan for document adoption and interim meetings. Significant progress was made on simplifying the signature and hash formats, while maintaining JSON for more complex recipe structures.
+
+## Key Discussion Points
+
+### Document Status and Administrative Updates
+*   **Seth Blank** (Chair) noted that chairs will be more active on the mailing list to drive consensus and prevent discussions from circling.
+*   **Document Consolidation:** The working group agreed to merge content from `draft-ietf-dkim-dkim2-header` into `draft-clayton-dkim-dkim2-spec`. The latter will be renamed to `draft-ietf-dkim-dkim2`.
+*   **Draft Status:**
+    *   `draft-ietf-dkim-dkim2-motivation` will be retained as a BCP or applicability statement.
+    *   `draft-brotman-dkim-feedback-loops` and `draft-nermozo-dkim-dmarc-public-suffix-list` were discussed; the chairs will determine if they remain active or are marked as dead.
+    *   `draft-ietf-dkim-bcp` and `draft-ietf-dkim-dns` (Wei Chuang) are candidates for adoption.
+
+### DKIM2 Specification Refinement
+**Richard Clayton** presented [Current thinking on DKIM2](https://datatracker.ietf.org/meeting/125/materials/slides-125-dkim-current-thinking-on-dkim2-richard-clayton-00).
+
+*   **Hash Format:** Following feedback from John Levine, the group moved away from using JSON for hashes. The new format will use a simpler tag-value pair (`H=`) within the message instance header to improve human readability and reduce complexity.
+*   **Versioning:** The group decided against a formal versioning tag within the header. Instead, versioning will be handled by the header name itself (e.g., `DKIM2-Signature`, `DKIM3-Signature`).
+*   **Header Signing Selection:** 
+    *   The current draft proposes signing all headers except trace headers (Received, Return-Path), X-headers, and DKIM/ARC signatures. 
+    *   **Bron Gondwana** and **Barry Leiba** suggested that instead of hard-coding exceptions, the specification should allow for explicitly listing excluded headers to provide future-proofing.
+    *   There was a strong preference for "bottom-up" numbering/concatenation of headers for consistency with the recipe format.
+*   **Recipes and JSON:** 
+    *   The group agreed to keep JSON for the "recipes" (modifications) to leverage existing JSON parsing libraries. 
+    *   **Bron Gondwana** will propose a revised JSON schema to ensure better compatibility with various parsers (e.g., avoiding mixed data types in arrays).
+*   **Signature Field:** 
+    *   The signature field (`S=`) will move from JSON back to a tag-value format. 
+    *   The group discussed using a placeholder (like a dot) for the signature value during the hashing process to handle whitespace/folding consistently.
+*   **Envelope Information (Mail From / Receipt To):**
+    *   The draft currently puts these into a Base64-encoded JSON structure. **Wei Chuang** argued for a plain-text approach to aid debuggability. 
+    *   **Ken Murchison**, **Bron Gondwana**, and **John Levine** supported JSON, noting that manual parsing of 5321 local parts (which can contain semicolons and quotes) is error-prone. 
+
+### Verification Results and Error Codes
+*   The group discussed aligning DKIM2 results with RFC 8601 (Authentication-Results). 
+*   **Richard Clayton** suggested standardizing error strings for 4XX/5XX SMTP responses to help administrators troubleshoot authentication failures. 
+*   **Seth Blank** noted that while consistent extended error codes are beneficial, the specification should likely focus on the codes rather than mandating specific text strings.
+
+### DKIM DNS Key Deprecations
+*   **Wei Chuang** and **Richard Clayton** discussed `draft-ietf-dkim-dns`, which aims to deprecate unused DKIM1 key tags (H=, S=, N=, T=S).
+*   **Alan** and **Richard Clayton** debated the `T=Y` (testing) flag. Many domains still have this set due to old documentation, but it causes inconsistent behavior (notably with Google's verifier). DKIM2 will likely treat these legacy tags as comments.
+
+## Decisions and Action Items
+*   **Decision:** Drop `draft-ietf-dkim-dkim2-header` and merge its content into `draft-clayton-dkim-dkim2-spec`.
+*   **Decision:** Rename `draft-clayton-dkim-dkim2-spec` to `draft-ietf-dkim-dkim2` upon next submission.
+*   **Action Item:** **Bron Gondwana** to provide an updated JSON schema for recipes.
+*   **Action Item:** **Chairs** to issue a call for adoption for `draft-ietf-dkim-bcp` and `draft-ietf-dkim-dns`.
+*   **Action Item:** **Richard Clayton** to publish version -09 of the main spec incorporating the move from JSON to tag-value for hashes and signatures.
+
+## Next Steps
+*   **Interim Meetings:** The Working Group will hold monthly interim meetings. The proposed time is 1:00 PM Pacific / 4:00 PM Eastern / 21:00 UTC on Wednesdays.
+*   **Consensus Calls:** The chairs will initiate mailing list threads to confirm consensus on:
+    *   The move to "bottom-up" header numbering.
+    *   The specific list/mechanism for header exclusion during signing.
+    *   The use of JSON for envelope information vs. human-readable alternatives.
