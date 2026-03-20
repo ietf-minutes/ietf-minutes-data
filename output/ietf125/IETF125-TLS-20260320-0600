@@ -1,0 +1,61 @@
+# [TLS](../wg/tls.html)
+
+## Summary
+The TLS Working Group met at IETF 125 to discuss the status of core documents, cryptographic updates, and new extensions. Key focus areas included the progression of [draft-ietf-tls-mlkem](https://datatracker.ietf.org/doc/draft-ietf-tls-mlkem/), the security analysis of [draft-ietf-tls-extended-key-update](https://datatracker.ietf.org/doc/draft-ietf-tls-extended-key-update/), and measurement data regarding Encrypted Client Hello (ECH) deployment. The group also debated the necessity of supporting large handshake messages for post-quantum algorithms and considered proposals for workload identity hints and signed ECH configurations.
+
+## Key Discussion Points
+
+### Working Group Status and 8446bis
+*   **Sean Turner** (Chair) announced a proposal to prohibit ephemeral key reuse in the main body of RFC 8446bis. A two-week consensus call will be initiated to move this requirement from the appendix to the normative text.
+*   **[draft-ietf-tls-mlkem](https://datatracker.ietf.org/doc/draft-ietf-tls-mlkem/):** The chairs reported that consensus has not yet been reached to progress the document. Key issues to resolve include:
+    *   Addressing key reuse (aligned with 8446bis changes).
+    *   Adding text regarding a preference for hybrid key exchange.
+    *   Including motivation for pure ML-KEM (referencing a liaison from IEEE).
+    *   **Muhammad Usama Sardar** and **Tanya** expressed concerns regarding the loss of security properties when moving from hybrid to pure ML-KEM. **Tom van der Meent** and **Victor Duchovni** noted that while non-hybrids are controversial, the protocol interaction is well-understood.
+
+### Formal Analysis Triage (FAT) Team Update
+*   **Tom van der Meent** presented the [FAT Update](https://datatracker.ietf.org/meeting/125/materials/slides-125-tls-sessb-tls-wg-update-01) focusing on [draft-ietf-tls-extended-key-update](https://datatracker.ietf.org/doc/draft-ietf-tls-extended-key-update/).
+*   **Technical Challenges:** Extended Key Update (EKU) attempts to provide Post-Compromise Security (PCS), which is significantly harder to model than standard Forward Secrecy because it requires "kicking out" an active adversary from a compromised state.
+*   **Subtleties identified:**
+    *   **Transcript Binding:** Previous versions unlinked the new keys from the handshake transcript; authors have since fixed this by incorporating the previous transcript hash.
+    *   **Session Tickets:** If session tickets are not discarded after an EKU, an attacker who compromised the initial state might still be able to resume the session later.
+*   The FAT team concluded that specialized analysis is needed and that authors should clarify the threat model (e.g., handling of session tickets).
+
+### Extended Key Update (EKU)
+*   **Yaroslav Rosomakho** presented updates for [draft-ietf-tls-extended-key-update](https://datatracker.ietf.org/doc/draft-ietf-tls-extended-key-update/).
+*   **Changes:** Reduced the number of message flights, updated the key schedule to include a rolling transcript, and updated exporter considerations.
+*   **Discussion:** **Eric Rescorla** (Ecker) and **Yaroslav Rosomakho** discussed the relevance of Trusted Execution Environments (TEEs). Ecker argued that TEE terminology is often a distraction and that the core issue is simply whether keys are in "secure storage" or not. **John Mattsson** suggested that built-in re-authentication would be beneficial to avoid application-layer changes.
+
+### Large Handshake Data
+*   **Valery Smyslov** discussed proposals for handling large handshake messages (e.g., for large post-quantum key shares) in the context of [draft-ietf-tls-super-jumbo-record-limit](https://datatracker.ietf.org/doc/draft-ietf-tls-super-jumbo-record-limit).
+*   Proposals included extending `ClientHello`/`ServerHello`, using EKU for a secondary exchange, or a new `AuxHandshakeData` message.
+*   **Eric Rescorla** argued against solving this problem currently, stating it is an "intellectual problem" with no immediate practical need, as most PQ algorithms fit within existing limits. No consensus was reached to move forward.
+
+### Formal Analysis Best Practices
+*   **Muhammad Usama Sardar** proposed a template and process for formal analysis ([PQC Continuity](https://datatracker.ietf.org/meeting/125/materials/slides-125-tls-pqc-continuity-00)).
+*   Suggestions included better transparency (dashboards for FAT reviews) and standardized author templates for threat models and security goals.
+*   **Eric Rescorla** supported the transparency/dashboard concept but resisted creating a formal "Verifier" role or special process for other working groups to consult TLS, preferring to maintain existing informal structures.
+
+### ECH Measurements and Signed Configs
+*   **Yaroslav Rosomakho** presented measurement data on ECH and HTTPS Resource Records (RR).
+    *   Findings: Waiting for HTTPS RR has minimal latency impact in most cases, but some domains (notably `.gov`) are "defective" and do not respond, necessitating a timeout cap.
+    *   ECH GREASE showed no significant connectivity breakage across 10,000 domains and various mobile networks.
+*   **Dennis Jackson** presented [Signed ECH Configs](https://datatracker.ietf.org/meeting/125/materials/slides-125-tls-signed-ech-configs-00).
+    *   The goal is to allow "randomized" outer SNIs without needing a registered domain or valid TLS certificate for the cover name.
+    *   Authentication is moved to a signing key hash in DNS. This reduces "shared fate" and fingerprinting by middleboxes.
+    *   **Eric Rescorla** expressed interest, particularly regarding robustness against fragility, and supported moving toward raw public keys rather than certificates for authentication.
+
+### Workload Identifier Origin Hint
+*   **Yaroslav Rosomakho** presented a proposal for a ClientHello extension to hint at workload identities for mTLS.
+*   The hint helps servers choose the correct CA list for a `CertificateRequest`, avoiding the need for separate endpoints for different client types.
+*   **Eric Rescorla** and **Dennis Jackson** raised privacy concerns regarding leaking trust domains in the cleartext portion of the ClientHello and suggested using a simple flag or ECH to protect this information.
+
+## Decisions and Action Items
+*   **RFC 8446bis:** Chairs will start a two-week consensus call to normatively prohibit ephemeral key reuse.
+*   **[draft-ietf-tls-mlkem](https://datatracker.ietf.org/doc/draft-ietf-tls-mlkem/):** Authors to update the draft with hybrid preference text and address key reuse; a targeted working group last call will follow.
+*   **[draft-ietf-tls-extended-key-update](https://datatracker.ietf.org/doc/draft-ietf-tls-extended-key-update/):** Authors will continue to refine the draft, specifically addressing session ticket disposal and editorial feedback regarding TEEs.
+
+## Next Steps
+*   Authors of **Signed ECH Configs** will trim the draft to focus on raw public keys based on feedback.
+*   The Working Group will continue to monitor ECH deployment data to inform default-enablement recommendations in libraries.
+*   The **FAT Team** will continue to engage with EKU authors as the protocol matures.
