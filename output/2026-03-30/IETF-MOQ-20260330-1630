@@ -1,0 +1,66 @@
+# [MOQ](../wg/moq.html)
+
+**Media over QUIC (MOQ) Working Group Interim Meeting**
+**Date:** March 30, 2026
+
+## Summary
+The MOQ working group held a virtual interim meeting to discuss the implementation of server-side Adaptive Bitrate (ABR) over MoQ, establish a roadmap for the stabilization of [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/), and resolve several outstanding technical issues and pull requests. Key outcomes included a timeline targeting Working Group Last Call (WGLC) for MoQ Transport by August 2026 and consensus on several protocol mechanisms including fetch timeouts, redirected requests, and reserved namespaces for session-level diagnostics.
+
+## Key Discussion Points
+
+### 1. Server-Side ABR Demo on MoQ
+**Presenter:** Tongyu Dai
+**Slides:** [Server Side ABR Demo on MoQ](https://datatracker.ietf.org/meeting/interim-2026-moq-12/materials/slides-interim-2026-moq-12-sessa-server-side-abr-demo-on-moq-00)
+
+Tongyu Dai presented an implementation of server-side ABR using [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) and [draft-ietf-moq-cmsf](https://datatracker.ietf.org/doc/draft-ietf-moq-cmsf/).
+
+*   **Implementation Details:** The relay integrates the ABR algorithm. Currently, the relay parses the catalog to understand available bitrates, though Tongyu Dai noted a need for a more standardized way for relays to build this context.
+*   **Mechanism:** Uses `PUBLISH` and `PUBLISH_OK` messages to signal track switches.
+*   **Observations:** 
+    *   A significant challenge is the delay in buffer recovery after a downswitch because high-bitrate data already in flight continues to congest the network. Tongyu Dai suggested that MoQ needs a way to cancel ongoing object downloads effectively.
+    *   Bandwidth estimation using QUIC `CWND` and `RTT` is fluctuating for small objects, requiring smoothing.
+*   **Discussion:** Mike English inquired about the applicability of ABR to `FETCH` vs. `SUBSCRIBE`. Tongyu Dai noted that while `FETCH` is used for SEEK operations, it complicates server-side ABR because `FETCH` usually specifies a single track, making parallel ABR logic complex.
+
+### 2. MOQT Roadmap Proposal
+**Presenter:** Alan Frindell
+**Slides:** [MOQT Roadmap Proposal](https://datatracker.ietf.org/meeting/interim-2026-moq-12/materials/slides-interim-2026-moq-12-sessa-moqt-roadmap-proposal-00)
+
+Alan Frindell outlined a path to WGLC for [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/).
+
+*   **Timeline:** Target Draft 18 as the next interop target (May). Target WGLC for Draft 20 in mid-August 2026.
+*   **Major Topics:** The next three virtual interims will be dedicated to:
+    1.  Rewind
+    2.  Filters
+    3.  DTS (Delivery Time Stamp) and Switching
+*   **Process:** Proponents of these features are expected to drive resolutions asynchronously. Alan Frindell emphasized that "done is a feature" and the editors aim to close five issues per week.
+*   **Hybrid Interims:** Martin Duke and Suhas Nandakumar discussed the necessity of a fall hybrid interim. The group decided to evaluate the need for a September/October meeting at the conclusion of the London hybrid interim in June.
+
+### 3. MOQT PRs and Issues
+**Presenter:** Alan Frindell
+**Slides:** [MOQT PRs & Issues 3.30](https://datatracker.ietf.org/meeting/interim-2026-moq-12/materials/slides-interim-2026-moq-12-sessa-moqt-prs-issues-330-00)
+
+The group discussed several technical issues for [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/):
+
+*   **Error Codes (Issue 1243):** Ian Swett and Suhas Nandakumar agreed on using a single code point space for `RESET_STREAM` and `STOP_SENDING` across both bidirectional and unidirectional streams.
+*   **Redirects (Issue 1481 / PR 1534):** This PR adds a Redirect error code and a `REDIRECT` message. It supports moving a client to a different server or track. Mo Zanaty questioned the need for a timeout. Suhas Nandakumar argued against a timeout for now, suggesting it adds unnecessary complexity for "make-before-break" scenarios.
+*   **`SUBSCRIBE_NAMESPACE` Overlaps (Issue 1494):** Discussion focused on how to widen or narrow a namespace subscription.
+    *   **Decision:** Instead of allowing overlaps, the group favored using `Request Update` to change the namespace prefix parameter.
+*   **Fill Timeout (PR 1496):** Discussed whether the timeout in `FETCH` should be a per-request budget or an absolute timer.
+    *   **Decision:** Consensus for "Budget B"—the timeout represents the total time a relay is permitted to spend on upstream fetches to satisfy the request.
+*   **Send Rate Parameter (Issue 1354):** Proposed for pacing `FETCH` data.
+    *   **Decision:** The group (including Ian Swett, Luke Curley, and Mo Zanaty) expressed skepticism about its utility and complexity. The issue will be parked or deferred to the Rewind proposal.
+*   **Reserved Session Namespaces (Issue 1507 / PR 1555):** Proposed reserving namespaces starting with a dot (e.g., `.session`) for stack-level diagnostics (e.g., congestion control logs).
+    *   **Decision:** Reserve all namespaces/tuple zeros starting with a dot (`.`). These are hop-by-hop and must not be forwarded by relays.
+
+## Decisions and Action Items
+*   **Decision:** Use a single error code space for all stream resets in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/).
+*   **Decision:** `SUBSCRIBE_NAMESPACE` will use `Request Update` for prefix modifications instead of allowing overlapping subscriptions.
+*   **Decision:** `FETCH` Fill Timeout will be implemented as a time budget for upstream relay fetches.
+*   **Decision:** Reserve the `.` (dot) prefix for internal session-level tracks; these are non-forwardable.
+*   **Action Item (Chairs):** Finalize the order of the next three virtual interims (Rewind, Filters, DTS/Switching).
+*   **Action Item (Editors):** Update [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) to reflect the consensus on error codes, namespace updates, and reserved dot-namespaces.
+
+## Next Steps
+*   Consensus call for [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) version 17 ends April 7, 2026.
+*   Virtual interims scheduled for April 13 and April 27 to address the major "Big Rocks" (Rewind/Filters/DTS).
+*   Participants interested in VOD optimizations (Issue 1316) or Subscription Flow Control (Issue 869) are encouraged to drive these proposals, or they will be closed without action.
