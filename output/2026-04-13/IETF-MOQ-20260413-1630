@@ -1,0 +1,51 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+The MOQ working group held an interim meeting on April 13, 2026, primarily to discuss the "REWIND" proposal as a solution for head-of-line (HOL) blocking issues associated with Joining Fetches in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/). The discussion centered on whether REWIND should be a best-effort mechanism, the complexity it adds to relays versus clients, and whether it should be incorporated into the core transport protocol or remain an extension. No consensus was reached to move the proposal into the core specification, and the editors suggested proceeding with "band-aid" fixes for MoQ V1 while deferring more complex joining logic to future versions or extensions.
+
+## Key Discussion Points
+
+### REWIND Proposal
+**Martin Duke** presented the [REWIND](https://datatracker.ietf.org/meeting/interim-2026-moq-13/materials/slides-interim-2026-moq-13-sessa-rewind-00) proposal.
+*   **Purpose:** To provide a best-effort mechanism for a subscriber to request a few recent groups using `SUBSCRIBE` semantics, avoiding the head-of-line blocking inherent in `FETCH` (Joining Fetch).
+*   **Mechanism:** 
+    *   A `max_rewind_groups` setup option to negotiate support.
+    *   A new `rewind` subscription filter where the subscriber requests *n* groups prior to the largest object.
+    *   A `rewind_groups` parameter in `SUBSCRIBE_OK` indicating how many groups the publisher will actually deliver based on its cache.
+*   **Strategy:** It is intended to be best-effort. If a publisher lacks the data in cache, it may deliver fewer groups than requested or none (reverting to `NEXT_GROUP` behavior).
+
+**Technical Debate:**
+*   **Semantics of Zero:** **Luke Curley** and **Mo Zanaty** clarified that a value of zero in `rewind_groups` indicates delivery starting from the beginning of the current group.
+*   **Efficiency vs. Fidelity:** **Will Law** questioned the utility for OTT (Over-the-Top) players, noting that if a player requires a fixed buffer to start, the HOL blocking of a `FETCH` is essentially a feature that ensures data completeness. **Martin Duke** argued REWIND is for use cases preferring low latency over 100% object fidelity.
+*   **Reliability:** **Luke Curley**, **Victor Vasiliev**, and **Ian Swett** expressed concern over the "unreliable" nature based on cache state. They suggested that if a relay lacks data, it should perhaps "cheat" by fetching it upstream rather than just omitting it, essentially creating a "reliable rewind."
+*   **Implementation Complexity:** **Alan Frindell** noted that a "reliable rewind" (Rewind++) that triggers upstream fetches is significantly more complex to implement in relays due to the need to manage gaps, multiple subgroups, and potential out-of-order delivery.
+*   **Alternative Spelling:** **Mo Zanaty** suggested that instead of a new `rewind` filter, the group should resurrect generic "location filters" that allow specifying start/end points more flexibly.
+
+### Joining and Head-of-Line (HOL) Blocking
+The group discussed the broader problem of how a client joins a live stream.
+*   **Current Object Join:** **Mo Zanaty** noted that many implementations currently join at the "current object" to see where the stream is, then decide whether to `FETCH` backwards or request a `New Group Request` (NGR).
+*   **Group Boundaries:** **Luke Curley** and **Ian Swett** argued that joining in the middle of a group (at the current object) is often useless for delta-encoded media; starting at a group boundary is almost always preferred.
+*   **Relay vs. Client Complexity:** **Cullen Jennings** argued for keeping the relay simple and pushing the complexity of joining (stitching together fetches and subscriptions) to the client library. **Will Law** countered that only the relay knows its cache state, and making decisions at the relay saves round-trip times (RTT).
+
+### Path Forward for draft-ietf-moq-transport
+*   **Alan Frindell** suggested that the working group is unlikely to find a "perfect" solution quickly. He proposed shipping [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) with minimal "band-aids," such as a `FETCH` timeout (to mitigate HOL blocking) and subgroup filters, leaving advanced joining logic for a V2 or extensions.
+*   **Martin Duke** observed that while **Gwendal Simon** saw value in REWIND for single-stream continuity, there was no broad consensus to integrate it into the core draft.
+
+## Decisions and Action Items
+*   **REWIND Status:** The REWIND proposal will not be merged into the core [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) at this time. It remains a separate experimental draft/extension.
+*   **Consensus Call:** **Martin Duke** (as Chair) proposed issuing a formal consensus call on the mailing list to decide between:
+    1.  Doing nothing further for joining/rewind in V1.
+    2.  Adopting REWIND as an official WG extension.
+    3.  Incorporate REWIND or a similar mechanism into the core MoQ Transport.
+
+## Next Steps
+*   **Editors** to continue work on the `FETCH` timeout and subgroup filter PRs to address the most pressing HOL blocking issues in the core draft.
+*   **Participants** to move the discussion regarding "Largest Group" filters and "Intent-based joining" to the mailing list/GitHub issues.
+*   **Interim Meetings:** Next virtual interims are scheduled for April 27 and May 11, leading up to the London meeting in June.
+
+***
+
+**Reference Materials:**
+*   [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-13/materials/slides-interim-2026-moq-13-sessa-chair-slides-00)
+*   [REWIND Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-13/materials/slides-interim-2026-moq-13-sessa-rewind-00)
+*   [MoQ PRs & Issues 4/13](https://datatracker.ietf.org/meeting/interim-2026-moq-13/materials/slides-interim-2026-moq-13-sessa-moq-prs-issues-413-00)
