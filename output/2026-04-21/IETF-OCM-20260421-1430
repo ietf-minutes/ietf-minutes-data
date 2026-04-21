@@ -1,0 +1,63 @@
+# [OCM](../wg/ocm.html)
+
+**Meeting:** OCM Interim Meeting  
+**Date:** [Date of Interim 2026-01]  
+**Chairs:** Thibault Meunier  
+**Secretary:** Michael Richardson  
+
+## Summary
+The OCM working group held an interim meeting to discuss several enhancements to the core specification, [draft-ietf-ocm-open-cloud-mesh](https://datatracker.ietf.org/doc/draft-ietf-ocm-open-cloud-mesh/). The primary focus was on transitioning from a purely push-based sharing model to a pull-based model ("Request for Share"), improving the security and interoperability of WebApp sharing, and standardizing the notification payload format to resolve current incompatibilities between major implementations.
+
+## Key Discussion Points
+
+### 1. Request for Share
+**Presenter:** Micke Nordin  
+**Slides:** [Request for Share](https://datatracker.ietf.org/meeting/interim-2026-ocm-01/materials/slides-interim-2026-ocm-01-sessa-request-for-share-00)
+
+Micke Nordin introduced a proposal (PR 194) for a new OCM endpoint that allows users to request access to a resource rather than waiting for an owner to initiate a share.
+- **Mechanism:** The requester's OCM server sends a request identifying the resource and the user. The resource owner is notified and can then perform a sharing gesture to accept.
+- **Technical Details:** The proposal uses a JSON body with `sender`, `share_with`, and `share_id`. It requires TLS and authentication via HTTP signatures.
+- **Discussion:** 
+    - Giuseppe Presti expressed support, noting that this mimics "Request Access" features in services like Google Drive. 
+    - Regarding resource identification, Giuseppe Presti mentioned that CERNBox addresses files by full paths and suggested the `share_id` remain generic enough to accommodate both opaque IDs and human-readable paths. 
+    - Micke Nordin agreed that the nature of the ID should not be strictly prescribed but could include paths.
+
+### 2. WebApp Sharing
+**Presenter:** Micke Nordin  
+**Slides:** [WebApp Sharing](https://datatracker.ietf.org/meeting/interim-2026-ocm-01/materials/slides-interim-2026-ocm-01-sessa-webapp-sharing-00)
+
+Micke Nordin presented improvements to the "web application" share type in [draft-ietf-ocm-open-cloud-mesh](https://datatracker.ietf.org/doc/draft-ietf-ocm-open-cloud-mesh/), which is currently under-specified and insecure (previously using credentials in URLs).
+- **Proposed Changes:** 
+    - Introduction of embedding capabilities: `iframe`, `redirect`, and `popup`.
+    - Enhanced protocol objects including `permission`, `app_name`, and `app_icon`.
+    - Secure token exchange using an HTML form post (similar to OIDC) to avoid exposing credentials in browser history or server logs.
+- **Discussion:**
+    - Lisa Dusseault questioned the use of the word "accept" in capability advertising (e.g., `accept-web-app-frame`), noting it might flip standard HTTP semantics. Micke Nordin clarified that this signifies what the *receiving* server is capable of displaying.
+    - Giuseppe Presti suggested that these embedding options belong within the protocol specification rather than as general discovery capabilities to allow for per-application settings (e.g., Collabora via iframe vs. Jupyter via redirect).
+    - Micke Nordin argued that `iframe`, `redirect`, and `popup` cover nearly all browser presentation modes and should serve as a minimal common set.
+
+### 3. Notifications
+**Presenter:** Giuseppe Presti  
+**Slides:** [Notifications](https://datatracker.ietf.org/meeting/interim-2026-ocm-01/materials/slides-interim-2026-ocm-01-sessa-notifications-00)
+
+Giuseppe Presti (presenting on behalf of Madi) highlighted interoperability issues in the current notification system within [draft-ietf-ocm-open-cloud-mesh](https://datatracker.ietf.org/doc/draft-ietf-ocm-open-cloud-mesh/).
+- **Current Issues:** Implementations like Nextcloud and ownCloud use different, incompatible payloads for notifications. Some applications (e.g., Nextcloud Talk) use custom notification types that are not part of the OCM spec.
+- **Proposal:** 
+    - Establish a minimal common payload for file sharing notifications.
+    - Explicitly forbid the use of shared secrets in notifications if a token exchange flow is used.
+    - Allow for custom payloads if the application is correctly advertised in discovery.
+- **Discussion:**
+    - Micke Nordin proposed an IANA registry for notification types to allow developers to register new types for compatibility.
+    - Lisa Dusseault confirmed that an IANA registry is a viable path forward and can be established via the document process.
+
+## Decisions and Action Items
+- **Decisions:** 
+    - The group expressed general consensus on the utility of the "Request for Share" model and the move toward form-post token delivery for WebApps.
+    - The `draft-ietf-ocm-open-cloud-mesh` will be updated to reflect more robust notification structures.
+- **Action Items:**
+    - Giuseppe Presti to share a link to the CERNBox WebApp sharing demonstration on the mailing list.
+    - Micke Nordin to start individual mailing list threads for the topics not reached during the meeting (Resource Discovery, OCM Journaling, and MLS over OCM).
+
+## Next Steps
+- Discussion will continue on the mailing list regarding the placement of WebApp embedding options (capabilities vs. protocol properties).
+- Remaining presentations from the interim session will be moved to the mailing list or a subsequent meeting to prepare for the in-person session in Vienna (IETF 122).
