@@ -1,0 +1,54 @@
+# [MOQ](../wg/moq.html)
+
+**IETF Media over QUIC (MOQ) Working Group Interim Meeting**
+**Date:** April 27, 2026
+
+---
+
+## Summary
+The MOQ working group held a virtual interim meeting to discuss pending issues and pull requests for [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/). Key discussions focused on identifying the start of subgroups, managing control message ordering via request IDs, and refining delivery timeout semantics. The group reached a tentative consensus to remove the `required_request_id` mechanism for the upcoming Draft 18 and approved a new subgroup-based delivery timeout.
+
+## Key Discussion Points
+
+### 1. Subgroup IDs and Identifying Subgroup Starts
+**Presentation:** [MOQT PRs and Issues](https://datatracker.ietf.org/meeting/interim-2026-moq-14/materials/slides-interim-2026-moq-14-sessa-moqt-prs-and-issues-01)
+**Discussion:**
+*   **Ian Swett** presented a proposal to constrain Subgroup IDs such that the Subgroup ID must equal the Object ID of the first object in that subgroup. This is intended to allow receivers to identify if they have received the beginning of a subgroup, which is necessary for features like "rewind" or efficient caching.
+*   **Mo Zanaty** argued that while the problem is real, removing application semantic control over Subgroup IDs is undesirable, particularly for video layering. He suggested using explicit start/end markers in the subgroup header instead.
+*   **Victor Vasiliev** noted that Subgroup IDs currently affect prioritization; changing them to match Object IDs would impact the scheduling algorithm.
+*   **Cullen Jennings** and **Magnus Westerlund** expressed concerns regarding temporal ordering in layered codecs (e.g., SVC), where the encoding or transmission order might not align with a strict Object ID-based Subgroup ID.
+*   **Alan Frindell** and **Suhas Nandakumar** concluded that the proposal should be reconsidered, likely moving toward an explicit marker or header extension to signal the start of a subgroup.
+
+### 2. Required Request ID and Control Stream Ordering
+**Presentation:** [Required Request ID](https://datatracker.ietf.org/meeting/interim-2026-moq-14/materials/slides-interim-2026-moq-14-sessa-required-request-id-00)
+**Discussion:**
+*   **Alan Frindell** explained that the `required_request_id` introduced in Draft 17 (to manage ordering across multiple BIDI control streams) creates unbounded state for the receiver.
+*   **Martin Duke** highlighted that many use cases (like "make-before-break" or "atomic switch") are not actually solved by this mechanism because it only guarantees receipt order, not processing order or data-plane synchronization.
+*   **Victor Vasiliev** proposed a more generic "wait for X" signal on streams as an alternative, though he acknowledged the reliability and state issues persist.
+*   **Mo Zanaty** and **Ian Swett** questioned the necessity of the feature, suggesting that if applications require strict ordering, they should wait for an acknowledgment before issuing the next dependent command.
+*   **Suhas Nandakumar** voiced support for keeping the mechanism but acknowledged the implementation difficulties.
+*   **Colin Jennings** suggested exploring "atomic" operations or multi-request streams as an alternative to cross-stream synchronization.
+
+### 3. Delivery Timeouts
+**Presentation:** [MOQT PRs and Issues (Delivery Timeout)](https://datatracker.ietf.org/meeting/interim-2026-moq-14/materials/slides-interim-2026-moq-14-sessa-moqt-prs-and-issues-01)
+**Discussion:**
+*   **Victor Vasiliev** proposed splitting delivery timeouts into two types: `delivery_timeout_object` (current) and `delivery_timeout_subgroup`. 
+*   The `subgroup` timeout starts when a subgroup FIN is queued. This prevents a single late object from triggering a full stream reset prematurely, which is particularly beneficial for base-layer video stability.
+*   **Alan Frindell** and **Mo Zanaty** supported the change, noting it is easy to implement and provides better flexibility for enhancement vs. base layers.
+
+### 4. Metadata and GraphQL Subscriptions
+**Discussion:**
+*   **Alan Frindell** discussed difficulties implementing GraphQL over MOQT due to Draft 17's strict parameter negotiation and the 4K limit on track names. Intermediaries often need to inject metadata (e.g., Client IP, VIA headers).
+*   **Victor Vasiliev** and **Cullen Jennings** cautioned against allowing arbitrary subscriber-to-publisher metadata flows, as it could break the aggregation and fan-out properties that define MOQ's efficiency.
+*   The group discussed reverting to a TLV-based parameter system with mandatory/optional ranges, but no consensus was reached.
+
+## Decisions and Action Items
+*   **Decision:** Remove `required_request_id` from [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) for Draft 18. A poll showed a strong preference to remove the complexity for now and revisit in London if concrete use cases remain unsolved.
+*   **Decision:** Merge the `delivery_timeout_subgroup` proposal into [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/).
+*   **Action Item:** **Cullen Jennings** to document specific use cases (like "make-before-break") that may require control plane synchronization to determine if a future replacement for `required_request_id` is necessary.
+*   **Action Item:** **Alan Frindell** and the editors to ensure "joining fetch" still functions by leveraging existing `subscribe_id` correlations without relying on `required_request_id`.
+
+## Next Steps
+*   Draft 18 will be prepared with the removal of `required_request_id` and the addition of subgroup timeouts.
+*   The next virtual interim (May 11, 2026) will focus on **Mo Zanaty’s** filter proposal.
+*   The working group will continue discussing metadata and subscriber-sent parameters on the mailing list and GitHub.
