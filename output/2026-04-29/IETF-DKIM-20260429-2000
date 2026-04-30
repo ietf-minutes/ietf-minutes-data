@@ -1,0 +1,76 @@
+# [DKIM](../wg/dkim.html)
+
+**IETF Interim Meeting: DKIM Working Group**
+**Date:** [Interim Meeting 2026-02]
+**Chairs:** Pete Resnick, Murray Kucherawy (Pete Resnick presiding)
+**Minutes Prepared by:** Expert Technical Writer
+
+---
+
+## Summary
+The DKIM working group held an interim meeting to discuss the current status and open issues of the DomainKeys Identified Mail Signatures v2 (DKIM2) specification. Key topics included the retention of recipes within the core specification, the removal of body truncation recipes for Delivery Status Notifications (DSNs), alignment with DMARC, and the signing rules for header fields. The group also reviewed proposals for DNS record updates and a best practices document.
+
+---
+
+## Key Discussion Points
+
+### 1. DKIM2 Specification Status
+Richard Clayton presented updates on [DKIM2 - Clayton](https://datatracker.ietf.org/meeting/interim-2026-dkim-02/materials/slides-interim-2026-dkim-02-sessa-dkim2-clayton-00) regarding `draft-ietf-dkim-dkim2-spec`.
+
+*   **Syntax Changes:** The draft has been updated to remove most JSON; however, recipes remain in JSON (base64 encoded) to facilitate implementation via standard JSON libraries. SMTP envelope parameters are also base64 encoded.
+*   **Recipes:** Discussion continued regarding whether to split recipes into a separate document. Richard Clayton and Bron Gondwana argued for keeping them integrated, noting that the logic is already implemented in working code (e.g., Bron’s Exim plugin). Pete Resnick noted the room currently leans toward keeping the document whole.
+*   **Validation:** Sections 9 and 10 were rewritten to clarify when and how to validate emails, including exemplar error messages to aid interoperability and debugging.
+
+### 2. DSN and Body Truncation
+The group discussed whether a recipe is needed for truncated bodies in DSNs (bounces). 
+*   Richard Clayton noted that while DSNs can contain truncated original message bodies, the headers of the original message (and the DKIM2 signature) are usually present. 
+*   Allen Robinson and John Levine argued that checking body hashes in returned messages is of low utility, and fake DSNs are not a significant threat requiring this complexity.
+*   **Decision:** The recipe for truncated bodies in DSNs will be removed from the specification.
+
+### 3. DKIM2 and DMARC Alignment
+The relationship between DKIM2 and DMARC was discussed. 
+*   Wei Chuang suggested that DKIM2 provides capabilities to identify originators through forwarding, which could refine DMARC passes. 
+*   Todd Herr and Allen Robinson questioned how DMARC should handle "passes" where a DKIM2 recipe indicates the message body has been significantly modified. 
+*   Bron Gondwana suggested using internal flags rather than out-of-band policy. 
+*   **Consensus:** No immediate changes to the base DKIM2 protocol are required, but the group will consider adding flags for sender intent (e.g., "do not modify body") to support future DMARC evolution.
+
+### 4. Mailing List Software and MIME Parts
+Discussion turned to whether mailing lists still remove attachments and if DKIM2 needs to support this via a tree of hashes. 
+*   Allen Robinson confirmed that modern systems like Google Workspace still support attachment removal for policy reasons.
+*   Richard Clayton argued that a full tree of hashes is expensive and likely unnecessary for modern mail flows.
+*   **Status:** This issue remains open for further input from mailing list operators.
+
+### 5. Header Signing Rules
+The group revisited which headers should be signed. 
+*   The current draft (`draft-ietf-dkim-dkim2-spec`) signs everything except specific trace headers and `X-` headers.
+*   Bron Gondwana suggested treating `Authentication-Results` as a trace header to avoid breakage when multiple systems add authentication data. 
+*   Allen Robinson proposed an "all-except list" with an extension mechanism (e.g., `H=`) for senders to opt-in to signing specific `X-` headers.
+*   Pete Resnick proposed moving forward with the "all-except" rule as the base position and taking the discussion of specific exclusions/extensions to the mailing list.
+
+### 6. DNS Record Policy
+Wei Chuang presented [DKIM - Chuang](https://datatracker.ietf.org/meeting/interim-2026-dkim-02/materials/slides-interim-2026-dkim-02-sessa-dkim-chuang-00) regarding a separate DNS policy document.
+*   The document aims to clean up legacy DKIM1 tags for DKIM2 usage. 
+*   **Retired Tags:** `h=` (hash algorithm), `n=` (notes), and `s=` (service type) will be ignored by DKIM2.
+*   **Flags:** There is a proposal to retire `t=y` (testing) and `t=s` (alignment) flags to reduce configuration confusion.
+*   John Levine supported the cleanup, noting that existing DKIM1 records would remain compatible.
+
+### 7. Other Documents and Best Practices
+*   **Best Practices:** Todd Herr’s document on applicability and use cases will be adopted by the WG as a repository for implementation guidance and scenarios like DMARC interaction.
+*   **Feedback Reporting:** Alex Brotman discussed a document for aggregate reporting (currently at MailExt). Discussion occurred on whether this belongs in DKIM given that DKIM2 includes a "feedback requested" flag. Alex will consult with the chairs of both groups.
+
+---
+
+## Decisions and Action Items
+
+1.  **Decision:** The recipe for truncated bodies in DSN messages will be removed from `draft-ietf-dkim-dkim2-spec`.
+2.  **Decision:** The WG will retain recipes within the main `draft-ietf-dkim-dkim2-spec` rather than splitting them.
+3.  **Action Item:** Pete Resnick to initiate a formal Call for Adoption for Wei Chuang’s DNS policy draft.
+4.  **Action Item:** Pete Resnick to initiate a formal Call for Adoption for Todd Herr’s Best Practices/Applicability draft.
+5.  **Action Item:** Pete Resnick and Murray Kucherawy to propose the "all-except" header signing rule (with potential extensions) to the mailing list for final consensus.
+
+---
+
+## Next Steps
+*   Richard Clayton to update `draft-ietf-dkim-dkim2-spec` based on meeting feedback.
+*   The chairs will schedule the next interim meeting, tentatively for May 2026.
+*   Further discussion on mailing list attachment stripping and DMARC alignment will continue on the mailing list.
