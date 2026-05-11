@@ -1,0 +1,68 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+The IDR Working Group interim meeting focused on the progression of BGP Flowspec Version 2 (FSv2), specifically `draft-ietf-idr-fsv2-ip-basic`. The chairs provided a comprehensive status update on the WG's extensive document queue. Technical discussions centered on the transition to strict TLV encodings for Flowspec components, new ordering mechanisms (including a "skip-by-10" numbering scheme), and several new filter types and feedback mechanisms intended to extend the FSv2 framework.
+
+## WG Status
+Sue Hares provided an update on the WG status and chartering:
+*   The updated WG charter is under IESG review.
+*   `draft-ietf-idr-bgp-ls-link-mtu` and `draft-ietf-idr-bgp-ls-sr-epe-over-l2bundle` are with the RFC Editor.
+*   `draft-ietf-idr-flowspec-path-redirect` and `draft-ietf-idr-bgp-fwd-rr` are at IETF Last Call.
+*   `draft-ietf-idr-flowspec-srv6` has been sent to the IESG.
+*   `draft-ietf-idr-5g-edge-service-metadata` requires a BGP-DIR review before moving to Working Group Last Call (WGLC).
+*   The chairs are prioritizing Flowspec V2 work to clear the backlog of related filter and action drafts.
+
+## Key Discussion Points
+
+### 1. BGP Flowspec V2 Core Updates
+**Presenters:** Sue Hares and Jeffrey Haas
+**Slides:** [BGP Flowspec V2](https://datatracker.ietf.org/meeting/interim-2026-idr-02/materials/slides-interim-2026-idr-02-sessa-1-bgp-flowspec-v2-00)
+
+Jeffrey Haas outlined the primary goals for `draft-ietf-idr-fsv2-ip-basic`:
+*   **Strict TLVs:** Moving away from Flowspec V1's lack of length fields to allow for incremental protocol updates.
+*   **Ordering:** FSv1 was optimized for DDoS; FSv2 introduces a "User Order" field to bypass natural sorting when required by specific applications.
+*   **Mandatory/Optional Bits:** A new "optional" bit in the component TLV allows an operator to signal whether a rule should still be applied if a specific node cannot support a particular component (e.g., DSCP matching).
+*   **Dependencies:** Introduction of a 4-byte dependency field to tie rules together. If a mandatory component in a chain cannot be installed, the entire set of dependent rules is treated as invalid.
+*   **Component Numbering:** The chairs proposed a "skip-by-10" numbering scheme (e.g., 10, 20, 30) for filter components. This allows future specifications to insert new components in the correct architectural order without breaking the natural sort.
+
+**Discussion:**
+*   **Nat Kao** queried the limitation of components appearing only once per NLRI, noting that multiple source/destination prefixes currently require multiple rules. **Jeffrey Haas** suggested that a "prefix list" component might be a more efficient solution than allowing multiple occurrences of the same component type.
+*   **Jeffrey Haas** detailed error handling: syntactic failures result in session resets, while semantic issues with well-formed TLVs may result in "treat-as-withdraw" behavior.
+
+### 2. Bitwise IP Filters for BGP FlowSpec
+**Presenter:** Nat Kao
+**Slides:** [Bitwise IP Filters for BGP FlowSpec](https://datatracker.ietf.org/meeting/interim-2026-idr-02/materials/slides-interim-2026-idr-02-sessa-bitwise-ip-filters-for-bgp-flowspec-00)
+
+Nat Kao presented a mechanism for symmetric service load balancing using bitwise masks on IP addresses (targeting least significant bits of subscribers).
+*   **Joel Halpern** questioned the deployment guideline suggesting bitwise filters should not be mixed with standard prefix filters. **Nat Kao** clarified that the bitwise component includes the prefix and the mask, effectively combining both matches into one operation.
+
+### 3. BGP FlowSpec Based IFIT
+**Presenter:** Xiaomin
+**Slides:** [BGP FlowSpec Based IFIT](https://datatracker.ietf.org/meeting/interim-2026-idr-02/materials/slides-interim-2026-idr-02-sessa-2-bgp-flowspec-based-ifit-00)
+
+Xiaomin discussed extensions for In-situ Flow Information Telemetry (IFIT) using `draft-ietf-idr-bgp-ifit-capabilities`. 
+*   **Jeffrey Haas** asked if the IFIT attribute is intended strictly for Flowspec or if it could be used with standard Unicast NLRIs. **Xiaomin** confirmed it is a general BGP extension. 
+*   **Jeffrey Haas** and **Sue Hares** emphasized that if it is generic, the draft must define interaction rules for non-Flowspec NLRIs and handle cases where a node cannot support the IFIT function.
+
+### 4. Flowspec Content Filter and Feedback Binding
+**Presenter:** Yujia Gao
+**Slides:** [BGP Flowspec Content Filter & Feedback Binding](https://datatracker.ietf.org/meeting/interim-2026-idr-02/materials/slides-interim-2026-idr-02-sessa-4-bgp-flowspec-content-filter-feedback-binding-00)
+
+Yujia Gao presented two proposals:
+1.  **Content Filter:** A payload match mechanism for DDoS mitigation, validated with FRR and openBGPD implementations.
+2.  **Feedback Binding:** A mechanism for a controller to request execution feedback (success/failure/traffic stats) from the target node.
+
+**Discussion:**
+*   **Sue Hares** suggested that feedback might be better handled via existing mechanisms like YANG Push or BMP rather than defining a new BGP-based return path.
+*   **Jeffrey Haas** noted that while BGP is primarily a distribution mechanism, having an explicit request for feedback within the Flowspec rule is a recognized operator requirement.
+
+## Decisions and Action Items
+*   **FSv2 Encoding:** The WG will proceed with the "skip-by-10" numbering for `draft-ietf-idr-fsv2-ip-basic` to allow for modular insertions of new filters.
+*   **IFIT Attribute:** Authors of `draft-ietf-idr-bgp-ifit-capabilities` need to clarify the attribute's behavior when used with non-Flowspec NLRIs and specify failure handling on the mailing list.
+*   **BGP-DIR Review:** Sue Hares to coordinate a BGP-DIR review for `draft-ietf-idr-5g-edge-service-metadata`.
+*   **WGLC:** `draft-ietf-idr-linklocal-capability` is slated for a WGLC shortly.
+
+## Next Steps
+*   Authors of FSv2-related drafts (Bitwise, Content Filter, Feedback Binding) are encouraged to align their specifications with the new TLV structure and numbering in `draft-ietf-idr-fsv2-ip-basic`.
+*   Adoption calls for the FSv2 extension drafts will commence once the base `fsv2-ip-basic` text is stabilized.
+*   Continued discussion on the mailing list regarding the "prefix list" component proposal and feedback reporting paths (BMP vs. YANG).
