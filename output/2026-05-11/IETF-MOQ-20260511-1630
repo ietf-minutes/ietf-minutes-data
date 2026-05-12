@@ -1,0 +1,59 @@
+# [MOQ](../wg/moq.html)
+
+**Session: Media over QUIC (MoQ) Virtual Interim**  
+**Date:** May 11, 2026
+
+## Summary
+The session focused primarily on the proposal for "Filters" within the Media over QUIC transport, specifically regarding [PR 1518](https://github.com/ietf-wg-moq/moq-transport/pull/1518) against [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/). The group debated the technical complexity, utility, and architectural placement of range filters and "Top N" track selection filters. The meeting concluded with a brief temperature check and survey regarding the ongoing "Joining FETCH" design controversy.
+
+## Key Discussion Points
+
+### Filters and PR 1518
+Mo Zanaty presented [Filters](https://datatracker.ietf.org/meeting/interim-2026-moq-15/materials/slides-interim-2026-moq-15-sessa-filters-01) and [MOQT Issues and PRs](https://datatracker.ietf.org/meeting/interim-2026-moq-15/materials/slides-interim-2026-moq-15-sessa-moqt-issues-and-prs-00), outlining a reduced scope from previous proposals.
+
+*   **Filter Types:**
+    *   **Range Filters:** Targeting Object ID, Subgroup, Priority, and Property types. These allow for use cases like video keyframe scrubbing, layer extraction, and priority-based logging.
+    *   **Track Selection (Top N):** Allows subscribers to request the "Top N" active tracks (e.g., loudest speakers in a conference) based on a property.
+*   **Technical Design:** The PR introduces setup options to limit computational overhead (`Max filter ranges` and `Max tracks selected`). It also defines a state machine for track selection (Unknown, Selected, Deselected) and utilizes delta encoding.
+*   **Implementation Reports:**
+    *   Mo Zanaty noted successful implementations in Quicker Laps (used in an NAB demo), Open MoQ (MockX), and Cloudflare (MockRS). 
+    *   Tim Evens reported that while implementation required refactoring, performance hits were minimal (less than 1% in flame graphs).
+    *   Alan Frindell raised concerns regarding the complexity of "self-exclusion" (ensuring a publisher doesn't receive their own track in a Top N selection) and the state management burden on relays.
+*   **Architectural Placement:** A significant portion of the debate centered on whether these features belong in the core [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) or an extension draft.
+    *   **Pro-Core:** Cullen Jennings, Suhas Nandakumar, Mo Zanaty, and Will Law argued that filters are fundamental to MoQ’s value proposition (network-side data reduction) and that splitting them could lead to synchronization issues with `SUBSCRIBE_NAMESPACE`.
+    *   **Pro-Extension:** Alan Frindell and Ian Swett suggested that the complexity and remaining "unbaked" aspects (like DDoS mitigation) warrant placing them in a separate document to avoid delaying the core transport draft.
+*   **DDoS and Security:** Ian Swett highlighted potential amplification attacks where a relay could be forced to perform unbounded filtering work. Mo Zanaty and Tim Evens noted that while setup limits help, more robust text is needed in the security considerations.
+*   **Group Boundaries:** Victor Vasiliev and Will Law noted that for media use cases, filter changes (like switching SVC layers) should ideally occur at group boundaries to avoid truncated data.
+
+### Joining FETCH
+Alan Frindell presented [Joining FETCH Temperature Check](https://datatracker.ietf.org/meeting/interim-2026-moq-15/materials/slides-interim-2026-moq-15-sessa-joining-fetch-temperature-check-00).
+
+*   The chairs noted there are currently approximately six competing proposals to address "Joining FETCH" (the mechanism for joining a live stream and fetching past data).
+*   Alan Frindell issued a three-question survey to the group to gauge whether the current design meets use cases, if participants can "live with" the current control-plane/data-plane split, and whether any new mechanism should augment or replace the existing one.
+
+## Decisions and Action Items
+
+### Poll Results
+Magnus Westerlund conducted two informal polls to gauge the room's sentiment on including filters in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/):
+
+1.  **Merge Range Filters into core draft?**
+    *   Yes: 7
+    *   No: 3
+    *   No Opinion: 1
+    *   *Result: Indicates a rough consensus in favor.*
+
+2.  **Merge Track Selection (Top N) Filters into core draft?**
+    *   Yes: 7
+    *   No: 7
+    *   No Opinion: 2
+    *   *Result: No consensus; significant division remains.*
+
+### Action Items
+*   **Mo Zanaty:** Rescrub the 17 open issues related to the Filters PR and coordinate with openers to close resolved items.
+*   **All Participants:** Respond to the "Joining FETCH" survey on the mailing list by the following Wednesday (May 20th).
+*   **Chairs:** Summarize the poll results and the path forward for Filters on the mailing list.
+
+## Next Steps
+*   The next Virtual Interim is scheduled for Tuesday, May 26, 2026.
+*   Discussion will continue on the mailing list regarding whether to split the Filter PR into two (Range filters vs. Track selection) based on the poll results.
+*   Preparation for the London meeting (June) including interop details.
