@@ -1,0 +1,77 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CORE working group held an interim meeting on October 7, 2026. The meeting focused primarily on CoAP Management Interface (CORECONF) topics, specifically [draft-ietf-core-comi](https://datatracker.ietf.org/doc/draft-ietf-core-comi/), including the YANG Schema Registry, YANG Constraint Library, Unified Data Store semantics, and implementations of `pycoreconf`. Additional discussion covered the concept of model compilation for constrained devices. Finally, the group discussed a proposal from the ANIMA working group regarding the use of zero-length hostnames in CoAP URIs within link-format payloads.
+
+---
+
+## Key Discussion Points
+
+### 1. CORECONF and YANG SID File Registry
+**Vojtěch Vilímek** presented updates and issues related to CORECONF and YANG SID files, using the slide deck [core-interim-07-vilimek](https://datatracker.ietf.org/meeting/interim-2026-core-07/materials/slides-interim-2026-core-07-sessa-core-interim-07-vilimek-00).
+
+*   **YANG Doctors Review for SID Files:** Andy Bierman had suggested that SID file publication should be tied to a YANG Doctors review. 
+    *   **Carsten Bormann** clarified that while formal YANG Doctors review is not strictly required by the registry process, the designated experts for the registry (currently **Laurent Toutain**, Alexander Pelov, and Michel Veillette) are expected to coordinate with experts to ensure quality.
+*   **SID Allocation Ordering & Efficiency:** **Laurent Toutain** asked if SID files must strictly follow the alphabetical order defined in YANG or if they can be rearranged to optimize encoding.
+    *   **Carsten Bormann** noted that if authors are involved in SID file generation (Type 1 or Type 2 modules), they can suggest custom, more efficient sequences. For automated, default SID generation (Type 3), following the recommended process in Appendix B of RFC 9595 is preferred to optimize expert time.
+    *   **Vojtěch Vilímek** remarked that the current `pyang` tool produces suboptimal, inefficient SID files. **Carsten Bormann** cautioned against spending excessive effort on optimizing allocations for resources like the YANG library, which are only exchanged occasionally.
+*   **SID Range for `iana-if-type`:** Andy Bierman raised concerns that the SID allocation range for `iana-if-type` is too small.
+    *   **Carsten Bormann** and **Vojtěch Vilímek** agreed that because the adjacent allocation slot is open, they can allocate another 250 SIDs to `iana-if-type` to resolve the issue.
+*   **Type-def-only Modules:** **Vojtěch Vilímek** questioned the need to allocate 50 SIDs for modules containing only typedefs (e.g., `ietf-inet-types`), since individual typedefs do not receive SIDs under the current scheme. 
+    *   **Carsten Bormann** advised keeping the default minimum allocation of 50 SIDs, as future developments in model compilation might require assigning SIDs to typedefs.
+*   **YANG Constraint Library:** **Vojtěch Vilímek** noted the absence of `ietf-constraint-library` in the registry. 
+    *   **Carsten Bormann** explained that the draft is currently dormant but remains on the WG milestone list. A SID range will be allocated once the draft's technical structure stabilizes.
+
+### 2. Unified Data Store Semantics in CORECONF ([draft-ietf-core-comi](https://datatracker.ietf.org/doc/draft-ietf-core-comi/))
+The group discussed ambiguities in Section 2.4 of the CORECONF draft regarding read-write access to configuration versus operational state, and the semantics of the Unified Data Store.
+
+*   **Data Store Latency:** **Vojtěch Vilímek** raised a scenario where a configuration change takes time to apply (e.g., 30 seconds). He questioned whether a GET request in the interim should return the newly written value or the currently active (old) value.
+    *   **Christian Amsüss** suggested that from a REST perspective, a successful PUT/PATCH implies the resource representation is updated immediately. However, CORECONF might require more nuanced semantics.
+    *   **Carsten Bormann** noted that the Unified Data Store may not handle such concurrency well, and some deployments might require separate data stores.
+*   **Update Consistency and Atomicity:** **Vojtěch Vilímek** asked about the consistency requirements when updating multiple resources in a single CoAP message (e.g., using `i-patch` with a sequence of updates). Requiring full transactional rollback on a constrained node makes stream-parsing difficult.
+    *   **Carsten Bormann** outlined three possibilities: enforcing full atomicity (costly for constrained servers), banning multi-resource updates (inefficient), or allowing partial application with ambiguous error reporting.
+    *   **Christian Amsüss** proposed utilizing CoAP Problem Details to report exactly which updates in the sequence succeeded before a failure occurred.
+    *   **Javier FERNANDEZ** noted that in SCHC, they explored RPCs where specific outputs can be defined for each operation to address this.
+
+### 3. pycoreconf and SID Extensions
+**Javier FERNANDEZ** and **Laurent Toutain** presented updates on the `pycoreconf` implementation using the slide deck [pycoreconf](https://datatracker.ietf.org/meeting/interim-2026-core-07/materials/slides-interim-2026-core-07-sessa-pycoreconf-00).
+
+*   **Type Information in SID Files:** **Laurent Toutain** explained that to convert JSON to CBOR and vice versa without a full YANG parser, the translator needs leaf type information (e.g., distinguishing `identityref` from standard integers, mapping enumerations). They introduced a `sid-extension` flag in `pyang` to embed this type information directly into the SID file.
+*   **Unions:** **Vojtěch Vilímek** raised concerns about handling complex unions during bidirectional conversion. **Javier FERNANDEZ** noted that while simple unions (e.g., `uint` and `identityref`) work well in SCHC, highly ambiguous unions (e.g., `string` and `identityref`) remain challenging.
+*   **Key Mapping:** **Laurent Toutain** described adding a key-mapping structure to the SID files. This maps list SIDs to their respective key SIDs, enabling light clients to traverse hierarchical data structures and handle CoAP FETCH/i-PATCH operations without storing the entire YANG schema.
+*   **User Feedback:** **Adit Sahasrabudhe** shared that he successfully uses `pycoreconf` to interface with a vendor network switch implementing CORECONF. He noted that the SID extension is highly useful and expressed support for standardizing it so vendors adopt it natively.
+
+### 4. Model Compilation
+**Carsten Bormann** presented the conceptual framework of "Model Compilation" using the slide deck [Model compilation](https://datatracker.ietf.org/meeting/interim-2026-core-07/materials/slides-interim-2026-core-07-sessa-model-compilation-00).
+
+*   Rather than forcing constrained servers to perform full YANG schema parsing or relying entirely on hardcoded code-generation, **Carsten Bormann** proposed compiling YANG schemas into lightweight artifacts (containing base types, derived types, and child/key mappings). This information can be packaged alongside SID files to let constrained nodes decode and process payloads efficiently.
+
+### 5. Link-Format and Zero-Length Hostname (Issue #87)
+**Esko Dijk** presented a proposal related to the ANIMA Bootstrapping Remote Secure Key Infrastructure (BRSKI) onboarding protocol, discussing how to format CoAP discovery responses compactly in `link-format`.
+
+*   To avoid the byte overhead of transmitting full IPv6 link-local addresses, **Esko Dijk** proposed using an empty (zero-length) hostname in the CoAP URI (e.g., `coap://:port`).
+*   **Protocol Constraints:** Under RFC 3986 (URI generic syntax), zero-length hostnames are permitted and schemes can define default behaviors. However, RFC 7252 (CoAP) explicitly states that an empty host is invalid.
+    *   **Esko Dijk** noted two perspectives: either the invalid status is useful because legacy nodes will safely discard it, or standards should strictly avoid using invalid URIs.
+*   **Feedback:**
+    *   **Christian Amsüss** strongly advised against using invalid URIs or introducing scheme-specific workarounds that bypass standard URI resolution, as RFC 6690 resolution is already fragile. He recommended (in order of preference):
+        1. Transmitting the full URI (since DTLS handshake overhead makes the few saved URI bytes negligible).
+        2. Defining a target attribute indicating a numeric port number.
+        3. Proceeding with the empty hostname approach only if the others are unviable.
+    *   **Esko Dijk** acknowledged the feedback and stated that since payload sizes still fit within a single IEEE 802.15.4 radio frame, keeping the full URI as currently written in the draft is a highly viable path forward.
+
+---
+
+## Decisions and Action Items
+
+*   **Action Item (Chairs/WG):** Create GitHub issues to clarify Unified Data Store semantics, operational data store behavior, and error-handling consistency in [draft-ietf-core-comi](https://datatracker.ietf.org/doc/draft-ietf-core-comi/).
+*   **Action Item (Designated Experts):** Allocate an additional 250 SIDs to `iana-if-type` in the SID registry to resolve the range-exhaustion issue.
+*   **Action Item (Laurent Toutain / Javier FERNANDEZ):** Provide **Christian Amsüss** with the documentation/references regarding cases where relying on CoAP ACKs for state synchronization causes issues in proxies or non-point-to-point architectures.
+
+---
+
+## Next Steps
+
+*   The ANIMA design team will continue discussing the zero-length hostname issue, taking into account the feedback regarding RFC 6690 complexity and URI validity.
+*   Further discussions on CORECONF implementation, model compilation, and SID file schemas will continue on the mailing list.
+*   The next CORE interim meeting will take place in two weeks. **Carsten Bormann** noted he will be absent for that session.
