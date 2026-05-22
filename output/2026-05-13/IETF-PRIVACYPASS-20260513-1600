@@ -1,0 +1,80 @@
+# [PRIVACYPASS](../wg/privacypass.html)
+
+## Summary
+
+The PRIVACYPASS Working Group held an interim meeting to discuss active drafts, cryptographic security upgrades (particularly post-quantum unlinkability), architectural guidelines for reverse-flow credentials, and updates on the Anonymous Counter Tokens (ACT) and Private Access Control Tokens (PACT) initiatives. 
+
+Key outcomes included adjusting the agenda to prioritize the reverse flow presentation, outlining the path forward for metadata and batched token drafts, and engaging in a detailed technical debate regarding the future of Anonymous Rate-Limited Credentials (ARC) in a post-quantum threat model.
+
+---
+
+## Key Discussion Points
+
+### 1. Document Status and Administration
+* **Agenda Modification:** Dennis Jackson requested moving the reverse flow update before the ACT and PACT presentations to establish necessary architectural context. The chairs and the working group agreed.
+* **`draft-ietf-privacypass-batched-tokens`:** Raphael Robert requested a status update. Joseph Salowey reported that a new draft was recently published; the chairs need to review it to ensure it remains within working group consensus before advancing.
+* **`draft-ietf-privacypass-public-metadata-issuance` & `draft-ietf-privacypass-auth-scheme-extensions`:** Benjamin Schwartz reported that these drafts stalled after passing Working Group Last Call (WGLC) last year. While there is list support to proceed, there are pending changes in GitHub that must be resolved in new revisions. He asked the list to confirm if these proposed standards remain relevant.
+* **`draft-ietf-privacypass-expiration-extension`:** Christopher Wood asked about the draft's status. Benjamin Schwartz noted it has not entered WGLC. Christopher Patton suggested parking the draft if there are no active implementations. However, Benjamin Schwartz noted that list comments suggest production deployments of the metadata drafts may already utilize expiration. Christopher Patton agreed to take this query to the list.
+
+### 2. Late Binding with PQ Unlinkability
+* **Presentation:** [Late binding with PQ unlinkability](https://datatracker.ietf.org/meeting/interim-2026-privacypass-01/materials/slides-interim-2026-privacypass-01-sessa-late-binding-with-pq-unlinkability-00) presented by Christopher Patton.
+* **Technical Details:** 
+  * VOPRF and Blind RSA are secure against "store-now-decrypt-later" quantum attacks (providing post-quantum unlinkability) but remain vulnerable to signature forgery.
+  * ARC (`draft-ietf-privacypass-arc-protocol` / `draft-ietf-privacypass-arc-crypto`) is not post-quantum (PQ) unlinkable because an attacker with a quantum computer can solve the discrete logarithm problem on the Dodis-Yampolskiy PRF (DYPRF) tag to link multiple presentations.
+  * To solve this, Christopher Patton presented a proposal (based on work by Michael Rosenberg and Michele Orrù) to replace DYPRF with a Universal Hash Function (UHF) over polynomial evaluations committed via KZG commitments. This approach is perfectly hiding up to the presentation limit.
+  * *Downsides:* Evaluating the degree-$N$ polynomial makes computation linear in the presentation limit, which is much slower than the sublinear cost of DYPRF. 
+* **Discussion:**
+  * Benjamin VanderSloot questioned the utility of the UHF approach over `draft-ietf-privacypass-batched-tokens` (batch VOPRF) when the issuer and redeemer are the same party, noting that both have linear storage costs. He argued that UHF is a dead end and suggested proving a PQ-secure cryptographic hash function (e.g., Poseidon) to allow compressed credentials without the massive storage penalty.
+  * Watson Ladd suggested looking into the Legendre PRF as a plausible PQ alternative with cheap quadratic residue proofs. He committed to sending references to the list.
+  * Christopher Wood and Thibault Meunier noted that a broader strategic discussion on the future of ARC is needed, as it is no longer clear if late binding is a feature the working group wants to prioritize given the PQ constraints.
+  * Samuel Schlesinger expressed support for maintaining a late-binding workstream, noting its value in publicly verifiable credentials.
+
+### 3. Privacy Pass Reverse Flow Update
+* **Presentation:** [Privacy Pass Reverse Flow - Update](https://datatracker.ietf.org/meeting/interim-2026-privacypass-01/materials/slides-interim-2026-privacypass-01-sessa-privacy-pass-reverse-flow-update-00) presented by Thibault Meunier.
+* **Technical Details:**
+  * The reverse flow draft (`draft-ietf-privacypass-reverse-flow`) enables clients to present a credential and request a new one from the origin simultaneously.
+  * Recent updates include an expanded motivation section (rate limiting, credential conversion, bootstrapping), a transition in terminology from "tokens" to "credentials", and an explicit separation of the "finalization" and "presentation" steps.
+  * Open questions remain around client state management, encoding the request/response payloads, and formalizing privacy guarantees.
+* **Discussion:**
+  * Tommy Pauly agreed the draft is useful and suggested defining standard HTTP headers (`Privacy-Pass-Reverse`) as a default while allowing alternative encapsulations (e.g., JSON, Protobuf, or Media over QUIC).
+  * Benjamin Schwartz asked about the core use case compared to standard cookie bootstrapping, and how failure states (reissuance failing after a redemption) are handled. Thibault Meunier clarified that this is for scenarios where ongoing, unlinkable privacy is required across requests, and that failure recovery is currently handled by client policy.
+  * Samuel Schlesinger added that reverse flow architecture is crucial for stateful tokens like ACT, where the new issuance request must cryptographically bind to a proof of the redeemed credential.
+
+### 4. ACT Update
+* **Presentation:** [ACT Update](https://datatracker.ietf.org/meeting/interim-2026-privacypass-01/materials/slides-interim-2026-privacypass-01-sessa-act-update-00) presented by Samuel Schlesinger.
+* **Technical Details:**
+  * Anonymous Counter Tokens (ACTs) allow users to maintain a private, stateful balance.
+  * Recent draft updates include migrating the underlying zero-knowledge proofs to the CFRG Sigma-Proofs specification (`draft-ietf-privacypass-arc-crypto`), using SHA-128 for hash-to-scalar, and introducing flexible refunds.
+  * Samuel Schlesinger proposed generalizing the state transitions to an affine step (state vector multiplied by a matrix plus a vector) to support complex, privacy-preserving policies such as epoch transitions and tiered access levels.
+* **Discussion:**
+  * Nikita Borisov questioned how the group should balance full generality (e.g., zero-knowledge virtual machines) with specific, use-case-driven designs.
+  * Samuel Schlesinger responded that practical constraints dictate focusing on designs that yield small proofs (1–2 KB) and high performance to run at scale on the open web.
+
+### 5. PACT Workshop Update
+* **Presentation:** [PACT Workshop Update](https://datatracker.ietf.org/meeting/interim-2026-privacypass-01/materials/slides-interim-2026-privacypass-01-sessa-pact-workshop-update-00) presented by Samuel Schlesinger.
+* **Technical Details:**
+  * Samuel Schlesinger summarized a recent W3C Anti-Fraud Community Group workshop on Private Access Control Tokens (PACT).
+  * The primary use case is reducing cross-origin user friction (e.g., CAPTCHAs, device attestations) via a privacy-preserving browser API.
+  * The proposed architecture is a 4-party model: Client, Anchor (authorizes Sybil resistance, similar to an attester/issuer hybrid), Moderator (applies site rate-limiting policies), and Origin.
+  * Essential security goals include moderator credential unlinkability, anchor credential unlinkability, issuer hiding (the moderator does not know which anchor issued the credential), and post-quantum security.
+* **Discussion:**
+  * Christopher Patton asked how issuer hiding is achieved during verification. Samuel Schlesinger noted that while BBS-style pairings are one path, pairing-free alternatives (such as blind ring signatures) are being explored due to performance constraints.
+
+---
+
+## Decisions and Action Items
+
+* **Agenda Modification:** The agenda was modified to present the Reverse Flow draft prior to the ACT and PACT updates.
+* **`draft-ietf-privacypass-public-metadata-issuance` and `draft-ietf-privacypass-auth-scheme-extensions`:** The editors must resolve pending GitHub issues and pull requests, and publish new revisions before these documents can proceed.
+* **`draft-ietf-privacypass-batched-tokens`:** The chairs will review the recently published revision to verify it aligns with working group consensus.
+* **Late Binding / ARC Cryptography:** Christopher Patton and Benjamin VanderSloot will take the discussion of replacing DYPRF with Legendre PRFs, Poseidon hash proofs, or universal hash functions to the mailing list.
+
+---
+
+## Next Steps
+
+* **Mailing List Discussions:**
+  * Assess the level of working group interest and active implementations for `draft-ietf-privacypass-expiration-extension`.
+  * Solicit feedback on the relevance and utility of late binding and the future of the ARC specifications (`draft-ietf-privacypass-arc-protocol` / `draft-ietf-privacypass-arc-crypto`).
+  * Watson Ladd to share references regarding Legendre PRF constructions.
+  * Samuel Schlesinger to follow up with Benjamin Schwartz on the formalization of reverse-flow issuance.
