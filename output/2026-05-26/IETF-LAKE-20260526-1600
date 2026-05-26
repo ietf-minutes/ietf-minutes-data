@@ -1,0 +1,130 @@
+# [LAKE](../wg/lake.html)
+
+## Summary
+The LAKE Interim Meeting (interim-2026-lake-01) focused on progress updates for active Working Group drafts, formal verification analyses of Remote Attestation over EDHOC, lightweight authorization, and post-quantum (PQ) deployment scenarios. Key highlights included the formal verification of `draft-ietf-lake-ra` using Sapic+, expert evaluation of parallel formal verification efforts, progress toward Working Group Last Calls (WGLC), and the presentation of the Post-Quantum ad-hoc Design Team's analysis of constrained device deployment scenarios.
+
+---
+
+## Key Discussion Points
+
+### 1. WG Status and Draft Overview
+*   **Slides:** [00-Chairs-slides](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-00-chairs-slides-00)
+*   **Presented by:** Mališa Vučinić
+*   **Active WGLC updates:**
+    *   `draft-ietf-lake-edhoc-grease`: Christian Amsüss is working on incorporating feedback and will present the resolutions at the upcoming Vienna meeting.
+    *   `draft-ietf-lake-edhoc-impl-cons`: WGLC commenced on May 4, 2026.
+    *   `draft-ietf-lake-app-profiles`: WGLC commenced on May 19, 2026.
+    *   `draft-ietf-lake-edhoc-psk`: WGLC is pending green light from the authors.
+
+---
+
+### 2. Remote Attestation over EDHOC
+*   **Slides:** [01-Remote attestation over EDHOC](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-remote-attestation-over-edhoc-00)
+*   **Presented by:** Yuxuan Song
+*   **Draft:** `draft-ietf-lake-ra`
+*   **Key updates in version -05:**
+    *   Completed four examples in Section 6 (Instantiation of Remote Attestation Protocol) representing all permutations of initiator/responder as the attester in both background check and passport models.
+    *   Removed the forward/reverse message flow dimension since EDHOC is transport-independent and does not require running over CoAP.
+    *   Removed Appendix A, consolidating the architectural flows into Figure 1.
+    *   Refined the structure and names of the attestation binders: `attestation binder M3` (for message 3, incorporating the hash of messages 1 and 2) and `attestation binder M4` (for message 4, derived using the EDHOC exporter).
+    *   Added a new subsection detailing the reuse of EDHOC parameters.
+    *   Sanity check comments from Marco Tiloca have been addressed.
+
+---
+
+### 3. Formal Analysis of Remote Attestation over EDHOC
+*   **Slides:** [02 - Remote Attestation over EDHOC Formal Analysis](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-02-remote-attestation-over-edhoc-formal-analysis-01)
+*   **Presented by:** Elsa Lopez-Perez
+*   **Analysis details:**
+    *   Evaluated `draft-ietf-lake-ra-05` using the Sapic+ framework (ProVerif and Tamarin back-ends) under the Dolev-Yao attacker model with advanced key-compromise capabilities.
+    *   Recapped that version -03 suffered from a channel-binding failure due to a lack of cryptographic binding between attestation evidence and the EDHOC session.
+    *   The introduced mitigations in version -05 successfully resolve the channel binding issues. For EAD3, the binder includes the hash of messages 1 and 2. For EAD4, the binder relies on the ad-hoc exporter.
+    *   Results show that channel binding now holds unless the attacker obtains the attestation key itself.
+*   **Discussion:**
+    *   Muhammad Usama Sardar asked how the findings compared to attested TLS, questioning if the results differed and citing parallel discussions on TLS vulnerabilities.
+    *   Elsa Lopez-Perez replied that they are modeled as distinct protocols; EDHOC's unique flows require separate symbolic verification.
+    *   Göran Selander agreed, noting EDHOC relies on asymmetric and symmetric methods not present in TLS. He argued that the burden of proof to equate the protocols lies on those claiming they are identical. He welcomed the comprehensive results.
+
+---
+
+### 4. Expert Evaluation of Remote Attestation Formal Verification
+*   **Slides:** [03-Expert evaluation of formal verification of Remote Attestation over EDHOC](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-03-expert-evaluation-of-formal-verification-of-remote-attestation-over-edhoc-01)
+*   **Presented by:** Vaishnavi Sundararajan
+*   **Evaluation details:**
+    *   Reviewed two parallel formal verification efforts.
+    *   Elsa Lopez-Perez and Yuxuan Song's codebase (open-source) was reviewed. It accurately models background, passport, and mutual attestation models, showing that version -05 successfully binds the session via the new binders.
+    *   Muhammad Usama Sardar's model (proprietary/under-publication) could not be fully analyzed as the code is not currently open-access. It reportedly translates TLS properties to EDHOC.
+*   **Discussion:**
+    *   Muhammad Usama Sardar stated they disagree with the current channel-binding formulation and claim that the intra-handshake version in version -05 remains vulnerable to follow-up attacks translated from TLS.
+    *   Vaishnavi Sundararajan clarified that symbolic analysis operates on the specific structural layout of messages. Since EDHOC's message structure is fundamentally different from TLS, results cannot be assumed to port directly. Without seeing the closed-source model code, the WG cannot technically evaluate the claim.
+    *   Mališa Vučinić requested that further technical disagreements be brought to the mailing list and urged Muhammad Usama Sardar to share the model code once publication restrictions are cleared.
+
+---
+
+### 5. Lightweight Authorization using EDHOC (ELA)
+*   **Slides:** [04-Lightweight Authorization using EDHOC](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-lightweight-authorization-using-edhoc-00)
+*   **Presented by:** Geovane Fedrecheski
+*   **Draft:** `draft-ietf-lake-authz`
+*   **Key points:**
+    *   The draft is stable, supporting both elliptic curve keys and KEMs.
+    *   The updated message flow (moving ELA items to messages 3 and 4) successfully prevents the ID_U spoofing vulnerability while simplifying cryptographic overhead.
+    *   An alternative proposal by Christian Amsüss to preserve the message 1/2 flow by padding vouchers was rejected because it requires Diffie-Hellman/KEM support and does not function with signature keys.
+    *   The draft is deemed stable and ready for Working Group Last Call.
+*   **Consensus check:**
+    *   A show-of-hands poll was taken to check if the document is ready for WGLC:
+        *   **Yes:** 8
+        *   **No:** 0
+        *   **No Opinion:** 10
+
+---
+
+### 6. EDHOC Authenticated with AKA
+*   **Slides:** [05-EDHOC Authenticated with AKA](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-edhoc-authenticated-with-aka-00)
+*   **Presented by:** Meiling Chen
+*   **Key points:**
+    *   Redesigned the draft as a profile of `draft-ietf-lake-edhoc-psk` to leverage existing implementations.
+    *   Aimed at non-terrestrial network (NTN) satellite IoT use cases with high latency, constrained power, and no terrestrial base station coverage.
+    *   EAD fields are used to carry 3GPP AKA vectors (RAND and AUTN) in EAD1 and responses in EAD3. The derived AKA keys (CK, IK) are mapped to a $K\_AK$ which is treated as a PSK in the `draft-ietf-lake-edhoc-psk` exchange.
+    *   Provides forward secrecy, fewer round trips, and tight cryptographic binding to ephemeral keys.
+*   **Discussion:**
+    *   Göran Selander questioned the specific benefits over existing EMU work (e.g., EAP-AKA') regarding parameter confidentiality, noting that EAP-AKA' also provides confidentiality. He noted that the compact COSE/CBOR framing in EDHOC is a clear advantage over EAP framing overhead.
+    *   Meiling Chen invited feedback on whether this draft should remain an independent document or be merged into `draft-ietf-lake-edhoc-psk`.
+
+---
+
+### 7. Post-Quantum ad-hoc Design Team Findings
+*   **Slides:**
+    *   [06-PQ-EDHOC-DT-InterimPresentation](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-06-pq-edhoc-dt-interimpresentation-01)
+    *   [07-draft-pocero-lake-authkem-edhoc](https://datatracker.ietf.org/meeting/interim-2026-lake-01/materials/slides-interim-2026-lake-01-sessa-07-draft-pocero-lake-authkem-edhoc-00)
+*   **Presented by:** Renzo Navas, Lidia Fraile
+*   **Design Team Status:**
+    *   Held five weekly meetings to align on four key objectives, focusing heavily on Objective 1: defining deployment scenarios where post-quantum EDHOC is realistically deployable.
+*   **Feasibility Analysis (Objective 1):**
+    *   Using RFC 7228 classifications (C-classes for memory, S-classes for fragmentation, B-classes for link bit-rates) on Cortex-M4 benchmarks:
+        *   **Memory Footprint:** Stack-optimized PSK and KEM-based (ML-KEM-512) methods are feasible on Class C1 devices. Standard signature-based methods (ML-DSA) require Class C2, and compact signatures (Falcon) require Class C3 or C4.
+        *   **Fragmentation:** PSK and KEM-based methods avoid fragmentation from S3 MTU limits. ML-DSA requires S13 due to large signature/public key sizes.
+        *   **Time-on-Air & Processing:** KEM-based methods have lower CPU processing time but larger sizes. Compact signatures reduce time-on-air but demand high processing time.
+        *   At low bit rates (<100 kbps), compact signature schemes are competitive as time-on-air dominates. At higher bit rates, KEM-based schemes perform best because processing speed is the bottleneck.
+    *   **Recommendations:** The Design Team recommends considering three distinct approaches (PSK, KEM-based, and Signature-based) as they solve different constrained deployment profiles.
+*   **Discussion:**
+    *   Apostolos Fournaris asked why equivalence-based properties are verified in ProVerif rather than Tamarin within the Sapic+ framework. Vaishnavi Sundararajan explained that while Tamarin supports diff-equivalence, it is highly limited. ProVerif's engine is better optimized for equivalence proofs, making the automated translation within Sapic+ the preferred path.
+    *   **Adoption Poll:** A show of hands was taken to see who had read the draft `draft-pocero-lake-authkem-edhoc` (excluding authors): 10 Yes, 2 No.
+    *   Mališa Vučinić suggested initiating the Working Group adoption call on the mailing list. No objections were raised.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1.  **Launch WGLC:** Launch Working Group Last Call for `draft-ietf-lake-authz`.
+2.  **Adoption Call:** Initiate a Working Group adoption call on the mailing list for `draft-pocero-lake-authkem-edhoc`.
+
+### Action Items
+1.  **Christian Amsüss:** Incorporate WGLC feedback on `draft-ietf-lake-edhoc-grease` and present resolutions at the Vienna meeting.
+2.  **Muhammad Usama Sardar:** Share the formal verification model source code for evaluation by the Working Group once publication limitations allow.
+3.  **Meiling Chen:** Engage Working Group members on the mailing list to solicit feedback on the EDHOC-AKA draft, specifically addressing whether it should be merged with `draft-ietf-lake-edhoc-psk` or proceed independently.
+
+---
+
+## Next Steps
+*   Progress the WGLC documents (`draft-ietf-lake-edhoc-grease`, `draft-ietf-lake-edhoc-impl-cons`, `draft-ietf-lake-app-profiles`, and `draft-ietf-lake-authz`) for discussion and resolution at the next face-to-face meeting in Vienna.
