@@ -1,0 +1,90 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ virtual interim meeting focused on evaluating proposals for track switching in Media over QUIC Transport (MoQT). Specifically, the working group discussed two distinct approaches to track switching:
+1. **Client-Driven SWITCH (PR #1378)**: A client-side adaptive bitrate (ABR) mechanism where the subscriber initiates track changes, requiring synchronized transitions at group boundaries.
+2. **Dynamic Track Switching (DTS)**: A server-side/relay-driven switching mechanism where the relay dynamically switches between tracks within a subscriber-configured set based on estimated throughput.
+
+The group discussed the technical trade-offs of both approaches, their suitability as extensions versus integration into the base protocol (`draft-ietf-moq-transport`), and conducted initial polls to gauge the sentiment of those present.
+
+---
+
+## Key Discussion Points
+
+### Admin and Working Group Status
+Martin Duke presented the [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-16/materials/slides-interim-2026-moq-16-sessa-chair-slides-00). 
+* **Filters Consensus Call**: Closed on the day of the meeting.
+* **SWITCH & DTS Consensus Calls**: Currently open on the mailing list.
+* **Interim Dates**: Potential upcoming interims proposed for June 22 and July 6, with comments requested by June 8.
+* **IETF 126 Prep**: Magnus Westerlund noted that the chairs requested three session blocks to accommodate the large volume of work.
+
+---
+
+### SWITCH Proposal
+Gwendal Simon presented the [#1378-SWITCH-proposal](https://datatracker.ietf.org/meeting/interim-2026-moq-16/materials/slides-interim-2026-moq-16-sessa-1378-switch-proposal-01).
+
+* **Motivation**: In live-streaming scenarios, players lag behind the live edge to buffer content. When congestion occurs, the subscriber must switch tracks cleanly. The subscriber is the only entity with the playback state (buffer level, rendering capabilities, user behavior) necessary to trigger the switch.
+* **Mechanism**:
+  * The subscriber issues a `SWITCH` message containing a `minimum switching group ID` (the earliest group at which a transition is allowed).
+  * The relay identifies the smallest common group boundary ($G_{switch}$) where both tracks exist.
+  * If $G_{switch}$ is in the past relative to the live edge, the relay delivers caught-up data on a dedicated unidirectional stream beginning with a fetch header, ensuring seamless continuity before transitioning back to the live sub-group delivery stream structure.
+* **Clarifying Questions**:
+  * **Subscriber Intent**: Luke Curley asked whether subscribers want to immediately skip to the live edge or receive backfill. Gwendal Simon clarified that the application typically wants a group-aligned transition ASAP, and the `minimum switching group ID` parameter gives the client control over whether to fetch historical groups or switch directly to live.
+  * **Historical Catch-up**: Suhas Nandakumar asked about past-group behavior. Gwendal Simon explained that the relay stops the old track and catches up on the new track from the requested past group if the data is cached.
+  * **Track Alignment**: Aman Sharma asked if the tracks must be group-aligned. Gwendal Simon confirmed they must align at some point, and the relay checks its cache to ensure continuity.
+  * **Message Flow**: Mo Zanaty confirmed that SWITCH is designed for a single target track. Mo Zanaty and Luke Curley discussed the downstream signaling, noting that the relay replies with a `PUBLISH` message to start the new track once the transition boundary is resolved.
+  * **Alternatives**: Martin Duke (speaking as an individual) asked if this behavior could already be achieved in the base draft using a `SUBSCRIBE_UPDATE` to terminate the old track, combined with a `FETCH` for the catch-up groups. Gwendal Simon argued that doing so risks duplicate delivery and places complex priority management demands on the client.
+
+---
+
+### Dynamic Track Switching (DTS) for MOQT Relays
+Will Law presented [Dynamic Track Switching (DTS) for MOQT relays](https://datatracker.ietf.org/meeting/interim-2026-moq-16/materials/slides-interim-2026-moq-16-sessa-dynamic-track-switching-dts-for-moqt-relays-00).
+
+* **Mechanism**:
+  * A client-controlled, server-executed ABR mechanism.
+  * Introduces a single new parameter: `switching_set_assignment` (containing `switching set ID`, `throughput threshold`, `throughput fraction`, `start switching` flag, and `rank`).
+  * The client subscribes to multiple tracks (e.g., various bitrates) and groups them into a switching set.
+  * The relay monitors connection throughput and forwards only the highest-quality track from the set that fits the available bandwidth.
+  * It can be configured statically on `SUBSCRIBE` or dynamically using `PUBLISH_OK` (via `SUBSCRIBE_NAMESPACE`).
+* **Technical Discussion**:
+  * **Bandwidth Partitioning**: Alan Frindell asked how bandwidth is partitioned when some tracks in a session are not part of any switching set. Will Law noted that the `throughput fraction` parameter allows the client to reserve specific shares of the estimated session bandwidth for the switching set.
+  * **Bitrate Detection**: Victor Vasiliev asked how the relay determines the bandwidth profiles of tracks. Will Law explained that the client communicates the expected profile using the `throughput threshold` parameter so the relay does not need to parse media container headers.
+  * **Non-Caching Relays**: Cullen Jennings and Gwendal Simon discussed the applicability to non-caching relays. Gwendal Simon clarified that both DTS and SWITCH can operate through non-caching relays, though the transition may have to wait for the next live group boundary.
+
+---
+
+### Protocol Architecture and Extensibility
+
+A broader architectural discussion occurred regarding how both SWITCH and DTS should be integrated into the MoQ ecosystem:
+
+* **Extensions vs. Base Specification**: Victor Vasiliev, Luke Curley, and Alan Frindell advocated for keeping both mechanisms out of the base transport protocol (`draft-ietf-moq-transport`) and defining them as protocol extensions. Victor Vasiliev pointed out that extensive use of extensions is normal and successful in QUIC and TLS. Alan Frindell emphasized that the key requirement for the V1 transport draft is to ensure it has robust extensibility points.
+* **Bake Time**: Alan Frindell and Victor Vasiliev noted that DTS is highly promising but complex, requiring more implementation and interoperability experience to mature.
+* **Client-Side vs. Server-Side**: Suhas Nandakumar emphasized that client-side and server-side switching are complementary, not mutually exclusive. Martin Duke and Ian Swett suggested that the working group needs to evaluate the marginal benefit of an explicit `SWITCH` control message versus optimizing client-side ABR using existing protocol mechanisms. Mo Zanaty added that the primary advantage of the SWITCH proposal over "blind" client-side track switching is that it provides a relay-mediated, synchronized transition.
+
+---
+
+### Implementation Ambiguities (`draft-ietf-moq-transport`)
+Alan Frindell shared feedback from trying to implement draft-18 of `draft-ietf-moq-transport`:
+* **Ambiguity in Cancellation**: The draft currently introduces three overlapping methods to cancel or terminate bidirectional streams: sending `STOP_SENDING`, resetting the stream (`RESET_STREAM`), or finishing the stream (`FIN`). 
+* It is unclear if they share identical semantics or if one is authoritative. Alan requested that WG members review and comment on the GitHub issues he filed to provide implementers with clear guidance.
+
+---
+
+## Decisions and Action Items
+
+### Informal Polls (Show of Hands)
+To assist the ongoing consensus calls, Martin Duke conducted two informal polls of the participants present in the session:
+
+* **Poll 1**: *Should the WG adopt the SWITCH proposal in some form?*
+  * **Result**: 6 in favor, 6 against, 4 no opinion.
+* **Poll 2**: *Should the WG incorporate the SWITCH proposal directly into the base draft (`draft-ietf-moq-transport`)?*
+  * **Result**: 6 in favor, 10 against, 1 no opinion.
+
+---
+
+## Next Steps
+
+1. **Consensus Calls**: Members are encouraged to post their final positions on both the SWITCH and DTS proposals to the mailing list before the **June 4th** deadline.
+2. **Virtual Interim Schedule**: Feedback on the proposed interim dates (June 22 and July 6) must be submitted by **June 8th**.
+3. **Transport Draft Issues**: Members are requested to review and weigh in on the stream cancellation issues filed by Alan Frindell on the `draft-ietf-moq-transport` GitHub repository.
