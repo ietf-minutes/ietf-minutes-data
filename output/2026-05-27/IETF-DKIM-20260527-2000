@@ -1,0 +1,66 @@
+# [DKIM](../wg/dkim.html)
+
+**DKIM Working Group Interim Minutes**  
+**Date:** [Interim-2026-dkim-03]  
+**Chairs:** Murray Kucherawy, Pete Resnick  
+
+---
+
+## Summary
+
+The DKIM Working Group met virtually to discuss open issues in [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/). The primary topics of discussion included refining the header field exclusion list, analyzing the interaction between DKIM2 and DMARC (specifically regarding reporting and forwarding identity), and evaluating methods for managing multiple signers and MIME part removal. 
+
+---
+
+## Key Discussion Points
+
+### 1. Header Fields to Sign and the Exclusion List
+The working group discussed the header field exclusion policy currently defined in [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/). 
+
+* **Current Status (02 Spec):** Richard Clayton noted that the specification currently dictates signing all headers with explicit exceptions:
+  * Trace fields (`Received` and `Return-Path`) to accommodate naive forwarding systems.
+  * Protocol signatures (`DKIM-Signature` and `ARC-Message-Signature` / `ARC-Seal`) to simplify parallel DKIM1/DKIM2 deployments.
+  * `X-` headers, which are typically meaningful only within the originating organization and frequently modified.
+  * `Authentication-Results` (added in 02), since these headers are strictly downstream indicators, and stripping/replacing them is common industry practice.
+* **Proposed Additions:** John Levine proposed adding `Delivered-To` to the exception list as it functions as a trace header frequently injected by MTAs like Postfix.
+* **Custom/Excluded Header Signing:** Steve Atkins expressed concerns about MTAs modifying custom headers in flight. To allow signers to protect headers that are on the exclusion list, Bron Gondwana proposed a mechanism where a new, non-excluded header can be introduced to carry the hashes of specific excluded headers (e.g., specific `X-` headers). This allows optional verification without modifying the core "sign all except" algorithm. Pete Resnick noted that the sense of those present supported this approach over allowing senders to specify arbitrary header lists (akin to DKIM1's `h=` tag).
+
+### 2. DKIM2 Relationship with DMARC and Reporting
+The group debated how DKIM2 should interact with DMARC, particularly regarding alignment, reporting, and forwarding.
+
+* **DMARC for Unsigned vs. Signed Traffic:** Bron Gondwana proposed that DMARC policy lookups in DNS should primarily apply to unsigned messages, while signed DKIM2 traffic should rely on rules (such as "do not modify") embedded directly in the DKIM2 signature. 
+* **Preserving From Identity:** Wei Chuang highlighted that DKIM2 can preserve the original `From` header identity through forwarding paths. However, how DMARC evaluates alignment during these transitions remains unspecified.
+* **Feedback Loop & Reporting Complexity:** Senders value first-hop reporting to monitor unauthorized key use. Laura A and Bron Gondwana emphasized that organizations with decentralized IT (e.g., universities or governments) require first-hop DMARC-like reports to discover rogue or misconfigured outbound streams. Richard Clayton added that DKIM2 includes an "I would like to receive reports" flag, but we should wait for real-world feedback loops to mature before formalizing a feedback specification.
+* **Chartering and Scope:** Pete Resnick and Andy Newton noted that making modifications to DMARC is strictly out of scope for the current DKIM charter. The DMARC working group is concluding its current milestones. Andy Newton recommended putting DMARC integration on hold within this group; once the DMARC WG closes down, the DKIM WG can seek a recharter to define DKIM2's integration with DMARC. Barry Leiba agreed with this path.
+* **Agreed DKIM2 Addition:** Bron Gondwana suggested adding a flag to the DKIM2 signature at hop $N$ stating *"do not send feedback for this message when you are a later hop,"* signaling that the current hop is handling the reporting loop.
+
+### 3. MIME Part Removal and Merkle Trees
+The group resumed discussions on how to handle the deletion of MIME parts (such as attachments or images removed by mailing lists or security appliances).
+
+* **Hash List vs. Merkle Trees:** Bron Gondwana proposed adding an auxiliary header containing sequential hashes of the leaf nodes (MIME parts) in the message structure. If a part is removed, a recipe in the message instance could declare *"I removed a chunk of lines here, but here is how to verify the remaining parts,"* preserving signature validity for the rest of the message.
+* **Mailing List Realities:** Richard Clayton argued against building complex Merkle tree or partial-hash mechanisms. Modern security gateways that remove malware can write null recipes (asking downstream receivers to trust the gateway based on a contractual relationship). Furthermore, modern mailing lists rarely strip MIME parts because users expect active signatures, logos, and images to survive. If a mailing list cannot accept a binary, it should reject the message rather than stripping the part and breaking the signature. He advised against inventing complex protocol machinery for a dying use case.
+
+### 4. Any Other Business: Supporting Multiple Domains
+Wei Chuang introduced a recent mailing list proposal to support multiple signers within an Administrative Management Domain (ADMD), specifically for enterprise forwarding and bulk sending.
+
+* **Proposed Approaches:** Wei outlined two potential solutions:
+  1. Collapsing the `d=` tag into the signature payload (adding a domain part to the signature block).
+  2. Strip off the local-part of the address in the header used to manage multiple signatures to link the chain of custody.
+* **Critique:** Richard Clayton supported a simpler approach. Since there is no SMTP transaction link or `Mail From` during a secondary signature process, the local-part of the address is useless; removing it prevents systems from treating it as a live email address. He noted that in operational environments, receivers rely on IP address reputation and ESP mapping rather than parsing multiple intermediate DKIM signatures to understand sender-ESP relationships.
+* **Role of Relationships:** Tara Natanson questioned whether proving the relationship between an ESP and its customer is operationally important. Richard Clayton clarified that from a legal and privacy standpoint, the second signature simply proves that the intermediary "saw" the message body, which is sufficient to authorize feedback loop reporting without breaching privacy.
+
+---
+
+## Decisions and Action Items
+
+* **Decision:** The working group agreed to the "sign all except" model for header signing. Custom or excluded headers may be signed indirectly using Bron Gondwana's proposed hashing header mechanism.
+* **Decision:** DMARC-related protocol updates are put in abeyance. The group will focus on standalone DKIM2 mechanisms and defer formal DMARC integration until the DMARC WG concludes, followed by a potential DKIM recharter.
+* **Action Item (Bron Gondwana):** Write up a formal proposal/text block for the mailing list detailing the implementation of the auxiliary header for signing excluded/custom headers.
+* **Action Item (Wei Chuang):** Start a dedicated thread on the mailing list for any remaining proposals or objections regarding the header field exclusion list.
+
+---
+
+## Next Steps
+
+* **Vienna Meeting Prep:** The chairs will schedule one final virtual interim meeting approximately 2-3 weeks prior to the IETF meeting in Vienna to resolve outstanding issues.
+* **Interim Schedule:** Murray Kucherawy and Pete Resnick will coordinate the minimum required notice period and announce the next interim date to the list.
