@@ -1,0 +1,75 @@
+# [EDIINT](../wg/ediint.html)
+
+## Summary
+The EDIINT Working Group held an interim meeting on February 26, 2026, to discuss the modernization of the AS2 specification as defined in [draft-ietf-ediint-rfc4130bis](https://datatracker.ietf.org/doc/draft-ietf-ediint-rfc4130bis/). Debra Petta presented the changes between version 00 and version 01, which address technical reviews, HTTP connection management, compression and signature ordering, and the creation of new IANA registries. 
+
+The primary architectural debate focused on how to handle legacy cryptographic algorithms (such as SHA-1 and Triple DES) and backward compatibility with RFC 4130 without compromising modern security evaluation standards. The sense of those present was to keep the normative requirements of the modern specification clean (excluding deprecated cryptography) while normatively defining a transition/fallback discovery mechanism to communicate with legacy RFC 4130 systems. Due to low meeting attendance, this tentative consensus will be brought to the working group mailing list for final confirmation.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and Agenda Bashing
+Joe Mandel opened the meeting, presented the IETF Note Well, and outlined the agenda. No adjustments were made to the agenda. Joe Mandel shared the [Chair slides](https://datatracker.ietf.org/meeting/interim-2026-ediint-03/materials/slides-interim-2026-ediint-03-sessa-chair-slides-00).
+
+---
+
+### 2. Updates in draft-ietf-ediint-rfc4130bis-01
+Debra Petta presented the updates introduced in version 01, referencing the [RFC 4130bis Presentation](https://datatracker.ietf.org/meeting/interim-2026-ediint-03/materials/slides-interim-2026-ediint-03-sessa-rfc-4130bis-00). 
+
+#### A. Technical Review and Algorithm Specification
+*   **Wording:** Marc Blanchet recommended using explicit RFC 2119 keywords like "MUST" consistently in place of "required" or "recommended" to aid implementers. Russ Housley clarified that "required" is technically an RFC 2119 keyword, but agreed that "MUST" is the preferred, standard terminology.
+*   **TLS and HTTPS:** The draft updates TLS requirements to recognize TLS 1.3 as the current standard, permitting TLS 1.2 only for backward compatibility. HTTPS has been promoted from recommended to a "MUST" requirement to align with modern security practices.
+*   **Product Headers:** Introduced support for an optional Private Enterprise Number (PEN) prefix in the `AS2-Product` header for clearer vendor identification.
+
+#### B. HTTP Connection Management
+*   The specification now explicitly supports HTTP 1.1 persistent connections. 
+*   Clarified that the `Connection: close` header is not required, and it has been removed from all message examples in Appendix A to encourage connection reuse and performance efficiency.
+
+#### C. Compression and Signature Ordering
+*   Compression must always be applied before encryption.
+*   The draft documents existing production practices where both "compress then sign" and "sign then compress" orderings are deployed. 
+*   **Receiver Requirements:** Implementations MUST support decompressing both orderings to ensure interoperability.
+*   **MIC Computation:** Clarified that the Message Integrity Check (MIC) calculation must include the inner MIME headers to prevent validation mismatches.
+
+#### D. IANA Registries
+The draft introduces two new IANA registries to centralize namespace management:
+1.  **AS2 HTTP Headers Registry:** Tracks AS2-specific HTTP headers (`AS2-Version`, `AS2-From`, `AS2-To`, `AS2-Product`, and `EDIINT-Features`).
+2.  **AS2 Disposition Modifier Extensions Registry:** Documents disposition modifier codes used in Message Disposition Notifications (MDNs). In practice, "unknown trading relationship" and "unknown trading partner" are treated synonymously, and both are officially recognized in the registry.
+
+**Discussion on IANA Registration Policy:**
+*   Asger Smidt asked if an implementation could become non-compliant if new items are added to the registry without updating the core specification.
+*   Marc Blanchet noted that the registry decouples future additions from the rigid RFC document. He explained that registry updates are subject to a registration policy defined by the WG, such as using Designated Experts. Conformity to a specific profile (like Drummond certification) is handled separately from registry compliance.
+*   Russ Housley added that the WG can establish the registry policy rules within [draft-ietf-ediint-rfc4130bis](https://datatracker.ietf.org/doc/draft-ietf-ediint-rfc4130bis/), ranging from strict (requiring an RFC update) to flexible (First Come First Served).
+*   Erik Wramner noted that unknown disposition modifier codes should not cause systems to fail. Products should be designed to handle unknown codes gracefully (e.g., providing generic fallback behavior for the end-user).
+
+---
+
+### 3. Document Structure and Legacy Compatibility
+Debra Petta presented three options to address the tension between modern security standards and legacy compatibility (Slide 10 of the presentation):
+*   **Option A:** A clean AS2 v1.3 specification with modern requirements only. All legacy guidance (supporting SHA-1 or Triple DES for incoming data) would be moved to a non-normative appendix.
+*   **Option B:** Normative text that includes both modern and deprecated legacy algorithms (SHA-256 as a MUST; SHA-1 and Triple DES as deprecated "MAYs").
+*   **Option C:** A two-document approach. This involves publishing a minimal "bis" update to RFC 4130 preserving legacy behaviors, and authoring a separate AS2 v2.0 document containing only clean, modern standards.
+
+#### Working Group Discussion:
+*   Asger Smidt expressed support for a hybrid approach based on Options A and C. He argued that the core AS2 v1.3 specification should remain clean, but it should explicitly state (normatively) that systems are allowed to fall back to legacy RFC 4130 behaviors when interacting with older peers, provided they operate purely on v1.3 modern parameters when in v1.3 mode.
+*   Bojidar Ivanov supported Option A. He noted that as a matter of high security standards, broken algorithms must be excluded from the main specification, and legacy behavior can be described in a non-normative section.
+*   Erik Wramner emphasized that any fallback or transition mechanism must be normatively documented in the standard so products behave consistently when determining whether to use legacy mode (e.g., based on manual configuration or initial protocol handshake).
+*   Russ Housley (responsible Area Director) advised the WG that a specification endorsing deprecated cryptosystems like SHA-1 or Triple DES under a normative "MAY" (Option B) is highly unlikely to pass IESG evaluation. He stated that he would not support sending such a document to IETF Last Call. He suggested that the document focus on modern security while specifying a clean transition/endpoint discovery mechanism to bridge the gap.
+*   Erik Wramner and Asger Smidt agreed that the draft should not normatively bless old algorithms, but should instead define the transition mechanism normatively—e.g., "for communication with legacy systems, use RFC 4130."
+*   Marc Blanchet asked about existing transition patterns. He noted that modern REST-based AS2 transitions (such as GS1/GDSN) utilize JSON-based discovery files on endpoints to advertise capabilities.
+*   Erik Wramner pointed out that legacy systems will not support modern discovery features (like JWKS or REST endpoints), making manual configuration or basic fallback behaviors the most practical transition mechanisms to document.
+
+---
+
+## Decisions and Action Items
+
+### Decisions (Tentative Consensus of those present)
+*   **Document Structure:** The working group rejected Option B (normative inclusion of deprecated algorithms). The sense of the room was to pursue a variant of Option A:
+    1.  The normative body of `draft-ietf-ediint-rfc4130bis` will strictly require modern cryptography (SHA-256, AES, TLS 1.3) and exclude legacy/deprecated algorithms.
+    2.  The specification will include a normative section defining a transition and fallback mechanism (e.g., standard configuration controls or discovery rules) to permit fallback to legacy RFC 4130 behavior when communicating with legacy endpoints.
+*   **Mailing List Confirmation Required:** Because only 11-13 individuals were present, the chairs and authors agreed that this decision is a tentative interim consensus and must be verified on the WG mailing list.
+
+### Action Items
+*   **WG Chairs (Marc Blanchet, Joe Mandel):** Summarize the tentative consensus regarding the document structure and fallback mechanisms and initiate a thread on the EDIINT mailing list to confirm consensus.
+*   **Document Editor (Debra Petta):** Once mailing list consensus is confirmed, prepare `draft-ietf-ediint-rfc4130bis-02` reflecting the agreed architectural structure, along with the specified RFC 2119 keyword updates ("MUST" instead of "required").
