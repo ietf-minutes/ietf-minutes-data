@@ -1,0 +1,45 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+The MOQ Working Group met for Day 2 of its interim meeting to discuss interop testing progress, track switching methodologies, and decentralized tracking system performance results. The session began with administrative logistics, followed by an interop report on `draft-ietf-moq-transport` (draft-18), and then turned to detailed experimental results comparing subscriber-initiated track switching with relay-executed track switching.
+
+## Key Discussion Points
+
+### Welcome and Administrative Logistics
+* **Presenters:** Alan Frindell and Cullen Jennings
+* **Slides:** [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-10/materials/slides-interim-2026-moq-10-sessa-chair-slides-00)
+* Alan Frindell opened the session, presenting the IETF Note Well and introducing hybrid meeting logistics using Meetecho. 
+* Cullen Jennings outlined the day's strict schedule, noting that MOQ transport issues would occupy the majority of the morning, with dedicated time in the afternoon to cover other adopted WG drafts, specifically `draft-ietf-moq-secure-objects` and `draft-ietf-moq-privacy-pass-auth`.
+
+### Interop Report
+* **Presenter:** Mike English
+* **Slides:** [Interop Report](https://datatracker.ietf.org/meeting/interim-2026-moq-10/materials/slides-interim-2026-moq-10-sessa-interop-report-00)
+* Mike English reported on the status of interop testing against `draft-ietf-moq-transport` (specifically targeting draft-18). 16 tests successfully ran at the target draft version, though setup-related failures persist. A wiki has been established to collect ad-hoc self-reported results.
+* Suhas Nandakumar inquired about driving web clients in the automated runner and shifting focus from signaling/handshake testing to media-centric data plane transit. Mike English acknowledged these as long-term goals.
+* Jordi Cenzano noted that draft-18 contains 50 to 70 distinct features. He proposed creating a comprehensive feature matrix to track implementations. Jordi also offered to share his testing tool, which executes 41 data plane tests (including extension bit edge cases), to help expand automated test runner coverage.
+* The room agreed to keep draft-18 (`draft-ietf-moq-transport`) as the interop target for the upcoming Vienna meeting.
+
+### Track Switching Results
+* **Presenter:** Ali Begen (Ozyegin University)
+* **Slides:** [Track Switching Results](https://datatracker.ietf.org/meeting/interim-2026-moq-10/materials/slides-interim-2026-moq-10-sessa-track-switching-results-00)
+* Ali Begen presented performance evaluations of three subscriber-initiated, relay-executed track switching methods: 
+  1. *Forward State to Link* (forwarding 0 or 1)
+  2. *Join and Fetch*
+  3. *Switch Message* (an atomic control message)
+* The testbed used synthetic 720p (2.5 Mbps) and 1080p (4 Mbps) streams, 1-second GOPs (25 frames), and a 500ms client jitter buffer. Experiments assessed track alignment, downstream delay, and limited bandwidth scenarios (3 Mbps, 4.5 Mbps, and 7 Mbps).
+* **Bandwidth & Delay Anomalies:** Magnus Westerlund questioned why *Forward State to Link* exhibited a 7-second switching delay when downshifting (1080p to 720p) under a 4.5 Mbps bandwidth constraint. Ali Begen explained that this occurs because the relay finishes sending already-queued segments before serving the new track. Magnus suggested adding a step to explicitly cancel queued data of the old track on the relay during a switch to reduce this delay.
+* **Overlap Management:** Jordi Cenzano observed that, under subscriber-initiated methods, clients are forced to delay unsubscribing from the old track until they receive the first frame of the new track, creating data overlap. Using an atomic *Switch message* shifts this coordination to the relay, eliminating redundant traffic. Suhas Nandakumar asked if the client could mitigate overlap by issuing a Join-Fetch for backlog data on the new track before unsubscribing from the old track.
+
+### Decentralized Tracking System (DTS) Updates
+* **Presenter:** Ali Begen (Ozyegin University)
+* **Slides:** [DTS updates and issues - v1](https://datatracker.ietf.org/meeting/interim-2026-moq-10/materials/slides-interim-2026-moq-10-sessa-dts-updates-and-issues-v1-00)
+* Ali Begen presented updates on DTS, where the relay executes track switching on behalf of the subscriber. Under this paradigm, subscribers simply subscribe to a participant's stream, and the relay translates this request to map the appropriate tracks and manage transition timing.
+* Experimental results showed that DTS-managed switching maintains consistently low switching delays (~0.5s), zero stalls, zero skipped frames, and zero excess traffic, even in highly bandwidth-constrained environments. By shifting the switch coordination to the relay, the system naturally executes track transitions precisely at group boundaries.
+
+## Decisions and Action Items
+* **Decision:** Maintain draft-18 of `draft-ietf-moq-transport` as the official interop target for the Vienna meeting.
+* **Action Item:** Mike English and Jordi Cenzano to coordinate on merging control plane and data plane test tools to expand the automated interop runner's test coverage beyond the current basic test cases.
+
+## Next Steps
+* Working group participants to continue testing implementations against draft-18 of `draft-ietf-moq-transport` to gather deployment feedback before Working Group Last Call (WGLC).
+* Progress discussions on refining track-switching mechanisms, specifically exploring how relays should handle queued data cancellation upon track change requests.
