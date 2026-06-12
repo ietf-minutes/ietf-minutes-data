@@ -1,0 +1,61 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ working group held an interim meeting to discuss key design choices for `draft-ietf-moq-transport`. The session focused on the resolution of overlapping subscriptions and subscription alias risks, the design of seamless track switching via a proposed `switch_from` control parameter, and a status update on the informational draft regarding Denial-of-Service (DoS) considerations for Media over QUIC (MoQ) relays.
+
+## Key Discussion Points
+
+### 1. Overlapping Subscriptions and Subscription Alias Collisions
+* **Will Law** and **Alan Frindell** debated options 1A and 1B for handling overlapping subscriptions on the same track. Option 1B attempts to combine processing rules, whereas 1A treats them more distinctly.
+* The group converged on pursuing **Option 1A**, with the caveat of striking its last clause.
+* **Suhas Nandakumar** and **Will Law** discussed subscription race conditions (e.g., a subscribe message arriving immediately after an unsubscribe). If the publisher selects the same alias for successive subscriptions, it can result in unexpected data or race conditions at the subscriber. 
+* **Piers O'Hanlon** noted that duplicate subscriptions can sometimes occur in deduplication scenarios, but agreed that 1A is the best way forward.
+* **Decision**: The working group agreed to go with Option 1A. To address the risk of alias collisions, warning text will be drafted and added to `draft-ietf-moq-transport` advising that subscribers must handle the consequences of alias reuse.
+
+---
+
+### 2. Track Switching, Request Ordering, and `switch_from`
+* **Suhas Nandakumar** presented on the limitations of current track ordering mechanisms in `draft-ietf-moq-transport` (Draft 18), noting that `UNSUBSCRIBE` is now a quick control message that cannot easily be ordered with other block control messages. 
+* Use cases discussed included client-side Adaptive Bit Rate (ABR) switching and video conferencing track swaps (e.g., replacing Alice's feed with Bob's feed seamlessly without incurring transient bandwidth spikes).
+* The following slides and proposals were referenced:
+  * [(Seamless) Track Switching Results and Demos](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-seamless-track-switching-results-and-demos-00)
+  * [Request Ordering (SWITCH_FROM)](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-request-ordering-switch-from-01)
+  * [PR 1642](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-pr-1642-02) (Note: The proposed track switching PR depends heavily on PR 1642 landing first).
+  * [1642 and SWITCH_FROM Follow Ups](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-1642-and-switch-from-follow-ups-00)
+* **Suhas Nandakumar** detailed the proposed `switch_from` parameter, which would be included in a `SUBSCRIBE` or `REQUEST_UPDATE` flow. This parameter references the `Request ID` of the track being switched from and supports:
+  * **Hard Mode**: Immediately sets `forward=0` on the suspended track.
+  * **Soft Mode**: Sets the end group of the old track to the new track's start group minus one, letting the remaining group's objects drain before terminating.
+* **Cullen Jennings**, **Gwendal Simon**, and **Alan Frindell** discussed the behavior of these modes. There was strong consensus that **Hard Mode** is highly useful and straightforward to specify. 
+* **Cullen Jennings** proposed a middle-ground mode that finishes delivering the current group before stopping, to allow clean group-aligned boundaries.
+* **Soft Mode** was noted to have potential issues with perpetually unaligned groups, congestion lags, and tail-chasing behaviors.
+* **Ian Swett** pointed out that Dynamic Track Selection (DTS) implementations would benefit greatly from this feature, as it would allow relays to cleanly close "ghost" upstream subscriptions that are no longer actively watched, preventing wasted bandwidth.
+* **Will Law** noted that **Ali Begen** (Ollie) would present experimental track switching data at the next session.
+
+---
+
+### 3. Denial-of-Service (DoS) and Resource Protection in Relays
+* **Ian Swett** presented on resource protection and DoS considerations based on the slide deck [Denial-of-Service Considerations for Media over QUIC Relay Deployments](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessb-denial-of-service-considerations-for-media-over-quic-relay-deployments-00).
+* The document is intended to be a non-normative, informational guide outlining security considerations for relay operators, separate from the core protocol spec. It covers both data plane and control plane concerns.
+* **Will Law** performed a physical show of hands to gauge interest and readership. A significant portion of the room had read the draft.
+* The authors plan to submit a `01` revision of this informational document ahead of the Geneva meeting.
+
+---
+
+## Decisions and Action Items
+
+* **Decisions**:
+  * Adopt Option 1A for handling overlapping subscriptions on the same track.
+  * Add warning and mitigation text in `draft-ietf-moq-transport` addressing subscription alias collision risks.
+  * Move forward with specifying the **Hard Mode** behavior for the `switch_from` parameter.
+
+* **Action Items**:
+  * **Will Law** took an action item to write a pull request generalizing the state expression rules for `switch_from` to ensure it is ready for review ahead of the Geneva meeting.
+
+---
+
+## Next Steps
+
+* **Suhas Nandakumar** and contributors to update the `switch_from` PR in accordance with the feedback received on Hard Mode.
+* **Ali Begen** to present experimental track switching findings at the upcoming session.
+* Authors of the relay DoS draft to publish version `01` prior to the Geneva meeting.
