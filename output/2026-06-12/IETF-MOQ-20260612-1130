@@ -1,0 +1,96 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group met to discuss several open design issues and pull requests (PRs) related to the core transport and streaming format specifications. Key topics of debate included upstream delivery timeouts, stream authorization alias compression, publisher authorization validation, multi-range support in `FETCH` requests, subscription-level flow control, error reason phrases, and cross-track timestamp synchronization. 
+
+Several decisions were made to streamline the core [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) draft by deferring complex mechanisms (such as subscription flow control and authorization compression) to external extensions, while refining core features like `FETCH` filters and Security Considerations.
+
+---
+
+## Key Discussion Points
+
+### 1. Upstream Delivery Timeouts
+* **Context**: [MOQT Issues London Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-11/materials/slides-interim-2026-moq-11-sessa-moqt-issues-london-01)
+* **Discussion**: Ian Swett raised the issue of upstream delivery timeouts. Currently, delivery timeouts in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) are defined hop-by-hop. There is no native mechanism to express a cumulative, end-to-end timeout across multi-peer paths, meaning latency-sensitive subscribers cannot see if an intermediate relay has a larger timeout configuration. 
+* **Perspectives**: 
+    * Cullen Jennings recommended closing the issue without action, noting that any robust solution would require complex wall-clock time synchronization across nodes, a topic that historically stalls consensus within the IETF.
+    * Suhas Nandakumar and Will Law agreed that the complexity of propagating cumulative timeouts across paths is not worth the implementation overhead.
+* **Decision**: Close the issue with no action.
+
+### 2. Stream Authorization Alias with Extension (Auth Compression)
+* **Context**: [MOQT Issues London Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-11/materials/slides-interim-2026-moq-11-sessa-moqt-issues-london-01)
+* **Discussion**: Ian Swett proposed removing authorization token alias compression from [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/). Because of the switch to bidirectional control streams, out-of-order execution makes alias tracking complex. Ian introduced an alternative extension called "MoQ Pack" to handle generic parameter compression using QPACK over QUIC streams.
+* **Perspectives**:
+    * Suhas Nandakumar argued that authorization tokens can be extremely large (up to several kilobytes depending on the cryptography used). In active Adaptive Bitrate (ABR) switching scenarios, where subscriptions are frequently torn down and rebuilt, sending large tokens repeatedly without compression imposes a significant overhead.
+    * Cullen Jennings and Martin Duke felt it was too early to remove the feature entirely because full authorization implementations are still in their infancy.
+    * Mike English (via chat) and Suhas Nandakumar suggested that moving auth compression to an extension would be a clean compromise. It was noted that [draft-ietf-moq-secure-objects](https://datatracker.ietf.org/doc/draft-ietf-moq-secure-objects/) is highly in favor of the extension approach.
+* **Decision**: The working group will temporarily park this issue. Implementers have a two-month window to demonstrate active requirements or test deployments utilizing the current compression scheme. If no significant usage is shown, it will be stripped from the core transport draft and moved to an extension.
+
+### 3. Publisher Authorization and Namespace Verification
+* **Context**: [MOQT Issues London Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-11/materials/slides-interim-2026-moq-11-sessa-moqt-issues-london-01)
+* **Discussion**: Suhas Nandakumar addressed an issue opened by Magnus Westerlund regarding how end subscribers verify if a publisher is authorized to advertise a given namespace. Currently, the specification treats verification as a "black box." Suhas proposed adding detailed role-based authorization guidance in the Security Considerations section of [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/).
+* **Perspectives**:
+    * Cullen Jennings disputed the assumption that authorization is strictly hop-by-hop, pointing out that subscribers may send authorization tokens intended for the original publisher through intermediate relays. He suggested forming an authorization design sub-team to tackle the mechanics of multi-hop token distribution.
+    * Suhas Nandakumar countered that transport-layer parameters remain hop-by-hop, and aggregate subscriptions force authorization boundaries to be evaluated at each hop.
+* **Decision**: Refrain from forming a new design team. The authors will update the Security Considerations section of [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) to clarify hop-by-hop role boundaries and relay expectations during ingress/egress.
+
+### 4. Multiple Ranges in a FETCH Request
+* **Context**: [MOQT Issues London Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-11/materials/slides-interim-2026-moq-11-sessa-moqt-issues-london-01)
+* **Discussion**: Ian Swett asked whether the working group wants to support multiple disjoint ranges within a single `FETCH` request, particularly for filling cache/buffer gaps.
+* **Perspectives**:
+    * Ian Swett noted that sending multiple individual `FETCH` requests is functionally identical, but supporting multiple ranges on a single stream reduces control message overhead.
+    * Victor Vasiliev pointed out that ranges must be delivered sequentially on a single stream due to delta-encoding constraints. Overlapping ranges should be prohibited to avoid data duplication.
+* **Decision**: Support multiple disjoint, non-overlapping, in-order ranges inside the location filter for `FETCH` requests, returning the requested data sequentially on a single stream.
+
+### 5. Subscription-Level Flow Control
+* **Context**: [MOQT Issues London Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-11/materials/slides-interim-2026-moq-11-sessa-moqt-issues-london-01)
+* **Discussion**: Ian Swett and Alan Frindell presented proposals (including PR 11) to add subscription-level flow control (limiting total streams and bytes sent on a subscription) using control messages over bidirectional streams.
+* **Perspectives**:
+    * Ian Swett suggested that this mechanism is highly valuable for relays to prevent resource exhaustion and manage fair sharing among downstream subscribers.
+    * Victor Vasiliev argued that subscriptions are already implicitly flow-controlled because the receiver must consume data at the sender's transmission rate; adding extra flow control layer complexity would not effectively prevent DDoS or resource exhaustion.
+    * Cullen Jennings suggested that rate-limiting is a better tool than byte-limiting for long-lived real-time subscriptions (e.g., video calls that last for hours).
+    * Suhas Nandakumar recommended prioritizing core authorization mechanisms before introducing complex flow control features.
+* **Decision**: Move the subscription-level flow control mechanism out of the core transport draft into an independent extension. Ian Swett and Alan Frindell will update their PR and coordinate on an extension specification.
+
+### 6. Error Reason Phrases (UTF-8 vs. Binary Debug Data)
+* **Context**: [MOQT Issues London Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-11/materials/slides-interim-2026-moq-11-sessa-moqt-issues-london-01)
+* **Discussion**: The group debated whether to retain UTF-8 reason phrases in error messages or move to binary debug blobs or numeric reason codes. Additionally, Suhas Nandakumar presented a PR to allow structured binary payloads in request errors, specifically to support challenge-response sequences for Privacy Pass authentication ([draft-ietf-moq-privacy-pass-auth](https://datatracker.ietf.org/doc/draft-ietf-moq-privacy-pass-auth/)).
+* **Perspectives**:
+    * Cullen Jennings raised security and internationalization concerns regarding raw UTF-8 strings, noting that the lack of string normalization requirements might cause issues during IETF Last Call. He suggested restricting error metadata to US-ASCII or structured binary.
+    * Will Law argued that descriptive text strings are incredibly useful for debugging interop issues during early deployment.
+    * Regarding Suhas's Privacy Pass PR: Ian Swett and Cullen Jennings argued that a security challenge phase should not be shoehorned into generic transport error messages. Instead, the transport should support a native authentication challenge-response state machine or dedicated message types.
+* **Decision**: 
+    1. Close Suhas's structured error payload PR; authentication challenge flows will be designed cleanly in future authorization discussions.
+    2. Retain UTF-8 reason phrases in the transport specification for now to aid ongoing interop testing, with the understanding that the working group will make a final decision on whether to remove or restrict them to US-ASCII/binary prior to Working Group Last Call (WGLC).
+
+### 7. Cross-Track Timestamp Synchronization
+* **Context**: [Dynamic Track Switching for MOQT relays Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-11/materials/slides-interim-2026-moq-11-sessa-dynamic-track-switching-for-moqt-relays-00)
+* **Discussion**: Ian Swett introduced the problem of synchronizing delivery timelines across independent tracks (e.g., matching audio and video tracks to avoid buffer drift, or aligning multiple camera feeds in video conferencing).
+* **Perspectives**:
+    * Suhas Nandakumar argued that placing media timestamps in the transport layer is a classic layer violation. Media synchronization is an application concern, and different application profiles (e.g., CMAF, RTP) define different clock regimes.
+    * Jordi Cenzano agreed, recommending that application-specific timestamps be carried inside custom object properties.
+    * Torbjörn Einarsson noted that [draft-ietf-moq-msf](https://datatracker.ietf.org/doc/draft-ietf-moq-msf/) already defines dedicated timeline tracks (e.g., media and event timelines) that map media presentation timestamps (PTS) to wall-clock time, rendering transport-level timestamps redundant for synchronization.
+    * Cullen Jennings advocated for having a transport-level absolute NTP timestamp (potentially as an optional field or extension) for telemetry, debugging relay performance, and measuring network transit jitter, pointing to the historical utility of unencrypted timestamps in RTP.
+* **Decision**: Park the issue of cross-track transport timestamps. The group will revisit this topic in upcoming virtual interim meetings to decide if a tech-agnostic "sync field" or a dedicated debugging timestamp extension should be defined.
+
+---
+
+## Decisions and Action Items
+
+| Item | Topic | Decision / Action | Responsible Party |
+| :--- | :--- | :--- | :--- |
+| **1** | Upstream Delivery Timeouts | Closed with no action. | Draft Editors |
+| **2** | Auth Alias Compression | Parked for 2 months. Move to extension if no implementation progress is shown by mid-May. | Implementers / Ian Swett |
+| **3** | Publisher Authorization | Update Security Considerations section of `draft-ietf-moq-transport` with hop-by-hop validation boundaries. | Suhas Nandakumar |
+| **4** | Multiple Ranges in FETCH | Support multiple disjoint, sequential, non-overlapping ranges on a single stream in the location filter. | Victor Vasiliev / Suhas Nandakumar |
+| **5** | Flow Control on Subscribe | Move subscription-level byte/stream flow control to an extension. Update repository PR. | Alan Frindell / Ian Swett |
+| **6** | Structured Error Payloads | Closed the PR. Defer auth challenge mechanics to dedicated design discussions. | Suhas Nandakumar |
+| **7** | Renumbering Enums | Contiguous renumbering of transport enums starting at zero will occur during final draft cleanup. | Draft Editors |
+
+---
+
+## Next Steps
+
+1. **Virtual Interims**: Schedule dedicated time during future virtual interims to address the open questions surrounding cross-track synchronization / transport timestamps and the authorization design framework.
+2. **Implementation Focus**: Encourage working group participants to prioritize the deployment of the newly standardized bidirectional control streams and initial authorization parameters to generate interop data.
