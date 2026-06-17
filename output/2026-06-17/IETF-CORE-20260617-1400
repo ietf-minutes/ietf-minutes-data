@@ -1,0 +1,68 @@
+# [CORE](../wg/core.html)
+
+**CoRE Working Group Interim Meeting**  
+**Date:** March 2026  
+**Chairs:** Marco Tiloca, Jaime Jiménez, Carsten Bormann  
+
+---
+
+## Summary
+
+The CoRE Working Group held an interim meeting to discuss progress on CORECONF optimization proposals (private SID translation and relative YANG-CBOR roots), address outstanding Shepherd's review comments on `draft-ietf-core-coap-pubsub`, and coordinate Python toolchain maintenance (pySCHC and pyYANG).
+
+---
+
+## Key Discussion Points
+
+### 1. Admin and Hackathon Update
+* **Chairs' Slides:** [Chairs' slides](https://datatracker.ietf.org/meeting/interim-2026-core-09/materials/slides-interim-2026-core-09-sessa-chairs-slides-01)  
+* Marco Tiloca welcomed participants and highlighted a Hackathon project planned for IETF 126 in Vienna. The project's goal is to work on completing and standardizing CBOR extension support for the YANG-to-CBOR toolchain.
+
+### 2. Private SID Translation for CORECONF
+* **Presentation:** [Private SID translation](https://datatracker.ietf.org/meeting/interim-2026-core-09/materials/slides-interim-2026-core-09-sessa-private-sid-translation-00)
+* **Presenter:** Laurent Toutain
+* **Discussion:**
+  * Laurent Toutain presented a proposal to reduce the transmission size of CORECONF serialization (using YANG-CBOR, RFC 9254) by mapping SIDs to negative integers close to zero (which require fewer bytes in CBOR). This is particularly useful for SCHC (Static Context Header Compression) rule management and highly constrained links (e.g., underwater networks).
+  * Carsten Bormann observed that while RFC 9254's delta encoding is sufficient for most applications, SCHC has extreme byte-saving requirements. He inquired about how context (such as identifying whether a field is an `identityref` and defining SID mapping ranges) is shared between encoder and decoder. 
+  * Laurent Toutain clarified that this context is derived from SID files (using extended SID files) and configuration parameters.
+  * Christian Amsüss suggested that the mechanism should not depend entirely on a SCHC-specific transport mechanism; the context mapping parameters should be transportable or expressible independently.
+  * Vojtěch Vilímek suggested that instead of a linear mathematical transformation of SID spaces, it might be more useful to define direct, arbitrary one-to-one mappings in SID files and make them discoverable (e.g., as part of the YANG library or a CORECONF extension).
+  * Laurent Toutain noted that using negative SIDs requires obtaining negative value space allocations from IANA, which are currently unallocated. He proposed writing two drafts: one defining the generic translation algorithm, and one for SCHC-specific bindings.
+
+### 3. Alternative CORECONF Compression: Relative YANG-CBOR Root
+* **Presentation:** [Relative YANG-CBOR root](https://datatracker.ietf.org/meeting/interim-2026-core-09/materials/slides-interim-2026-core-09-sessa-relative-yang-cbor-root-00)
+* **Presenter:** Vojtěch Vilímek
+* **Discussion:**
+  * Vojtěch Vilímek presented an alternative compression approach that avoids negative SIDs. Instead of translating individual SIDs, the root SID number of the data store is encoded directly as a context in the message, or carried as a CoAP option. Absolute SIDs and identity references are then shifted relative to this root.
+  * Laurent Toutain asked how model extensions/augmentations are handled. Vojtěch Vilímek explained that if multiple modules have non-overlapping SID ranges, one naturally gets small deltas while the other might have larger deltas, depending on the size of the YANG modules.
+
+### 4. Working Group Last Call Points on CoAP PubSub
+* **Draft Context:** `draft-ietf-core-coap-pubsub`
+* **Discussion led by:** Esko Dijk (Shepherd)
+* **Discussion:**
+  * Esko Dijk walked through outstanding comments raised by Christian Amsüss during the WGLC.
+  * **Issue 2 (Maximum Subscribers):** Christian Amsüss explained that `max subscribers` acts as a quota limit rather than a resource pre-allocation. He had submitted a Pull Request (PR) allowing a broker to modify the requested limit to "none" (unlimited). Esko Dijk agreed with this approach, noting it preserves broker flexibility based on client authorization.
+  * **Issue 3 (Liveness / Observe Check):** Christian Amsüss suggested adding explicit references to existing observation rules in RFC 7252 and RFC 9175 to avoid traffic amplification. He agreed that having maximum check intervals configurable per-topic is acceptable, even if some implementations choose not to support it.
+  * The sense of those present was that the proposed PRs and resolutions successfully resolve the WGLC comments, and the document is ready to proceed to the next shepherd stage once the PRs are merged.
+
+### 5. Toolchain and Repositories (AOB)
+* **pySCHC Review:** Vojtěch Vilímek requested a review on a pySCHC pull request. Carsten Bormann pointed out that git history issues had resulted in 214 files being marked as changed, which made it difficult to review. Michael Richardson suggested updating the target base branch on GitHub to clean up the diff.
+* **Early Allocation for CORECONF Media Types:** Vojtěch Vilímek asked if early allocation of CoAP content formats for CORECONF media types should be requested. Carsten Bormann and Marco Tiloca supported the idea, provided the document meets the early allocation criteria.
+* **pyYANG Repositories:** Javier Fernandez asked for clarification on the difference between the main pyYANG repository (maintained by Martin Björklund) and the CoRE Working Group fork. Michael Richardson and Carsten Bormann explained that the CoRE fork contains SID-specific stable code (on the "core" branch) and experimental SID extension work. They noted that the goal is to keep the fork synchronized with upstream master.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-core-coap-pubsub`:** 
+  * **Decision:** Accept the proposed PRs on `max subscribers` (allowing "none") and observation liveness checks (referencing RFC 7252/RFC 9175).
+  * **Action Item:** Esko Dijk to verify the merged changes and proceed with the Shepherd write-up.
+* **CORECONF Media Types:**
+  * **Action Item:** Vojtěch Vilímek to write a formal request to the CoRE WG chairs regarding early allocation of CoAP Content-Format IDs for CORECONF.
+
+---
+
+## Next Steps
+
+* **Private SID Translation / Relative Roots:** Authors (Laurent Toutain, Vojtěch Vilímek) will continue discussing SID space optimization strategies on the mailing list to determine if a new draft or extension to CORECONF is the best path forward.
+* **pySCHC Pull Request:** Vojtěch Vilímek to clean up the branch base in the pySCHC repository to allow a focused review of the SCHC plugin and tests.
