@@ -1,0 +1,79 @@
+# [DKIM](../wg/dkim.html)
+
+## Summary
+The DKIM Working Group held an interim meeting to discuss open design issues for DomainKeys Identified Mail Signatures v2 (DKIM2), specifically focusing on [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec). Key topics included a proposal for multi-domain signing and chain of custody, privacy-preserving forwarding and null header recipes, a proposal for hashing X-headers, and range-hashing for redacted body parts. The group also reviewed an outstanding RFC 6376 erratum, discussed post-quantum cryptography (PQC) algorithm exploration, and confirmed the adoption of two working group documents.
+
+---
+
+## Key Discussion Points
+
+### 1. Administrivia & Note Well
+* **Pete Resnick** opened the meeting, reminding participants of the IETF policies on intellectual property, behavior, and the Code of Conduct.
+
+### 2. Post-Quantum Cryptography (PQC) Signing Algorithms
+* **Wei Chuang** raised the question of whether the working group should begin exploring post-quantum cryptography (PQC) signing algorithms for DKIM and DKIM2, noting Google's view that transition timelines may be shorter than expected. 
+* **Richard Clayton** noted that while the working group lacks the cryptographic expertise to choose an algorithm itself, specifying a PQC algorithm during the finalization of the DKIM2 document would be highly beneficial for adoption. He suggested consulting the Crypto Forum Research Group (CFRG).
+* **Andy Newton** suggested that the working group first clearly define the threat model and the specific question for CFRG. 
+
+### 3. Erratum on RFC 6376
+* **Pete Resnick** presented an outstanding erratum on RFC 6376 concerning the ABNF for constructing the data hash (clarifying that the data hash does not contain the body hash). 
+* Hearing no objections from the room, the chairs agreed to recommend that the Area Director accept the erratum.
+
+### 4. Multi-Domain Signing and Chain of Custody (Tobias's Proposal)
+* **Richard Clayton** presented Tobias's proposal for addressing the multi-domain signing issue in DKIM2, utilizing the [AOB: Richard Clayton](https://datatracker.ietf.org/meeting/interim-2026-dkim-04/materials/slides-interim-2026-dkim-04-sessa-clayton-00) slides.
+* The issue occurs when mail is automatically forwarded (e.g., by mailbox providers or ESPs double-signing for a brand and themselves). DKIM2 requires a valid chain of custody.
+* Tobias proposed a `next D` (next domain) tag in the DKIM2 signature:
+  * The first signature ($i=1$) is signed by the brand (`example.com`) and includes a `next D=esp.tld` tag.
+  * The second signature ($i=2$) is signed by the ESP (`esp.tld`), providing alignment for the real SMTP transaction.
+  * This avoids inventing imaginary email addresses to satisfy the chain-of-custody requirement.
+* **Bron Gondwana** pointed out that the Receipt-To (`RT`) tag on $i=1$ is superfluous under this design, as the receiver only evaluates the topmost signature ($i=2$) to verify the target address. **Richard Clayton** agreed to remove the superfluous `RT` from the $i=1$ example for simplicity.
+* **Brian Godiksen** asked if the `next D` parameter could be chained sequentially across multiple hops. **Richard Clayton** and **Allen Robinson** confirmed that the mechanism is fully extendable.
+* **Bron Gondwana** added that `next D` explicitly asserts a trust relationship between two domains, distinct from sending mail to an untrusted external recipient.
+
+### 5. Null Header Recipes & Gateway Terminology
+* **Richard Clayton** introduced a scenario where email bounces back through multiple hops on a single domain. He proposed that privacy-preserving forwarders could strip local header modifications from Part 3 of the Delivery Status Notification (DSN) to simplify loop detection.
+* He also suggested a flag indicating "do not send feedback to hops before me."
+* **Bron Gondwana** argued against "null header recipes" in DKIM2. He stated that if a forwarder wants to preserve privacy by hiding header modifications, they should strip the existing DKIM2 headers entirely and re-submit the message from scratch.
+* **Dave Crocker** noted a lack of consistent terminology in community discussions regarding MTAs, Forwarders, and Gateways. He emphasized that resubmitting a message to a new address after delivery is architecturally a gateway function (re-posting) and should be labeled precisely.
+* There was general agreement to remove the mechanism for null header recipes from the specification.
+
+### 6. Hashing of X-Headers
+* **Bron Gondwana** presented a proposal from [Bron's Slides](https://datatracker.ietf.org/meeting/interim-2026-dkim-04/materials/slides-interim-2026-dkim-04-sessa-brons-slides-00) to allow signing of specific `X-` headers (using a `Message-X-Headers` field and a SHA-256 hash) to prevent faking.
+* **Allen Robinson** suggested that adding the header name (`HN`) directly to the message instance might be a cleaner approach if this capability is desired.
+* **Richard Clayton** strongly opposed, stating that if a header is important enough to secure, it should be defined as a standard non-`X-` header, which is already handled automatically.
+* **Pete Resnick** and **Wei Chuang** argued that in practice, proprietary `X-` headers are widely used to pass critical, non-interoperable metadata along a handling path, and protecting them from tampering is useful.
+* **Murray Kucherawy** countered that if the headers are utilized by multiple parties along a path, they require standardization, and `X-` prefixes are inappropriate.
+* **A poll of the room was taken** on the question: *"Ability to sign particular X-dash: Worth it?"*
+  * **Yes**: 2 votes (Allen Robinson, Wei Chuang)
+  * **No**: Majority of the room
+  * **Sense of those present** was that signing `X-` headers adds unnecessary complexity to the protocol, and proprietary use cases are better served by registering custom headers or using alternative encapsulation.
+
+### 7. Hashed Body Properties (Redacted Body Parts)
+* **Bron Gondwana** presented a proposal for "hashed body properties" (from [Bron's Slides](https://datatracker.ietf.org/meeting/interim-2026-dkim-04/materials/slides-interim-2026-dkim-04-sessa-brons-slides-00)). This would allow range-hashing of body lines, enabling intermediate hops to redact specific MIME parts (like heavy attachments) while keeping other body parts verifiable.
+* **Richard Clayton** questioned the incentives, arguing that unless a formal contract exists between hops (in which case a null recipe works), receivers will not trust a partially redacted message. He expressed concern that this could introduce vulnerabilities similar to the legacy `l=` (length) tag.
+* The topic was deferred for further list discussion and potential scheduling at the upcoming face-to-face meeting.
+
+### 8. WG Document Adoption Status
+* **Bron Gondwana** inquired about the adoption status of two drafts that had completed call-for-adoption periods.
+* **Pete Resnick** confirmed that the working group had supported the adoption of both the DKIM Keys (DNS) draft and the Best Practices (BCP) draft. 
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **RFC 6376 Erratum**: The working group agreed to accept the ABNF erratum regarding the data hash construction.
+2. **Multi-Domain Signing**: The working group accepted Tobias's `next D` syntax proposal to solve the ESP and mailbox forwarding chain-of-custody issue in [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec).
+3. **Null Header Recipes**: The working group agreed to remove the concept of null header recipes from the DKIM2 specification. Privacy-preserving systems that modify headers must strip DKIM2 headers and re-post the message.
+4. **X-Header Signing**: The working group decided not to adopt the proposal to sign `X-` headers due to lack of consensus.
+
+### Action Items
+* **Wei Chuang** to draft a problem statement/threat model regarding post-quantum cryptography requirements for DKIM/DKIM2 on the mailing list to initiate a consultation with CFRG.
+* **Richard Clayton** to incorporate Tobias's `next D` proposal (removing the superfluous $i=1$ `RT` tag) into the next revision of [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec).
+* **Pete Resnick / Murray Kucherawy** to update the Datatracker to officially reflect the adoption of the DKIM Keys and Best Practices drafts.
+
+---
+
+## Next Steps
+* The working group will continue technical discussions on the mailing list.
+* The next meeting will be a two-hour session at IETF 125 in Vienna.
