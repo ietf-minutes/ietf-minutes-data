@@ -1,0 +1,69 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC Working Group held an interim meeting to discuss the status of active group documents, plan for the upcoming meeting in Vienna, and review two technical presentations on payload compression and header formatting/shapes. 
+
+Key outcomes of the meeting included:
+* Progress on `draft-ietf-schc-8824-update`, which is near ready for submission to the IESG pending a final version update and shepherd write-up.
+* A unanimous show of hands in favor of adopting the SCHC payload compression draft, with an upcoming official adoption call on the mailing list.
+* Technical discussion on a new proposal for describing SCHC Header Formats and Shapes to enable middleboxes (such as firewalls and analyzers) to parse headers without full context.
+
+---
+
+## Key Discussion Points
+
+### WG Document Status Update
+* **`draft-ietf-schc-8824-update`**: 
+  * Alexander Pelov reported that the shepherding write-up is progressing well and should be finalized early next week. He requested an early YANG Doctor review for the YANG data model.
+  * Marco Tiloca noted that issues identified in reviews are addressed via Pull Requests (PR #1 and PR #2). He plans to submit version 09 within the next few days, incorporating these merges.
+* **`draft-ietf-schc-protocol-numbers`**: 
+  * Shepherding write-up is advancing.
+* **SCHC Architecture**:
+  * A side meeting will be organized early in the week at the Vienna meeting to resolve remaining core cases and finalize the draft before the cut-off.
+
+---
+
+### SCHC Payload Compression
+Lorenzo Corneo presented updates on the payload compression draft, as detailed in [corneo-slides](https://datatracker.ietf.org/meeting/interim-2026-schc-10/materials/slides-interim-2026-schc-10-sessa-corneo-slides-00).
+
+* **Draft Restructuring**: The authors propose removing static and dynamic payload methodologies into separate informative/standards-track documents, refocusing this draft on core normative requirements.
+* **Normative Additions**:
+  * **New Matching Operator (`equal template`)**: Evaluates equality between field values and templates stored in the Target Value. It parses the template to isolate fixed parts from variable/functional parts for bitwise matching.
+  * **Residue Encoding**: Encodes residues using both position and length (e.g., `%N` notation) to ensure the decompressor knows the precise boundaries. It supports trailing zero-byte stripping after right-padding.
+  * **`payload` Keyword**: Introduced into the Field Identifier (FID) to signify payload compression. It can be used with or without a template and carries semantic metadata (e.g., media type, object position, field name) for key-value formats like JSON.
+* **Discussion**:
+  * Alexander Pelov asked if this work relates to the SCHC Universal Option draft. Quentin Lampin clarified that while both share common ideas, they target different scopes: Universal Option focuses on protocol option evolution (e.g., CoAP option IDs), whereas this payload draft targets payload-specific structures.
+  * Quentin Lampin suggested leveraging the existing "position" field descriptor from RFC 8724 rather than custom template parameters to handle field repetitions. Lorenzo Corneo agreed to discuss this with co-authors.
+* **WG Adoption Poll**:
+  * A show of hands was taken. Unanimous support (8 out of 8 present participants in favor) was shown for adopting the draft.
+  * Alexander Pelov raised a question on whether to keep the generic name `schc-payload-compression` or rename it to something more specific like `schc-json-payload-compression`. Javier FERNANDEZ recommended keeping it payload-generic if it can apply to multiple formats rather than restricting it to SenML. Lorenzo Corneo agreed to discuss renaming options offline with co-authors.
+
+---
+
+### SCHC Header Format and Shapes
+Alexander Pelov presented a new proposal regarding SCHC datagram framing, detailed in the [SCHC Header Format / SCHC Shapes](https://datatracker.ietf.org/meeting/interim-2026-schc-10/materials/slides-interim-2026-schc-10-sessa-schc-header-format-schc-shapes-00) slides.
+
+* **Motivation**: Special networks (e.g., LPWAN, interplanetary, DTNs) often require custom packet behaviors and adjusted protocol timers (like DTLS timeouts). Sources need to know when their packets cross into these domains. 
+* **The Problem**: Classically, SCHC headers are completely opaque to intermediate nodes/middleboxes (e.g., routers, firewalls, and analyzers like Wireshark) because the rule ID size and control header structure are defined strictly by the local context. Zeros and ones cannot be parsed without the context.
+* **Proposed Solution**: 
+  * **SCHC Header Format**: A descriptive registry specifying how a SCHC packet is framed (e.g., type of Rule ID encoding, presence/location of control headers, data header layout).
+  * **SCHC Shape**: An instantiation of a Header Format with fixed parameters (e.g., 8-bit Rule ID, no control header as used in LoRaWAN/RFC 9011).
+  * **IANA Registries**: Proposed registries for *SCHC Rule ID Encodings* (fixed, self-limiting, or context-defined) and *SCHC Control Header Types* (none, VoSCHC, etc.).
+  * **Shape Signaling**: Enables in-band signaling (using a compact 2-3 byte SCHC shape tag within VoSCHC or ICMPv6) or out-of-band configuration.
+* **Discussion**:
+  * Javier FERNANDEZ questioned whether middleboxes actually need to parse SCHC headers, given that intermediate nodes normally route packets based strictly on IP and UDP headers.
+  * Alexander Pelov responded that security and monitoring are the main drivers. Firewalls often block unknown UDP traffic to prevent unauthorized tunneling. Signaling the SCHC header structure allows administrators to write specific filtering rules. Additionally, diagnostic tools like Wireshark need this formatting information to dissect SCHC packets without full context access.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* **WG Adoption**: A sense of the room indicated unanimous support for the adoption of the SCHC payload compression draft.
+
+### Action Items
+* **`draft-ietf-schc-8824-update`**: Marco Tiloca to submit version 09 incorporating PR #1 and PR #2. Alexander Pelov to complete the shepherd write-up by early next week.
+* **Payload Compression Draft**: Alexander Pelov and Marion Dumay to initiate the official working group adoption call on the mailing list.
+* **Payload Compression Renaming**: Lorenzo Corneo and co-authors to evaluate potential name adjustments to ensure the draft remains payload-generic (e.g., key-value/JSON focused).
+* **Vienna Side Meeting**: Chairs to schedule a side meeting early in the upcoming IETF week to progress the SCHC Architecture draft.
