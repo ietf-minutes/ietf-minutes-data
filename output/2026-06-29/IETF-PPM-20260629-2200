@@ -1,0 +1,75 @@
+# [PPM](../wg/ppm.html)
+
+## Summary
+The June Virtual Interim meeting of the Privacy Preserving Measurement (PPM) Working Group focused on progress toward publishing the core Distributed Aggregation Protocol (DAP) specification, adopting new extensions to support browser-based attribution use cases, and refining auxiliary drafts. 
+
+The working group reviewed major recent updates to `draft-ietf-ppm-dap` and agreed to run a second Working Group Last Call (WGLC) following upcoming editorial updates. Martin Thomson presented a new draft proposing several extensions to support the W3C Private Advertising Technology Working Group (PATWG) Attribution API. Additionally, the working group discussed the status of the `task-prov` draft and `draft-ietf-ppm-l1-bound-sum`.
+
+---
+
+## Key Discussion Points
+
+### 1. Chair Updates
+* **V-DAP Draft Status (CFRG):** Benjamin Schwartz reported that the V-DAP draft has completed the Crypto Panel review and entered Research Group Last Call in the IRTF CFRG. Working group members were encouraged to review and support the draft in CFRG.
+* **Document Shepherd:** J.C. Jones has volunteered to act as the document shepherd for `draft-ietf-ppm-dap`.
+* **Meeting Schedule:** There will be no PPM working group session at IETF 126; work will continue on the mailing list.
+
+### 2. DAP Update (`draft-ietf-ppm-dap`)
+Tim Geoghegan presented the recent updates made to `draft-ietf-ppm-dap` over the last few months, driven largely by feedback from Martin Thomson:
+* **Task Binding Integration:** The task binding/parameter commitment mechanism (previously in the `task-prov` draft) has been integrated directly into core DAP. This ensures all protocol participants commit to the same task configuration parameters, facilitating transparency and client-side assessment.
+* **HTTP API Refactoring:** The HTTP API was refactored to align with standard HTTP practices.
+* **Extensibility Points:** Four distinct extension points were established in DAP:
+  1. *Task Configuration:* For extensions like task binding, differential privacy, and PATWG-specific configurations.
+  2. *Aggregation Jobs:* E.g., the partial batch selector.
+  3. *Collection Jobs:* Enabling collectors to send routing/batching metadata to the leader.
+* **Error Handling & Cleanup:** Error codes were audited and unused codes removed. David Cook contributed clarifications regarding whether specific conditions trigger an entire aggregation job abort or a report-share error, and simplified how unrecognized extensions are handled.
+* **Interoperability and Next Steps:** 
+  * Tim Geoghegan reported that these updates are being implemented in the Janus aggregator (developed by ISRG/Divviup), which is actively used in production (e.g., in deployments with Mozilla). Cloudflare’s Daphne implementation is not currently being maintained.
+  * Benjamin Schwartz raised the question of whether progress should be blocked on having two independent, interoperable implementations.
+  * Martin Thomson and Christopher Patton agreed that blocking publication is unnecessary given the protocol's real-world deployment (using dual Janus instances) and clear utility.
+  * The working group discussed the path forward. Christopher Patton suggested running a second WGLC due to the significance of the recent architectural changes. Tim Geoghegan and Benjamin Schwartz agreed with this approach.
+
+### 3. Attribution Extensions (Support for W3C PATWG)
+Martin Thomson presented a draft proposing protocol extensions to support the W3C Private Advertising Technology Working Group (PATWG) Attribution API.
+
+The extensions introduce a modified flow where the collector (e.g., an advertiser or adtech platform) is removed from the critical path of report ingestion but retains control over which reports are batched together:
+* **Collector-Selected Batch Mode:** The collector dictates batch boundaries by embedding a collection job identifier in report submission URLs.
+* **Differential Privacy (DP) Budget Extensions:** Reports are annotated with individual privacy budget expenditures (in micro-epsilons). It introduces a *minimum privacy budget* safeguard; reports below this threshold are dropped to prevent excessive noise injection, though dropping reports can cause the batch to fall below the minimum job size and fail.
+* **Collector Identity and Budget Source Extensions:** Binds tasks to website identities to prevent colluding entities from correlating reports across domains and circumventing DP noise protections.
+
+**Discussion:**
+* Sam Weiler asked how these extensions affect privacy properties, specifically if a malicious collector could expose individual reports. Martin Thomson clarified that output remains bound by DP guarantees; even with a single-report batch, DP noise is added to protect the input.
+* Tim Geoghegan strongly supported adopting the work, noting that the PPM working group has already accommodated this use case by adding extension points to `draft-ietf-ppm-dap` and adopting `draft-ietf-ppm-l1-bound-sum`. He confirmed that Divviup plans to implement these extensions in Janus.
+* Christopher Patton supported adoption and volunteered to review.
+* Mark Blunk asked if the collector-selected batch mode (which is not DP-specific) should be separated from the DP budget extensions. Martin Thomson and Tim Geoghegan preferred keeping them in a single document to minimize specification management overhead.
+
+### 4. `task-prov` Draft Status
+The working group revisited the `task-prov` draft (for in-band, dynamic task provisioning), which had previously gone through WGLC but was impacted by the relocation of the task binding mechanism to core DAP.
+* Christopher Patton and Tim Geoghegan noted that Janus uses this mechanism in production.
+* Martin Thomson argued that with task binding now native to DAP, there is no need for a dedicated `task-prov` protocol extension to signal its use. The protocol is "safe by default" as long as participants agree on the task configuration and ID.
+* The participants reached a soft consensus to remove the `task-prov` task extension (Section 3 of the draft) and focus the document purely on in-band task provisioning (headers and V-DAP verification key derivation).
+* Christopher Patton proposed to submit a pull request (PR) to restructure the draft accordingly.
+
+### 5. L1 Norm Bound Update (`draft-ietf-ppm-l1-bound-sum`)
+Martin Thomson provided an update on `draft-ietf-ppm-l1-bound-sum`:
+* The specification is largely complete.
+* There is one outstanding technical question regarding whether to use a 128-bit field or a 64-bit field with three proofs instead of one. Benjamin Case is currently analyzing this issue.
+* Once this field-size question is resolved, the document will be ready for WGLC.
+
+---
+
+## Decisions and Action Items
+
+* **Decision:** The working group will run a second Working Group Last Call (WGLC) on `draft-ietf-ppm-dap` once the next revision (incorporating final editorial fixes and David Cook's error-handling PR) is published.
+* **Decision:** The `task-prov` draft will be simplified to remove the task extension (Section 3) and focus solely on in-band provisioning and key derivation.
+* **Action Item (Christopher Patton):** Submit a PR to restructure and clean up the `task-prov` draft.
+* **Action Item (Benjamin Case):** Provide feedback/analysis on the 128-bit vs. 64-bit field options for `draft-ietf-ppm-l1-bound-sum`.
+* **Action Item (Chairs):** Issue a call for adoption for Martin Thomson's PATWG/Attribution Extensions draft.
+
+---
+
+## Next Steps
+
+1. Publish the next revision of `draft-ietf-ppm-dap` and initiate WGLC.
+2. Conduct the adoption call for the Attribution Extensions draft.
+3. Prepare `draft-ietf-ppm-l1-bound-sum` for WGLC once Benjamin Case's analysis is completed.
