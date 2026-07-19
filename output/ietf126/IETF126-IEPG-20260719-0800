@@ -1,0 +1,82 @@
+# [IEPG](../wg/iepg.html)
+
+## Summary
+
+The IEPG session at IETF 126 focused on pressing operational routing, DNS, and security infrastructure issues. Key topics included DNS transitive trust and resolution query explosions, widespread inconsistencies and deliberate traffic engineering modifications of the BGP `ORIGIN` attribute, real-world deployment statistics and misconfigurations of Autonomous System Provider Authorization (ASPA) in RPKI, active measurement insights into Encrypted Client Hello (ECH) adoption, and a high-severity Trusted Execution Environment (TEE) attestation binding vulnerability (CVE-2026-33697) within TLS.
+
+---
+
+## Key Discussion Points
+
+### 1. DNS, Transitive Trust and How Many is Many?
+* **Slide Deck**: [01_DNS, Transitive Trust and How Many is Many?](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-dns-transitive-trust-and-how-many-is-many-00)
+* **Presenter**: Ondřej Surý
+* **Discussion**:
+  * Surý explored the compounding complexity of recursive DNS resolution queries under cold-cache conditions. 
+  * The presentation classified delegation types into:
+    * **In-domain**: The name server (NS) lives inside the zone; glue is mandatory, adding zero extra resolution cost.
+    * **In-bailiwick**: Sibling glue may or may not be ignored depending on resolver policy/CVE mitigations.
+    * **Out-of-bailiwick**: The NS lives in an unrelated zone; glue is untrusted/disallowed, requiring full sub-resolution.
+  * Complex CNAME chains (such as those used by `teams.microsoft.com`) require independent resolution loops that can explode query counts. Under BIND 9.18, a cold-cache query for Microsoft Teams can yield up to 182–329 outgoing queries. This behavior has improved in newer releases (BIND 9.20 and 9.21) by transitioning from child-centric to parent-centric resolution.
+  * IPv6 PTR records are particularly vulnerable to query inflation because they consist of 32 hexadecimal labels, each potentially requiring an out-of-bailiwick delegation traversal.
+  * **Q&A**:
+    * **Peter Thomassen** and **Geoff Huston** questioned the real-world operational impact, noting that resolvers rarely operate on entirely cold caches.
+    * **Ondřej Surý** and **Peter Špaček** clarified that although root/TLD caches stay warm, short TTLs on CDN-backed CNAME chains introduce non-deterministic resolution failures. When hard query limits (e.g., 50–100 queries) are exceeded, transient failures occur, causing mail delivery issues or application drops that are difficult to debug.
+    * **David Lawrence** (relayed by Jen Linkova) asked if query counts included DNSSEC validation. Surý confirmed that the highest query counts indeed included DNSSEC validation and noted that QNAME minimization does not mitigate this, though root mirror zones do.
+
+### 2. BGP ORIGIN Attribute Inconsistencies
+* **Slide Deck**: [BGP ORIGIN Attribute Inconsistencies](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-bgp-origin-attribute-inconsistencies-01)
+* **Presenter**: Carlos Martínez (on behalf of Celsa Sanchez)
+* **Discussion**:
+  * Martínez presented research on the BGP `ORIGIN` attribute (IGP, EGP, or Incomplete). Although RFC 4271 defines `ORIGIN` as a well-known mandatory attribute that should be set by the originating router and remain unmodified, analysis of global BGP collectors shows significant variation.
+  * Route Views data analyzed by Sanchez (focusing on LACNIC collectors in Chile, Mexico, and Brazil) revealed that identical prefixes with the exact same origin AS are seen with different `ORIGIN` values (up to 97% "mixed" origins in Mexico).
+  * An operator contacted during the study admitted to rewriting the BGP `ORIGIN` of routes learned from other peers to `EGP` to deprioritize more distant routes in the BGP decision process (where IGP is preferred over EGP, which is preferred over Incomplete).
+  * **Q&A**:
+    * **Warren Kumari** noted that rewriting `ORIGIN` has been a common "finer-grained" traffic engineering knob used by operators since the early 2000s when AS-path prepending is too blunt of a tool.
+    * **Jeff Haas** shared that there are active discussions in the IDR Working Group regarding whether to deprecate the attribute or update RFC 4271 to match modern operational reality. He added that optimal route reflection in geographically large RIR areas often prompts operators to tune IGP metrics and origin attributes to prevent suboptimal routing.
+
+### 3. Observations on ASPA in the Wild
+* **Slide Deck**: [03_Observations on ASPA in the Wild](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-observations-on-aspa-in-the-wild-00)
+* **Presenter**: Tim Bruijnzeels
+* **Discussion**:
+  * Bruijnzeels described Autonomous System Provider Authorization (ASPA) path verification in RPKI, which uses "valley-free" routing principles to detect and reject route leaks.
+  * ASPA objects list an AS's authorized upstream providers. The presentation highlighted the use of **AS 0** in ASPA, which signals that an AS has no upstream providers (e.g., transit-free Tier-1 networks or inactive/unused ASNs).
+  * Tim analyzed RIPE route collector data using DuckDB and Parquet files, discovering a steady increase in ASPA signing since mid-2023, heavily driven by UI support in Krill and deployment rollouts across APNIC, ARIN, LACNIC, and NIC.br.
+  * Analysis of current path segments reveals that approximately 6% of paths evaluated are "invalid" under ASPA. These invalids are often systemic and result from operator mistakes, such as misconfiguring transit-provider relationships as peering relationships, or mixed peering/transit arrangements (where BGP roles defined in RFC 9234 can help).
+
+### 4. Encrypted Client Hello (ECH) - An active measurement perspective
+* **Slide Deck**: [04_Encrypted Client Hello (ECH) - An active measurement perspective](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-encrypted-client-hello-ech-an-active-measurement-perspective-00)
+* **Presenter**: Ondrej
+* **Discussion**:
+  * The presentation examined the deployment state of Encrypted Client Hello (ECH) to encrypt the Server Name Indication (SNI) in TLS handshakes.
+  * By actively scanning Cisco Umbrella, Alexa, and Tranco top lists, the researchers identified 5.5 million ECH-enabled domains. 
+  * Cloudflare remains the dominant deployment vector (covering ~4 million domains). Interestingly, Meta (`graph.facebook.com`) constitutes the second largest block (~4,600 domains) but publishes no ECH keys in public DNS. Instead, Meta uses ECH directly within its iOS applications (using non-greased TLS Client Hellos). Overall, 34% of identified ECH deployments lacked accompanying DNS ECH configurations.
+  * Cloudflare rotates its ECH configuration keys hourly but maintains a 4-hour grace period during which old keys remain valid to minimize client retry round-trips. Active measurements show that the latency overhead introduced by ECH cryptography is sub-millisecond.
+  * **Q&A**:
+    * In response to attendee questions, Ondrej clarified that they did not validate the inner TLS certificate during their large-scale active scanning, but they did send second-stage requests to verify functional ECH negotiation. Latency measurements were captured during successful secondary ECH handshakes (excluding initial retry round-trips).
+
+### 5. Intra-handshake.fail (CVE-2026-33697)
+* **Slide Deck**: [05_Intra-handshake.fail (CVE-2026-33697)](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-intra-handshakefail-cve-2026-33697-00)
+* **Presenter**: Anonymous Presenter (Co-authored with Vyacheslav and Jan-Mari)
+* **Discussion**:
+  * The presenter detailed a high-severity vulnerability (CVE-2026-33697, CVSS 7.5) in attested TLS protocols, which are used in confidential computing to verify the software and hardware state of a server (attestation) before exchanging sensitive data.
+  * The analysis scrutinized three levels of binding attestation evidence to TLS keys:
+    1. **G1**: Bound to the Diffie-Hellman shared secret.
+    2. **G2**: Bound to the Handshake Traffic Secret (HST).
+    3. **G3**: Bound to the Application Traffic Secret (ATSC).
+  * The research mathematically and practically demonstrated that G2/HST bindings are vulnerable to man-in-the-middle relay and diversion attacks. This occurs because the server is not yet authenticated at the point when the HST is derived. Handshake encryption under HST serves a privacy function rather than a security function, making it possible for attackers to relay attestation nonces.
+  * Several active specifications, including the RATS "Suite Early Attestation" and "Suite Facts" drafts, are affected by this vulnerability.
+  * The presenter argued that current standards-track working groups are introducing excessive complexity without proportional security benefits and proposed that the IRTF establish a **Confidential Computing Research Group (CCRG)** to systematically address these foundational cryptographic design challenges.
+
+---
+
+## Decisions and Action Items
+
+* **BGP Core Specification Update (RFC 4271)**: Operational feedback regarding BGP `ORIGIN` rewriting will be brought to the IDR Working Group to ensure that the bis-version of Core BGP accurately reflects contemporary operator realities rather than legacy EGP/IGP expectations.
+* **ASPA Deployment Corrections**: Operators are encouraged to review the validity of their ASPA configurations, specifically checking for mixed peering/transit relationships and verifying their upstream providers to reduce the ~6% error rate detected in the wild.
+
+---
+
+## Next Steps
+
+* **Confidential Computing Research Group (CCRG) Proposal**: Security and attestation researchers plan to convene side meetings during this IETF week to draft a charter and propose the creation of a dedicated CCRG under the IRTF. This group will formally model attested handshake protocols and prevent vulnerabilities like CVE-2026-33697 from entering standardized RFCs.
