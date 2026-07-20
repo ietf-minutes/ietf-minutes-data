@@ -2,6 +2,30 @@ name: Checkout auto-minutes and npm install (use cache branch)
 
 on:
   workflow_dispatch:
+    inputs:
+      selectors:
+        description: 'Sessions to delete and regenerate (one selector per line, e.g. "125:6LO" or "2026-07-01+"). Empty = normal sync.'
+        required: false
+        type: string
+      uncache_type:
+        description: 'What to delete before regenerating'
+        required: false
+        default: minutes
+        type: choice
+        options:
+          - minutes
+          - transcripts
+          - audio
+          - all
+  workflow_call:
+    inputs:
+      selectors:
+        required: false
+        type: string
+      uncache_type:
+        required: false
+        default: minutes
+        type: string
   push:
     branches:
       - main
@@ -12,20 +36,22 @@ on:
 env:
   TRANSCRIPT_GEN_FLAG: ${{ vars.TRANSCRIPT_GEN_FLAG }}
 
+# Literal group (not github.workflow) so that runs started via workflow_call
+# from another workflow still serialize against the scheduled sync runs.
 concurrency:
-  group: ${{ github.workflow }}
+  group: ietf-minutes-sync
 
 permissions:
   contents: write
   pages: write
   id-token: write
-  
+
 jobs:
   setup-and-checkout:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}    
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Setup Node.js (lts)
         uses: actions/setup-node@v4
@@ -61,22 +87,64 @@ jobs:
           ref: cache
           path: auto-minutes/cache
           fetch-depth: 0
-          
+
+      # Forced-regeneration path: drop the cached artifacts for the requested
+      # sessions so the summarize step below has to build them from scratch.
+      - name: Uncache requested sessions
+        if: inputs.selectors != ''
+        working-directory: auto-minutes
+        env:
+          # Via env, never inlined into the script: this text originates in a
+          # GitHub issue body.
+          SELECTORS: ${{ inputs.selectors }}
+          UNCACHE_TYPE: ${{ inputs.uncache_type }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r selector; do
+            selector="$(echo "$selector" | tr -d '[:space:]')"
+            [ -z "$selector" ] && continue
+            echo "::group::uncache $selector ($UNCACHE_TYPE)"
+            node src/index.js -v --uncache "$selector" --uncache-type "$UNCACHE_TYPE"
+            # Deleting only a transcript or only audio would leave the cached
+            # minutes in place, so nothing would be regenerated. Drop those too.
+            if [ "$UNCACHE_TYPE" != "minutes" ] && [ "$UNCACHE_TYPE" != "all" ]; then
+              node src/index.js -v --uncache "$selector" --uncache-type minutes
+            fi
+            echo "::endgroup::"
+          done <<< "$SELECTORS"
 
       - name: Summarize the current meeting
+        if: inputs.selectors == ''
         working-directory: auto-minutes
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           node src/index.js -v --summarize current --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }}
-          
+
       - name: Summarize interims up to today.
+        if: inputs.selectors == ''
         working-directory: auto-minutes
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           # Performance isn't good if we start too far back, unfortunately.
           node src/index.js -v --summarize 2026-07-01+ --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }}
+
+      - name: Summarize requested sessions
+        if: inputs.selectors != ''
+        working-directory: auto-minutes
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SELECTORS: ${{ inputs.selectors }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r selector; do
+            selector="$(echo "$selector" | tr -d '[:space:]')"
+            [ -z "$selector" ] && continue
+            echo "::group::summarize $selector"
+            node src/index.js -v --summarize "$selector" --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }}
+            echo "::endgroup::"
+          done <<< "$SELECTORS"
 
       - name: Commit new/changed .md files back to cache branch
         working-directory: auto-minutes/cache
@@ -90,11 +158,10 @@ jobs:
           # Ensure the origin remote will accept the workflow push using the GITHUB_TOKEN
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/ietf-minutes/ietf-minutes-data.git
 
-          # Add any new or changed cache in this working tree
-          git add '*.md' || true
-          git add '*.json' || true
-          git add '*.txt' || true
-          git add output/*/IETF* || true
+          # Stage adds, changes *and* deletions under the two tracked trees.
+          # Scoped to these paths so the (large, untracked) cache/audio
+          # directory stays out of the branch.
+          git add -A output transcripts || true
 
           # If there are no staged changes, exit quickly
           if git diff --cached --quiet; then
@@ -120,13 +187,13 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
           path: 'auto-minutes/_site'
-          
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
