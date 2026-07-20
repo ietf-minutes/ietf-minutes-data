@@ -1,0 +1,130 @@
+# [ACE](../wg/ace.html)
+
+## Summary
+The ACE Working Group met at IETF 126 to discuss the status and updates of its active documents, as well as a new proposal for post-quantum security in group communications. Key topics included the progression of the CoAP Publish-Subscribe profile to Shepherd review, updates to the Short Distribution Chain (SDC) workflow and parameter definitions, and significant progress on the EDHOC-OSCORE and Group OSCORE profiles. Additionally, a new mechanism was presented for supporting Key Encapsulation Mechanisms (KEM) in the OSCORE Group Manager interface to address post-quantum migration.
+
+---
+
+## Key Discussion Points
+
+### 1. Note Well and Agenda Bashing
+The Chair opened the meeting, presenting the Note Well and reviewing the agenda. The scheduled presentations included CoAP Pub-Sub profile, Workflow and Params, OSCORE GM KEM, EDHOC and OSCORE profile, Group OSCORE profile, and EST-C509. There were no objections or modifications to the agenda.
+
+---
+
+### 2. CoAP Publish-Subscribe Profile
+* **Presenter:** Marco Tiloca
+* **Draft:** [draft-ietf-ace-coap-pubsub-profile](https://datatracker.ietf.org/doc/draft-ietf-ace-coap-pubsub-profile/)
+* **Slides:** [20260720-ace-coap-pubsub-profile](https://datatracker.ietf.org/meeting/126/materials/slides-126-ace-20260720-ace-coap-pubsub-profile-00)
+
+#### Discussion:
+* Marco Tiloca presented the updates in version 05. The draft specifies an application profile of the ACE framework for group key distribution using CoAP Pub-Sub.
+* Since the working group last call (WGLC) completed, updates (v04 and v05) addressed feedback aligned with analogous comments from the IESG evaluation of other group key distribution profiles (specifically regarding editorial clarifications and requirements).
+* Crucially, the draft was updated to align with the latest editorial revisions of the core CoAP Pub-Sub architecture specification, which has now been submitted to the IESG.
+* Two missing IANA parameter registration sections were identified and have been successfully added.
+* **Status:** The document is stable and ready for the Write-up and Shepherd review.
+
+---
+
+### 3. SDC Workflow and New OAuth Parameters
+* **Presenter:** Marco Tiloca
+* **Draft:** [draft-ietf-ace-workflow-and-params](https://datatracker.ietf.org/doc/draft-ietf-ace-workflow-and-params/)
+* **Slides:** [20260720-ace-workflow-and-params](https://datatracker.ietf.org/meeting/126/materials/slides-126-ace-20260720-ace-workflow-and-params-00)
+
+#### Discussion:
+* This draft formally updates RFC 9200, introducing the alternative Short Distribution Chain (SDC) workflow and adding support for group audience tokens.
+* Marco Tiloca highlighted several key updates in version 08:
+  * **Dave Robin** provided feedback on parameter phrasing, which was integrated to improve readability.
+  * Added clarifications on token revocation (RFC 9770): if the client intends to use token revocation services, it must not opt out of receiving the token or its hash.
+  * Corrected the erroneous coupling of client-to-AS and AS-to-client parameters in the SDC workflow.
+  * Relocated the EDHOC External Authorization Data (EAD) item from the EDHOC profile draft into this document.
+  * **Dynamic Update Failures:** Clarified that when an SDC upload fails because the Resource Server (RS) dropped the old token (and closed the association), the Authorization Server (AS) can establish a new token series "on the fly" to save round trips.
+* **Group Audience Upload Failures:** In the current draft, if an AS uploads a token to multiple RSs in a group audience and one fails, the overall transaction fails sequentially. 
+  * **Dave Robin** questioned if the sequential "abort-on-first-fail" behavior is too restrictive, suggesting that partial success should be reported so the client can utilize the token for the successful 99% of RSs.
+  * **Christian Amsüss** agreed that identifying which RS failed might be overkill but suggested that "abort if one fails" should not be overly prescriptive, as group memberships can dynamically change.
+  * Marco Tiloca agreed to explore adding a mechanism or parameter to indicate partial successes to the client.
+
+---
+
+### 4. OSCORE GM KEM (Post-Quantum Group OSCORE)
+* **Presenter:** Marco Tiloca
+* **Slides:** [20260720-ace-oscore-gm-kem](https://datatracker.ietf.org/meeting/126/materials/slides-126-ace-20260720-ace-oscore-gm-kem-00)
+
+#### Discussion:
+* Marco Tiloca presented a new proposal aimed at preparing Group OSCORE for post-quantum security. While Group OSCORE signature mode can use post-quantum signatures, the pairwise mode relies on Diffie-Hellman (DH) key agreement, which is vulnerable to quantum adversaries. 
+* The proposal introduces KEM-based key agreement to establish pairwise keys. It extends the ACE-based Group Manager interface to support four key operations:
+  1. Node uploading its own KEM public key.
+  2. Retrieving another node's KEM public key.
+  3. Uploading a KEM ciphertext intended for another member.
+  4. Retrieving a KEM ciphertext left by another member.
+* These operations map to four new node-specific resources managed by the Group Manager.
+* **Chair** asked if transitioning existing groups to PQ-safe algorithms is possible, or if it requires setting up entirely new quantum-safe groups. Marco Tiloca confirmed that groups must be configured with PQ security from inception; transitioning active groups is not feasible.
+
+---
+
+### 5. EDHOC and OSCORE Profile
+* **Presenter:** Rikard Höglund
+* **Draft:** [draft-ietf-ace-edhoc-oscore-profile](https://datatracker.ietf.org/doc/draft-ietf-ace-edhoc-oscore-profile/)
+* **Slides:** [EDHOC and OSCORE ACE profile slides IETF 126](https://datatracker.ietf.org/meeting/126/materials/slides-126-ace-edhoc-and-oscore-ace-profile-slides-ietf-126-00)
+
+#### Discussion:
+* Rikard Höglund presented updates in version 11:
+  * Clarified prescriptive vs. non-prescriptive parameters in the EDHOC information object.
+  * **Reverse Flow Simplification:** Removed the option to place the access token in EDHOC Message 2 (EAD2). It must now only be placed in Message 4 (EAD4). This was done because passive adversary protection in Message 2 requires the AS to always encrypt the token, adding significant operational complexity.
+  * Added considerations on the timing of access token requests during reverse flows to ensure proper binding to client credentials.
+  * Refined three EAD items: ACE Auth Access Token, credential by value, and request creation hints. The session ID parameter was removed as it is now defined in [draft-ietf-ace-workflow-and-params](https://datatracker.ietf.org/doc/draft-ietf-ace-workflow-and-params/).
+  * Added an operational considerations section focusing on RSs belonging to multiple audiences.
+
+---
+
+### 6. Group OSCORE Profile
+* **Presenter:** Rikard Höglund
+* **Draft:** [draft-ietf-ace-group-oscore-profile](https://datatracker.ietf.org/doc/draft-ietf-ace-group-oscore-profile/)
+* **Slides:** [IETF 126 ACE Group OSCORE profile slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-ace-ietf-126-ace-group-oscore-profile-slides-00)
+
+#### Discussion:
+* Rikard Höglund presented the latest changes in version 07:
+  * Made proof-of-possession (PoP) evidence from the client optional during access token requests, as the AS may verify this out-of-band.
+  * Aligned semantics with the revised `ace_profile` parameter.
+  * Simplified how the RS binds the access token to local states. Rather than associating the token with multiple group details, the RS now simply binds it to the Token Series ID, audience, and the client’s authentication credential.
+  * Introduced "Token Series" to enable dynamic updates of access rights. A unique Token Series ID is allocated per client-audience pair, allowing the client to easily reference which rights to update.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* **[draft-ietf-ace-coap-pubsub-profile]** Agreed that the draft is stable and ready to progress to Shepherd Write-up, as all blocking issues and external dependencies are resolved.
+* **[draft-ietf-ace-edhoc-oscore-profile]** Agreed to simplify the reverse flow by only allowing the access token in EDHOC Message 4 (EAD4), removing the Message 2 (EAD2) option.
+* **[draft-ietf-ace-group-oscore-profile]** Approved the simplified RS-side access token binding mechanism and the introduction of Token Series IDs for dynamic access right updates.
+
+### Action Items
+* **Working Group:** Review the seven open Errata against RFC 9200 and provide feedback on the mailing list.
+* **Marco Tiloca:** Correct the editorial placeholder ("value 0 or 2") in [draft-ietf-ace-workflow-and-params](https://datatracker.ietf.org/doc/draft-ietf-ace-workflow-and-params/).
+* **Marco Tiloca:** Investigate and design a mechanism for handling "partial success" feedback when uploading tokens to a group audience in [draft-ietf-ace-workflow-and-params](https://datatracker.ietf.org/doc/draft-ietf-ace-workflow-and-params/).
+* **Rikard Höglund & Marco Tiloca:** Follow up on the mailing list regarding early code point allocation requests for the EDHOC-OSCORE profile.
+
+---
+
+## Next Steps
+
+### draft-ietf-ace-coap-pubsub-profile
+* Progress the document to Shepherd review and Write-up.
+
+### draft-ietf-ace-workflow-and-params
+* Add an exchange example demonstrating the "on the fly" creation of a new token series during dynamic updates.
+* Resolve the open issue regarding client/AS coordination for credential exchange when group audiences are involved.
+* Expand the Security and Operational Considerations sections.
+
+### OSCORE GM KEM
+* Define the protocol flow for the edge-case where the group uses *only* the pairwise mode (requiring proof-of-possession during joining).
+* Extend the OSCORE Group Manager Admin interface (e.g., [draft-ietf-ace-oscore-gm-admin-coral](https://datatracker.ietf.org/doc/draft-ietf-ace-oscore-gm-admin-coral/)) with parameters to configure PQ-KEM support.
+
+### draft-ietf-ace-edhoc-oscore-profile
+* Define the behavior of the client/RS when the configuration received in the EDHOC info object clashes with an already active EDHOC execution.
+* Submit formal responses to the review comments provided by Christian Amsüss on version 09.
+
+### draft-ietf-ace-group-oscore-profile
+* Improve AS error handling by using the `failed_pop_verification` error code.
+* Elaborate on handling silent servers (monitors) that do not send Group OSCORE responses.
+* Explore supporting access tokens that span multiple application or security groups.
