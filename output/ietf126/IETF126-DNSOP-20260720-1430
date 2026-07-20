@@ -1,0 +1,152 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+The DNSOP Working Group met at IETF 126 to discuss active working group documents, consider new proposals for adoption, and run a DNS Dispatch session to direct several individual proposals to their appropriate homes. 
+
+Key administrative updates included:
+* Publication of RFC 9575 (referenced as "RFC-ninety-five-seventy-five" in slides/discussions).
+* Splitting DNSOP into two groups (DNSOP and DNS Commentary) is progressing, with Area Directors finalizing changes before the next IETF.
+* An open-source funding announcement by **Karl**, offering grants of up to £15,000/year for individuals and £100,000/year for institutions over three years to maintain open-source DNS software.
+
+Active working group documents `draft-ietf-dnsop-integration`, `draft-ietf-dnsop-dnssec-keyrestore`, and `draft-ietf-dnsop-delegation-mgmt-via-ddns` were presented and are moving toward Working Group Last Call (WGLC). Several new adoptions and dispatches were also progressed.
+
+---
+
+## Key Discussion Points
+
+### 1. Active Working Group Documents
+
+#### [DNS Integrations draft-ietf-dnsop-integration](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-dns-integrations-draft-ietf-dnsop-integration-00)
+* **Presenter:** **Andrew Campling**
+* **Summary:** The draft addresses minimizing conflicts between the global DNS and external application environments (e.g., Bluesky, ENS) using domain names. Updates since IETF 124 include softening the language around avoiding SSR impacts, accounting for universal acceptance and namespace evolution (e.g., new gTLD rounds), reducing high-level considerations from 10 to 7, and adding implementation appendices.
+* **Discussion:** **Ben Schwartz** noted that Section 3.3 discusses Internationalized Domain Names (IDNs) and suggested incorporating references to official RFCs defining the preferred name syntax (ASCII/punycode limits), as applications routinely enforce these limits practically. **Andrew Campling** agreed to look into integrating this reference.
+* **Outcome:** The chairs plan to initiate a Working Group Last Call (WGLC) for `draft-ietf-dnsop-integration`.
+
+#### [DNSSEC Key Restore](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-sessa-dnssec-key-restore-00)
+* **Presenter:** **Nils Wisiol** (presenting on `draft-ietf-dnsop-dnssec-keyrestore`)
+* **Summary:** The document describes how to recover from a lost private key for an offline-signed zone without going bogus or intentionally insecure. It uses the timing considerations of double-DS (for KSK) and double-signature (for ZSK) rollovers. Updates since adoption include removing the lengthy HSM discussion, incorporating feedback from the adoption call, and adding operational considerations (e.g., disabling CDS/CDNSKEY during recovery, handling immutable SOA serials).
+* **Discussion:** 
+  * **Wes Hardiker** raised questions about the tight timing between TTLs and signature lifetimes under the same SOA. **Nils Wisiol** clarified that timing considerations inherit standard rollover behaviors.
+  * **Philip Homburg** questioned whether current authoritative signers require changes to support this. **Nils Wisiol** noted they tested successfully with Knot DNS but acknowledged that manually bypassing signer safeguards (like preventing the removal of old signatures) or manually transplanting DNSKEY sets might be necessary.
+  * **Andrei Robachevsky** suggested adding a dedicated implementation section to the draft.
+* **Outcome:** The chairs will consider a WGLC for `draft-ietf-dnsop-dnssec-keyrestore`.
+
+#### [delegation-mgmt-via-ddns](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-delegation-mgmt-via-ddns-00)
+* **Presenter:** **Johan Stenstam** (presenting on `draft-ietf-dnsop-delegation-mgmt-via-ddns`)
+* **Summary:** This draft automates the maintenance of parent delegation records using standard dynamic updates (RFC 2136) authenticated by a child's `SIG(0)` key. It uses the `desync` (Dsync) framework to locate the update receiver and adapts the CDS bootstrap mechanism (RFC 9615) to discover the child's `SIG(0)` key. This works for both signed and unsigned child zones, is post-quantum signature size compatible, and has been tested with 10,000 key rollovers using MLDSA-44. A companion draft on `key state` helps child zones query parent trust states before making active modifications.
+* **Outcome:** The authors consider the draft stable and ready for Last Call.
+
+---
+
+### 2. Drafts for Adoption Consideration
+
+#### [Disclosure of Negative Trust Anchors in DNS Responses](https://datatracker.ietf.org/meeting/126/materials/slides-126-disclosure-of-negative-trust-anchors-in-dns-responses-00)
+* **Presenter:** **Ahmad Reza Alirezaee**
+* **Summary:** Proposes registering Extended DNS Error (EDE) code 33 to signal in-band when a Negative Trust Anchor (NTA) is actively overriding validation for a broken domain. Revision 01 introduced optional structured JSON text (e.g., NTA expiration timestamps) and support for `SIG(0)`/`TSIG` authentication. Cloudflare has deployed it in production; implementations or active pull requests exist for Knot Resolver, Unbound, PowerDNS Recursor, and BIND.
+* **Discussion:** 
+  * **Peter van Dijk** supported adoption and stated PowerDNS intends to merge the PR.
+  * **Ralf Weber** supported the work as a crucial operational tool to make NTAs transparent.
+  * **Jim Reid** questioned if the average user benefits or if this adds unnecessary weight to the "DNS camel."
+  * **Ahmad Reza Alirezaee** and **Warren Kumari** responded that while end-users will not see this, it is highly valuable for operator debugging and browser-level signaling.
+  * **Victor Dukhovni** supported the draft and noted he has implemented it in his stub resolver.
+* **Outcome:** Strong support in the room; the chairs will issue a call for adoption on the mailing list.
+
+#### [Signalling a Zone Cut to Nowhere in the DNS](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-sessa-signalling-a-zone-cut-to-nowhere-in-the-dns-00)
+* **Presenter:** **Joe Abley**
+* **Summary:** Proposes using an `NS .` record at a zone cut to cleanly signal that a delegation exists but cannot be followed (useful for internal/private namespaces). **Wes Hardiker** conducted experiments showing that using `NS .` does not negatively impact root server traffic or resolver behavior compared to existing baseline failures.
+* **Discussion:**
+  * **Paul Hoffman** commented that BIND authoritative servers require an NS record at every zone cut, and `NS .` resolved this cleanly.
+  * **Tobias Fiebig** asked why `REFUSED` is not used instead. **Wes Hardiker** explained that `REFUSED` is ambiguous, whereas `NS .` is an explicit, actionable signal.
+  * **Peter Thomassen** noted that resolvers should be explicitly forbidden from following delegations to the root apex, requiring clear text additions.
+  * **Peter van Dijk** raised concerns about breaking ACME DNS validation challenges for internal hosts that publish ACME records in the public DNS. **Joe Abley** agreed that ACME interactions need to be documented.
+* **Outcome:** The chairs will initiate a call for adoption on the mailing list.
+
+#### [Add TTLs to DNS errors](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-add-ttls-to-dns-errors-00)
+* **Presenter:** **Philip Homburg**
+* **Summary:** Proposes allowing servers to explicitly signal how long an error (like `SERVFAIL` or `REFUSED`) should be cached, replacing static 5-minute defaults. The suggested mechanism inserts a SOA record with a unique label into the additional section. Alternative options include a dedicated pseudo-RR type or an EDNS option.
+* **Discussion:**
+  * **Andrei Robachevsky** (speaking with a BIND hat) liked the core idea.
+  * **Ben Schwartz** supported the concept but strongly preferred an EDNS option over a SOA record. He suggested limiting error TTL caching on unauthenticated transports to prevent DoS amplification attacks.
+  * **Philip Homburg** argued that on unauthenticated UDP, an attacker can already inject malicious responses, so the risk is comparable.
+  * **Warren Kumari** and **Andrei Robachevsky** supported adopting the document first and resolving the exact transport/encoding option (SOA vs. EDNS) during the working group phase.
+  * **Ralf Weber** expressed concerns about security and suggested limiting the feature to secure transports.
+  * **Victor Dukhovni** asked whether the error TTL applies to the specific server that returned it or the entire domain. **Philip Homburg** responded that it simply replaces the default error caching duration within standard resolver retry logic.
+
+---
+
+### 3. DNS Dispatch
+
+The goal of this session was to determine the appropriate destination for various proposals using the DNS.
+
+#### [Domain Key Authorities (DKA): DNS-Designated Public Key Distribution for Email-Address Identifiers (PDF Version)](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-domain-key-authorities-dka-dns-designated-public-key-distribution-for-email-address-identifiers-pdf-version-00)
+* **Presenter:** **Kishore**
+* **Summary:** Outlines a decentralized, HTTP-based framework for associating public keys with email identifiers. Domains designate a Domain Key Authority (DKA) via the DNS to distribute and manage public keys over TLS.
+* **Discussion:**
+  * **Daniel Kahn Gillmor** pointed out that the OpenPGP Working Group has an active draft updating HKP (HTTPS key server protocol) using SRV records for similar purposes, and noted the existence of `OPENPGPKEY` and `SMIMEA` records in DNS.
+  * **Tobias Fiebig** agreed and suggested linking the work with existing OpenPGP WG efforts.
+  * **Paul Hoffman** and **Ralf Weber** noted this is a security application that merely uses DNS pointers; it belongs in a security working group, not DNSOP.
+  * **John Levine** raised concerns about the author's disclosed patent, stating it overlaps with Google's EVP and HKP, and makes IETF change control complicated.
+* **Outcome:** Dispatched to the Security Area / OpenPGP Working Group.
+
+#### [DNS Extensions to Energy Efficiency as a Service](https://datatracker.ietf.org/meeting/126/materials/slides-126-dns-extensions-to-energy-efficiency-as-a-service-00)
+* **Presenter:** **Presenter** (unnamed in transcript)
+* **Summary:** Proposes an Energy Efficiency Resource Record (EERR) to allow clients to resolve domains to endpoints powered by renewable energy or those optimized for lower carbon footprints.
+* **Discussion:**
+  * **Tobias Fiebig** and **Paul Hoffman** suggested dispatching this to the newly forming **sustain** research group in the IRTF.
+  * **Jim Reid** noted that if the proposal only requires a new resource record type, the authors can use the independent RR type registration process without DNSOP intervention.
+* **Outcome:** Dispatched to the IRTF **sustain** group.
+
+#### [UTXO Domain Name System (UTXO6-DNS) Base Protocol and PRN Regulatory Extensions](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-utxo-domain-name-system-utxo6-dns-base-protocol-and-prn-regulatory-extensions-00)
+* **Presenter:** **Yang Yang**
+* **Summary:** Proposes an extension to map domain names directly to financial payment endpoints (UTXOs), introducing an identity/compliance layer and IPv6 address "coloring" for ownership proofs.
+* **Discussion:**
+  * **Tobias Fiebig** suggested the Crypto Forum Research Group (CFRG) in the IRTF.
+  * **Paul Hoffman** suggested dispatching it "nowhere," noting it behaves as an alternative DNS root requiring custom resolver behavior and new TLDs.
+  * **Joe Abley** and **Jim Reid** stated there is no DNSOP work here. New RR types can be registered directly, and new TLD requests belong in ICANN.
+* **Outcome:** Dispatched to IRTF/CFRG or nowhere; out of scope for DNSOP.
+
+#### [DNS-Based Address Mapping Record (AMR) for IPv4/IPv6 Mapping in IPv6-only Networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-dns-based-address-mapping-record-amr-for-ipv4ipv6-mapping-in-ipv6-only-networks-01)
+* **Presenter:** **Gordon**
+* **Summary:** Proposes an Address Mapping Record (AMR) to allow IPv6-only networks to query an IPv4 address block and retrieve its corresponding IPv6 mapping prefix.
+* **Discussion:**
+  * **Ben Schwartz** requested clarification on who performs the queries and why this is operationally useful.
+  * **Shane Kerr** stated that DNSOP is an appropriate place to discuss the draft.
+* **Outcome:** Discussions will continue on the DNSOP mailing list.
+
+#### [Domain Authority (DA): A DNS-Designated Service Endpoint for Domain Information (PDF Version)](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-domain-authority-da-a-dns-designated-service-endpoint-for-domain-information-pdf-version-00)
+* **Presenter:** **Kishore**
+* **Summary:** Suggests shifting complex query types and large keys (e.g., post-quantum public keys) out of Port 53 and onto a dedicated HTTP control plane. The DNS is used only to resolve a `DA` record pointing to an HTTPS endpoint, which serves domain APIs (JSON bundles, host info, credentials).
+* **Discussion:**
+  * **Tobias Fiebig** suggested the DELEG Working Group.
+  * **John Levine** pointed out that RDAP (Registration Data Access Protocol) already runs over HTTPS, returns structured JSON, handles delegations/redirects, and is universally implemented by ICANN TLDs. 
+  * **Peter Thomassen** and **Ralf Weber** noted the only DNS-specific component is the `DA` record type, which can be registered independently. The HTTP API layer is entirely out of scope for DNSOP.
+  * **Olaf Kolkman** suggested presenting this to the REGEXT working group first to evaluate overlaps with RDAP.
+* **Outcome:** The chairs suggested checking with REGEXT regarding RDAP overlap.
+
+---
+
+## Decisions and Action Items
+
+1. **Working Group Last Call (WGLC):**
+   * Initiate WGLC for `draft-ietf-dnsop-integration`.
+   * Initiate WGLC for `draft-ietf-dnsop-dnssec-keyrestore`.
+
+2. **Adoption Calls:**
+   * Issue a call for adoption on the mailing list for **NTA Disclosure in DNS Responses** (`EDE 33`).
+   * Issue a call for adoption on the mailing list for **Signalling a Zone Cut to Nowhere** (`NS .`).
+
+3. **Dispatch Decisions:**
+   * **Domain Key Authorities (DKA):** Dispatched to Security Area / OpenPGP WG.
+   * **Energy Efficiency as a Service:** Dispatched to IRTF **sustain** group.
+   * **UTXO6-DNS:** Out of scope for DNSOP; suggested for IRTF CFRG.
+   * **Address Mapping Record (AMR):** Discussions to continue on the DNSOP mailing list.
+   * **Domain Authority (DA):** Recommended to check with the REGEXT WG for RDAP overlap.
+
+---
+
+## Next Steps
+
+* The chairs will distribute a formal summary of the dispatch outcomes to the mailing list, including specific follow-up actions for the authors and the IESG.
+* Authors of `draft-ietf-dnsop-dnssec-keyrestore` to add an implementation section based on Knot DNS testing prior to or during the WGLC.
+* Authors of `Add TTLs to DNS errors` to refine security text and explore transport options (EDNS option vs. SOA) on the mailing list.

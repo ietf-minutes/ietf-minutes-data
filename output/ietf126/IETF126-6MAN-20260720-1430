@@ -1,0 +1,126 @@
+# [6MAN](../wg/6man.html)
+
+## Summary
+
+The 6MAN Working Group met at IETF 126 to discuss the status of active working group documents, coordinate protocol work with other working groups, and review several active and individual proposals. Key topics included Wi-Fi multicast optimization, sub-link scoped multicast addressing, updating IPv6 Node Requirements, expanding the IPv6 loopback address prefix, flow label load-balancing for RoCEv2, and ICMP error handling in SRv6 VPNs.
+
+---
+
+## Key Discussion Points
+
+### Working Group Administration & Document Status
+*Presented by Jen Linkova*
+* Slide Deck: [00_Chairs_Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-00-chairs-slides-00)
+
+* **Document Progress**: 
+  * "Cluster 525" has been unblocked by changing the SNAC Simple reference from normative to informative.
+  * `draft-ietf-6man-ipv6-neighbor-discovery-yang` is waiting for write-up clarifications.
+  * `draft-ietf-6man-slaac-renum` is currently in Working Group Last Call (WGLC). Zafar Ali noted that while significant comments are being addressed, convergence is slow due to concerns regarding hardware implementation complexity, inconsistency in encoding, and privacy risks associated with a 32-bit ID (such as hijacking for application IDs).
+* **Dormant/Expired Drafts Cleanup**: The chairs proposed moving dormant or expired working group documents (such as the RFC 4291 bis document) back to individual status if no objections are received before September 1.
+  * Tim Chown asked about the history of RFC 4291 bis. Bob Hinden clarified that it was blocked at the IESG due to a lack of consensus on prefix representation.
+  * Jordi Palet Martinez suggested sending separate emails to the mailing list for each affected draft to allow for informed feedback.
+  * Ron Bonica asked if the "reflection draft" (waiting in the RFC Editor queue for a missing reference to RFC 8335 bis) could be unblocked by referencing the original RFC 8335 instead. Eric Vyncke (AD) preferred to keep the bis reference and apply pressure to the INTAREA working group to advance the bis document.
+* **Coordination with Other WGs**: Jen Linkova reiterated that if a proposal in another working group requires changes to the IPv6 protocol (e.g., new options or bits), that working group must first adopt the draft and agree on the problem statement and solution before 6MAN acts on the protocol specifications. Ted Lemon, Joel Halpern (SAVNET co-chair), and Eric Vyncke agreed with this approach to prevent premature discussions in 6MAN.
+
+---
+
+### IPv6 Wants 802.11 Flexible Multicast Service
+*Presented by David Lamparter*
+* Draft: [draft-ietf-6man-ieee80211-fms](../id/draft-ietf-6man-ieee80211-fms.html)
+* Slide Deck: [IPv6 wants 802.11 Flexible Multicast Service](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-ipv6-wants-80211-flexible-multicast-service-00)
+
+* **Discussion**:
+  * David Lamparter presented the issue of multicast packet loss on Wi-Fi, which frequently breaks IPv6 Router Advertisements (RAs). Due to power-saving mechanisms, Wi-Fi chipsets often sleep through multicast transmissions unless the DTIM multiplier is high. 
+  * Two Layer 2 features exist to mitigate this: Flexible Multicast Service (FMS) and Directed Multicast Service (DMS). Neither is currently implemented in `hostapd`. The goal of this draft is to serve as a liaison to the Wi-Fi Alliance and IEEE 802.11 to encourage implementation.
+  * Jerome Henry noted that FMS (standardized in 2008) has high overhead when multiple stations negotiate different intervals. He stated that DMS is already part of the Wi-Fi Alliance power-save certification and suggested gathering real-world data to present directly to the Wi-Fi Alliance.
+  * Lorenzo Colitti agreed DMS is a better candidate but questioned whether it allows for enough buffering to save battery.
+  * Suresh Krishnan remarked that getting changes into `hostapd` is notoriously difficult from the outside, which stalls deployment on cheaper APs.
+  * Eric Vyncke committed to adding the draft to the official IEEE-IETF liaison tracking list.
+
+---
+
+### Sub-Link Scoped IPv6 Multicast Addressing
+*Presented by David Lamparter*
+* Draft: [draft-ietf-6man-sub-link-scope-multicast](../id/draft-ietf-6man-sub-link-scope-multicast.html)
+* Slide Deck: [Sub-Link Scoped IPv6 Multicast Addressing](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-sub-link-scoped-ipv6-multicast-addressing-00)
+
+* **Discussion**:
+  * The draft defines a mapping to use existing IEEE 802.1Q Layer 2 multicast groups that do not traverse bridges/switches. This enables LLDP-like discovery to stay strictly on the physical wire, which is highly useful in overlay networks like VXLAN.
+  * It maps a reserved combination in the `ff22` prefix to the `01-80-c2` Ethernet multicast range.
+  * David Lamparter noted that the implementation is incredibly simple (only 31 lines of code in the Linux kernel) and was successfully demoed at the Hackathon.
+  * Bob Hinden suggested that the draft is in good shape and should proceed to a Working Group Last Call to gauge broader interest.
+
+---
+
+### IPv6 Node Requirements
+*Presented by Michael Ackermann*
+* Draft: [draft-ietf-6man-rfc8504-bis](../id/draft-ietf-6man-rfc8504-bis.html)
+* Slide Deck: [IPv6 Node Requirements](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-ipv6-node-requirements-00)
+
+* **Discussion**:
+  * **Extension Headers**: The authors reverted the Extension Header limits text back to the original RFC 8504 text because the "limits" draft did not progress. 
+  * Ron Bonica questioned whether the text allowing a host to "disallow unknown options" violates RFC 8200. Tim Chown and Michael Ackermann explained that this text has been in RFC 8504 since 2019 to protect end hosts, and the default behavior remains compliant with RFC 8200. Justin Iurman suggested using this text to align with [draft-ietf-6man-eh-occurrences](../id/draft-ietf-6man-eh-occurrences.html).
+  * **PMTUD and DiffServ**: Explicit RFC references were added for PMTUD based on Gorry Fairhurst's feedback, and DiffServ was added alongside ECN.
+  * **NAT64/PREF64 Discovery**: The draft proposed changing RFC 7050 to "may support" and RFC 8781 to "should support". 
+    * Lorenzo Colitti requested removing the "should" for RFC 7050 entirely. 
+    * Tim Chown and Jen Linkova discussed referencing RFC 9872 (which recommends RFC 8781 with an RFC 7050 fallback except on mobile networks) to avoid duplicate text.
+    * Jordi Palet Martinez recommended deprecating RFC 7050 entirely, citing issues where it fails without RFC 8880.
+    * Lorenzo Colitti suggested that the draft should require nodes to process the RA option (RFC 8781) and make the prefix available to user space, rather than specifying how the node performs local address synthesis.
+  * **Address Selection & SLAAC Renum**: Lorenzo Colitti supported requiring the updated Default Address Selection (RFC 6724 bis). Tim Chown and Lorenzo Colitti agreed that [draft-ietf-6man-slaac-renum](../id/draft-ietf-6man-slaac-renum.html) should be integrated once it advances, though Lorenzo noted past disagreements on zero valid lifetime RAs.
+  * **Next Steps**: The authors will publish version -04 incorporating feedback and request WGLC.
+
+---
+
+### The IPv6 Loopback Address Prefix
+*Presented by Warren Kumari*
+* Slide Deck: [04_The IPv6 Loopback Address Prefix](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-04-the-ipv6-loopback-address-prefix-00)
+
+* **Discussion**:
+  * The draft proposes expanding the IPv6 loopback space from a single `/128` to a `/96` prefix. To avoid "numerology" debates that stalled previous attempts, the specific prefix assignment will be left entirely to IANA.
+  * Lorenzo Colitti warned that the chosen prefix must comply with RFC 4291 interface identifier rules (e.g., interface index lengths and 64-bit boundaries), which the authors must account for.
+  * Eric Vyncke supported adopting the draft first and then defining the technical requirements to guide IANA.
+  * **Decision**: The chairs will issue a call for working group adoption.
+
+---
+
+### IPv6 Flow Label Load Balancing for RoCEv2
+*Presented by Joanne*
+* Slide Deck: [slides-126-6man-ipv6-flowlabel-load-balancing-rdma-01](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-slides-126-6man-ipv6-flowlabel-load-balancing-rdma-01-00)
+
+* **Discussion**:
+  * The draft proposes using RoCEv2 Queue Pair (QP) numbers as entropy to generate the IPv6 Flow Label to prevent "elephant flows" from causing network congestion.
+  * Ron Bonica and Jen Linkova pointed out that flow label generation is purely private host behavior (governed by RFC 6437/7098) and does not require standardization.
+  * Jen Linkova noted that the abstract was confusing because it implied intermediate routers or switches would modify the flow label, whereas Joanne clarified that only the ingress node generating the packet does so.
+  * Lorenzo Colitti questioned why the source ports could not simply be changed to achieve the same entropy.
+  * **Action Item**: The authors will clarify the role of the ingress device in the next draft version.
+
+---
+
+### ICMP Error Handling for VPNs in SRv6 Networks
+*Joint Discussion of draft-varhal-6man-icmp-srv6-vpn & draft-ali-6man-srv6-vpn-icmp-error-handling*
+* Slide Decks:
+  * [06_ICMP Error Handling for VPNs in SRv6 Networks: draft-varhal-6man-icmp-srv6-vpn](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-icmp-error-handling-for-vpns-in-srv6-networks-draft-varhal-6man-icmp-srv6-vpn-00) (Presented by Balazs Varga)
+  * [07_draft-ali-6man-srv6-vpn-icmp-error-handling-04](https://datatracker.ietf.org/meeting/126/materials/slides-126-6man-draft-ali-6man-srv6-vpn-icmp-error-handling-04-00) (Presented by Zafar Ali)
+
+* **Discussion**:
+  * Balazs Varga presented `draft-varhal-6man-icmp-srv6-vpn`, focusing on using ping/traceroute to locate failures in SRv6 networks. It proposes modifying the source IP address at the ingress PE to be VPN-specific so that ICMP errors can be mapped back to the correct customer VPN.
+  * Zafar Ali presented `draft-ali-6man-srv6-vpn-icmp-error-handling`, focusing on returning transit ICMP errors (like Packet Too Big) to customer CEs. It replicates MPLS behavior by having the P-node copy the destination VPN SID from the invoking packet into the outer destination address of the ICMP error, allowing the egress PE to forward it back to the customer.
+  * Jen Linkova questioned a slide in Zafar's deck showing source IP spoofing (using the PE1 address instead of the local P1 address). Zafar agreed it should be the local P-node address (P1) and will correct it.
+  * Ron Bonica argued that the problem is common to all IP-in-IP tunnels (GRE, UDP, etc.) and suggested writing a generic solution instead of an SRv6-specific one. Zafar responded that operators prefer SRv6-specific implementation details.
+  * Suresh Krishnan raised concerns that Zafar's approach requires P-nodes to be SRv6-aware. Zafar clarified that if P-nodes are not SRv6-aware, the fallback behavior routes packets back to the ingress PE (combining both drafts' approaches).
+  * **Path Forward**: Eric Vyncke and Joel Halpern (SPRING co-chair) noted that because these drafts primarily govern SRv6 VPN architecture and operator philosophy, the SPRING working group should review the merged drafts first. Once SPRING agrees on the architecture, any necessary protocol or behavioral changes can be formally progressed in 6MAN or INTAREA.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-6man-rfc8504-bis`**: Authors will publish version -04 incorporating the feedback on `PREF64`/RFC 7050, after which the chairs will initiate a WGLC.
+* **The IPv6 Loopback Address Prefix**: Chairs will issue a call for working group adoption on the loopback expansion draft.
+* **SRv6 ICMP Drafts**: Balazs Varga and Zafar Ali agreed to merge `draft-varhal-6man-icmp-srv6-vpn` and `draft-ali-6man-srv6-vpn-icmp-error-handling` into a single document to be presented to the SPRING working group.
+
+---
+
+## Next Steps
+
+* **Dormant Drafts**: Chairs will send individual messages to the list for each dormant/expired working group draft to solicit feedback on whether to return them to individual status before the September 1 deadline.
+* **`draft-ietf-6man-ieee80211-fms`**: Eric Vyncke will coordinate with the IEEE-IETF liaison group regarding Wi-Fi multicast issues.

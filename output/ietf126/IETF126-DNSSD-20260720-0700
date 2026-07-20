@@ -1,0 +1,115 @@
+# [DNSSD](../wg/dnssd.html)
+
+## Summary
+The DNSSD Working Group met to discuss several key drafts, a proposed charter revision, and new individual proposals. The session covered updates on Unicast Local Discovery (ULD), mDNS conflict resolution using the Time Since Received (TSR) option, the DNSSD Advertising Proxy, improvements to DNS SIG(0), and efficiency enhancements for SRP (SRP Hints). Additionally, an informational presentation was given on Zero-Configuration Agent Discovery.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status and Charter Revision
+* **Presenter:** Chris Box
+* **Slides:** [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-chair-slides-00)
+* **Discussion:**
+  * Chris Box outlined the proposed charter updates, highlighting deployment contexts such as Thread border routers (using SRP) and Ethernet/Wi-Fi (using mDNS, used by Matter).
+  * Ted Lemon raised concerns about ensuring multicast DNS (mDNS) protocol optimizations and proxy cooperation are explicitly covered. Chris Box and Esko Dijk agreed to clarify that mDNS is within the scope of the second charter bullet point (mechanisms improving efficiency and effectiveness of DNSSD).
+  * Esko Dijk inquired about the out-of-scope clause regarding other zero-configuration protocols. Chris Box confirmed that while this WG only defines its own mapping, other working groups (e.g., CoRE) are free to map their protocols to DNSSD.
+  * Frank Brockners asked where new service types for agent discovery should be defined. Stuart Cheshire clarified that this WG should serve as an expert consultancy for other WGs defining specific service types rather than taking them on as chartered work items. 
+  * Éric Vyncke emphasized that the charter represents a formal contract with the community and urged everyone to review it.
+  * Chris Box brought up a GitHub issue regarding Wi-Fi timing compliance. Ted Lemon suggested explicitly referencing "mDNS" within the text to avoid ambiguity, which Esko Dijk supported.
+
+### 2. Unicast Local Discovery (ULD)
+* **Presenter:** Carsten Sperling
+* **Slides:** [Unicast Local Discovery](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-unicast-local-discovery-00)
+* **Discussion:**
+  * Carsten Sperling introduced the renamed "Unicast Local Discovery" (ULD) draft (formerly "DNSSD and Infrastructure"). The goal is to provide link-local discovery with minimal multicast, saving battery power for constrained devices.
+  * Key changes in the draft include:
+    * Direct use of the `.local` domain for SRP and client queries to encourage adoption at the DNSSD library level. This requires updating RFC 6762 to permit routing `.local` queries to ULD servers.
+    * Server discovery using standard DNSSD query types with a priority and text key. A tiebreaker based on the lowest link-local IPv6 address is used when priorities match.
+    * Using Router Advertisements (RA) to publish infrastructure servers.
+    * Combining query results from SRP and discovery proxies.
+    * Allowing link-local DNS push to use TCP without TLS for resource-constrained devices, as user privacy is typically less of a concern for local IoT devices (e.g., light bulbs).
+  * **Open Items:**
+    * Providing feedback to clients regarding mDNS conflicts on SRP requests.
+    * Deciding whether ad-hoc servers should use the RA option (which would require carrying more information).
+    * Supporting reverse address mapping for link-local and IPv6 `.arpa` domains.
+  * **Feedback:**
+    * Éric Vyncke suggested making the RA text tighter regarding race conditions and fallback rules.
+    * Ted Lemon suggested using the RA option for all servers (including ad-hoc) to avoid mDNS query overhead. He also noted that conflict handling should be specified in the advertising proxy draft rather than the ULD draft.
+    * Esko Dijk suggested looking into using standard SRV record priority and weight fields instead of TXT records. Ted Lemon noted that current APIs often fail to expose SRV priorities.
+    * François Michel asked about signaling conflicts through return codes. Carsten Sperling clarified that some feedback is necessary at the protocol level so local libraries can handle auto-renaming without rejecting SRP registrations entirely.
+    * Stuart Cheshire provided context: the success of Matter has led to networks with hundreds of IoT devices, causing scaling issues due to mDNS multicast storms on Wi-Fi. ULD adapts the successful unicast approach of Thread to Wi-Fi while maintaining backward compatibility with legacy mDNS devices.
+
+### 3. mDNS Conflict Resolution using TSR
+* **Presenter:** Esko Dijk
+* **Slides:** [mDNS conflict resolution using TSR](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-mdns-conflict-resolution-using-tsr-00)
+* **Draft:** [draft-ietf-dnssd-tsr](https://datatracker.ietf.org/doc/draft-ietf-dnssd-tsr/)
+* **Discussion:**
+  * Esko Dijk summarized the updates made to the TSR draft, including consistent SRP terminology, graphic option formats, suppression rules, multi-packet mDNS handling, and an appendix walkthrough.
+  * **Open Issues:**
+    * **Section 3.8 (Replication):** Esko suggested that TSR processing rules should be independent of the record's origin (whether it came from a local client or replication). Ted Lemon noted the SRP replication draft is old and will change, but suggested that adding a checksum/hash of the registered data to the TSR option could resolve clock drift issues during replication.
+    * **Probing on refreshes:** Esko questioned why the draft requires probing when a client simply updates/refreshes its own existing records. Stuart Cheshire clarified that standard mDNS does not require reprobing for Rdata updates on already claimed and defended names; it only requires an announcement. Ted Lemon agreed the draft should be updated to state that probing is not required for TSR updates on existing names.
+    * Jenny asked about simple SnackRouter requirements regarding the advertising proxy. Esko confirmed it remains in the current draft.
+
+### 4. DNSSD Advertising Proxy
+* **Presenter:** Ted Lemon
+* **Slides:** [DNSSD Advertising Proxy](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-dnssd-advertising-proxy-00)
+* **Draft:** [draft-ietf-dnssd-advertising-proxy](https://datatracker.ietf.org/doc/draft-ietf-dnssd-advertising-proxy/)
+* **Discussion:**
+  * Ted Lemon presented the remaining open issues on the draft:
+    * **Scoped Addresses:** If a proxy knows an address is routable on a link, it should advertise it. If it is a link-local address and its link validity is unknown, it should only be advertised if no other routable addresses exist.
+    * **mDNS Conflicts & Subdomains:** To prevent conflicts, Ted proposed using a subdomain of `.local` (e.g., `hostname.dataset.local`) for proxies.
+    * **Subdomain Discussion:** Carsten Sperling noted that some clients (like Matter) bypass PTR browsing and directly query service instance IDs under `.local`. Shifting them to a subdomain might break existing behaviors. Stuart Cheshire noted that service instance names (which users see) are distinct from hostnames (used as glue). Matter service names are derived from unique cryptographic keys, meaning hostnames can rename on conflict without breaking core functionality. Ted suggested a hybrid approach where both the subdomain and `.local` hostnames are published, allowing a fallback if a `.local` conflict occurs.
+    * **Other Items:** Key record publication (balancing privacy vs. conflict resolution), mapping short DNS TTLs to mDNS, and handling clients that transition from SRP to native mDNS (which requires mandating TSR on those clients).
+
+### 5. DNS SIG(0)
+* **Presenter:** Donald Eastlake
+* **Slides:** [DNS SIG(0)](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-dns-sig0-00)
+* **Discussion:**
+  * Donald Eastlake presented on the limitations of the original SIG(0) specification (RFC 2931) and proposed an improved SIG(0) resource record.
+  * The original SIG(0) lacks an original ID field (preventing reliable forwarding), limits messages to a single signature, lacks extensibility/error fields, and has no key state indication.
+  * The proposed new SIG(0) RR introduces a signature validity window with a "fudge" parameter and explicitly specifies forwarding behaviors.
+  * Ondřej Surý voiced implementation concerns, noting that servers would have to support both formats. He warned that SIG(0) serves as an Access Control List (ACL), and performing heavy cryptographic validation before applying ACL checks introduces a potential DDoS vector. Donald welcomed contributions to the draft's security section to address this.
+  * The draft's location remains open; it was moved from DNSOP to DNSSD due to its relevance to SRP, but other WGs (like DNSOP, via the delegation management draft) also use it.
+
+### 6. SRP Hints
+* **Presenter:** François Michel
+* **Slides:** [SRP Hints](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-srp-hints-00)
+* **Discussion:**
+  * François Michel proposed "SRP Hints" to mitigate Thread network congestion during mass re-registration events (e.g., after a router reboots). 
+  * Instead of sending a full 600-byte SRP update, the client sends an 8-byte UDP packet containing a hash of the query. If the registrar finds the hash in its persistent cache, it republishes the service. 
+  * Experiments with 50 Matter devices showed a reduction in average convergence time of over 30 seconds.
+  * **Technical Challenge:** The current implementation runs on port 53 and differentiates hints from standard DNS queries solely by packet size (8 bytes vs. the minimum 12-byte DNS header).
+  * Éric Vyncke, Ted Lemon, and Stuart Cheshire strongly advised against multiplexing different protocols on the same port based on packet size, noting it would not pass IETF review. Suggestions included using a new port, wrapping the hint in a minimal DNS-compliant format, or defining a new DNS option.
+  * Carsten Sperling asked if this optimization is useful outside of Thread. François responded that it is primarily intended for resource-constrained networks like Thread, but could scale to very large Wi-Fi networks in the future.
+
+### 7. Zero-Configuration Agent Discovery
+* **Presenter:** Frank Brockners
+* **Slides:** [Zero-Configuration Agent Discovery](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-zero-configuration-agent-discovery-00)
+* **Discussion:**
+  * Frank Brockners presented an informational topic on discovering local "agents" (e.g., AI/robotic agents in warehouses or medical environments).
+  * The proposal maps URLs to TXT records and is designed to operate in local, air-gapped networks. Questions for the group included how to structure the service types (e.g., `_agent._tcp`), how to handle long strings in TXT records, and privacy implications.
+  * Stuart Cheshire and Chris Box welcomed the discussion and invited further coordination on the mailing list and in the hallways.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* **Charter Revision:** A show-of-hands poll was taken on proceeding with the revised charter text, assuming mDNS-specific updates are clarified as in-scope under the efficiency goals.
+  * **Result:** 11 Yes, 0 No, 18 No opinion.
+* **Unicast Local Discovery Draft Adoption:** A show-of-hands poll was taken on whether the working group should adopt the Unicast Local Discovery (ULD) individual draft.
+  * **Result:** 11 Yes, 0 No, 18 No opinion.
+
+### Action Items
+* **Charter Update:** Chairs to update the proposed charter text to explicitly include mDNS within the scope of the efficiency and proxy cooperation work items before submitting it to the AD.
+* **`draft-ietf-dnssd-tsr`:** Esko Dijk to update the draft to clarify that probing is not required for TSR updates on existing, defended names. Esko and Ted Lemon to coordinate on adding a checksum/hash of the data to the TSR option to handle replication clock drift.
+* **`draft-ietf-dnssd-advertising-proxy`:** Ted Lemon to propose text on the mailing list addressing the hybrid `.local` subdomain conflict resolution approach and to drive the draft forward now that TSR is stable.
+* **SRP Hints:** François Michel to investigate alternatives to port 53 packet-size multiplexing, such as defining a minimal DNS-compliant format or using a dedicated port.
+
+---
+
+## Next Steps
+* The chairs will coordinate with the Area Director (Éric Vyncke) to advance the updated charter.
+* The authors of the Unicast Local Discovery draft will prepare the document for formal working group adoption.
+* Active discussions on ULD, TSR, and Advertising Proxy details will continue on the DNSSD mailing list.

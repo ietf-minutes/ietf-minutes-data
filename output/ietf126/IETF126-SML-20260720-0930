@@ -1,0 +1,74 @@
+# [SML](../wg/sml.html)
+
+## Summary
+
+The SML Working Group met at IETF 126. The session focused on resolving open issues in the core structured email draft (`draft-ietf-sml-structured-email`) and discussing the newly adopted structured quoted content draft (`draft-ietf-sml-structured-quoted-content`). Key debates centered on the technical placement of structured data within messages (separate MIME parts versus embedding in HTML), handling client-side replacement of HTML content, and establishing flags or headers to signal Machine Readable Messages (MRMs). Due to time constraints, the scheduled presentation on trust and security considerations (`draft-ietf-sml-trust`) was deferred.
+
+## Key Discussion Points
+
+### 1. Structured Email (Core Draft)
+The presenter of the core draft introduced updates to [Structured Email (Core draft)](https://datatracker.ietf.org/meeting/126/materials/slides-126-sml-structured-email-core-draft-02) for `draft-ietf-sml-structured-email`, focusing on Section 4 (placement and content types) and Section 6.
+
+*   **Placement of Structured Data (HTML vs. Separate MIME Parts):**
+    *   The draft previously recommended clean, separate MIME parts and discouraged embedding structured data within HTML (legacy practice). 
+    *   Arndt noted that implementation experience shows that some client codebases find it easier to insert JSON-LD as HTML comments, while others prefer separate MIME parts, suggesting both should be allowed.
+    *   Philip proposed a distinction based on use cases: separate MIME parts are appropriate for fully machine-readable messages to save bandwidth, while embedding within HTML is highly logical for partial representations where the structured data and HTML are tightly coupled semantically.
+    *   Ben Books argued for a fourth category of data—"information about the message content" (such as structured quotes)—which inherently belongs inside the HTML. He proposed putting JSON-LD directly into HTML attributes, noting that HTML attributes are far more likely to survive replying and forwarding loops (e.g., between Apple Mail and Outlook) than separate MIME parts or `<script>` tags.
+    *   The Working Group agreed to take the discussion of this "fourth class" of data placement to the mailing list.
+
+*   **Signed/Encrypted JSON-LD (JOCEY):**
+    *   The core draft mentions using JOCEY standards (JSON Web Signatures) for signing/encrypting structured data. The presenter suggested aligning this section with `draft-ietf-sml-trust`.
+
+*   **Subject Line Warnings:**
+    *   The presenter proposed warning against placing critical structured data only in the subject line of a Machine Readable Message (MRM). Alexey recommended changing any strict "must not" language to a softer encouragement to ensure readability for automated and human receivers.
+
+*   **HTML Rendering & Replacement:**
+    *   The draft includes a `data-id` attribute to link HTML elements with concepts in the structured data.
+    *   The presenter introduced hints for "presentation deepness" (brief vs. detailed representations, e.g., in newsletters).
+    *   Arndt previously proposed a way to suppress HTML fallbacks so a client could render its own view from the structured data. The presenter proposed a `data-load-replace` parameter to indicate that an HTML element is designed to be replaced by client-rendered content.
+    *   Neil Jenkins raised security concerns regarding client-side HTML injection. He argued that standard mechanisms like `multipart/alternative` or `multipart/mixed` should be used instead of injecting content into HTML. Ben Books countered that secure rendering (such as using iframes) is client-implementation-specific. The security implications of HTML replacement will be discussed on the mailing list.
+
+*   **MRM Flags and Headers:**
+    *   The draft defines an IMAP/SMTP flag for Machine Readable Messages (MRM) and a general "has structured data" flag.
+    *   Philip pointed out that IMAP flags are set by receivers, leaving senders with no way to signal that a message is an MRM. He proposed introducing a sender-side header to signal MRM status and adding a registry of valid sub-types (e.g., one-time codes or vacation notices) so MUAs can make better decisions.
+    *   DKG suggested that flags should be evaluated based on practical client utility (e.g., optimization or message list displays) rather than purely conceptual consistency.
+
+---
+
+### 2. Structured Quoted Content
+Philip presented [Structured Quoted Content](https://datatracker.ietf.org/meeting/126/materials/slides-126-sml-structured-quoted-content-01) for `draft-ietf-sml-structured-quoted-content`.
+
+*   **Draft Updates:**
+    *   The draft has been adopted by the working group.
+    *   Support for plain text was dropped to simplify the draft, as target MUAs generally support HTML.
+    *   A `forward preamble` property was added to capture client-inserted forwarding headers.
+    *   Examples covering forwarding/reply chains, inline comments, and legacy quoting were added.
+    *   Dropping plain text resolved complex inline attachment concerns; attachments are now handled using standard HTML image references.
+
+*   **Open Issues & Feedback:**
+    *   **Back-referencing:** Philip noted the difficulty of finding a feasible way to reference exactly which segment of an original message is being quoted. Ben Books agreed this is highly complex and likely unfeasible.
+    *   **Vocabulary:** Philip raised concerns about mixing schema.org and custom SML vocabularies. The presenter of the core draft confirmed this is standard, acceptable practice in RDF/JSON-LD.
+    *   **Property Definitions:** Alexey requested that the draft explicitly list and define supported properties in a table (including missing CC and BCC recipient fields) and specify client behavior when encountering unknown properties.
+    *   **HTML blockquote and cite attribute:** Ben Books noted that Netscape and Thunderbird historically used `<blockquote cite="cid:...">` to reference quoted messages, which was highly effective. He asked how the IETF could work with the WHATWG/W3C to standardize this. Neil Jenkins clarified that the `cite` attribute is already valid HTML for blockquotes and accepts URLs; thus, the WG only needs to define a valid URL scheme (e.g., mid/cid) rather than changing the HTML specification.
+
+---
+
+### 3. Trust and Security Considerations
+Due to running out of time, [Trust and Security Considerations](https://datatracker.ietf.org/meeting/126/materials/slides-126-sml-trust-and-security-considerations-00) for `draft-ietf-sml-trust` was not presented.
+
+## Decisions and Action Items
+
+### Decisions
+*   **Plain-text support:** Officially dropped from `draft-ietf-sml-structured-quoted-content` to simplify implementation.
+*   **Forward preamble:** Added to `draft-ietf-sml-structured-quoted-content`.
+
+### Action Items
+*   **Philip** to draft and propose a sender-side header on the mailing list to signal Machine Readable Messages (MRM) and their subtypes.
+*   **Arndt** to provide text on the mailing list explaining the integration of the HTML `blockquote` `cite` attribute with appropriate URL schemes for quoting.
+*   **Alexey** to send editorial nits, property tables, and schema definition feedback to Philip for `draft-ietf-sml-structured-quoted-content`.
+*   **Working Group** to discuss on the mailing list:
+    *   The "fourth class of data" (embedding JSON-LD in HTML attributes to preserve structural data during reply loops).
+    *   The security implications of HTML injection/replacement mechanisms (`data-load-replace`).
+
+## Next Steps
+*   The chairs (Arndt and Alexey) will look into scheduling an interim virtual meeting to address the remaining agenda items, including `draft-ietf-sml-trust` and unresolved mailing list discussions.

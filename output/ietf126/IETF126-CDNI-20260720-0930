@@ -1,0 +1,75 @@
+# [CDNI](../wg/cdni.html)
+
+## Summary
+
+The CDNI Working Group met at IETF 126. The session focused on reviewing active milestones, reconciling error reporting models in the Control/Triggers interface, simplifying protected secrets metadata, progressing the Metadata Expression Language (MEL) grammar and semantics based on initial implementation feedback, and discussing logging extensions. The group also planned for a virtual interim meeting in September.
+
+## Key Discussion Points
+
+### Administrivia & Milestone Updates
+*   Chris Lemmons and Sanjay Mishra led the session. Kevin and Will Hawkins volunteered as notetakers.
+*   The chairs presented the [IETF 126 CDNI Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-cdni-ietf-126-cdni-chair-slides-01).
+*   Sanjay Mishra highlighted that `draft-ietf-cdni-processing-stages-metadata` and `draft-ietf-cdni-metadata-expression-language` remain the working group's highest priority because several other active documents depend on them.
+*   `draft-ietf-cdni-delivery-metadata` (authored by Alfonso, who was not present) is currently in IESG evaluation. Gorry Fairhurst (AD) noted there are active "Discuss" comments that need to be resolved. Sanjay Mishra agreed to work with Alfonso to clear these comments.
+*   The milestones for several dependent drafts have been adjusted:
+    *   `draft-ietf-cdni-cache-control-metadata` was pushed out to February 2027 due to its dependency on processing stages.
+    *   `draft-ietf-cdni-client-access-control-metadata` and `draft-ietf-cdni-source-access-control-metadata` have been pushed to June 2027.
+    *   The CDN name footprint work is on the back burner.
+
+### Control Interface / Triggers
+*   Alan presented on `draft-ietf-cdni-ci-triggers-rfc8007bis` using the [RFC8007bis: Control Interface/Triggers](https://datatracker.ietf.org/meeting/126/materials/slides-126-cdni-rfc8007bis-control-interfacetriggers-00) slide deck.
+*   Draft 19 was published prior to the meeting. Draft 20 is currently pending and incorporates feedback from Jay (co-author) and Kevin. The authors aim to publish Draft 20 in August, targeting Working Group Last Call (WGLC).
+*   **Error Reporting Redesign:** The draft reconciles synchronous RESTful HTTP errors (4xx/5xx immediate responses) and asynchronous processing errors (using the `error v2` description object in the trigger, setting status to `failed`). Synchronous reporting is now the preferred style for errors known at request time. For synchronous rejections, the DCDN will return the structured `error v2` object in the HTTP response body to avoid losing detail.
+*   **Cascading CDNs:** This redesign ensures errors are cleanly propagated upward when a transit CDN receives a synchronous rejection from a downstream CDN.
+*   **Trigger Labels:** Trigger labels were modified from serialized string arrays to a JSON key-value object format, aligning with Kubernetes conventions (addressing Kevin's previous feedback).
+*   **Additional Changes:**
+    *   Clarified enforcement language around extended status requests; if a DCDN does not support/advertise extended status, it must reject the request.
+    *   Clarified that total attribute counters should be cumulative across the DCDN chain.
+    *   Reintroduced recommendations for DCDNs to provide completion estimates.
+*   Kevin noted that an automated syntax parser (Claude) found a few typos and bugs in the JSON examples in Draft 20, which Alan agreed to resolve before publication.
+
+### Protected Secrets Metadata
+*   Ben presented updates on `draft-ietf-cdni-protected-secrets-metadata`.
+*   All references to HashiCorp Vault have been removed. They were replaced throughout the document with a generic external store type.
+*   Chris Lemmons provided detailed feedback and argued that the draft is not yet ready for an external security review. Specifically, the document contains only a brief security considerations section and needs to formally address transport security (e.g., HTTPS/TLS requirements) and CMS algorithm restrictions, or explicitly reference the metadata interface security considerations.
+*   Ben agreed to address these security concerns and Chris's other comments in the next draft version.
+
+### Metadata Expression Language (MEL)
+*   Glenn and Will Hawkins presented updates on `draft-ietf-cdni-metadata-expression-language` using the [Slides for MEL Discussion](https://datatracker.ietf.org/meeting/126/materials/slides-126-cdni-slides-for-mel-discussion-00) slide deck.
+*   Draft 02 was recently submitted. The primary change was converting the original BNF grammar into standard ABNF (RFC 5234).
+*   Will Hawkins shared feedback stemming from his ongoing implementation efforts:
+    *   **Precedence & Associativity:** The draft is currently silent on operator precedence. Will proposed a strawman model derived from common programming languages (such as C++, Lua, Rust, and Python) to define precedence for mathematical, logical, ternary, and member access operators.
+    *   **Dot (`.`) Operator:** Discussed whether the dot should be a formally specified operator or if nested structures should simply be baked into variable names. Treating it as an operator allows better extensibility for future user-defined or structured types.
+    *   **Header Normalization:** Accessing headers via `rec.h.<header-name>` introduces issues because HTTP headers contain dashes (invalid variable characters in many languages). Will suggested lowercasing names and converting dashes to underscores. Glenn expressed a preference for keeping header names exactly as defined in HTTP to avoid developer confusion.
+    *   **URI Representation:** Accessing the parent variable `rec.uri` returns a complex type, while sub-components (e.g., `rec.uri.path`) return strings. Will suggested changing direct access of the entire URI to `rec.uri.all` to maintain type safety. Glenn supported simplifying or restricting direct URI access since the use case only requires component inspection.
+*   Chris Lemmons raised two additional technical considerations for MEL:
+    *   **Regex Engine Safety:** PCRE is regex-directed rather than text-directed, which presents security risks (e.g., ReDoS). The working group needs to discuss regex safety and define a standard-referenceable regex flavor.
+    *   **Resource Limits:** The processing model needs language to restrict memory and CPU utilization (such as preventing arbitrarily large variables).
+*   Glenn suggested planning a collaborative group editing session to resolve these items for Draft 03.
+
+### CDNI Logging Extensions
+*   Ben discussed `draft-ietf-cdni-logging-extensions`. The latest upload was a keep-alive version bump.
+*   Kevin recently submitted a detailed review questioning the complexity of file naming conventions and sidecar metadata files.
+*   Ben explained that sidecar files (JSON metadata stored next to actual log files) are necessary because common formats like CSV and Excel spreadsheets cannot embed metadata without breaking pre-defined, non-IETF logging parsers.
+*   Kevin highlighted that sidecar files introduce operational complexity, particularly concerning streaming logs, resolving name collisions at the upstream CDN, and merging logs from multiple downstream CDNs.
+*   Ben agreed that the operational flows are complex and plans to convert existing block diagrams into ASCII (and SVG) formats to clarify how log metadata is aggregated and routed.
+
+### Any Other Business (AOB)
+*   **Virtual Interim:** The chairs proposed holding a virtual interim meeting in mid-September to maintain momentum on MEL and Triggers.
+*   Chris Lemmons shared a scheduling Doodle poll (open until August 7).
+*   Gorry Fairhurst (AD) approved the interim plan, noting it must not conflict with other scheduled IETF activities.
+
+## Decisions and Action Items
+
+| Action Item | Responsible Party | Status |
+| :--- | :--- | :--- |
+| Work with Alfonso to resolve IESG Discuss comments on `draft-ietf-cdni-delivery-metadata` | Sanjay Mishra | In Progress |
+| Fix JSON syntax bugs in draft 20 of `draft-ietf-cdni-ci-triggers-rfc8007bis` and publish | Alan / Jay | Pending |
+| Address security considerations and transport requirements in `draft-ietf-cdni-protected-secrets-metadata` | Ben | Pending |
+| Incorporate operator precedence, header normalization, PCRE safety guidelines, and resource limits into `draft-ietf-cdni-metadata-expression-language` | Glenn / Will Hawkins | Pending |
+| Add ASCII/SVG architecture diagrams to `draft-ietf-cdni-logging-extensions` to clarify sidecar mechanics | Ben | Pending |
+| Respond to the scheduling poll for the September interim meeting | All WG Members | Urgent (Due Aug 7) |
+
+## Next Steps
+*   A collaborative group editing session will be scheduled by Glenn to progress `draft-ietf-cdni-metadata-expression-language`.
+*   The chairs will finalize the date for the September virtual interim once the Doodle poll closes on August 7.

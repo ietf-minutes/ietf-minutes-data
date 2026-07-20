@@ -1,0 +1,101 @@
+# [PLANTS](../wg/plants.html)
+
+## Summary
+
+The PLANTS Working Group met at IETF 126 to discuss the status of its core draft, explore log reconciliation alternatives, evaluate deployment use cases for private PKIs, review real-world post-quantum cryptography (PQC) measurements, and receive updates from the recent Hackathon. 
+
+Key outcomes of the meeting included a design decision on how to represent trust anchor IDs in Merkle Tree Certificates (MTCs), a proposal for Git-rebase-style log reconciliation to handle log forks, and a discussion on how to modularize deployment use cases for private and community PKIs.
+
+---
+
+## Key Discussion Points
+
+### WG Status and Administration
+* **Presentation**: [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-chair-slides-00)
+* **Presenter**: Tom (Co-Chair)
+* **Discussion**:
+  * The co-chair reviewed the Note Well and Code of Conduct.
+  * The working group is operating its GitHub repository in "issue discussion mode" under RFC 8874, with weekly activity summaries delivered automatically on Sundays.
+
+### Merkle Tree Certificates (MTC) Draft Update
+* **Presentation**: [MTC Draft Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-mtc-draft-update-00)
+* **Presenter**: David Benjamin
+* **Relevant Draft**: [draft-ietf-plants-merkle-tree-certs](https://datatracker.ietf.org/id/draft-ietf-plants-merkle-tree-certs)
+* **Discussion**:
+  * **CA Representation**: The CA is represented as an X.509 certificate with its key in the Subject Public Key Info (SPKI) field and a new critical extension detailing MTC CA parameters.
+  * **Cosigners**: The draft now mandates exactly one designated cosigner per CA (sharing the CA's name) to sign the Certificate Revocation List (CRL), simplifying X.509 integration while allowing optional extra cosigners for transparency.
+  * **Log Generations**: To address statefulness and failure modes, CAs will run sequential log generations. The log generation number is encoded within a 64-bit serial (16-bit log generation + 48-bit serial).
+  * **Extensions & ACME**: New extensibility hooks were added to log entries. For ACME, a new custom link relation has been introduced to prevent legacy clients from breaking on missing alternative links.
+  * **Signature Construction**: Tweaked to align with the TLOG implementation for MLDSA.
+  * **Naming (Relative OID vs. UTF-8 String)**: Trust anchor IDs are relative OIDs. In X.509, these can be mapped as actual `RelativeOID` types or UTF-8 strings representing dotted decimals. 
+    * Bob Beck advocated for `RelativeOID`, noting it is simple to support.
+    * David Benjamin noted that Go ran into a temporary compatibility issue with relative OIDs, which will be resolved in its next release.
+    * A poll of those present was conducted to gauge preference between relative OIDs and UTF-8 strings. The room expressed a strong consensus in favor of using **Relative OIDs**.
+  * **Implementations**: Bob Beck announced that OpenSSL will implement MTC (without an official timeline commitment). Alexander Bokovoy confirmed that Red Hat's Akamu ACME server already implements draft-05 of `draft-ietf-plants-merkle-tree-certs` using relative OIDs.
+
+### Log Reconciliation
+* **Presentation**: [Log Reconciliation](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-log-reconciliation-00)
+* **Presenter**: Brandon
+* **Discussion**:
+  * Brandon proposed "Log Reconciliation" as an alternative to throwing away log generations when a log forks. This approach behaves like a Git rebase: instead of discarding a forked log, the log merges views, regressing a mirror back to a common ancestor, moving subsequent entries to a temporary backlog, inserting missing certificates, and then re-submitting the backlog.
+  * **Technical Concerns**:
+    * Bob Beck asked if there was a limit to the number of fork-and-resolve cycles. Brandon confirmed there is no technical limit.
+    * Wes Hardaker expressed concern over complex multi-mirror partition reconciliation (e.g., net splits).
+    * Dennis Jackson raised concerns regarding complexity shifted to mirrors, noting that mirror failure could halt issuance.
+    * Joe Blasio raised concerns over the operational burden for CAs needing to re-add entries post-reconciliation.
+    * Aaron Gable suggested making the rebase transparent and auditable by defining a new "rebased/forked leaf" log entry type, or utilizing a merge strategy where everything is reconciled atomically in a single entry to reduce mirror-side backlog complexity.
+    * David Benjamin and Brandon discussed how changing tree positions via rebasing affects serial-number-based revocation and might lead to "collateral damage" unless there is clear, verifiable evidence of the rebase.
+    * Devon O'Brien noted that this model requires universal acceptance from all User Agents. He argued that because some non-recoverable failure modes (like bit flips) still require the "log generation" churn path, the ecosystem should focus on reducing the cost of CA churn rather than adding mirror-side complexity.
+
+### MTC Deployment Use Cases
+* **Presentation**: [MTC Deployment Use Cases](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-mtc-deployment-use-cases-01)
+* **Presenter**: John Gray
+* **Discussion**:
+  * John Gray presented use cases for Merkle-tree-style optimizations in private or community PKIs. 
+  * Features investigated include a landmark distribution point fetching mechanism for non-browser verifiers, code-signing/supply chain integrity, constrained-device environments, and Merkle-tree-based batch-signed revocation (reducing CRL/OCSP signing overhead).
+  * **Feedback & Modularization**:
+    * Dennis Jackson recommended moving the high-level use cases into the appendix of the general MTC Architecture document and focusing work on mechanism-specific drafts.
+    * Aaron Gable asked if the landmark distribution point behaves like a CRL Distribution Point (CRLDP) and suggested defining a CRL extension to revoke contiguous blocks of consecutive serials to optimize CA incidents.
+    * Amari noted that similar supply-chain transparency work using Merkle trees is happening in the SKIT working group (referencing RFC 9942 and RFC 9943).
+    * Sean Turner supported the work but advised the authors to tightly scope their efforts.
+    * Victor proposed that instead of requiring each application to run HTTP clients to hunt for landmarks, a local, system-wide service (similar to Plan 9) should manage and distribute landmarks.
+
+### Measuring Deployment Characteristics of PQ TLS Authentication Mechanisms
+* **Presentation**: [Measuring Deployment Characteristics of PQ TLS Authentication Mechanisms](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-measuring-deployment-characteristics-of-pq-tls-authentication-mechanisms-00)
+* **Presenter**: Nalini Elkins
+* **Discussion**:
+  * Nalini Elkins presented measurement data on TLS and PQC adoption within enterprise environments (healthcare, financials, and US government agencies). 
+  * Data showed that PQC adoption remains very low in these sectors compared to major Internet companies. Introducing MLDSA signatures increases handshake size, raising the certificate transfer time to approximately 50% of the handshake (~150-200ms).
+  * Nalini raised concerns regarding how MTCs affect custom enterprise OIDs, Subject Alternative Names (SANs), and forensic legal chains of custody (e.g., providing certificates as evidence to a court).
+  * **Clarifications**:
+    * Devon O'Brien explained that MTCs are standard X.509 v3 certificates utilizing a new signature algorithm. All traditional fields (SANs, OIDs, custom extensions, CRLDP) remain fully supported. The principal performance benefit is the complete elimination of intermediate CA certificates during the handshake.
+    * Alizia Cario pointed out that verifying an MTC signature requires an external "landmark" which is not packaged inside the end-entity or CA certificate. Nalini agreed that enterprises will need clear deployment and operational guides to help capture and store this external validation data.
+    * Bas Westerbaan emphasized that MTC is not a universal replacement; Cloudflare uses standard MLDSA for its private PKIs and reserves MTC for scenarios requiring size optimization. He supported the call for clear architectural guidance.
+
+### Akamu ACME Server Hackathon Interop Results Report
+* **Presentation**: [Akamu ACME server Hackathon interop results report](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-akamu-acme-server-hackathon-interop-results-report-00)
+* **Presenter**: Alexander Bokovoy
+* **Discussion**:
+  * Alexander Bokovoy presented on Akamu, an experimental, Rust-based ACME server designed for private enterprise environments.
+  * During the IETF 126 Hackathon, Akamu successfully completed remote ACME interoperability testing with Corey Bonnell’s ACME client, identifying and fixing several minor standards compliance issues.
+  * Akamu supports `draft-ietf-plants-merkle-tree-certs` draft-05.
+  * Additionally, the team successfully prototyped issuing FN-DSA certificates by leveraging the Rust-based Aurora framework, cross-signing them through the Akamu ACME server in under half a day.
+  * Alexander showcased a timeline-based visualization interface for managing and displaying MTC CA state histories.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* **MTC Naming Attribute**: The Working Group reached consensus to use **Relative OID** (rather than a UTF-8 string) for representing trust anchor IDs in the RDN attribute. 
+
+### Action Items
+* **David Benjamin** to add certificate verification functionality to the demo tool in the MTC repository and distribute it to the mailing list for interop testing.
+* **MTC Authors / Contributors** to continue the technical discussion of log reconciliation vs. log generations on the mailing list.
+* **MTC Deployment Use Cases Authors** to restructure their document, exploring moving the high-level use cases to the Architecture document and spinning out specific technical mechanisms (e.g., landmark distribution) into focused individual drafts.
+
+---
+
+## Next Steps
+* The chairs encouraged participants to utilize the IETF Hackathon to test MTC implementations and refine the core protocol.
+* An Architecture document will be drafted and presented by the next IETF meeting.

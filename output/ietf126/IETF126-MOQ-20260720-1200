@@ -1,0 +1,84 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+The MOQ Working Group held its first of three sessions at IETF 126. The session covered administration updates, upcoming interim dates, progress updates on the core Media over QUIC Transport (MOQT) protocol, the Low Overhead Media Container (LOC), end-to-end Secure Objects, and reports from the Auth Design Team. Significant discussion occurred around the prioritization of agenda items, the mechanism for handling "top end filters," and whether to standardise management and diagnostic metrics in a separate document.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and Agenda Bashing
+* **Presenters**: Martin Duke, Magnus Westerlund
+* **Slide Deck**: [Chair Slides Monday](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-sessc-chair-slides-02)
+* **Discussion**:
+  * Martin Duke presented upcoming milestones. The consensus call on Draft 18 changes closes today. Upcoming virtual interims were announced through October, alongside a four-day hybrid interim in Seattle, Washington (interop on Monday-Tuesday, issue discussion on Wednesday-Thursday).
+  * Cullen Jennings formally objected to the chairs' decision to move "top end filter" work to a separate draft rather than merging it directly into the core transport draft (`draft-ietf-moq-transport`). Martin Duke and Magnus Westerlund clarified that because list and room feedback was split (roughly 50/50), there was no rough consensus to merge it into the core transport draft, making a separate draft the most viable path forward to ensure progress.
+  * Zaheduzzaman Sarker (AD) reminded the room of the formal process for appealing consensus calls if participants disagree with a chair's assessment.
+
+### 2. MOQT Updates Since IETF 125
+* **Presenter**: Alan Frindell
+* **Slide Deck**: [MOQT Updates Since IETF 125](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-moqt-updates-since-ietf-125-00)
+* **Relevant Draft**: `draft-ietf-moq-transport`
+* **Discussion**:
+  * **Draft 18 & 19**: Draft 18 remains the current interop target. Draft 19 has been published, and Draft 20 is expected in about 8 weeks (four weeks prior to the Seattle interim). 72 PRs have landed since the last cycle.
+  * **Range Filters**: Fully implemented. Subscribers can filter based on priority, subgroup ID, object ID, and integer properties. Property filters in a subscription match object properties in the data plane, while filters in a `SUBSCRIBE_TRACKS` control message match track properties.
+  * **URL Scheme & Media Type**: MOQ-T roles and ALPN negotiations (H3 vs MOQ-T) were defined. A specific media type for MOQ-T session resources was introduced to allow the use of URL fragments to convey metadata (e.g., MSF parameters) to the client without sending them on the wire.
+  * **Control Plane Updates**: Wildcard subscribes were renamed to `SUBSCRIBE_TRACKS`, while namespace discovery is now handled by `SUBSCRIBE_NAMESPACE`. Multiple subscriptions to the same track are now permitted without mandatory deduplication. Required request IDs were removed, and a new `switch_from` parameter was proposed for cross-track coordination.
+  * **Data Plane**: Subgroups now feature a "first object" bit in the header. Delivery timeouts have been divided into Object Delivery Timeouts and Subgroup Delivery Timeouts. A `fill_timeout` parameter was added to fetch requests.
+  * **Issue Backlog**: Alan Frindell highlighted that despite rapid progress, new editorial and authentication-related issues have flatlined the open issue count. He urged contributors to engage asynchronously on GitHub rather than waiting for bi-weekly synchronous interims.
+
+### 3. Low Overhead Media Container (LOC)
+* **Presenter**: Moe Zanaty
+* **Slide Deck**: [LOC](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-loc-01)
+* **Relevant Draft**: `draft-ietf-moq-loc`
+* **Discussion**:
+  * Revisions 03 and 04 introduced an `audio_config` property (to map to WebCodecs `AudioDecoderConfig` for codecs like AAC) and resolved several property ID collisions.
+  * Will Law asked whether LOC properties should use application-defined spaces instead of registering directly in the MOQT common property table to avoid collisions. Alan Frindell responded that because relays might need to read certain properties (such as timestamps or speaker levels), registering common properties prevents collision issues when multiple applications share a relay.
+  * **Open Issues**: Frame duration representation remains open. WebCodecs requires duration information, and the team is considering whether to support delta-compressed frame durations. Colin Perkins suggested reviewing RTP's history with parameter representation to avoid future constraints.
+
+### 4. End-to-End Secure Objects
+* **Presenter**: Cullen Jennings
+* **Slide Deck**: [Secure Objects](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-secure-objects-00)
+* **Relevant Draft**: `draft-ietf-moq-secure-objects`
+* **Discussion**:
+  * **Threat Model**: The model was updated with feedback from Magnus Westerlund, including documentation of "multiplication attacks" where a malicious relay attempts attacks on millions of downstream subscribers.
+  * **Cryptographic Updates**: Canonicalized integers are now normalized to 64-bit fixed-width fields. Object IDs are restricted to 32 bits to accommodate AES-GCM 96-bit nonce constraints.
+  * **Publisher Priority**: The draft previously authenticated publisher priority without encrypting it. Moe Zanaty and Cullen Jennings agreed that because relays can ultimately overwrite or ignore this value, authenticating it is of low utility. The decision was made to remove publisher priority from the end-to-end authenticated fields.
+  * **WGLC / Next Steps**: Cullen Jennings requested a Working Group Last Call (WGLC). Magnus Westerlund and Suhas Nandakumar suggested doing a "freeze call" and parking the draft on a holding status until the normative references in `draft-ietf-moq-transport` stabilize. Alan Frindell noted that an independent, clean-room implementation is desirable to verify interoperability.
+
+### 5. Auth Design Team Update
+* **Presenter**: Mike English
+* **Slide Deck**: [Auth Design Team Update - IETF 126](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-sessc-auth-design-team-update-ietf-126-00)
+* **Relevant Drafts**: `draft-ietf-moq-privacy-pass-auth`, `draft-ietf-moq-c4m`
+* **Discussion**:
+  * The design team was formed to resolve the lack of a standardized challenge-response mechanism in MOQ-T.
+  * **Trust Boundaries & Fan-out**: Mike English outlined the tension between end-to-end authentication and fan-out scaling. If the original publisher must individually validate each subscriber, the publisher faces a significant processing load. Proposed models include:
+    * *Delegating validation to relays* (simplest, but requires trust).
+    * *Direct publisher authentication with subscriber sampling* (complex).
+    * *Communicating validation policies to relays*.
+  * Ted Hardie warned that distributing validation tables or cryptographic keys to relays could severely compromise subscriber privacy.
+  * Ian Swett questioned if MOQ should rely on out-of-band application-layer authentication (similar to HTTP CDNs) rather than building complex new transport-level mechanisms. Cullen Jennings countered that because publishers in MOQ are often client-like entities without publicly trusted TLS domains, a standardized token binding mechanism is required.
+  * **On-the-Wire Signaling**: The team proposed a handshake structure: `Subscribe` (with token) $\rightarrow$ `Auth Challenge` $\rightarrow$ `Auth Response` $\rightarrow$ `Subscribe OK`. Suhas Nandakumar supported this model, noting it mirrors the successful pattern established by `SUBSCRIBE_NAMESPACE`. Chris Lemons noted its similarity to DPoP nonce challenges.
+
+### 6. MOQT Issues and PRs, Part 1
+* **Presenter**: Alan Frindell
+* **Slide Deck**: [MOQT Issues and PRs, Part 1](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-moqt-issues-and-prs-part-1-00)
+* **Discussion**:
+  * **Blocked Issues**: Five issues are currently blocked waiting for feedback from assignees.
+  * **Management & Diagnostics**: The working group discussed whether diagnostic metrics should live in `draft-ietf-moq-transport` or a separate draft. Ian Swett advocated for keeping the core transport draft as lightweight as possible. Altonai volunteered to co-author a new draft focusing on relay diagnostic data. The chairs agreed to spin up a new repository dedicated to applicability and manageability.
+  * **Timeouts**: The team debated whether the various protocol timeouts (setup, control message, delivery, fill) should be negotiated on the wire. Ian Swett suggested that only timeouts resulting in unexpected application disruption (e.g., subscription termination) should be signaled. Cullen Jennings and Moe Zanaty argued that the draft should clearly distinguish timeout handling for relays versus end subscribers, and define guidance for unbounded operations.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **Top End Filters**: Work on "top end filters" will proceed as a separate draft rather than being merged into the core transport specification (`draft-ietf-moq-transport`).
+2. **Secure Objects Priority**: Publisher priority will be removed from the authenticated fields in `draft-ietf-moq-secure-objects`.
+3. **Secure Objects Progression**: The working group will conduct a "freeze call" (initial WGLC) for `draft-ietf-moq-secure-objects` and place it in a holding state pending core transport stability.
+4. **Manageability Split**: Management and diagnostic considerations will be split out of the main transport draft and developed in a separate document. A new GitHub repository will be created for this work.
+
+### Action Items
+1. **Assignees on Blocked Issues**: Respond to outstanding comments on blocked GitHub issues to allow editors to clear the tags.
+2. **Altonai**: Initialize the `zero-zero` draft for MOQ diagnostic metrics in the new manageability repository.
+3. **Auth Design Team**: Continue refining the challenge-response signaling flow, focusing on token-forwarding, sampling architectures, and DPoP-aligned message structures before the October interim.

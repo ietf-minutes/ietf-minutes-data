@@ -1,0 +1,82 @@
+# [ANRW](../wg/anrw.html)
+
+## Summary
+
+The Applied Networking Research Workshop (ANRW) was held as a joint workshop of the IRTF and ACM. The session opened with administrative remarks, noting that the Note Well applies and outlining submission statistics: 61 submissions were received (48 long papers, 13 short papers), resulting in 26 accepted papers (20 long, 6 short) organized into topic-specific sessions. 
+
+The workshop featured a keynote presentation on the critical transitions of the Internet and its interaction with power grid security, followed by a session on Network Management. This first session covered topics including unified network abstraction via knowledge graphs, state transfer latency reduction in edge clouds, dynamic segment sizing for congestion control, zero-copy Layer 7 load balancing, and predictive queuing in mobile edge networks.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and Administrative Remarks
+* **Presentation**: [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-chair-slides-00)
+* **Discussion**: The Workshop Organizer and Session Chair welcomed attendees, noting that the Note Well and Code of Conduct apply. Attendees were instructed to use MeetEcho for queuing. Out of 61 submissions, 26 papers were accepted for presentation.
+
+### 2. Keynote: Internet & Power Grid Transitions and Measurement Methodology
+* **Presentation**: [Keynote](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-keynote-00)
+* **Presenter**: Johanna Ulrich (ITU Austria / University of Linz)
+* **Discussion**:
+  * Johanna Ulrich detailed three critical Internet transitions: the commercialization and rise of security threats; IP convergence making the Internet critical infrastructure during disasters (e.g., cell/radio backups disappearing, leaving the Internet as the sole lifeline); and the fragmentation of the "borderless" Internet due to geopolitical boundaries and digital sovereignty concerns.
+  * Similarities were drawn to the power grid, which faces parallel challenges in geopolitical tensions, rapid digitization, and electrification convergence.
+  * Ulrich critiqued current Internet measurement methodologies, urging a shift from ad-hoc "measure what we can" engineering approaches to Karl Popper’s deductive scientific rigor. She noted that current policy-making and automated security tools require highly rigorous and reproducible data, whereas researchers frequently rely on shaky assumptions (e.g., unverified IP geolocation accuracy).
+  * Ulrich also presented research on how the Internet can threaten the power grid. A botnet of 1.5 to 10 million compromised IoT devices (like smart EV chargers or heating units) coordinated to suddenly spike or drop power consumption can destabilize the European grid frequency below critical thresholds (49 Hz or 47.5 Hz) within 30 seconds—faster than the 30-second mechanical reserve plants can respond.
+* **Q&A**:
+  * An audience member asked whether the Internet community could play a role in addressing the societal and psychological impacts of internet/social media addiction in youth. Ulrich clarified that while societal impact is critical, her focus is on structural infrastructure security rather than behavioral science.
+  * The Workshop Organizer commented on the difficulty of scaling up scientific Internet measurement tools, noting conflicts with commercial operators and hyperscalers. Ulrich emphasized that understanding and accounting for measurement bias is the primary requirement to make these measurements scientifically sound.
+
+### 3. Unified Network Abstraction Layer via Knowledge Graph
+* **Presentation**: [Network Management - Unified Network Abstraction Layer via Knowledge Graph](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-management-unified-network-abstraction-layer-via-knowledge-graph-01)
+* **Presenter**: Jefferson Campos Nobre (presenting on behalf of master's student Filipe)
+* **Discussion**: 
+  * Nobre addressed structural and semantic fragmentation in vendor-specific YANG models (using Cisco, Huawei, and Juniper's differing representations of `admin status` as an example). 
+  * The proposed solution is a three-layer knowledge graph (Semantic, Mapping, and Operation layers) implemented on Neo4j using the Cypher query language. It abstracts vendor-dependent attributes into unified semantic concepts, resolves YANG paths dynamically, and generates vendor-specific NETCONF RPC payloads.
+* **Q&A**:
+  * Yunze asked about the cost/difficulty of adding a new vendor or model and whether this mapping process is automated. Yunze also asked if the goal is to support all YANG functions or to target high-value use cases. Nobre responded that the ingestion is currently a manual proof of concept. The current goal is to start with a minimal subset of properties and eventually scale to more complex network configurations and monitoring tasks.
+  * Eric asked how much model ingestion is automated vs. manual. Nobre confirmed it is currently manual, but they are exploring the use of LLMs to automatically parse YANG models and populate the mapping layer.
+
+### 4. BoostState: Reducing State Transfer Latency in Edge Clouds
+* **Presentation**: [Network Management - BoostState](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-network-management-booststate-00)
+* **Presenter**: Tom Guan (TU Dresden)
+* **Discussion**:
+  * Guan introduced "BoostState," a framework designed to minimize state transfer latency (for operations like failover, scaling, and migration) for stateful network functions (NFs) running in edge clouds.
+  * Rather than deploying NFs entirely on specialized hardware or doing slow host-to-host CPU migrations, BoostState partitions the state into *header state* and *action state*. The header state is continuously tracked and transferred via P4-programmable SmartNICs, while the remaining action state is sent via the traditional software stack. This hardware-software co-design achieved up to 60% lower transmission latency in evaluation.
+* **Q&A**:
+  * The Session Chair asked if state transfer for failover is performed continuously and whether the overhead was quantified. Guan replied that continuous state copying is required because failures are unpredictable, making low-latency acceleration critical.
+  * Michal asked why edge clouds are more complex than traditional clouds and requested clarification on the state split. Guan explained that edge workloads (e.g., AR/VR, robotics) have extremely strict latency constraints, and resources are highly distributed.
+
+### 5. Dynamic Segment Sizing for Low-Bandwidth Prague/L4S Congestion Control
+* **Presentation**: [Network Management - Small Packets, Big Difference](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-network-management-small-packets-big-difference-00)
+* **Presenter**: Dinesh (MPI Informatics)
+* **Discussion**:
+  * Dinesh discussed TCP Prague (an L4S congestion control protocol) running in low-bandwidth environments (100 kbps to 1 Mbps). Because TCP Prague enforces a minimum window of 2 segments to maintain an active feedback loop, sending standard MTU-sized packets at low rates results in very long packet transmission times, which degrades ECN feedback granularity.
+  * The proposed solution is a pacing-rate-based Dynamic Segment Sizing (DSS) mechanism that scales segment sizes down (between 150 bytes and full MSS) dynamically at low bandwidths without relying on noisy smooth RTT estimates. Kernel-level experiments showed up to a 20x reduction in retransmissions and improved fairness when competing with Cubic/BBR flows.
+* **Q&A**:
+  * Lars Eggert asked if the experiments used bulk traffic and whether the worse header-to-payload ratio of small packets impacted efficiency. Dinesh confirmed they used bulk iperf flows and noted that although header overhead increases, the massive reduction in retransmissions makes it a favorable trade-off at low bandwidths.
+  * Gorry Fairhurst asked about the impact of tunnel encapsulation (e.g., VPNs) on 150-byte packets. Dinesh replied that while extra tunnel headers increase overhead, having more packets in flight still provides better feedback granularity than sending one large packet.
+  * Keti asked how long the fairness experiments ran, as BBR convergence can take time. Dinesh noted that the tests ran for over 4–5 minutes, which was long enough to observe stable convergence behavior.
+
+### 6. Towards Encrypted Zero-Copy L7 Load Balancing
+* **Presentation**: [Network Management - Towards encrypted zero-copy L7 load balancing](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-network-management-towards-encrypted-zero-copy-l7-load-balancing-00)
+* **Presenter**: Michal (TU Eindhoven)
+* **Discussion**:
+  * Michal presented a proof-of-concept zero-copy Layer 7 HTTP/TLS load balancer. Semantic gaps between user space libraries typically force expensive data copies when passing decrypted streams between front-end and back-end connections.
+  * By leveraging hardware TLS offload and the user space TCP stack (XLEO), they created an API that passes buffer pointers directly to the load balancer without copying. The prototype achieved up to a 2x throughput performance improvement for large files.
+
+### 7. PINOCCHIO: Queuing Onset Prediction in Mobile Edge Networks
+* **Presentation**: [Network Management - PINOCCHIO](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-network-management-pinocchio-00)
+* **Presenter**: Anudeep
+* **Discussion**:
+  * Anudeep presented "Pinocchio," a framework utilizing Echo State Networks (ESN)—a form of reservoir computing—to predict queuing onset in 5G mobile edge networks.
+  * The system computes a Queue Buildup Indicator (QBI) by measuring the difference between packets sent by the server and those received at the User Equipment (UE). Pinocchio can predict queuing onset up to 50–100 milliseconds in advance, enabling early rate adaptation before packet loss or RTT spikes occur.
+* **Q&A**:
+  * Ludwig asked how this compares to L4S, which is already deployed in 5G networks to explicitly mark early congestion. Anudeep answered that comparing and integrating Pinocchio with L4S rate controllers is planned for their future work.
+
+---
+
+## Next Steps
+
+* **Knowledge Graph Abstraction**: Continue testing the multi-layer knowledge graph with more complex network states, a larger array of vendors, and investigate the use of LLMs for automated YANG-to-KG schema mapping.
+* **Dynamic Segment Sizing (DSS)**: Explore the impact of DSS on non-bulk, application-limited traffic and evaluate performance under heavy tunneling/encapsulation overhead.
+* **PINOCCHIO**: Integrate the predictive queuing framework directly with active rate controllers and benchmark it against L4S-based networks.

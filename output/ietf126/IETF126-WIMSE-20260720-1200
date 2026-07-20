@@ -1,0 +1,166 @@
+# [WIMSE](../wg/wimse.html)
+
+## Summary
+
+The WIMSE (Workload Identity in a Multi System Environment) Working Group met at IETF 126 in Vienna. The session was divided into two main parts: progress updates on active working group documents that are approaching or currently in Working Group Last Call (WGLC), followed by presentations and discussions on new work proposals related to workload identity, trust domains, attestation, and AI agent security. 
+
+Key outcomes included plans to schedule WGLCs for several foundational specifications, including HTTP signatures, MTLS, and workload identifiers. There was also strong interest in exploring trust domain discovery, workload identity federation (WIF), and the standardization of security frameworks for AI agents.
+
+---
+
+## Key Discussion Points
+
+### Part 1: Existing Work
+
+#### 1. Welcome and Chair Updates
+* **Presenter:** Justin Richer and Peter (Co-Chairs)
+* **Slides:** [Welcome and Chair Updates](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-welcome-and-chair-updates-00)
+* **Discussion:** The chairs reviewed the Note Well, noted that the Workload Identity Practices document is currently in AD review, and highlighted that the core workload credentials draft recently finished its WGLC. They emphasized the need to maintain momentum and coordinate the schedule for upcoming last calls.
+
+#### 2. Workload Credentials (WIT/WIC)
+* **Presenter:** Brian Campbell
+* **Slides:** [Workload Credentials (WIT/WIC)](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-workload-credentials-witwic-01)
+* **Draft Reference:** [draft-ietf-wimse-workload-creds](https://datatracker.ietf.org/doc/draft-ietf-wimse-workload-creds/)
+* **Discussion:** 
+  * Defines the Workload Identity Token (WIT) based on JWT and the Workload Identity Certificate (WIC) based on X.509.
+  * The WGLC ended recently, and authors are working to address the feedback. The feedback is constructive rather than structural, and the authors aim to resolve open issues before IETF 127 in San Francisco.
+  * Arndt queried whether the DNS name requirement is a WGLC item for the credentials draft or the MTLS draft. Joe Salloway agreed it spans both documents and should be aligned.
+
+#### 3. WPT of WIMSE (Whippet)
+* **Presenter:** Brian Campbell
+* **Slides:** [WPT of WIMSE](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-wpt-of-wimse-00)
+* **Draft Reference:** [draft-ietf-wimse-wpt](https://datatracker.ietf.org/doc/draft-ietf-wimse-wpt/)
+* **Discussion:**
+  * Defines the Workload Proof Token (WPT), or "Whippet", which is a signed JWT that binds workload authentication to an HTTP request to prove possession of a private key.
+  * Brian Campbell suggested adding non-normative transaction token examples to show patterns where internal call chains rely on WIMSE authentication coupled with down-stack transaction tokens. Peter and Arndt supported this addition.
+  * The focus will now shift to cleaning up this draft to prepare it for WGLC.
+
+#### 4. HTTP Signatures
+* **Presenter:** Yaron Sheffer
+* **Slides:** [HTTP Signatures](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-http-signatures-00)
+* **Draft Reference:** [draft-ietf-wimse-http-signature](https://datatracker.ietf.org/doc/draft-ietf-wimse-http-signature/)
+* **Discussion:**
+  * Yaron Sheffer summarized updates between version -02 and version -05 (published the morning of the session). Major changes include migrating the audience signal from an HTTP header to a signature parameter and binding the request to the response by copying a nonce value into a response signature parameter.
+  * Kathleen Moriarty asked if this work aligns with the WebPodAuth HTTP signature usage; Yaron Sheffer responded that it does not.
+  * Jonathan asked if signature stripping represents an attack vector if response signatures are optional. Yaron Sheffer clarified that response signing is a deployment-level configuration decision, not a per-signature runtime choice.
+  * The chairs noted significant reading interest and plan to issue a WGLC on the list soon.
+
+#### 5. WIMSE MTLS
+* **Presenter:** Joe Salloway
+* **Slides:** [WIMSE MTLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-wimse-mtls-00)
+* **Draft Reference:** [draft-ietf-wimse-mutual-tls](https://datatracker.ietf.org/doc/draft-ietf-wimse-mutual-tls/)
+* **Discussion:**
+  * Outlines proof of possession when using WIC.
+  * Updated with text describing server name validation complexities, allowing both a WIMSE identifier and a DNS name in the certificate depending on verifier support.
+  * The draft is stable, has no open issues, and is ready for WGLC.
+
+#### 6. WIMSE Architecture
+* **Presenter:** Joe Salloway
+* **Slides:** [WIMSE Architecture](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-wimse-architecture-00)
+* **Draft Reference:** [draft-ietf-wimse-arch](https://datatracker.ietf.org/doc/draft-ietf-wimse-arch/)
+* **Discussion:**
+  * Updated to address issue tracker items: added text on layered authentication, workload vs. instance concepts, key management, identity binding, and delegation/impersonation.
+  * Mark requested an update to Figure 5 to reflect a scenario where a workload does not trust its local agent and must perform its own remote attestation. Joe Salloway accepted the request.
+  * Flemming Andreasen noted potential inconsistencies between the updated architecture and the latest credentials draft that need a closer review.
+
+#### 7. Workload Identifier
+* **Presenter:** Yaroslav
+* **Slides:** [Workload Identifier](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-workload-identifier-00)
+* **Draft Reference:** [draft-ietf-wimse-identifier](https://datatracker.ietf.org/doc/draft-ietf-wimse-identifier/)
+* **Discussion:**
+  * Addresses definitions and constraints for workload identifier URIs.
+  * Addressed approximately 15 issues raised by Flemming Andreasen, softened security disclosure language, and aligned definitions with WIMSE and non-WIMSE documents.
+  * Pam Dingle asked if the OAuth SPIFFE Client Authentication draft changes any dependencies here. Justin Richer and Arndt noted that the dependency is soft and unidirectional (OAuth/SPIFFE Client Auth depends on the WIT and Identifier formats, but not vice versa).
+  * The document has no outstanding issues and is ready for WGLC.
+
+---
+
+### Part 2: Proposed New Work
+
+#### 8. WIMSE Trust Domain Discovery
+* **Presenter:** Arndt
+* **Slides:** [WIMSE Trust Domain Discovery](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-wimse-trust-domain-discovery-00)
+* **Discussion:**
+  * Proposes a standard well-known endpoint for WIMSE trust domains to publish a public key bundle (JWKS) to enable open-environment federation without out-of-band trust establishment.
+  * Hannes Tschofenig questioned if a unique discovery mechanism is required across different domains and noted the challenge of managing cross-domain authorization rules (similar to Kerberos).
+  * Aaron asked about potential duplication or synergy with OAuth Client ID Metadata Document (CIMD) specifications. Arndt responded that WIMSE handles additional formats (like X.509/JWKS x5c) not typical in OAuth.
+  * Jonathan asked if this addresses the same discovery blockages found in WebPodAuth; Arndt confirmed they are highly similar.
+
+#### 9. AI Agent Authentication and Authorization (AIMS)
+* **Presenter:** Yaroslav
+* **Slides:** [AI Agent Authentication and Authorization (AIMS)](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-aims-00)
+* **Discussion:**
+  * Outlines a conceptual blueprint mapping existing standards (WIMSE identifiers, credentials, OAuth delegation, and shared signals) to AI agent authentication and authorization patterns without inventing new protocols.
+  * Peter expressed strong interest, noting customer concerns with "invisible" endpoints executing tasks without clear delegation or identity, and discussed representing user inheritance as role-based access. Yaroslav advised modeling user delegation as an authorization artifact rather than identity inheritance.
+  * A participant asked whether to separate the agent identity from the deterministic workload running it; Yaroslav noted that the framework models the agent as a workload.
+  * Henk Birkholz expressed reservations about adoption, warning against conflating user/system concepts and noting potential overlap with other SDOs like ITU-T SG17.
+  * Brian Campbell, Roberta, and Nick (OpenAI) voiced strong support for adoption, highlighting the value of a standardized profile/composition guide.
+
+#### 10. Offline workload access for user-owned resources without refresh tokens
+* **Presenter:** Paul
+* **Slides:** [Offline workload access for user-owned resources without refresh tokens](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-offline-workload-access-for-user-owned-resources-without-refresh-tokens-01)
+* **Discussion:**
+  * Addresses how to grant an offline workload (e.g., a background cron job agent) access to user-owned resources (e.g., a calendar) while avoiding long-lived refresh tokens, eliminating per-agent interactive consent redirects, and maintaining workload legibility at the resource server.
+  * Arndt suggested investigating transaction tokens to pass user context between workloads.
+  * Hannes Tschofenig suggested taking this discussion to the OAuth working group to see if it fits within the OAuth IDJAG (Identity Assertion Grant) work.
+  * Aaron (IDJAG co-author) noted the problem of mapping an OAuth client to a workload cluster is highly relevant to WIMSE, while the raw refresh token mechanism is an OAuth concern.
+  * George Fletcher suggested looking at User Managed Access (UMA) principles for pre-authorization. Brian Campbell suggested exploring layering it on top of identity chaining underneath IDJAG.
+
+#### 11. Heterogeneous Credential Verification
+* **Presenter:** Yuning
+* **Slides:** [Heterogeneous Credential Verification](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-heterogeneous-credential-verification-for-workload-and-agentic-systems-00)
+* **Discussion:**
+  * Addresses relying parties receiving requests that carry multiple different credential types (e.g., workload identity token, user delegation token, and capability tokens).
+  * Proposes a standardized multi-credential set model, type identification, and a normalized verification result model.
+  * Jonathan raised concerns regarding Oracle attacks where detailed multi-credential validation failure states might leak sensitive validation paths. Yuning noted this is likely implementation-specific but will be considered.
+  * Pam Dingle highlighted risks around credential replay attacks depending on how these bound credentials are transmitted.
+
+#### 12. PEDIGREE: per-hop delegation above workload credentials
+* **Presenter:** Kartik Rampalli
+* **Slides:** [PEDIGREE: per-hop delegation above workload credentials](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-karthikrampalli-pedigree-deck-00)
+* **Discussion:**
+  * Addresses authorization in multi-hop, dynamically spawned sub-agent architectures where ambient credentials fail attribution, attenuation, and enforcement tests.
+  * Proposes the Scope/Delegation Token (SIT) as an application-layer token carrying signed attenuation constraints (e.g., Cedar policy fragments) on top of unchanged WIMSE WIT/WIC credentials.
+  * Nick expressed interest in the attenuation and constraint features of the model. Jeff questioned how sub-agents can utilize these credentials without violating proof-of-possession constraints. Kartik Rampalli offered to discuss implementation details on the mailing list.
+  * Aaron suggested comparing this pattern with OAuth and modeling sub-agents directly as OAuth clients.
+
+#### 13. WIMSE Workload Attestation
+* **Presenter:** Dhruv
+* **Slides:** [WIMSE Workload Attestation](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-wimse-workload-attestation-00)
+* **Discussion:**
+  * Addresses proving whether a calling workload can be trusted (e.g., running in a TEE, key stored securely in TPM) across multiple middleboxes and proxies.
+  * Introduces two new HTTP headers: `Workload-Evidence` (carrying evidence in CBOR/COSE format) and `Workload-Attestation-Result` (signed by a verifier).
+  * Samat warned that attestation must be cryptographically bound to the active communication session rather than just the public key, citing multiple severe CVEs (including CVE-2026-33697) where loose bindings led to key replay attacks.
+  * Henk Birkholz noted that combining platform and key attestation in partitioned container environments is highly complex.
+
+#### 14. SOOS: Mandate JWT & Cross-Principal Transaction ID (XPID)
+* **Presenter:** Tom Seto
+* **Slides:** [SOOS: Mandate JWT & Cross-Principal Transaction ID (XPID)](https://datatracker.ietf.org/meeting/126/materials/slides-126-wimse-soos-mandate-jwt-cross-principal-transaction-id-xpid-00)
+* **Discussion:**
+  * Focuses on preventing sub-agents from inheriting ambient authority.
+  * Proposes a dual enforcement architecture: Mandate JWT (MJWT), which cryptographically signs delegation hops and verifies that child mandates are strict subsets of their parent mandates, and a three-tier Constitutional AI Protocol (CAP) for independent, prohibition-only policy enforcement.
+
+---
+
+### Open Discussion & AOB
+
+* **Security Concerns:** Samat reiterated the importance of integrating strict cryptographic session-binding into attestation and WIMSE profiles to mitigate high-severity CVEs occurring in deployment. Justin Richer affirmed that while WIMSE is not in the Security Area, the work is highly security-focused and aims to define secure, standardized formats.
+* **Workload Identity Federation (WIF):** Arndt suggested WIMSE explicitly look into WIF to coordinate and standardize incompatible commercial implementations. Justin Richer agreed that there is a major market demand for WIF standardization.
+* **AD Feedback:** Charles Eckel (Responsible AD) praised the proposed new work in Part 2, but strongly urged the working group to focus on completing and reviewing the core Part 1 drafts entering WGLC first. He also invited participants to attend the Agentic Protocols (Agent Proto) BOF scheduled for Thursday morning at 9:00 AM.
+* **Definitions:** Pam Dingle emphasized that the working group needs to carefully evaluate whether "agents" should always be modeled as "workloads" and investigate broader credentialed identity federation patterns.
+
+---
+
+## Decisions and Action Items
+
+* **draft-ietf-wimse-workload-creds:** Authors to reconcile and address remaining WGLC comments on the mailing list.
+* **draft-ietf-wimse-wpt:** Authors will update the draft to include non-normative transaction token integration in the examples.
+* **draft-ietf-wimse-arch:** Joe Salloway to update Figure 5 to reflect the workload-initiated remote attestation flow requested by Mark, and coordinate with authors of the credentials draft to ensure alignment.
+* **AI Agent Security (AIMS):** Chairs to coordinate with the AD regarding a formal call for adoption on the mailing list.
+
+---
+
+## Next Steps
+
+* **Working Group Last Calls (WGLCs):** The chairs will coordinate the scheduling of WGLCs for [draft-ietf-wimse-http-signature](https://datatracker.ietf.org/doc/draft-ietf-wimse-http-signature/), [draft-ietf-wimse-mutual-tls](https://datatracker.ietf.org/doc/draft-ietf-wimse-mutual-tls/), and [draft-ietf-wimse-identifier](https://datatracker.ietf.org/doc/draft-ietf-wimse-identifier/) on the mailing list in the coming weeks.
+* **Review Request:** Working group members are encouraged to perform cross-document reviews of the active drafts to ensure consistent terminology and concepts before they are submitted to the IESG.

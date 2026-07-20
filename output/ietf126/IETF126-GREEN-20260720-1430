@@ -1,0 +1,156 @@
+# [GREEN](../wg/green.html)
+
+## Summary
+
+The GREEN working group met at IETF 126 to discuss the progress of its core deliverables and several related proposals. The chairs (Rob Wilton and Diego Lopez) provided a status update, noting steady progress on the adopted drafts since IETF 125. The session covered updates on working group documents including terminology, use cases, framework, and the base device YANG model. Additionally, the group discussed a potential controller-level YANG model, several new API and utilization proposals (PETRA, ISAC), cryptographic data provenance, PIM eco-mode extensions, recent Hackathon results, and IPFIX-based energy export mechanisms.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status and Administration
+* **Chairs:** Rob Wilton and Diego Lopez.
+* **Slides:** [IETF 126 GREEN Chairs Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-ietf-126-green-chairs-slides-01)
+* **Design Team Meetings:** The bi-weekly "design team light" meetings (held every other week, 2:00 PM – 4:00 PM UK time) will continue. These meetings are intended to tackle open issues and establish initial consensus. The chairs invited feedback from participants regarding the suitability of the time slot.
+* **Coordination & Liaisons:** 
+  * Coordination with the LSR working group is underway to align routing-related energy YANG models and avoid duplicate or incompatible definitions.
+  * Diego Lopez proposed drafting an outgoing liaison statement to external bodies (including the European Commission) to raise awareness of GREEN's standardization efforts and real-time measurement work.
+
+### Terminology for Energy Efficiency Network Management
+* **Presenter:** Chin
+* **Slides:** [Terminology for Energy Efficiency  Network Management](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-terminology-for-energy-efficiency-network-management-00)
+* **Draft:** `draft-ietf-green-terminology` (v02)
+* **Key Updates:**
+  * Aligned terminology with the framework and YANG modules.
+  * Incorporated *nameplate power* (from RFC 7310) and *power factor* (defined as a percentage between 0 and 1, defaulting to 1 for DC sources).
+  * Refined the definition of *Energy Management System* (EMS) by removing the carbon reporting node as it sits outside the WG charter.
+* **Discussion:** The authors will migrate the individual repository to the working group repository with the chairs' assistance. The draft will continue to progress in parallel with the other core deliverables.
+
+### Use Cases for Energy Efficiency Management
+* **Presenter:** Emile Stephan
+* **Slides:** [IETF126 use cases draft 01](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-ietf126-use-cases-draft-01-00)
+* **Draft:** `draft-ietf-green-use-cases`
+* **Key Updates:**
+  * Maintained alignment with the modeling team. Focused on short-term support for "incremental deployment" and "double accounting" use cases, with an initial evaluation targeted for the next meeting.
+  * Investigating the inclusion of the data provenance usecase in a future version.
+* **Discussion:** 
+  * Diego Lopez noted that the draft is nearing expiration and needs to be refreshed. Emile Stephan agreed to update it.
+  * Rob Wilton proposed conducting a Working Group Last Call (WGLC) to verify consensus on the current set of use cases. Emile Stephan suggested the immediate next step is to sketch how the use cases map directly to the proposed YANG models.
+
+### Framework for Energy Efficiency Management
+* **Presenter:** Marisol Palmero
+* **Slides:** [GREEN framework](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-green-framework-00)
+* **Draft:** `draft-ietf-green-framework` (v02)
+* **Key Updates:**
+  * Refined the reference model, updating the upper layer name from "main network manager" to "energy management system" (EMS) to align with historical RFCs.
+  * Added an "Operational Considerations" section detailing data hierarchy and inheritance rules for unit multipliers (mandatory for power containers, optional for energy) and data source accuracy.
+  * Introduced a new functional relationship type (`enabled-by` and `enabling`) to model non-power dependencies, such as the relationship between a line card and its hosting chassis.
+* **Discussion:** Remaining issues include formulating the European Commission liaison and determining read/write properties for energy objects once the controller-level model is introduced.
+
+### Power and Energy YANG Module
+* **Presenter:** Benoit Claise
+* **Slides:** [Update on YANG base model -- Benoit Claise -- Jan Lindblad](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-update-on-yang-base-model-benoit-claise-jan-lindblad-00)
+* **Draft:** `draft-ietf-green-power-and-energy-yang`
+* **Key Updates:**
+  * Structured into an operational read-only tree and a read-write control tree.
+  * Defined relationships (e.g., enabled-by) exclusively in the operational state, meaning the router reports what it physically knows rather than relying on controller configuration. Peer IDs are modeled as simple strings because routers cannot reliably discover remote UUIDs via LLDP/CDP.
+  * Removed all legacy EMAN references and aligned power states with the IEEE power state sets.
+* **Technical Debates & Open Issues:**
+  * *Mandatory vs. Optional Power Leaves:* The draft lists instantaneous power as mandatory. However, hardware constraints make active metering on every sub-component costly and physically difficult. 
+    * Nigel Davis shared that TAPI faced similar issues with temperature metrics and resolved them by keeping the YANG leaf optional but using a separate normative document to state that reporting is mandatory if a sensor is physically present.
+    * Tony Lee noted that hardware vendors cannot easily measure instantaneous power for all internal components, and worst-case nameplate power is not always representative in data centers. He requested changing the type of instantaneous power from `int32` to `uint32` since negative power is physically impossible in this context. Benoit Claise accepted this change.
+    * Rob Wilton suggested keeping the leaf optional in the YANG schema while defining the specific reporting guidelines and "must/should" requirements in the text of the draft.
+  * *Unit Multipliers:* The group is evaluating whether consumed and delivered energy require separate unit multipliers or if a single, shared multiplier is sufficient.
+
+### Controller-Level YANG Model (Future Work)
+* **Presenter:** Jan Lindblad
+* **Slides:** [Update on YANG base model -- Benoit Claise -- Jan Lindblad](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-update-on-yang-base-model-benoit-claise-jan-lindblad-00)
+* **Key Concepts:**
+  * Focused on configuring the controller's data gathering (sources, collection methods like YANG Push/SNMP, intervals, and specific target metrics).
+  * Aiming to support auditable reporting (e.g., for EU Corporate Sustainability Reporting Directive compliance), requiring back-traceable data provenance.
+  * Includes data transformation definitions (averages, sums, peaks) and export destination configurations.
+  * The work aims to establish a Minimum Viable Draft (MVD) with clean extension points.
+* **Discussion:** A poll of the room was taken on the question: *"Should the base network controller be scoped to include more than just the power energy attributes?"* (e.g., transformation and provenance config). The sense of those present indicated strong support (18 Yes, 1 No, 7 No Opinion). The chairs recommended starting with a narrow, focused MVD.
+
+### PETRA API
+* **Presenter:** Luis Miguel Contreras Murillo
+* **Slides:** [Update on draft-petra-green-api](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-update-on-draft-petra-green-api-00)
+* **Draft:** `draft-petra-green-api`
+* **Key Updates:**
+  * Designed to retrieve path-specific energy data from the network/controller and expose it to external entities (such as SD-WAN customers).
+  * Removed parameters outside the GREEN charter (e.g., carbon intensity, which was shifted to the Sustained Energy effort).
+  * Generalized endpoints beyond IP addresses to support IP prefixes, MAC addresses, and network slice service delivery points. Added throughput and volume metrics.
+* **Discussion:** 
+  * A show of hands was taken to see who had read the document (~12 Yes, ~14 No).
+  * A poll of the room on adopting the draft showed some support (~13 Yes, ~4 No, ~11 No Opinion). The chairs decided to issue a formal adoption call on the mailing list, emphasizing that the core WG deliverables must remain the priority.
+
+### YANG Data Model for Reporting Utilization Scores in ISAC
+* **Presenter:** Mehad
+* **Slides:** [A YANG Data Model for Reporting Utilization Scores in ISAC](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-a-yang-data-model-for-reporting-utilization-scores-in-isac-00)
+* **Key Concepts:**
+  * Focuses on reporting utilization scores (compute, power, memory, storage) for Integrated Sensing and Communication (ISAC) architectures.
+  * The draft proposes to augment the base device-level GREEN power and energy model (`draft-ietf-green-power-and-energy-yang`).
+* **Discussion:**
+  * Jan Lindblad agreed that augmenting the device-level model is a reasonable strategy but noted that the service-level components of ISAC are distinct from controller configurations.
+  * A participant raised concerns about the feasibility of isolating the power consumption of the "sensing" function from overall Radio Access Network (RAN) operations, especially given that RAN components are often active continuously but configured to save power dynamically at night. Mehad agreed that linking services to physical hardware energy is highly implementation-specific.
+  * A poll of the room showed that very few participants had read the draft (2 Yes, 14 No, 13 No Opinion). The chairs deferred any adoption decisions until more reviews are posted.
+
+### GREEN Provenance
+* **Presenter:** Marisol Palmero
+* **Slides:** [GREEN provenance](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-green-provenance-00)
+* **Key Concepts:**
+  * Proposes cryptographic COSE signatures on energy telemetry to enable secure auditing, verification of green energy claims, and protection against "greenwashing."
+  * Introduces five metadata leaves: key ID, key owner, signature, verification status, and owner type. Designed to be packaged as a reusable YANG grouping for the controller model.
+* **Discussion:**
+  * Ben Curtis pointed out that dropping unverified/unsigned data entirely might disrupt systems if a signing key or verification process fails due to a bug. He suggested discussing auditing rules and zero-knowledge environments further on the list.
+  * AD Mahesh Jethanandani questioned whether this work should live in GREEN or in the OPSAWG (where general COSE/YANG provenance is handled). Marisol Palmero and the chairs agreed that while the signing mechanism is generic, the specific application is green-centric, and the placement of the draft needs further discussion.
+
+### PIM Eco Mode
+* **Presenter:** Luis Miguel Contreras Murillo
+* **Slides:** [draft-contreras-pim-eco-mode](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-draft-contreras-pim-eco-mode-00)
+* **Draft:** `draft-contreras-pim-eco-mode`
+* **Key Concepts:**
+  * Proposes extending IGMP/MLD signaling (using RFC 9279) to allow receivers to request an "eco mode" for multicast content delivery.
+  * Defines four Eco levels (0: No Eco, 1: Low, 2: Moderate, 3: High [allowing quality reduction for energy savings]) and four preferences (Energy efficiency, Carbon awareness, Renewable energy, Operator criteria).
+* **Discussion:**
+  * The work will progress inside the PIM WG, but the presenter sought feedback from the GREEN WG.
+  * Rob Wilton suggested that the distinction between levels 0 and 1 was minimal (as systems should naturally route efficiently) and that the preference types could be simplified.
+
+### Hackathon Results
+* **Presenter:** Luis Miguel Contreras Murillo
+* **Slides:** [Report on recent Hackathon results](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-report-on-recent-hackathon-results-00)
+* **Key Outcomes:**
+  * Monitored the energy consumption of links between two physical routers in a laboratory environment under varying traffic flows (100G, 5x10G, 4x40G).
+  * Monitored power directly from the routers (CLI) and compared it against external smart PDU readings.
+  * **Findings:** Observed a minor deviation (6% to 10%) between CLI reports and physical PDU measurements. The experiment noted a high base power load even when the routers were idle. Sleep modes and YANG integration could not be tested during this iteration.
+
+### IPFIX Energy Consumption
+* **Presenter:** Jinji Yang
+* **Slides:** [draft-yan-opsawg-ipfix-energy-consumption](https://datatracker.ietf.org/meeting/126/materials/slides-126-green-draft-yan-opsawg-ipfix-energy-consumption-00)
+* **Draft:** `draft-yan-opsawg-ipfix-energy-consumption`
+* **Key Concepts:**
+  * Proposes exporting traffic-correlated power data via IPFIX to enable per-flow energy accounting, complementing YANG Push.
+  * Semantically aligned with `draft-ietf-green-power-and-energy-yang` and `draft-ietf-green-terminology`.
+* **Discussion:**
+  * Rob Wilton questioned the technical justification for using IPFIX over YANG Push, noting that YANG Push with on-change notifications (including quantization thresholds) can effectively handle fluctuating power values and spikes without IPFIX's flow-export overhead. 
+  * The author agreed to post further technical arguments to the mailing list.
+
+---
+
+## Decisions and Action Items
+1. **Repository Migration:** Chairs to assist Chin in moving the `draft-ietf-green-terminology` repository to the official GREEN WG GitHub space.
+2. **Liaison Draft:** Diego Lopez to draft a liaison statement to the European Commission/external bodies regarding standard coordination and share it with the mailing list for review.
+3. **YANG Schema Typing:** Benoit Claise to update `draft-ietf-green-power-and-energy-yang` to change the instantaneous power leaf type from `int32` to `uint32`.
+4. **Adoption Call:** Chairs to run an adoption call on the mailing list for `draft-petra-green-api`.
+
+---
+
+## Next Steps
+* **Use Cases:** Emile Stephan to update `draft-ietf-green-use-cases` to prevent expiration, and work on mapping how the defined use cases map to the YANG models.
+* **Controller YANG:** Jan Lindblad to initiate a Minimum Viable Draft (MVD) for the controller-level YANG model, focusing initially on power and energy.
+* **Mailing List Discussions:** 
+  * Group to discuss the mandatory/optional status and profiling of power leaves in `draft-ietf-green-power-and-energy-yang`.
+  * Jan Lindblad to drive mailing list threads on accuracy metrics and unit multipliers.
+  * Mehad to seek further reviews and continue refining `draft-ietf-green-power-and-energy-yang` integration/augmentations for the ISAC utilization model.
+  * Marisol Palmero to discuss the home of the green provenance draft (GREEN vs. OPSAWG).
+  * Jinji Yang to provide technical clarifications on the necessity of IPFIX for energy reporting.
