@@ -26,7 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       selectors: ${{ steps.parse.outputs.selectors }}
-      uncache_type: ${{ steps.parse.outputs.uncache_type }}
     steps:
       - name: Parse selectors out of the issue body
         id: parse
@@ -35,93 +34,76 @@ jobs:
           script: |
             const body = (context.payload.issue.body || '').replace(/\r/g, '');
 
-            // Group the body by markdown heading. Issue forms render one
-            // heading per field; a hand-written issue just lands in "_".
-            const sections = { _: [] };
-            let current = '_';
-            for (const line of body.split('\n')) {
-              const heading = line.match(/^#{1,6}\s+(.*)$/);
-              if (heading) {
-                current = heading[1].trim().toLowerCase();
-                sections[current] = [];
-              } else {
-                sections[current].push(line);
-              }
-            }
-            const section = (re) => {
-              const key = Object.keys(sections).find((k) => k !== '_' && re.test(k));
-              return key ? sections[key] : null;
-            };
-
-            const clean = (lines) => lines
-              .map((l) => l.trim())
-              .filter((l) => l && l !== '_No response_' && !l.startsWith('```') && !l.startsWith('<!--'));
-
-            // "What to delete" field; default to minutes only.
-            const typeLines = clean(section(/delete|cache|type/) || []);
-            const typeText = (typeLines[0] || '').toLowerCase();
-            const uncacheType = /\ball\b|everything|audio|re-?transcribe/.test(typeText)
-              ? 'all'
-              : 'minutes';
-
-            // Where the selectors live, most explicit source first:
-            //   1. the issue form's "Sessions" field
-            //   2. a fenced code block in a hand-written issue
-            //   3. the whole body
-            // The first two are authoritative, so anything unparseable in them
-            // is an error. (3) is prose, so unrecognised words are ignored.
-            const fenced = [...body.matchAll(/```[^\n]*\n([\s\S]*?)```/g)]
-              .flatMap((m) => m[1].split('\n'));
-            const sessionField = section(/session|selector|minute|regenerat/);
-            const strict = !!(sessionField || fenced.length);
-            const source = sessionField || (fenced.length ? fenced : body.split('\n'));
-
-            const raw = clean(source)
-              .flatMap((l) => l.replace(/^[-*]\s*/, '').split(/[,\s]+/))
-              .map((s) => s.replace(/[`.,;]/g, '').trim())
-              .filter(Boolean);
-
-            // Same selector grammar auto-minutes accepts for --summarize /
-            // --uncache. Validating here keeps arbitrary issue text from
-            // reaching the runner.
+            // One selector per line, with an optional "minutes" (default) or
+            // "all" after whitespace:
+            //
+            //   125:6LO
+            //   2026-07-08:CBOR all
+            //
+            // Anything that doesn't look like a selector line is prose and is
+            // ignored, so you can explain yourself in the same issue.
             const DATE = '\\d{4}-\\d{2}-\\d{2}';
-            const VALID = new RegExp(
+            const SELECTOR = new RegExp(
               `^(current|\\d{1,4}|${DATE}\\+?|${DATE}-${DATE})(:[A-Za-z0-9._-]+)?$`
             );
 
-            const selectors = [...new Set(strict ? raw : raw.filter((s) => VALID.test(s)))];
-            const bad = selectors.filter((s) => !VALID.test(s));
-            if (bad.length || selectors.length === 0) {
-              const msg = selectors.length === 0
-                ? 'I could not find any session selectors in this issue.'
-                : `These are not valid session selectors: ${bad.map((b) => '`' + b + '`').join(', ')}`;
+            const selectors = [];
+            const errors = [];
+            const seen = new Set();
+
+            for (const line of body.split('\n')) {
+              // Tolerate list bullets and backticks; the content is the same.
+              const text = line.trim().replace(/^[-*]\s+/, '').replace(/`/g, '').trim();
+              if (!text || text.startsWith('#') || text.startsWith('>')) continue;
+
+              const [selector, type, ...rest] = text.split(/\s+/);
+              if (!SELECTOR.test(selector)) continue; // prose
+
+              if (rest.length) {
+                errors.push(`\`${text}\` — expected at most "<selector> minutes|all"`);
+              } else if (type && type !== 'minutes' && type !== 'all') {
+                // Don't silently fall back to minutes: a typo here would
+                // quietly skip the re-transcribe the filer asked for.
+                errors.push(`\`${text}\` — \`${type}\` is not \`minutes\` or \`all\``);
+              } else if (!seen.has(selector)) {
+                seen.add(selector);
+                selectors.push(`${selector} ${type || 'minutes'}`);
+              }
+            }
+
+            if (errors.length || selectors.length === 0) {
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: context.payload.issue.number,
                 body: [
-                  `${msg}`,
+                  errors.length
+                    ? `I couldn't parse these lines:\n\n${errors.map((e) => `- ${e}`).join('\n')}`
+                    : "I couldn't find any session selectors in this issue.",
                   '',
-                  'Expected one selector per line, e.g.:',
+                  'One selector per line, optionally followed by `minutes` (the',
+                  'default — re-run the LLM over the cached transcript) or `all`',
+                  '(also drop the transcript and audio and re-transcribe):',
                   '',
                   '```',
-                  '125:6LO              # one WG at IETF 125',
-                  '125                  # every session at IETF 125',
-                  'current              # the current/upcoming IETF meeting',
-                  '2026-07-08:CBOR      # one interim',
-                  '2026-07-01+          # all interims from that date to today',
-                  '2026-06-01-2026-07-01  # all interims in a range',
+                  '125:6LO                    one WG at IETF 125',
+                  '125                        every session at IETF 125',
+                  'current                    the current/upcoming IETF meeting',
+                  '2026-07-08:CBOR all        one interim, re-transcribed',
+                  '2026-07-08                 all interims on that date',
+                  '2026-07-01+                all interims from that date to today',
+                  '2026-06-01-2026-07-01      all interims in a range',
                   '```',
                   '',
-                  'Fix the issue body and re-apply the `regenerate-minutes` label.',
+                  'Fix the issue body, then remove and re-apply the',
+                  '`regenerate-minutes` label.',
                 ].join('\n'),
               });
-              core.setFailed(msg);
+              core.setFailed(errors.length ? 'Unparseable selector lines' : 'No selectors found');
               return;
             }
 
             core.setOutput('selectors', selectors.join('\n'));
-            core.setOutput('uncache_type', uncacheType);
-            core.notice(`Regenerating (${uncacheType}): ${selectors.join(', ')}`);
+            core.notice(`Regenerating:\n${selectors.join('\n')}`);
 
   regenerate:
     needs: parse
@@ -130,7 +112,6 @@ jobs:
     uses: ./.github/workflows/sync.yaml
     with:
       selectors: ${{ needs.parse.outputs.selectors }}
-      uncache_type: ${{ needs.parse.outputs.uncache_type }}
     secrets: inherit
 
   report:
@@ -141,7 +122,6 @@ jobs:
       - uses: actions/github-script@v7
         env:
           SELECTORS: ${{ needs.parse.outputs.selectors }}
-          UNCACHE_TYPE: ${{ needs.parse.outputs.uncache_type }}
           RESULT: ${{ needs.regenerate.result }}
         with:
           script: |
@@ -152,7 +132,7 @@ jobs:
               ...context.repo,
               issue_number: context.payload.issue.number,
               body: ok
-                ? `Deleted (\`${process.env.UNCACHE_TYPE}\`) and regenerated:\n\n${list}\n\nThe site has been rebuilt and deployed. ([run](${run}))`
+                ? `Deleted and regenerated:\n\n${list}\n\nThe site has been rebuilt and deployed. ([run](${run}))`
                 : `Regeneration **failed** (\`${process.env.RESULT}\`) for:\n\n${list}\n\nThe cache branch was left untouched. See the [run log](${run}).`,
             });
             if (ok) {
