@@ -72,6 +72,23 @@ jobs:
             core.info(`Parsed selector: ${selector}`);
             core.info(`Saved comments to: ${commentsPath}`);
 
+      - name: Post start comment on issue
+        uses: actions/github-script@v7
+        env:
+          SELECTOR: ${{ steps.parse.outputs.selector }}
+        with:
+          script: |
+            const selector = process.env.SELECTOR;
+            const issueNumber = context.issue.number;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const commentBody = `⏳ **Amendment Workflow Started**\n\nProcessing amendments for session selector \`${selector}\`...\n\n[View Workflow Run Progress](${runUrl})`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: commentBody
+            });
+
       - name: Setup Node.js (lts)
         uses: actions/setup-node@v4
         with:
@@ -153,7 +170,8 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Post status comment on issue
+      - name: Post success comment on issue
+        if: success()
         uses: actions/github-script@v7
         env:
           SELECTOR: ${{ steps.parse.outputs.selector }}
@@ -161,7 +179,26 @@ jobs:
           script: |
             const selector = process.env.SELECTOR;
             const issueNumber = context.issue.number;
-            const commentBody = `✅ **Minutes Amended & Published**\n\nThe requested amendments for session selector \`${selector}\` have been processed, committed to the cache branch, and deployed to GitHub Pages.`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const commentBody = `✅ **Minutes Amended & Published**\n\nThe requested amendments for session selector \`${selector}\` have been processed, committed to the cache branch, and deployed to GitHub Pages.\n\n[View Workflow Run Details](${runUrl})`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: commentBody
+            });
+
+      - name: Post failure comment on issue
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          SELECTOR: ${{ steps.parse.outputs.selector }}
+        with:
+          script: |
+            const selector = process.env.SELECTOR || 'unknown';
+            const issueNumber = context.issue.number;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const commentBody = `❌ **Amendment Workflow Failed**\n\nThe amendment workflow encountered an error while processing session selector \`${selector}\`.\n\n[View Workflow Error Logs](${runUrl})`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
