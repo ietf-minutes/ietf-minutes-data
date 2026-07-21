@@ -34,7 +34,6 @@ jobs:
             const fs = require('fs');
             const os = require('os');
             const path = require('path');
-            const { execSync } = require('child_process');
 
             const body = context.payload.issue.body || '';
 
@@ -51,13 +50,22 @@ jobs:
               core.setFailed('Could not parse Session Selector from issue body');
               return;
             }
+
+            // Validate selector format strictly: NUMBER:GROUP (e.g. 125:6LO) or YYYY-MM-DD:GROUP (e.g. 2026-07-08:CBOR)
+            const selectorRegex = /^(\d+|\d{4}-\d{2}-\d{2}):[A-Za-z0-9_-]+$/;
+            if (!selectorRegex.test(selector)) {
+              core.setFailed(`Invalid Session Selector format "${selector}". Expected NUMBER:GROUP or YYYY-MM-DD:GROUP`);
+              return;
+            }
+
             if (!comments) {
               core.setFailed('Could not parse Correction Details from issue body');
               return;
             }
 
             const runnerTemp = process.env.RUNNER_TEMP || os.tmpdir();
-            const commentsPath = execSync(`mktemp "${runnerTemp}/amend-comments.XXXXXX.txt"`).toString().trim();
+            const tempDir = fs.mkdtempSync(path.join(runnerTemp, 'amend-comments-'));
+            const commentsPath = path.join(tempDir, 'comments.txt');
             fs.writeFileSync(commentsPath, comments, 'utf-8');
 
             core.setOutput('selector', selector);
@@ -148,9 +156,11 @@ jobs:
 
       - name: Post status comment on issue
         uses: actions/github-script@v7
+        env:
+          SELECTOR: ${{ steps.parse.outputs.selector }}
         with:
           script: |
-            const selector = '${{ steps.parse.outputs.selector }}';
+            const selector = process.env.SELECTOR;
             const issueNumber = context.issue.number;
             const commentBody = `✅ **Minutes Amended & Published**\n\nThe requested amendments for session selector \`${selector}\` have been processed, committed to the cache branch, and deployed to GitHub Pages.`;
             await github.rest.issues.createComment({
