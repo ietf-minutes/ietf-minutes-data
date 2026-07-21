@@ -1,0 +1,118 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+The MPLS Working Group met at IETF 126. The session covered administration updates, errata reviews, and status reports, followed by eight technical presentations focusing on MPLS Network Actions (MNA) for OAM, Deterministic Networking (DetNet), Explicit Congestion Notification (ECCN), In-situ OAM (IOAM), and RSVP-TE extensions. Key highlights included discussions on MNA capability discovery mechanisms, carrying ECN within MNA, and utilizing Segment Routing (SR) adjacency sets for RSVP-TE tunnels.
+
+---
+
+## Key Discussion Points
+
+### Administration and Errata Review
+Presented by Tarek Saad ([01 - Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-01-chair-slides-00))
+
+*   **Errata for RFC 5711:** Section 3.1.7 is incorrectly referenced as 3.7.1. The chairs will coordinate with the Area Director (AD) to correct this.
+*   **Errata for RFC 8663:** Clarified that the "p flag" in the text refers to the "no-PHP flag." The chairs will follow up with the AD.
+*   **Milestones:** The WG celebrated the publication of its first MNA-related RFC (RFC 9994) and reviewed the document pipeline.
+
+---
+
+### MPLS On-Path Telemetry Network Action Flag for OAM
+Presented by Haoyu Song ([MPLS On-Path Telemetry Network Action Flag for OAM](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-mpls-on-path-telemetry-network-action-flag-for-oam-00))
+*   **Draft:** [draft-ietf-mpls-on-path-telemetry-flag](https://datatracker.ietf.org/doc/draft-ietf-mpls-on-path-telemetry-flag/)
+
+*   **Technical Details:** The draft proposes using a single flag (the "P-bit" at recommended bit position 42) to trigger postcard-mode telemetry data collection. This decouples the trigger from the detailed data configuration (which is managed out-of-band via control/management planes). Proposing bit 42 avoids the first 24 bits to remain ECMP-safe and complies with RFC 9994.
+*   **Discussion:**
+    *   **Greg Mirsky** asked how this differs from IOAM Direct Export (DEX). **Haoyu Song** clarified that DEX requires user packets to carry specific telemetry instructions in the header, whereas this solution only uses a single flag and relies on the control/management plane to specify the data to collect.
+    *   **Greg Mirsky** expressed concern that the proposed approach has too little control over what data is collected and compared it to Alternate Marking. **Haoyu Song** replied that these methods are complementary and serve different use cases. Greg noted his view that the functionality already exists via other methods.
+
+---
+
+### Discovering MNA Capabilities Using LSP Ping
+Presented by Fabian Brockhausen ([Discovering MNA Capabilities Using LSP Ping](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-03-discovering-mna-capabilities-using-lsp-ping-00))
+
+*   **Technical Details:** Based on previous feedback to avoid flooding the IGP, this revision proposes using LSP Ping to discover In-Stack Data (ISD) and Post-Stack Data (PSD) MNA capabilities (e.g., readable label depth, supported opcodes). It defines a new MNA capability query and response TLV with corresponding bitmaps.
+*   **Discussion:**
+    *   **Zafar Ali** argued that LSP ping is not the correct tool for capability discovery due to scale issues, the requirement for active reachability, and the lack of a mechanism to notify the head-end of capability changes.
+    *   **Greg Mirsky** questioned why a YANG model was not used instead of LSP ping. **Fabian Brockhausen** answered that both could coexist, but LSP ping has the benefit of exercising the actual data path.
+    *   **Greg Mirsky** raised concerns regarding ECMP, stating that the path queried by LSP ping might not reflect the actual path taken by the data flow. Fabian acknowledged the ECMP issue and agreed to address it in the next version.
+
+---
+
+### MPLS Network Action for Deterministic Networking
+Presented by Xuesong Geng ([MPLS Network Action for Deterministic Networking](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-04-mpls-network-action-for-deterministic-networking-01))
+*   **Draft:** [draft-ietf-mpls-mna-detnet](https://datatracker.ietf.org/doc/draft-ietf-mpls-mna-detnet/)
+
+*   **Technical Details:** Focuses on using MNA (ISD and PSD) to support DetNet requirements (bounded latency, low loss, ordered delivery). The latest revision (v01) aligns with RFC 9994 for in-stack encoding and synchronizes with the latest post-stack header drafts. It introduces three Network Action Sub-stacks (NASs): Latency Information, Flow ID, and Sequence Number.
+*   **Discussion:** No questions were raised.
+
+---
+
+### OAM for Network Resource Partition (NRP) in MPLS Network
+Presented by Liuyan Han ([OAM for Network Resource Partition (NRP) in MPLS Network](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-5-oam-for-network-resource-partition-nrp-in-mlp-network-00))
+
+*   **Technical Details:** The draft proposes extending existing MPLS OAM mechanisms (conforming to RFC 8029) to support NRP fault monitoring. The updated version removes the "NRP resource unavailable" error code (as forwarding plane status cannot be verified by the control plane) and refines the "not supported" error code.
+*   **Discussion:**
+    *   **Greg Mirsky** questioned how the data plane would distinguish between data packets and OAM packets if the NRP is incorrectly configured. If NRP is broken, data packets drop, whereas OAM packets expect control plane punting. **Liuyan Han** explained they reuse existing OAM exception mechanisms (such as TTL expiration or Router Alert) to punt packets. Greg suggested defining a new Forwarding Equivalence Class (FEC) for NRP.
+    *   **Zafar Ali** suggested that NRP is structurally parallel to DSCP/EXP and that operators should simply send standard OAM packets marked with specific NRP IDs rather than introducing complex new mechanisms.
+
+---
+
+### Explicit Congestion Notification Using MPLS Network Actions
+Presented by Joel Halpern ([Explicit Congestion Notification Using MPLS Network Actions](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-explicit-congestion-notification-using-mpls-network-actions-00))
+
+*   **Technical Details:** Carrying ECN in MPLS via traditional methods (RFC 5129) consumes precious Class of Service (CoS) bits. This draft proposes utilizing MNA to carry the two-bit ECN marking in both ISD and PSD structures without impacting CoS markings, supporting low-latency applications like L4S.
+*   **Discussion:**
+    *   **Adrian Farrel** (as an individual) confirmed that this models standard transit-to-edge ECN notification.
+    *   **Xuesong Geng** supported the work for L4S deployment but asked why separate opcodes are proposed for ISD and PSD. **Joel Halpern** explained they wanted to avoid hardcoding the same opcode constraint, but they are open to unifying them.
+    *   **Greg Mirsky** noted that the early IANA review feedback allows a single opcode to map to both ISD and PSD, which will be updated in the next revision.
+    *   **Adrian Farrel** polled the room for document readers and encouraged more reviews.
+
+---
+
+### Supporting In Situ Operations, Administration, and Maintenance Using MPLS Network Actions
+Presented by Rakesh Gandhi ([Supporting In Situ Operations, Administration, and Maintenance Using MPLS Network Actions](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-supporting-in-situ-operations-administration-and-maintenance-using-mpls-network-actions-00))
+*   **Draft:** [draft-ietf-mpls-mna-ioam](https://datatracker.ietf.org/doc/draft-ietf-mpls-mna-ioam/)
+
+*   **Technical Details:** This draft defines MPLS MNA encapsulations for IOAM option types (pre-allocated, end-to-end, Proof of Transit, and Direct Export) defined in RFC 9197 and RFC 9326. It supports both ISD and PSD options. Incremental trace is explicitly not supported.
+*   **Discussion:**
+    *   **Adrian Farrel** noted that the last call for this document will be coordinated jointly with the IPPM Working Group.
+
+---
+
+### Signaling RSVP-TE Tunnels on an SR-MPLS Forwarding Plane Using Adjacency Segment Identifiers
+Presented by Pawan Beeram ([Signaling RSVP-TE Tunnels on an SR-MPLS Forwarding Plane Using Adjacency Segment Identifiers](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-08-signaling-rsvp-te-tunnels-on-an-sr-mpls-forwarding-plane-using-adjacency-segment-identifiers-01))
+
+*   **Technical Details:** Builds upon RFC 8577. It proposes using Segment Routing (SR) adjacency sets to realize a shared MPLS forwarding plane over which RSVP-TE tunnels are established. This eliminates the duplicate label systems required when running both SR and RSVP-TE T-link labels. It preserves distributed RSVP-TE features (admission control, auto-bandwidth, preemption) on top of an SR forwarding plane.
+*   **Discussion:**
+    *   **Sasha Vainshtein** asked about using protected adjacency SIDs and its impact on facility Fast Reroute (FRR). **Pawan Beeram** answered that RFC 8577 procedures apply, utilizing a separate protection SID at the Point of Local Repair (PLR) to run facility backup.
+    *   **Zafar Ali** strongly objected to the draft, stating that introducing signaling state into a segment routing forwarding plane violates the stateless architecture of SR. Pawan responded that this addresses environments requiring distributed bandwidth engineering on a unified forwarding plane.
+    *   **Himanshu Shah** raised a clarification question regarding how EXP bits are mapped and queued at each hop since labels are popped. Pawan stated it behaves like standard SR policies but agreed to add clarification text on EXP handling.
+
+---
+
+### Signaling Optimization Objective and Bounded Metrics for MPLS Fast Reroute Backup LSP Tunnels
+Presented by Pawan Beeram ([Signaling Optimization Objective and Bounded Metrics for MPLS Fast Reroute Backup LSP Tunnels](https://datatracker.ietf.org/meeting/126/materials/slides-126-mpls-09-signaling-optimization-objective-and-bounded-metrics-for-mpls-fast-reroute-backup-lsp-tunnels-02))
+
+*   **Technical Details:** This proposal introduces the `Fast_FRR_Extension` object in RSVP Path messages, allowing the ingress node to specify path constraints—such as optimization objectives (e.g., TE metric or delay) and hard bounded metrics (e.g., maximum latency limits)—to guide the PLR's backup path calculation. It is backwards compatible; non-supporting PLRs fall back to local policy.
+*   **Discussion:**
+    *   **Adrian Farrel** inquired about the urgency of the requested early IANA code points. Pawan indicated that while they are shipping an implementation, adopting the draft first is fine as the registries are new.
+    *   **Zafar Ali** expressed concern over "diminishing returns" and added complexity, arguing that local policies at the PLRs have successfully managed backup paths for over twenty years without needing head-end coordination. Pawan replied that modern traffic profiles are highly fluid, requiring more granular control. Zafar also questioned the necessity of early code points for interoperability if there are no other active implementations.
+
+---
+
+## Decisions and Action Items
+
+*   **RFC 5711 Errata:** Chairs to coordinate with the AD to correct the reference error.
+*   **RFC 8663 Errata:** Chairs to coordinate with the AD regarding the "p flag" / "no-PHP flag" definition.
+
+---
+
+## Next Steps
+
+*   **draft-ietf-mpls-on-path-telemetry-flag:** Authors to address Greg Mirsky's feedback regarding how it contrasts with IOAM DEX and Alternate Marking.
+*   **Discovering MNA Capabilities Using LSP Ping:** Authors to investigate ECMP handling constraints for the next revision and discuss potential alignment with YANG-based discovery.
+*   **Explicit Congestion Notification Using MPLS Network Actions:** Authors to update the draft to utilize a single opcode for both ISD and PSD options based on updated IANA registries.
+*   **draft-ietf-mpls-mna-ioam:** Authors to present updates in the IPPM WG session and prepare for a joint WG last call.
+*   **Signaling RSVP-TE Tunnels on an SR-MPLS Forwarding Plane Using Adjacency Segment Identifiers:** Authors to add clarification text on how EXP bits are processed and queued at transit hops.
+*   **Signaling Optimization Objective and Bounded Metrics for MPLS Fast Reroute Backup LSP Tunnels:** Authors to request formal WG adoption on the mailing list.
