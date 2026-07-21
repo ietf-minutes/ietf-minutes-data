@@ -1,0 +1,84 @@
+# [RPP](../wg/rpp.html)
+
+## Summary
+
+The RESTful Provisioning Protocol (RPP) Working Group met at IETF 126 to discuss the status of active drafts, review new proposals, and hear updates from the recent Hackathon. The working group has parked `draft-ietf-rpp-requirements` to focus on core deliverables. Significant progress was made on the data objects, core protocol, and JSON mapping specifications, alongside discussion of a new JSContact profile and experimental drafts covering OAuth 2.0, secure object transfers, and delegation management.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and Document Status Update
+Marco presented the [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-chair-slides-00). 
+* `draft-ietf-rpp-requirements` is currently in a "parked" state. The document has been finalized but will be held until other core specifications are complete, allowing for any final adjustments before publication.
+* `draft-ietf-rpp-architecture` remains active but has not yet undergone a Working Group Last Call (WGLC). Pavel noted that while other drafts refer to it, there has been no recent need to update it, and questioned if working group cycles should be spent on it now or if focus should remain on other documents.
+* Three documents were recently adopted: `draft-ietf-rpp-data-objects`, `draft-ietf-rpp-core`, and `draft-ietf-rpp-json`.
+* The mapping milestone between RPP and EPP remains to be scheduled; the chairs will address its placement when needed.
+
+### 2. RPP Data Objects
+Pavel presented the updates in [RPP Data Objects](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-ietf-126-rpp-data-objects-00) regarding `draft-ietf-rpp-data-objects`:
+* **Recent Changes**: Version 01 introduced data objects for organizations, organization roles, and user objects (derived from RFC 8543). All primary provisioning object types are now covered. Additional properties were introduced, such as unique identifier elements, a direct-access flag for mapping sub-resources to URLs, and the prohibition of properties prefixed with `@` to prevent representation conflicts. 
+* **External Data Types**: Introduced a method to reference external specifications (e.g., JSContact) without redefining them within the data objects document.
+* **Process Objects**: Added a renew process object, create process object (supporting "pending create" states), and allowed sub-collection addressing for processes.
+* **Open Issues & Discussion**:
+  * **Client Definition**: The current model represents the client as an identifier (similar to EPP). The authors propose changing client references to point to a distinct data object, allowing registries to optionally expose richer client data.
+  * **Array Ordering**: Maintaining strict array item ordering in multi-object associations is operationally complex and incompatible with EPP. The working group agreed to remove the ordering requirement and leverage value-based patching instead.
+  * **Updates**: The working group previously agreed to remove auth codes from default responses (such as `info`), eliminate the `urgent` flag, and update the abstract/introduction to reflect the protocol's business logic.
+
+### 3. RPP Core
+Martin presented updates for `draft-ietf-rpp-core` using the [RPP Core - Updates](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-core-updates-00) slides:
+* **Endpoints and HTTP Methods**: The core draft now formalizes conversion rules to map data objects to HTTP endpoints (e.g., the `domain name` identifier maps to the `/domain_names` collection). Full updates must use `PUT`, while partial updates must use `PATCH`.
+* **Process Tracking**: A new `RPP-process` relation type returned in the HTTP Link header allows clients to discover the URI of a process spawned by an operation (such as a transfer).
+* **Multitenancy**: Organization and user endpoints were added to make RPP more adaptable to multitenant setups.
+* **Discussion**: Gavin raised a question about registry-registrar parent-child relationships in multitenancy, specifically when a single registrar operates across multiple TLDs on a shared platform, making a single parent-child association restrictive. Martin agreed to take this discussion to the mailing list.
+
+### 4. RPP JSON
+Pavel presented updates on `draft-ietf-rpp-json` using the [RPP JSON](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-ietf-126-rpp-json-00) slides:
+* **Serialization of External Types**: Defined rules for handling external objects in JSON: embedding native JSON, serializing UTF-8 text, or using Base64 encoding for binary blocks. Andy Newton noted that textual blocks like PEM-encoded keys might require escaping of newlines and double-encoding, suggesting the framing for external types be made highly extensible.
+* **Partial Updates via JSON Patch**: Since standard JSON Patch (RFC 6902) relies on stable array indexes, which cannot be guaranteed by backing databases, Pavel presented a JSON Patch extension that allows matching and replacing array elements by value. Rick Wilhelm questioned the necessity of introducing a novel extension to JSON Patch. Pavel clarified that the extension resolves operational constraints of underlying database indexing, not limitations of JSON itself.
+* **Localization**: A proposal was made to use an `@localizations` key to write multiple languages in a single request, utilizing the `Accept-Language` header to negotiation translations during read operations.
+* **JSON Schema Normative Dependency**: Discussed how to handle the dependency on the JSON Schema specification, which is currently being worked on by the JSON Schema WG (targeting May 2027). Andy Newton (speaking as responsible AD) noted that RPP could take a normative reference on the JSON Schema draft and let the RPP document sit in the RFC Editor queue until JSON Schema is finalized.
+
+### 5. RPP JSContact Profile
+Pavel presented the [RPP JSContact Profile](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-ietf-126-rpp-jscontact-profile-00) slides:
+* **Profile Definition**: The draft defines a profile of JSContact 2.0 (RFC 9553) specifically optimized for RPP provisioning. 
+* **Comparison with RDAP**: While the RDAP JSContact profile allows multiple representations for names and addresses, the RPP profile restricts choices to single representations (e.g., full name only, specific address components, and omitting country names in favor of ISO country codes) to prevent ambiguity during provisioning. Consequently, the RPP JSContact profile is a strict subset of the RDAP profile.
+* **Open Issues**: The current profile cut down email, phone, and fax properties to single instances, which violates the requirement to support multiples; this will be reverted. Decisions are needed regarding whether localization limits should be defined in the profile or left to registry policy, and how to handle future profile extensibility.
+
+### 6. RPP - OAuth 2.0
+Martin presented [RPP - OAuth 2.0](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-oauth-20-01):
+* **Features**: Outlined how OAuth 2.0 addresses requirement 9.2 for granular authorization. It supports interactive (web-based) and machine-to-machine flows, defines object-specific scopes (e.g., `domain_name:create`), and introduces RPP-specific claims (`registrar_id` and `reseller_id`).
+* **Discussion**: Martin noted that if OAuth is not strictly required for secure transfer or delegation use cases, it might receive lower priority. Pavel countered that replacing basic authentication with OAuth 2.0 for standard machine-to-machine interactions remains highly important and should not be deprioritized too quickly.
+
+### 7. RPP - Secure Object Transfer
+Martin presented [RPP - Secure Object Transfer](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-secure-object-transfer-01):
+* **Concept**: A pull-based transfer mechanism using cryptographically signed JSON Web Tokens (JWT) instead of EPP-style auth-info tokens. The gaining registrar redirects the client to the losing registrar's authorization endpoint, which returns a signed token that is subsequently verified by the registry.
+* **Discussion**: Rick Wilhelm argued that transfer friction is primarily a policy issue rather than a technical one, recommending that the working group avoid sinking major effort into alternative transfer mechanisms until policy frameworks (such as ICANN's GTLD policies) open up to pull-driven transfers. Pavel noted that CC-TLDs are not bound by GTLD policy constraints and could adopt such mechanisms more easily, making experimental work valuable.
+
+### 8. RPP - Secure Delegation Management
+Martin presented [RPP - Secure Delegation Management](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-secure-delegation-management-00):
+* **Concept**: A redirection and token-approval flow that allows DNS operators to securely update DNSSEC and NS records directly in the registry database.
+* **Discussion**: Jim noted that there is ongoing work in the DNSOP WG (Johan's draft on `six zero sign notify`) to automate parent-zone key rollouts via DNS notify mechanisms. Martin noted that a provisioning-based approach via RPP could coexist with DNS-layer mechanisms and may offer cleaner workflows for authorizing and revoking third-party access.
+
+### 9. Hackathon Recap
+Martin presented the [Hackathon Recap](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-hackathon-recap-00):
+* During the IETF 126 Hackathon, participants successfully built a Python-coded prototype of an RPP registry and registrar front-end. The prototype demonstrated the secure domain transfer flow using a signed JWT redirect mechanism.
+* **Discussion**: Max Gerber commented on the security risks of passing raw query parameters during redirects, emphasizing that leveraging standard OAuth flows is the most robust way to secure this pattern. Martin agreed that while the mechanism does not strictly require OAuth, using it is highly advised.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-rpp-requirements`**: Officially placed in a "parked" status until the rest of the core specifications are complete.
+* **`draft-ietf-rpp-data-objects`**: The working group decided to remove the constraint requiring strict array ordering for partial updates. Instead, the JSON mapping will utilize value-based patching.
+* **`draft-ietf-rpp-core`**: The working group decided to drop the HTTP header option for profile signaling and exclusively support the media type option.
+
+---
+
+## Next Steps
+
+* **Working Group Adoption**: The chairs will initiate a call for working group adoption on the mailing list for the RPP JSContact Profile document.
+* **Mailing List Discussions**:
+  * Martin to initiate list discussion on registrar-registry parent-child relationships and their implications on multi-tenant registries.
+  * Martin to solicit feedback on the priority of the OAuth 2.0, Secure Object Transfer, and Secure Delegation Management specifications.
+* **Data Objects & JSON Drafts**: Authors to synchronize the schemas between `draft-ietf-rpp-data-objects` and `draft-ietf-rpp-json`, resolve the normative reference strategy for JSON Schema, and address value-based patching mechanics.

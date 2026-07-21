@@ -1,0 +1,126 @@
+# [SIDROPS](../wg/sidrops.html)
+
+## Summary
+
+The SIDROPS Working Group met to discuss several key items concerning the security of internet routing. The primary focus of the session was coordinating the publication of the Autonomous System Provider Authorization (ASPA) cluster of documents, which are currently in Working Group Last Call (WGLC). Other major topics included updates on the Erik Synchronization Protocol, prioritizing local resource data alongside RPKI validation, post-quantum cryptography migration strategies, egress AS_PATH verification, Autonomous System Relationship Authorization (ASRA), relying party requirements, and data-plane measurements of RPKI propagation times.
+
+## Key Discussion Points
+
+### 1. Working Group Status
+* **Slides**: [Chairs' Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-chairs-slides-01)
+* The Chairs opened the meeting with status updates. Notably:
+  * RFC 9981 (Manifest Number Handling) has been published.
+  * Three documents are in the RFC Editor queue.
+  * ASPA-related documents are currently in Working Group Last Call (WGLC).
+
+### 2. ASPA Cluster Publication Coordination
+* **Presenter**: Job Snijders
+* **Slides**: [ASPA Cluster Publication Coordination slot (v2)](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-aspa-cluster-publication-coordination-slot-v2-00)
+* **Drafts**: 
+  * [draft-ietf-sidrops-aspa-profile](https://datatracker.ietf.org/draft-ietf-sidrops-aspa-profile/)
+  * [draft-ietf-sidrops-aspa-verification](https://datatracker.ietf.org/draft-ietf-sidrops-aspa-verification/)
+  * [draft-ietf-sidrops-8210bis](https://datatracker.ietf.org/draft-ietf-sidrops-8210bis/)
+* **Discussion**:
+  * Job Snijders reviewed the status of the three core ASPA documents. External reviews (GenArt, BGP Directorate, ArtArt) were received. Based on feedback, Job Snijders resolved an ambiguity in the profile document where "CAS" was used both for "Certification Authorities" and "Customer AS" by spelling out "Certification Authorities" in full.
+  * An interoperability report for [draft-ietf-sidrops-8210bis](https://datatracker.ietf.org/draft-ietf-sidrops-8210bis/) (RTRv2) compiled by Tom Harrison/Tom de Kock demonstrated sufficient interoperability. However, a minor discrepancy was identified: when a client performs a serial query and the server returns a different session ID than expected, Section 5.1 suggests a full reset (cache flush and reconnect), whereas Section 5.3 implies a full sync without reconnecting. This detail needs to be resolved.
+  * An unnamed participant asked about operational lessons from using ASPA in the wild, noting cases where undocumented transit providers caused connectivity loss. Job Snijders pointed out that the profile and verification specifications clearly state that operators must list all transit providers to prevent routes from being flagged as invalid. Maria Matejka clarified that the issue in question involved an undocumented transit network that erroneously behaved as a transit.
+  * A participant asked about rate-limiting cache resets in RTR to prevent connection overload. Jeff Haas noted that while [draft-ietf-sidrops-8210bis](https://datatracker.ietf.org/draft-ietf-sidrops-8210bis/) establishes the protocol behavior, operational considerations like rate-limiting represent good candidate material for a future, separate Internet-Draft.
+
+### 3. Update on Erik Synchronization Protocol
+* **Presenter**: Job Snijders
+* **Slides**: [Update on Erik Synchronisation Protocol (draft-ietf-sidrops-rpki-erik-protocol-06) v4](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-update-on-erik-synchronisation-protocol-draft-ietf-sidrops-rpki-erik-protocol-06-v4-00)
+* **Drafts**: [draft-ietf-sidrops-rpki-erik-protocol](https://datatracker.ietf.org/draft-ietf-sidrops-rpki-erik-protocol)
+* **Discussion**:
+  * Job Snijders summarized the architectural issues with rsync and RRDP, explaining that Erik uses Merkle trees to let relying parties cheaply check for changes and download only the differences via static precomputed content over HTTP.
+  * Testing in China revealed a performance bottleneck: executing over 100,000 HTTP requests introduced high overhead in rate-limited networks or behind layer-7 deep packet inspection (DPI) devices.
+  * To fix this, the authors introduced "write-ahead log" (WAL) segments (concatenated sequences of DER objects) and a segment index. RPs can download these larger combined segments to drastically reduce the number of individual HTTP requests. Multiple implementations of this mechanism are currently under development.
+
+### 4. IPv6 Mapping Prefix PDU for the RPKI-Router Protocol
+* **Presenter**: Presenter from China Telecom
+* **Slides**: [IPv6 Mapping Prefix PDU for the  RPKI-Router Protocol](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-ipv6-mapping-prefix-pdu-for-the-rpki-router-protocol-01)
+* **Discussion**:
+  * The presenter introduced a new payload PDU carrying IPv4 prefixes authorized by a single IPv6 mapping prefix. Its goal is to carry Mapping Origin Authorization (MOA) data from caches to routers in IPv6-only environments.
+  * The proposed PDU follows the structural design of RFC 8210 and includes flag fields to support both advertisements and withdrawals.
+  * The presenter requested working group adoption for this document.
+
+### 5. RPKI-based Validation with Prioritized Resource Data
+* **Presenter**: Jeff (Jia)
+* **Slides**: [RPKI-based Validation with Prioritized Resource Data](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-rpki-based-validation-with-prioritized-resource-data-00)
+* **Discussion**:
+  * The presenter addressed how operators mix authoritative RPKI data with non-RPKI data (e.g., SLURM, local whitelists, or IRR feeds). Without a prioritized model, low-confidence local data might silently override and weaken authoritative RPKI results.
+  * This proposal separates operator decisions from framework guarantees by introducing priority tiers and a merge rule: RPKI invalid states cannot be quietly rescued by lower-priority valid states.
+  * Three deployment models were analyzed: Model A (multiple tables, separate RTR sessions - requiring no protocol or code changes), Model B (routers merge priority-aware ROAs), and Model C (priority metadata carried in-band in RTR). An OpenBGPD prototype validated these models.
+  * Job Snijders raised a concern that prioritizing data might allow validation states to bleed into routing policy (e.g., using "deprefer" on IRR data). If a ROA is added or deleted, it could cause local preference changes and route churn, which contradicts the BCP guidelines on avoiding validation states in BGP. Jeff Haas supported the work, agreeing that operators already override RPKI using static configurations and need a standardized taxonomy to model these relationships.
+
+### 6. Post-Quantum Signature Algorithm Profile and Migration Considerations for the RPKI
+* **Presenter**: Tomoki Yoshikawa
+* **Slides**: [Post-Quantum Signature Algorithm Profile and Migration Considerations for the Resource Public Key Infrastructure (RPKI)](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-post-quantum-signature-algorithm-profile-and-migration-considerations-for-the-resource-public-key-infrastructure-rpki-00)
+* **Discussion**:
+  * Tomoki Yoshikawa proposed splitting the existing PQC migration draft into three separate documents:
+    1. An informational document describing PQC requirements, measurements, and operations without mandating a specific algorithm.
+    2. A document describing migration methods using mixed certification chains (upgrading the migration model of RFC 6916).
+    3. A standards-track document defining a specific RPKI signature suite.
+  * Experiments focused on a composite suite of ML-DSA-65 with ECDSA P-256.
+  * Bob Beck raised a downgrade concern: if a parent CA remains on RSA and signs a transition certificate containing a secure post-quantum public key, an attacker who breaks the RSA key can fake the transition certificate entirely. Thus, security is only fully realized once the entire tree stops accepting RSA.
+  * The Chairperson noted that RFC 6489 already outlines algorithm rollover procedures and advised aligning the transition proposal with that standard. Tim Bruijnzeels agreed, adding that choosing between separate trees (as per RFC 6489) or mixed trees represents a broader topic that warrants mailing list discussion.
+
+### 7. ASPA-based AS_PATH Verification for BGP Export
+* **Presenter**: Jeff (Jia)
+* **Slides**: [ASPA-based AS_PATH Verification for BGP Export](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-aspa-based-as-path-verification-for-bgp-export-00)
+* **Discussion**:
+  * The presenter proposed applying ASPA verification at egress (EBGP export) to serve as a local safety net, helping to catch local misconfigurations or missing ASPA records before routes leave the AS.
+  * Version 5 introduces "Neighbor AS augmented verification" to detect omitted provider ASes locally, and offers optimization approaches like offloading verification to a central route reflector. It has been prototyped in BIRD and OpenBGPD.
+  * Alexander Azimov voiced concerns over the draft's terminology ("possible eligible for being propagated") and warned that using ASPA objects of local/neighbor ASes to determine relationship directions is unsafe, which is why it was explicitly avoided in the ingress ASPA verification draft.
+  * Jeff Haas suggested that the draft should also consider how "remove private AS" policies affect egress verification.
+
+### 8. Autonomous System Relationship Authorization (ASRA)
+* **Presenter**: Sriram
+* **Slides**: [Update on Autonomous System Relationship Authorization (ASRA) Drafts](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-update-on-autonomous-system-relationship-authorization-asra-drafts-00)
+* **Discussion**:
+  * Sriram presented ASRA, designed to fill a security gap in ASPA: detecting downstream fake link/force-peering attacks. It introduces a new RPKI object authorizing customer and lateral peer relationships.
+  * ASRA defines four types of authorizations: Customer (C), Lateral Peer (LP), Combined Customer/Lateral Peer (CLP), and Transparent IXP (TICS). Sriram emphasized that ASRA never overrides ASPA.
+  * Maria Matejka raised concerns that ASRA would introduce highly complex, large databases and intensive lookup paths for routers, generating significant operational friction.
+  * Yang Fei asked about handling conflicts; Sriram confirmed ASPA always takes precedence.
+  * Jeff Haas remarked that ASRA could be useful for modeling complex relationships that do not strictly adhere to Gao-Rexford rules.
+  * Thomas Schmidt questioned if lateral peer relationships must be bilateral to be trusted. Sriram answered that the protocol trusts the sender's ASRA and ASPA in the direction of the route update.
+  * Alexander Azimov commented that ASRA shifts operational responsibility for maintaining records (such as IXP clients) to third parties (delegation). He also noted that ASRA does not completely eliminate replay attacks or resolve selective peering scenarios within IXPs. Sriram welcomed offline discussion on the IXP use cases.
+
+### 9. Requirements for RPKI Relying Parties
+* **Presenter**: Ying Su
+* **Slides**: [Requirements for Resource Public Key Infrastructure (RPKI) Relying Parties](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-requirements-for-resource-public-key-infrastructure-rpki-relying-parties-00)
+* **Discussion**:
+  * Ying Su presented a proposal to update RFC 8897 to capture the major updates to the RPKI ecosystem since 2020, including new objects (ASPA, TAK, RSC), RTR v2, and synchronization mechanisms (such as Erik).
+  * Job Snijders commented that rely party requirement RFCs are typically outdated before publication. He suggested marking the existing RFC 8897 as historic and maintaining a living "helicopter overview" of requirements on the SIDROPS WG wiki instead of trying to publish a new RFC.
+
+### 10. Measuring Propagation Time of RPKI Validity Changes on the Dataplane
+* **Presenter**: Alex Mendel
+* **Slides**: [Measuring Propagation Time of RPKI Validity Changes on the Dataplane](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-measuring-propagation-time-of-rpki-validity-changes-on-the-dataplane-00)
+* **Discussion**:
+  * Alex Mendel presented measurements on how quickly the data plane reacts to ROA changes. By polling the RIPE NCC CDN origin directly with an optimized validator, the researchers observed changes 1 to 5 minutes faster than public validators. They then executed traceroutes from global vantage points following ROA transitions.
+  * For prefixes transitioning from invalid to valid (becoming reachable), the median propagation time was 9 minutes (multi-homed) to 12 minutes (single-homed).
+  * For prefixes transitioning from valid to invalid (withdrawing reachability), propagation times rose significantly to 30 minutes (single-homed) and 42 minutes (multi-homed).
+  * Jeff Haas inquired about the long tails and variance observed for specific transit networks. Alex Mendel explained that slower networks often inherit the rapid withdrawal of adjacent, faster networks. Jeff Haas noted that this reflects the core BGP "last man standing" path-hunting problem.
+  * Job Snijders thanked the presenter for the valuable data-plane measurements.
+
+### 11. RPKI-o-QUIC
+* **Presenter**: Presenter
+* **Slides**: [RPKI-o-QUIC-Updated](https://datatracker.ietf.org/meeting/126/materials/slides-126-sidrops-rpki-o-quic-updated-00)
+* **Discussion**:
+  * The presenter briefly introduced RPKI over QUIC, highlighting advantages like built-in TLS, rapid connection survival across IP changes, and stream multiplexing.
+  * Due to session time limits, the Chairperson ended the presentation and directed the presenter to continue the discussion on the mailing list, suggesting that future presentations focus on the "why" of the protocol rather than the "how."
+
+---
+
+## Decisions and Action Items
+
+* **ASPA Documents WGLC**: The working group was urged to review the ASPA cluster documents ([draft-ietf-sidrops-aspa-profile](https://datatracker.ietf.org/draft-ietf-sidrops-aspa-profile/), [draft-ietf-sidrops-aspa-verification](https://datatracker.ietf.org/draft-ietf-sidrops-aspa-verification/), [draft-ietf-sidrops-8210bis](https://datatracker.ietf.org/draft-ietf-sidrops-8210bis/)) and post their feedback to the mailing list.
+* **ASPA Ambiguity Resolution**: Job Snijders changed "CAS" to fully write out "Certification Authorities" in [draft-ietf-sidrops-aspa-profile](https://datatracker.ietf.org/draft-ietf-sidrops-aspa-profile/) to resolve the abbreviation conflict with "Customer AS".
+
+---
+
+## Next Steps
+
+* **RTRv2 (draft-ietf-sidrops-8210bis)**: Job Snijders and other implementers must hash out the exact state machine behavior for cache resets versus full synchronization under Section 5.1 and 5.3 during the week.
+* **Post-Quantum Cryptography Migration**: Discussion regarding the proposed split into three documents and the debate over mixed versus separate certificate trees (RFC 6489) will be taken to the mailing list.
+* **Egress ASPA and ASRA**: Authors will refine their respective drafts ([draft-ietf-sidrops-aspa-verification](https://datatracker.ietf.org/draft-ietf-sidrops-aspa-verification/) adjacent and ASRA documents) based on feedback received regarding routing policy, delegation of records, and safety boundary concerns.
+* **RPKI over QUIC**: The presenter will shift focus to explaining the core motivation ("why") of using QUIC for RPKI on the mailing list.
