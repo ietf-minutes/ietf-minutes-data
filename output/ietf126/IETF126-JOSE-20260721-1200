@@ -1,0 +1,88 @@
+# [JOSE](../wg/jose.html)
+
+## Summary
+
+The JOSE Working Group met at IETF 126 to discuss several active and proposed documents. Key highlights included the conclusion of Working Group Last Calls (WGLC) for two specifications, updates on Post-Quantum Cryptography (PQC) and hybrid algorithm registrations, and a proposal to introduce a modular zero-knowledge sub-proof framework on top of JSON Web Proofs. The working group also addressed cross-working group alignment challenges with COSE, LAMPS, and CFRG.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Last Call (WGLC) Status
+* **HPKE with JWE**: The working group addressed the second WGLC for this document, which was initiated to address the removal of two algorithms. The chairs noted strong consensus on the mailing list in favor of removing the algorithms and no opposition to publishing the document. By the end of the day, the WGLC will be closed, and the document will be passed back to the IESG.
+* **[draft-ietf-jose-deprecate-none-rsa15](https://datatracker.ietf.org/doc/draft-ietf-jose-deprecate-none-rsa15/)**: The chairs noted a disappointing lack of mailing list responses during the extended WGLC for Neil Madden's document, despite its brevity. To establish consensus, an in-room poll was taken. The poll showed strong consensus in support of publishing the document with no opposition. This WGLC will also be closed out this week.
+
+### 2. BBS and Modular Sub-proofs with JSON Web Proofs
+* **Presentation**: [BBS and Modular Sub-proofs with JSON Web Proofs](https://datatracker.ietf.org/meeting/126/materials/slides-126-jose-bbs-and-modular-sub-proofs-with-json-web-proofs-00)
+* **Presenter**: Christian Paquin
+* **Discussion**:
+  * Christian Paquin proposed a generalized, modular zero-knowledge proof (ZKP) system built on top of JSON Web Proofs. It relies on a "commit and proof" separation layer: a core signature system (like BBS) generates commitments to hidden attributes, which then serve as inputs to independent sub-proof systems (e.g., range proofs or device binding).
+  * This architecture isolates cryptographic complexity and allows individual modules to evolve (such as migrating to post-quantum alternatives or using bulletproofs) without redesigning the entire system.
+  * Frederick Jacobsen expressed concern regarding sub-proof agility and recommended keeping the core framework separate from specific sub-proof algorithm definitions. Christian Paquin agreed that specific definitions should live in separate drafts, but this core draft should establish the IANA registry.
+  * Andrey Popov, Brent Sundell, John Bradley, and Phillip Hallam-Baker spoke in support of adopting the work. John Bradley noted active prototyping efforts to combine this with P-256 and Schnorr key-binding mechanisms.
+
+### 3. JOSE HPKE PQ & PQ/T Algorithm Registrations
+* **Presentation**: [JOSE HPKE PQ & PQ/T Algorithms](https://datatracker.ietf.org/meeting/126/materials/slides-126-jose-jose-hpke-pq-pqt-algorithms-01)
+* **Presenter**: Filip Skokan (referred to as Philip in the session)
+* **Discussion**:
+  * [draft-ietf-jose-hpke-pq-pqt](https://datatracker.ietf.org/doc/draft-ietf-jose-hpke-pq-pqt/) combines two previous individual drafts to register algorithm (`alg`) values for post-quantum and hybrid KEMs in JWE. It registers five cipher suites across two key management modes.
+  * Browser API integration (WICG Web Cryptography) was discussed. Native browser support currently focuses on Xwing, ML-KEM-768, and ML-KEM-1024. ML-KEM-512 was excluded from this JWE draft because browsers do not plan to ship it (though it remains in the COSE equivalent).
+  * The current draft uses SHAKE256 as the KDF. Browser vendor feedback on SHAKE256 is mixed (Chromium indicated negative signals for the current origin trial; Firefox lacks SHAKE but may support TurboSHAKE; Safari is not opposed).
+  * Hannes Tschofenig suggested that a specific hybrid suite (X25519 + ML-KEM-768) should be designated as "recommended" or "required" in the IANA registry to match the direction of TLS.
+  * Quinn Dang (NIST) recommended using the strongest options that offer acceptable performance (Level 5, then Level 3, and then Level 1 / ML-KEM-512 only if necessary).
+  * Brian Campbell questioned the lack of consistency in AEAD choices, pointing out that ChaCha AEADs are omitted here but present in the base HPKE specification. Deb Cooley (AD) noted that while consistency is valuable, the base HPKE draft will eventually be superseded by PQC standards, rendering the omission of ChaCha AEADs in this draft less problematic over the long term.
+
+### 4. Post-Quantum Key Encapsulation Mechanisms (PQ KEMs) for COSE
+* **Presenter**: Retro
+* **Discussion**:
+  * Addressing [draft-ietf-jose-pqc-kem](https://datatracker.ietf.org/doc/draft-ietf-jose-pqc-kem/), Retro confirmed that the JOSE working group had unanimously agreed not to pursue pure PQ KEMs without HPKE. 
+  * Consequently, the JOSE-specific portions will be removed from this document, and the draft will transition entirely to the COSE working group.
+
+### 5. PQ/T Hybrid Composite Signatures for JOSE and COSE
+* **Presentation**: [PQ/T Hybrid Composite Signatures for JOSE and COSE](https://datatracker.ietf.org/meeting/126/materials/slides-126-jose-pqt-hybrid-composite-signatures-for-jose-and-cose-00)
+* **Presenter**: Lucas
+* **Discussion**:
+  * [draft-ietf-jose-pq-composite-sigs](https://datatracker.ietf.org/doc/draft-ietf-jose-pq-composite-sigs/) defines composite signatures (combining ML-DSA with classical ECDSA/EdDSA) for JOSE and COSE. Updates include removing ECDSA point compression, correcting Base64URL encoding bugs, and aligning with the LAMPS WG's composite draft.
+  * A major design conflict exists regarding how to encode the classical ECDSA component. The LAMPS composite draft specifies ASN.1 DER encoding. The current JOSE draft uses raw fixed-length encoding.
+    * **Option 1 (Raw fixed-length)**: More natural to traditional JOSE/COSE structures. Avoids introducing ASN.1 parser requirements. Supported by Mike Jones and Mike Ellsworth, who emphasized keeping ASN.1 out of the JSON/JWK ecosystem.
+    * **Option 2 (ASN.1 DER)**: Achieves single, portable key and signature formats across protocols (X.509/CMS and JOSE/COSE). Supported by Andrey Popov, John Gray, and Sophie Schmieg. They argued that because the classical key is treated as an opaque blob by the application layer, reusing the DER structure avoids custom transcoding and prevents implementation bugs.
+  * An in-room poll was conducted: *"I prefer aligning with the LAMPS composite document and using ASN.1 DER."* The results showed a preference for "Yes" (aligning with LAMPS), although there were several "No" votes and "No Opinion" abstentions.
+
+### 6. JSON Web Proofs
+* **Presentation**: [JSON Web Proofs](https://datatracker.ietf.org/meeting/126/materials/slides-126-jose-json-web-proofs-00)
+* **Presenter**: Mike Jones
+* **Discussion**:
+  * Updates to [draft-ietf-jose-json-web-proof](https://datatracker.ietf.org/doc/draft-ietf-jose-json-web-proof/), [draft-ietf-jose-json-proof-token](https://datatracker.ietf.org/doc/draft-ietf-jose-json-proof-token/), and [draft-ietf-jose-json-proof-algorithms](https://datatracker.ietf.org/doc/draft-ietf-jose-json-proof-algorithms/) since the last meeting have been primarily editorial.
+  * The main blocker for these drafts is their normative dependency on CFRG BBS signature drafts, which are progressing slowly.
+  * Hannes Tschofenig asked if the chairs had engaged with the CFRG chairs to expedite the BBS documents. Deb Cooley and John Bradley committed to coordinating with CFRG chairs and authors to help maintain momentum on the underlying BBS draft.
+  * An open technical question remains regarding how to best represent subsets of claims as payloads (e.g., extracting a country or zip code from an address).
+
+### 7. Long-Term Validation for JSON Web Signature (LTV-JWS)
+* **Presentation**: [Long-Term Validation for JSON Web Signature (LTV-JWS)](https://datatracker.ietf.org/meeting/126/materials/slides-126-jose-long-term-validation-for-json-web-signature-ltv-jws-02)
+* **Presenter**: Yuzuru Ando
+* **Discussion**:
+  * Yuzuru Ando presented an individual proposal designed for PKI-based offline document signing. The proposal introduces four validation levels, recursive archiving timestamps (to extend validation beyond certificate expiration), and algorithm renewal.
+  * Stefan Santesson pointed out existing standards that address these requirements, specifically RFC 9321 (Signature Validation Token) and the ongoing "one signature certs" work in the LAMPS WG.
+  * Scott Fluhrer questioned the trust model, noting that having the signer assert the validation/timestamp attributes might introduce security vulnerabilities compared to traditional CA-signed attributes.
+
+---
+
+## Decisions and Action Items
+
+* **Decisions**:
+  * The WGLC for the HPKE with JWE draft will be declared closed, and the document will return to the IESG.
+  * The WGLC for [draft-ietf-jose-deprecate-none-rsa15](https://datatracker.ietf.org/doc/draft-ietf-jose-deprecate-none-rsa15/) will be declared closed based on in-room consensus, and the document will proceed to publication.
+  * The JOSE-specific portions of [draft-ietf-jose-pqc-kem](https://datatracker.ietf.org/doc/draft-ietf-jose-pqc-kem/) will be removed, and the draft will be fully transferred to the COSE working group.
+
+* **Action Items**:
+  * **Chairs**: Issue a formal working group call for adoption for Christian Paquin's draft, *BBS and Modular Sub-proofs with JSON Web Proofs*.
+  * **Chairs / AD**: Coordinate with CFRG leadership and authors to expedite the progress of the BBS signature specifications.
+  * **Lucas (Draft Author)**: Initiate a dedicated thread on the mailing list to resolve the ECDSA component encoding (raw vs. ASN.1 DER) for [draft-ietf-jose-pq-composite-sigs](https://datatracker.ietf.org/doc/draft-ietf-jose-pq-composite-sigs/).
+
+---
+
+## Next Steps
+
+* **[draft-ietf-jose-hpke-pq-pqt](https://datatracker.ietf.org/doc/draft-ietf-jose-hpke-pq-pqt/)**: Authors will gather feedback on the mailing list regarding KDF selections and hybrid recommendation tags. The chairs aim to launch WGLC around mid-September.
+* **[draft-ietf-jose-pq-composite-sigs](https://datatracker.ietf.org/doc/draft-ietf-jose-pq-composite-sigs/)**: Once the mailing list resolves the ASN.1 DER encoding issue, the draft will be updated to prepare for WGLC.
+* **LTV-JWS**: Discussions regarding Yuzuru Ando's individual presentation will continue on the mailing list to gauge working group interest.

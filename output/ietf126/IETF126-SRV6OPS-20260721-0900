@@ -1,0 +1,107 @@
+# [SRV6OPS](../wg/srv6ops.html)
+
+## Summary
+
+The SRV6OPS working group session at IETF 126 was chaired by Dan Voyer, Dhruv Dhody, and Wei Chang. The session featured ten presentations covering operator deployment experiences (Deutsche Telekom, China Telecom, China Southern Power Grid, and SINET), open-source implementations (SONiC), and updates on active working group and individual drafts. 
+
+Key advancements included progress towards Working Group Last Call (WGLC) for the deployment options draft, updates on the problem summary draft, and plans to initiate a working group adoption call for the addressing recommendations draft.
+
+---
+
+## Key Discussion Points
+
+### 1. Operator Experiences and Implementations
+
+#### [2.1 DT Road towards SRv6](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-21-dt-road-towards-srv6-00)
+* **Presenter:** Nick (Deutsche Telekom)
+* **Technical Details:** Deutsche Telekom (DT) presented its group-wide "Horizontal Digital Architecture" strategy, aiming to harmonize IP network layers across all local subsidiaries (ranging from hundreds to 50,000 nodes) using SRv6. DT selected the micro-SID (uSID) approach to simplify forwarding. For addressing, DT established a unified scheme utilizing the `5f::/16` block to prevent overlapping addresses and eliminate the need for renumbering. DT is also trialing end-to-end SRv6 connectivity into data centers (bypassing traditional technology translation layers) and virtual routers in cloud environments.
+* **Discussion:**
+  * Tom Hill (British Telecom) asked about the security model for cloud-interconnected virtual routers. Nick clarified that security designs are still in the proof-of-concept phase; they currently use direct connections but may deploy border protection routers and IPsec depending on partner capabilities.
+  * Toby asked why DT preferred private space (`5f::/16`) over global IPv6 space. Nick confirmed that after extensive internal debate, the `5f::/16` block was chosen alongside a custom hierarchical formatting model underneath it.
+
+#### [2.2 Practices for Migrating MPLS Networks to SRv6](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-22-practices-for-migrating-mpls-networks-to-srv6-00)
+* **Presenter:** Yongxing Zhu (China Telecom)
+* **Technical Details:** China Telecom shared its experience migrating multi-protocol MPLS networks (running OSPF, LDP, RSVP-TE, etc.) to SRv6. They defined two distinct migration paths:
+  * *Greenfield Mode* (for scenarios where <50% of devices support SRv6): Deploying a parallel SRv6 network and progressively migrating capable access devices and services.
+  * *Brownfield Mode* (for scenarios where $\ge$50% of devices are SRv6-capable): Enabling SRv6 on capable hardware, prioritizing SRv6 paths, and employing interworking gateways (via route re-origination and translation) for legacy segments.
+  The design also leverages MP-BGP, hierarchical GUA IP allocation, and in-band performance measurement via alternate marking (RFC 9341, RFC 9342, and RFC 9447) and telemetry.
+* **Discussion:**
+  * Himanshu Shah (Ciena) raised a scenario involving dual-stack/dual-capability (SR-MPLS and SRv6) egress PEs running L3VPN and asked how route distribution and BGP peering with the Route Reflector (RR) were managed. Yongxing Zhu took the detailed explanation offline.
+  * Dan (BHP) asked why China Telecom did not use SRv6 compression (micro-SID) and why they switched address families from L3VPN to EVPN. Yongxing Zhu responded that in 95% of their network paths, the end-to-end hop count is under 10, meaning compression was not initially critical. Further discussion was deferred offline.
+
+#### [2.3 SRv6 @ SONiC](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-23-srv6-sonic-01)
+* **Presenter:** Ahnaf Salam (Cisco)
+* **Technical Details:** Ahnaf Salam outlined the 5-year journey of implementing SRv6 in the SONiC open-source network operating system. Features include static fabric routing for AI back-ends, L3VPN, IPv4/IPv6 GRT, and an SRv6 SID manager. The static SRv6 micro-SID fabric was merged into the May 2025 SONiC release (~120 PRs) and deployed in Microsoft's Fairwater AI data center. Future work (2026) centers on AI scale-out WAN architectures requiring traffic engineering (TE) and fast reroute (FRR) in BGP-only fabrics.
+* **Discussion:**
+  * Alex asked for clarification on the open-source status of the Switch Abstraction Interface (SAI) layer for proprietary silicon. Ahnaf Salam explained that while the SAI API definition is open-source (OCP-governed), the underlying ASIC SDK implementations remain proprietary to individual silicon vendors.
+  * Toby inquired about support for End.DT vs End.DX endpoints in SONiC and the Linux kernel. Ahnaf Salam noted that while SONiC and the SAI layer support both behaviors, gaps primarily existed within the FRR routing stack implementation for End.DX.
+  * An unidentified participant asked about the release and upstreaming timeline. Ahnaf Salam indicated that SONiC operates on a bi-annual release cadence, and any routing feature must first be stabilized upstream in FRR.
+  * Keyur Patel suggested that the presentation should focus more on operational metrics (scale, hardware interoperability challenges) and less on product positioning. 
+  * Dhruv Dhody requested that the authors compile operational feedback from the Alibaba and Microsoft deployments to enrich the working group's Best Current Practice (BCP) documents.
+
+---
+
+### 2. Active Working Group Drafts
+
+#### [3.1 Deployment Options](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-srv6-deployment-00)
+* **Presenter:** Himanshu Shah (Ciena)
+* **Draft Reference:** [draft-ietf-srv6ops-srv6-deployment](https://datatracker.ietf.org/html/draft-ietf-srv6ops-srv6-deployment)
+* **Technical Details:** This draft, in development for nearly two years, outlines migration strategies from various data plane technologies. Recent updates include terminology alignment based on feedback from Edward, and the addition of a section detailing the coexistence of RSVP-TE with SRv6 (incorporating recommendations from RFC 8426).
+* **Discussion:** The authors intend to gather input from the BESS working group regarding the VXLAN-to-SRv6 migration section. The draft is nearing readiness for Working Group Last Call (WGLC).
+
+#### [3.2 Problem Summary](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-srv6-deployment-and-operation-problem-summary-00)
+* **Presenter:** Yi Sun Liu (China Mobile)
+* **Draft Reference:** [draft-ietf-srv6ops-problem-summary](https://datatracker.ietf.org/html/draft-ietf-srv6ops-problem-summary)
+* **Technical Details:** This was the first presentation since the draft's adoption. Updates in version -00 expanded the migration scope to include L2VPN (VPWS and VPLS) and added a concrete comparison of non-aggregatable per-domain prefix allocation versus optimized hierarchical uSID structures. It also rewrote path performance visibility issues (highlighting limitations in current in-band measurement tools) and added a security appendix covering access, cloud, and DC boundaries.
+
+---
+
+### 3. Individual Drafts and Proposals
+
+#### [3.3 Addressing Recommendations](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-33-addressing-recommendations-00)
+* **Presenter:** Jakub Horn
+* **Technical Details:** Version -02 of this draft incorporates a new section covering "replace-C-SID" compression alongside the existing micro-SID (uSID) text to ensure completeness, as both compression methods are defined in the same base RFC.
+* **Discussion:** The presenter requested a working group adoption call. Co-chair Dan Voyer asked if there were any objections; finding none, he agreed to launch the adoption call on the mailing list.
+
+#### [3.4 SRv6 in AI Backend](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-34-srv6-in-ai-backend-01)
+* **Presenter:** Ahnaf Salam (Cisco)
+* **Technical Details:** This draft covers the design of static SRv6 uSID fabrics for AI back-ends, highlighting deterministic path selection, low MTU overhead, and congestion feedback. It also details the integration of Multi-bus Reliable Control (MRC) with SRv6 to handle packet trimming and ECN without relying on dynamic routing protocols (IGP/BGP). Microsoft and Oracle operators have joined as co-authors.
+* **Discussion:** Justin (NVIDIA) cautioned that while the physical fabric configuration becomes simpler with a static design, the underlying control and monitoring planes remain highly complex, and this operational complexity should be explicitly documented in the draft.
+
+#### [3.5 SRv6 in End-to-End DC Frontend](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-35-srv6-in-end-to-end-dc-frontend-01)
+* **Presenter:** Ahnaf Salam (Cisco)
+* **Technical Details:** This draft addresses the optimization of WAN-to-DC front-end boundaries, removing protocol translation and tunnel mesh overhead through end-to-end SRv6. Version -01 integrates actual deployment use cases from Nebius and Deutsche Telekom.
+* **Discussion:** The authors requested working group adoption.
+
+#### [3.6 SFC Deployments](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-36-sfc-deployments-00)
+* **Presenter:** Wataru Shinohara
+* **Technical Details:** Wataru Shinohara shared lessons from deploying SRv6 Service Function Chaining (SFC) for a remote video production service over SINET (an academic IPv6 backbone in Japan spanning three data centers). Key findings included:
+  1. *Service SID Uniqueness:* Risks of SID collision require coordination between the SDN controller and local service function managers.
+  2. *Component Placement:* Centralizing the VNF manager and controller in a single DC reduces exposure to inter-DC link failures.
+  3. *Failure Recovery:* Fast Reroute (FRR) restores connectivity but does not preserve application state, necessitating application-level buffering or state synchronization.
+  4. *Observability:* Operators must monitor both the network layer and the application payload to ensure correct transcoding and processing.
+* **Discussion:**
+  * An unidentified speaker asked if this draft relies on the active Spring SFC draft. Wataru Shinohara confirmed that it aligns with the Spring SRv6 SFC architecture.
+  * Thomas Graf noted the challenge of multi-layer encapsulation visibility and suggested reviewing the ongoing IPFIX multilayer encapsulation work in the OPSAWG.
+  * Dan (BHP) asked about the packet flow behavior and resilience if the middle transit data center (Kanagawa) experienced a total failure. Wataru Shinohara explained that video sources are split and distributed across sites (such as Okinawa and Ishikawa), and agreed to provide a detailed routing breakdown offline.
+
+#### [3.7 ESP Protection for Services](https://datatracker.ietf.org/meeting/126/materials/slides-126-srv6ops-37-esp-protection-for-services-00)
+* **Presenter:** Unidentified Presenter (China Southern Power Grid)
+* **Technical Details:** China Southern Power Grid presented a use case where secure dispatch networks and unencrypted integrated data networks are being combined onto a unified SRv6 infrastructure. They proposed using a single BGP control plane to negotiate IPsec/ESP parameters for protected traffic flows. The data plane carries an outer SRv6 header with an ESP-encrypted payload inside. BGP advertisements specify which prefixes must be protected using a newly assigned IANA BGP tunnel type for ESP-protected payloads.
+* **Discussion:** The presenter requested working group feedback and adoption. Due to time constraints, further discussion was directed to the mailing list.
+
+---
+
+## Decisions and Action Items
+
+* **Adoption Call:** The working group will initiate a formal adoption call on the mailing list for the SRv6 addressing recommendations draft (`draft-horn-srv6ops-addressing-recommendations` / slide slot 3.3).
+* **Feedback Gathering:** The authors of `draft-ietf-srv6ops-srv6-deployment` will seek formal feedback from the BESS working group regarding the VXLAN-to-SRv6 migration text before progressing the document to WGLC.
+
+---
+
+## Next Steps
+
+* **Mailing List Discussions:**
+  * Follow-up on China Telecom's migration experiences regarding L3VPN route advertisement on dual-capable PEs.
+  * Collect operational feedback from SONiC deployments (Microsoft, Alibaba) to inform future BCPs.
+  * Discuss the China Southern Power Grid proposal for BGP-based ESP parameter distribution over SRv6.
