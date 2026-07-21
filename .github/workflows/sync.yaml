@@ -16,6 +16,10 @@ on:
 
 env:
   TRANSCRIPT_GEN_FLAG: ${{ vars.TRANSCRIPT_GEN_FLAG }}
+  # Set the IGNORE_FAILURES_FLAG repo variable to "--ignore-failures" to keep a
+  # summarize run green when individual sessions fail (e.g. a transcription/API
+  # error). Empty = failures still fail the job. See ekr/auto-minutes#74.
+  IGNORE_FAILURES_FLAG: ${{ vars.IGNORE_FAILURES_FLAG }}
 
 concurrency:
   group: ${{ github.workflow }}
@@ -97,7 +101,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
         run: |
-          node src/index.js -v --summarize current --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }}
+          node src/index.js -v --summarize current --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }} ${{ env.IGNORE_FAILURES_FLAG }}
 
       - name: Summarize interims up to today.
         if: inputs.selectors == ''
@@ -107,7 +111,7 @@ jobs:
           DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
         run: |
           # Performance isn't good if we start too far back, unfortunately.
-          node src/index.js -v --summarize 2026-07-01+ --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }}
+          node src/index.js -v --summarize 2026-07-01+ --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }} ${{ env.IGNORE_FAILURES_FLAG }}
 
       - name: Summarize requested sessions
         if: inputs.selectors != ''
@@ -121,7 +125,7 @@ jobs:
           while read -r selector _type; do
             [ -z "$selector" ] && continue
             echo "::group::summarize $selector"
-            node src/index.js -v --summarize "$selector" --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }}
+            node src/index.js -v --summarize "$selector" --source agenda -j 5 ${{ env.TRANSCRIPT_GEN_FLAG }} ${{ env.IGNORE_FAILURES_FLAG }}
             echo "::endgroup::"
           done <<< "$SELECTORS"
 
