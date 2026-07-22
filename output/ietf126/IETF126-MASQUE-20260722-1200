@@ -1,0 +1,92 @@
+# [MASQUE](../wg/masque.html)
+
+## Summary
+The MASQUE Working Group met at IETF 126 to discuss the status of active drafts, review a proposed update to the working group's charter, and discuss active and related internet-drafts. Key presentations included updates on HTTP datagram compression and ECN/DSCP support for Connect-UDP, as well as proposals from outside the working group regarding DNS SVCB proxying and BGP signaling of MASQUE. 
+
+---
+
+## Key Discussion Points
+
+### Working Group Status and Rechartering
+The chairs presented the [Masque Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-masque-masque-chair-slides-00) detailing the status of active documents:
+* `connect-ethernet` and `connect-udp-listen` have been submitted to the IESG.
+* `draft-ietf-masque-quic-proxy`: Tommy Pauly noted that updates were made based on feedback from Kazuho Oku and Martin Thomson. One remaining issue regarding Connection ID (CID) management during teardown will be resolved in a forthcoming revision before initiating a Working Group Last Call (WGLC).
+* `draft-ietf-masque-connect-ip-dns`: David Schinazi reported that a second implementation of Connect IP has been developed by Gemini, and interop testing with Yaroslav Rosomakho's implementation is planned.
+* The working group has adopted two new documents: `draft-ietf-masque-http-datagram-compression` and `draft-ietf-masque-connect-udp-ecn-dscp`.
+
+#### Recharter Text Discussion
+The chairs presented a shortened recharter proposal drafted by Martin Thomson aimed at transitioning the working group toward closing down while allowing the adoption of the informational MASQUE architecture draft.
+* **David Schinazi** and **Zaheduzzaman Sarker** cautioned that the phrase "may also adopt" might not be accepted by the IESG because it represents a "blank check" for future adoptions. David Schinazi suggested explicitly stating that the group will complete specific documents.
+* **Zaheduzzaman Sarker** and **Martin Duke** emphasized the need for a clear plan on where future maintenance or critical extensions of MASQUE specifications will live (e.g., HTTPBIS or TSVWG) once the working group closes.
+* **Eric Kinnear** and **Mirja Kühlewind** supported the simplified text and agreed that a discussion on closing the group should happen once the current deliverables are finished.
+
+---
+
+### HTTP Datagram Compression
+Yaroslav Rosomakho presented updates to `draft-ietf-masque-http-datagram-compression` using the slides [HTTP Datagram Compression](https://datatracker.ietf.org/meeting/126/materials/slides-126-masque-http-datagram-compression-00).
+
+* **Detailed Derived Fields:** The updated draft now explicitly defines derived fields (e.g., IPv6 payload length), including detailed validation rules for senders and receivers to prevent packet corruption. It specifically addresses corner cases like IPv6 jumbograms (avoiding derivation if payload length is zero) and packet fragmentation.
+* **Ethernet FCS Derivation:** An Ethernet FCS (Frame Check Sequence) derived field has been added. Connect-Ethernet requires FCS transmission, but software interfaces often strip it. This extension allows nodes to agree to omit FCS transmission over the tunnel, reducing overhead.
+* **Guidelines for Implementers:** Additional guidelines were added to prevent MTU oscillations, suggest templates, and specify conflict behaviors (such as forbidding simultaneous configuration of checksum offloading and checksum derivation).
+
+#### Discussion
+* **Gorry Fairhurst** asked whether IPv6 jumbograms are practically supported. **Eric Nygren** confirmed that Linux supports them and they are used in real deployments.
+* **Gorry Fairhurst** and **Magnus Westerlund** raised concerns regarding UDP length validation when UDP options are present. Magnus Westerlund noted that an issue is open on the repository to ensure UDP options are handled correctly during length verification.
+
+---
+
+### ECN and DSCP Support for HTTPS's Connect-UDP
+Mirja Kühlewind presented updates on `draft-ietf-masque-connect-udp-ecn-dscp` using the slides [ECN and DSCP support for HTTPS's Connect-UDP](https://datatracker.ietf.org/meeting/126/materials/slides-126-masque-ecn-and-dscp-support-for-httpss-connect-udp-00).
+
+* **Protocol Simplification:** To simplify implementation, registering a DSCP automatically maps all four ECN codepoints, generating four corresponding context IDs.
+* **Capsule Additions:** The draft now includes a Close capsule to terminate context mappings.
+
+#### Discussion
+* **Optimistic Sending:** The draft allows a sender to transmit packets using new context IDs before receiving an acknowledgment (ACK) capsule. Mirja Kühlewind raised the question of what to do if the proxy rejects the assignment with a Close capsule.
+    * **Ted Hardie** and **David Schinazi** argued against over-engineering retransmission logic, noting that because it is UDP, dropped packets are expected, and existing MASQUE behaviors should be followed.
+    * **Magnus Westerlund** suggested providing guidance on whether the sender should bleach the DSCP to zero or drop subsequent packets.
+* **State Commit Attacks:** Mirja Kühlewind noted that the security considerations must address state exhaustion risks from unbounded context registrations.
+* **Combining Extensions:** Magnus Westerlund brought up the need to clarify how this draft interacts with other extensions (e.g., 3GPP extensions or datagram compression). David Schinazi suggested putting this off until there is an active, concrete use case.
+
+---
+
+### HTTP Header Fields for Proxying DNS SVCB Information
+Gautam Akiwate presented a proposal to define HTTP header fields that allow a proxy to relay DNS Service Binding (SVCB) and HTTPS resource records to clients. The presentation used the slides [HTTP Header Fields for Proxying DNS SVCB Information](https://datatracker.ietf.org/meeting/126/materials/slides-126-masque-http-header-fields-for-proxying-dns-svcb-information-00).
+
+* **Problem Statement:** When a proxy performs DNS resolution on behalf of a client, the client misses critical SVCB metadata (such as ECH configuration or HTTP/3 support).
+* **Proposed Mechanism:** Four HTTP headers are defined to allow clients to request SVCB info, allow proxies to return it, request conditional cancellation (e.g., "close if H3 is supported so I can use Connect-UDP"), and signal cancellation execution.
+
+#### Discussion
+* **Alternative Architectures:** **Martin Seemann** suggested that co-locating a DoH (DNS over HTTPS) server on the proxy and letting the client query it directly would be cleaner. Gautam Akiwate responded that the header approach avoids an extra round-trip time (RTT) for the happy path.
+* **Complexity and Layering:** 
+    * **Martin Thomson** strongly objected to serializing DNS records inside HTTP headers, suggesting instead a conditional Connect request (e.g., "connect if certain transport properties are met") using standard HTTP conditional concepts.
+    * **David Schinazi** and **Mike Bishop** agreed that the proposed serialization of SVCB records into headers is complex and that exploring conditional connection logic would be more robust.
+    * **Eric Nygren** highlighted that while full of sharp edges, this proposal helps optimize crucial ECH paths where a client wants to send a ClientHello in the first flight.
+* **Venue:** 
+    * **Martin Thomson**, **Lucas Pardue**, **David Schinazi**, and **Tommy Pauly** argued that DNSOP is the wrong venue for this work, as the complexities and impact are on HTTP and MASQUE rather than the DNS protocol itself. They suggested HTTPBIS or MASQUE as better homes.
+    * **Eric Kinnear** suggested that the Happy Eyeballs aspects of proxying are suitable for the HAPPY working group, while the protocol elements should go to HTTPBIS or MASQUE.
+
+---
+
+### BGP Signaling of MASQUE
+Yaroslav Rosomakho presented a draft from the IDR (Inter-Domain Routing) working group regarding the signaling of MASQUE tunnel endpoints over BGP for SD-WAN overlays, using the slides [BGP Signaling of MASQUE](https://datatracker.ietf.org/meeting/126/materials/slides-126-masque-bgp-signaling-of-masque-00).
+
+* **Proposal:** The draft defines four BGP tunnel types (Connect-TCP, Connect-UDP, Connect-IP, Connect-Ethernet) and defines sub-TLVs to carry the MASQUE proxy URI template and ALPN values.
+* **Feedback Request:** Yaroslav asked for feedback on:
+    1. Only supporting the URI-templated Connect-TCP rather than the legacy non-templated Connect method.
+    2. Carrying the tunnel endpoint IP address alongside the URI template and ALPN in BGP to spare routers from performing DNS lookups on the proxy hostname.
+* **Outcome:** No immediate objections were raised in the room; the discussion will continue on the mailing list.
+
+---
+
+## Decisions and Action Items
+* **`draft-ietf-masque-quic-proxy`:** Tommy Pauly to publish a new version addressing the CID teardown management issue. Once published, the chairs will initiate a Working Group Last Call.
+* **`draft-ietf-masque-connect-ip-dns`:** Authors and implementers (David Schinazi, Yaroslav Rosomakho) to coordinate and perform interoperability testing between the Gemini and Zscaler implementations.
+* **Rechartering:** Chairs to refine the proposed charter text based on meeting feedback (removing "may adopt" and clarifying the final deliverables list) and post it to the mailing list for final consensus.
+* **`draft-ietf-masque-connect-udp-ecn-dscp`:** Mirja Kühlewind to open issues regarding optimistic sending behavior (whether to bleach or drop on rejection) and limit state exhaustion attacks. Magnus Westerlund to submit text on integrating with other extensions.
+
+---
+
+## Next Steps
+* Discussions on the appropriate venue for `draft-ietf-masque-http-datagram-compression` and the DNS SVCB proxying draft will continue, with HTTPBIS and MASQUE being the leading candidates.
+* Feedback on BGP signaling of MASQUE will be directed to the IDR and MASQUE mailing lists.

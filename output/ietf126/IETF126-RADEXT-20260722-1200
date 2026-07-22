@@ -1,0 +1,101 @@
+# [RADEXT](../wg/radext.html)
+
+## Summary
+
+The RADEXT working group met at IETF 126 to discuss several active drafts, security deprecations, protocol errors, and upcoming efforts. Key updates included progress on the RADIUS/(D)TLS-bis (RadSec) specification, which has resolved all IESG discuss points and is nearing finalization. The group also discussed the status of its rechartering process, which has cleared the IESG and is expected to be approved by the IAB in mid-August. This recharter will unblock several pending documents for adoption. Other topics included rate limiting, protocol error handling, telemetry over QUIC, periodic accounting updates, and wireless network quality metrics.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status and Rechartering
+* **Speaker**: Valery Smyslov
+* **Slides**: [Chairs' deck](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-chairs-deck-00)
+* Valery Smyslov reported that the blocking position on the new charter has been lifted after removing sentences regarding the explicit review of attributes from other SDOs. 
+* The AD, Christopher Inacio, confirmed that the charter has cleared the IESG and is with the Secretariat for external review. It is expected to be officially approved by mid-August.
+* Once the recharter is finalized, several Cisco and other pending drafts that have already completed pre-adoption calls can be immediately adopted as working group documents.
+
+### 2. Update on RADIUS/(D)TLS-bis (RadSec)
+* **Speaker**: Jan-Frederik Rieckers
+* **Slides**: [Update on RADIUS/(D)TLS-bis (RadSec)](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-update-on-radiusdtls-bis-radsec-00)
+* **Discussion**:
+  * Jan-Frederik Rieckers presented updates between `-15` and `-17`. All IESG discuss points have been resolved, including adding an ALPN section for compatibility with RFC 9525, removing the path MTU discovery paragraph, adding a detailed rationale for event timestamp versus accounting delay time in the appendix, and addressing the DTLS connection ID discuss.
+  * Eric Vyncke raised a non-blocking comment regarding the use of "should" without explanations of when they can be ignored. Christopher Inacio (AD) noted that authors should address as many as reasonable, leaving the exact level of detail to editorial control.
+  * Fabian raised comments about defining client and server behavior for invalid certificates (i.e., closing the connection) and managing connection closure post-TLS handshake without triggering immediate, aggressive reconnection storms.
+  * Margaret Cullen and Jan-Frederik Rieckers agreed that these changes are largely editorial/clarifying and do not alter the core specification. The chairs will verify these final updates on the mailing list before advancing the document.
+
+### 3. Deprecating Insecure Practices in RADIUS
+* **Speaker**: Alan DeKok
+* **Slides**: [Deprecating Insecure Practices](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-deprecating-insecure-practices-00)
+* **Draft**: [draft-ietf-radext-deprecating-radius](https://datatracker.ietf.org/id/draft-ietf-radext-deprecating-radius)
+* **Discussion**:
+  * Alan DeKok outlined updates on tunnel passwords (which suffer from low entropy despite shared secret protection) and the addition of rate-limiting text.
+  * A discussion ensued regarding how to handle clients that flood servers with rapid, automatic retries upon receiving rejections. Margaret Cullen, Mark, and Alan DeKok discussed the necessity of client-side exponential backoff. Because client behavior is difficult to enforce, the consensus was to recommend that NAS or proxy devices perform rate limiting and that access-rejects are delayed slightly to mitigate storms.
+
+### 4. A Review of RADIUS Security and Privacy
+* **Speaker**: Alan DeKok
+* **Slides**: [Review of RADIUS Security](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-review-of-radius-security-00)
+* **Draft**: [draft-ietf-radext-review-radius](https://datatracker.ietf.org/id/draft-ietf-radext-review-radius)
+* **Discussion**:
+  * This document was split from the main deprecation draft to keep both manageable.
+  * Recent updates include text on security implications when forwarding inner-tunnel data (after terminating TLS) and a security analysis of CHAP, reinforcing that CHAP is essentially plain-text equivalent due to its reliance on MD5.
+  * Margaret Cullen requested that both this draft and `draft-ietf-radext-deprecating-radius` be prepared for Working Group Last Call (WGLC) once the next updates are posted in August.
+
+### 5. Protocol-Error
+* **Speaker**: Alan DeKok
+* **Slides**: [Protocol-Error](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-protocol-error-00)
+* **Discussion**:
+  * This draft addresses the issues associated with silently discarding invalid packets, proposing a formal "protocol error" response to improve network stability.
+  * Live interoperability testing is planned for August, with findings to be reported before the next IETF meeting.
+  * Fabian noted that the draft needs to clearly distinguish between permanent errors (which should stop client retries) and transient errors (e.g., temporary resource depletion or transient uplink failure).
+  * Margaret Cullen highlighted the danger of amplification attacks if protocol error responses are not rate-limited.
+  * Alexander Clouter suggested utilizing configuration versioning or opaque tokens to signal when a configuration change has occurred. Alan DeKok agreed to add an opaque token to the document to allow administrators to signal configuration state changes.
+
+### 6. QUIC Transport for Network Telemetry
+* **Speaker**: Alan DeKok
+* **Slides**: [QUIC Transport for Network Telemetry](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-quic-transport-for-network-telemetry-00)
+* **Discussion**:
+  * Alan DeKok presented this as a "for your information" item from the OPSAWG. The proposal aims to wrap multiple telemetry protocols (such as IPFIX and RADIUS Accounting) under a single secure QUIC transport to simplify administration and certificate management.
+  * Fabian and Margaret Cullen expressed concern about combining distinct protocols onto a single transport stream, noting that different telemetry protocols have different properties and targets. 
+  * Margaret Cullen emphasized that the RADEXT working group currently has no consensus or active interest in defining RADIUS-over-QUIC, and that establishing standalone RADIUS over QUIC must precede any multiplexed transport efforts.
+
+### 7. Accounting Status Type = Periodic Update
+* **Speaker**: Alan DeKok
+* **Slides**: [Acct-Status-Type = Periodic-Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-acct-status-type-periodic-update-00)
+* **Discussion**:
+  * To reduce the signaling overhead caused by frequent roaming between uncoordinated access points (which triggers consecutive accounting start/stop cycles), Alan DeKok proposed a new `Periodic-Update` accounting status. This allows APs to aggregate and report roaming metrics periodically.
+  * Mark suggested that this could be incorporated into a Best Current Practice (BCP) document (such as a NAS BCP or Proxy BCP).
+  * Alan DeKok indicated that he intends to draft a document on this topic once the core security and deprecation drafts are advanced.
+
+### 8. Connect-Info Updates
+* **Speaker**: Mark
+* **Slides**: [Connect-Info radext IETF126](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-connect-info-radext-ietf126-00)
+* **Discussion**:
+  * Mark presented the updated draft, which has been reorganized to remove non-connection-related key-value pairs based on previous working group feedback.
+  * The syntax has already seen real-world adoption, notably integrated into OpenRoaming and deployed by Helium across 17,000 access points to facilitate RSSI-based authorization.
+  * The working group has already supported adoption of this draft; it will be formally adopted as a working group document immediately after the rechartering process completes.
+
+### 9. WBA Quality Metrics
+* **Speaker**: Mark
+* **Slides**: [WBA-Quality-Metrics radext IETF126](https://datatracker.ietf.org/meeting/126/materials/slides-126-radext-wba-quality-metrics-radext-ietf126-00)
+* **Discussion**:
+  * This new draft (`draft-00`) addresses the non-connection metrics that were stripped from the Connect-Info draft, defining them as Vendor-Specific Attributes (VSAs) under the Wireless Broadband Alliance (WBA) enterprise code.
+  * The draft introduces complex/nested attribute structures to represent per-radio metrics (such as RTT, channel utilization, and noise).
+  * The group discussed the appropriate publication venue. Joey Padden and Michael Sym (via chat) advocated for standardizing these attributes within the IETF/IANA space to encourage broader OEM adoption. 
+  * Margaret Cullen and Alan DeKok noted that while the WBA can publish these independently, bringing them to the IETF for standards-track publication would require the working group to adopt, review, and potentially refine the complex data types.
+
+---
+
+## Decisions and Action Items
+
+* **RADIUS/(D)TLS-bis**: Jan-Frederik Rieckers to apply the editorial changes proposed by Fabian regarding invalid certificates and connection closures. The chairs will verify consensus on these changes via the mailing list before advancing the document.
+* **Deprecating Insecure Practices & RADIUS Security Review**: Alan DeKok to submit updated versions of [draft-ietf-radext-deprecating-radius](https://datatracker.ietf.org/id/draft-ietf-radext-deprecating-radius) and [draft-ietf-radext-review-radius](https://datatracker.ietf.org/id/draft-ietf-radext-review-radius) in August.
+* **Protocol-Error**: Alan DeKok to update the draft to incorporate opaque configuration tokens and differentiate between transient and permanent error categories.
+
+---
+
+## Next Steps
+
+* **Working Group Last Calls (WGLC)**: The chairs plan to initiate WGLCs for both [draft-ietf-radext-deprecating-radius](https://datatracker.ietf.org/id/draft-ietf-radext-deprecating-radius) and [draft-ietf-radext-review-radius](https://datatracker.ietf.org/id/draft-ietf-radext-review-radius) shortly after the August updates are published.
+* **Rechartering**: The new charter is expected to be approved by the IAB by mid-August. Once approved, the chairs will formally adopt the Connect-Info draft and outstanding Cisco/Sri drafts.
+* **Protocol Interoperability**: Live testing of the Protocol-Error specifications is scheduled for August, with results to be shared before IETF 121.

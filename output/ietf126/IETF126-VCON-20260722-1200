@@ -1,0 +1,83 @@
+# [VCON](../wg/vcon.html)
+
+## Summary
+
+The VCON Working Group met to discuss updates to the core specification (`draft-ietf-vcon-vcon-core`) and the contact center extension (`draft-ietf-vcon-cc-extension`). The group addressed major design questions regarding segmented recordings, the inclusion of CDDL in the appendix, and open issues for the core draft. The meeting also featured updates on the Working Group's supporting documents (`draft-ietf-vcon-overview` and `draft-ietf-vcon-privacy-primer`) and presentations on two potential extensions: Verifiable Agent Conversations (VAC) and GenAI content provenance.
+
+---
+
+## Key Discussion Points
+
+### Admin and Agenda Bashing
+* Jonathan Rosenberg suggested a future charter update to incorporate agent session/conversation work into the VCON Working Group's scope after the current milestones are met.
+
+### vCon Core Specification
+* **Presentation:** Dan Petrie presented [vCon core: Petrie](https://datatracker.ietf.org/meeting/126/materials/slides-126-vcon-vcon-core-petrie-01) covering changes in `draft-ietf-vcon-vcon-core-03`.
+* **Changes from -02 to -03:**
+  * Fixed typos, grammar, and syntax issues with the `body` field (now defined as any JSON type with supported base64/JSON encodings).
+  * Added `party type` (person, bot, organization) to identify the contributors of attachments.
+  * Updated the analysis object to reference zero or more attachments in addition to dialogues.
+  * Allowed `null` values for unused channels in multichannel recordings.
+  * Introduced the `recording set` object type to group multiple segmented recordings.
+* **Segmented Recordings & Recording Sets:**
+  * When a call is recorded only when people speak, it generates multiple short dialogue segments. This makes it difficult to track call duration, the full participant list, and event history (such as DTMF).
+  * The proposed solution in `-03` is a metadata-only `recording set` dialogue that defines the total call duration and participant list, which the individual recording dialogues then point to.
+  * Jonathan Rosenberg raised concerns that this changes the semantic nature of a dialogue. He suggested mapping parties to channels (using an optional mapping or an array of objects specifying roles like speaker/listener) instead of creating a pseudo-dialogue.
+  * Jonathan Lennox agreed with pointing directions (individual recordings pointing to the recording set, rather than two-way) to avoid inconsistency.
+  * Thomas Fossati suggested using analysis or attachments to represent this metadata context instead of modifying the dialogue structure.
+  * Edward Guy suggested classifying party roles (transmitter/listener vs talker) to help resolve the issue.
+* **CDDL vs. JSON Schema:**
+  * Dan Petrie proposed adding CDDL back to the core draft as an informative appendix to improve readability.
+  * Hank Birkholz volunteered to maintain and validate the CDDL against the JSON schema and normative text.
+  * Jonathan Rosenberg asked if CDDL can be compiled from JSON schema. Hank explained that they are structurally different (grammar vs constraint-based) and automatic compilation is not fully deterministic, but he can run validation tools to ensure conformance.
+  * Scott Godin supported adding CDDL in the chat, noting it is easier to read.
+  * No participants objected to including both JSON schema and CDDL in the appendix.
+* **Open Issues:**
+  * Dan Petrie proposed removing array capability for original, consultative, and target dialogues in the transfer object (restricting to single index values) and making the `start` parameter optional to support abandoned transfers. No objections were raised.
+  * Rowan raised a concern about too many IANA tables. Hank Birkholz and Dan Petrie argued that having separate subregistries for maps is useful to support extensibility.
+
+### Contact Center Extension
+* **Presentation:** Dan Petrie presented [vCon CC Extension: Petrie](https://datatracker.ietf.org/meeting/126/materials/slides-126-vcon-vcon-cc-extension-petrie-01) detailing updates to `draft-ietf-vcon-cc-extension`.
+* **Status:** The draft is not yet ready for Working Group Last Call. It requires more examples and updates to align with the core specification. A JSON schema has been added to the appendix, and CDDL will be added in a future version.
+
+### Other Working Group Documents
+* **vCon Overview:** Thomas Fossati reported that `draft-ietf-vcon-overview` is pacing the core specification but needs more reviews.
+* **Privacy Primer:** Thomas Fossati reported that `draft-ietf-vcon-privacy-primer` has received interest from the PEER research group. Dan Petrie suggested adding a gap analysis section to map how vCon's current features address the privacy principles outlined in the primer. Charles Eckel volunteered to request an early Security/Privacy Directorate review.
+
+### Verifiable Agent Conversations (VAC) Extension
+* **Presentation:** Thomas Fossati and Hank Birkholz presented [IETF VCON VAC Extension](https://datatracker.ietf.org/meeting/126/materials/slides-126-vcon-ietf-vcon-vac-extension-00).
+* **Concept:** Provides a standardized trace format for what an autonomous/AI agent actually did (reasoning, tool calls, tool results) during a conversation. The VAC trace is encapsulated within a vCon `analysis` object, while the agent itself is represented as a vCon `party`.
+* **Discussion:**
+  * Jonathan Lennox suggested using the term "AI agent" or "autonomous agent" to distinguish them from human agents (e.g., travel/literary agents).
+  * Lisa Dusseault shared related work from the Data Transfer Initiative regarding personal history portability between AI platforms.
+  * Jonathan Rosenberg strongly supported the work but argued that "reasoning" and "tool calls" (e.g., submitting a CRM form) are equally applicable to human agents. He proposed integrating these concepts as first-class citizens in VCON rather than relegating them to an AI-specific extension.
+  * Ben Curtis asked if system prompts and available tools should be recorded to capture the full intent of the conversation.
+  * Charles Eckel suggested implementing fine-grained credential tracking identifiers instead of exposing actual API keys in logs.
+
+### VCON Generation Provenance
+* **Presentation:** Thomas Fossati presented [Provenance IETF 126](https://datatracker.ietf.org/meeting/126/materials/slides-126-vcon-provenance-ietf-126-00).
+* **Concept:** Standardizes how to record the provenance of model-generated vCon content (such as summaries, transcripts, and translations) within the VCON container. This includes metadata like model name, vendor, temperature, prompts, and hashes.
+* **Discussion:**
+  * Jonathan Lennox noted that humans (e.g., human transcriptionists) also have provenance and suggested the metadata should not be limited strictly to AI/machines.
+  * Dan Petrie questioned if this should be a new media type attached to the vCon rather than a full extension.
+  * Jonathan Rosenberg pointed out that prompt inputs are often complex and can embed transcripts via templating, which requires a highly flexible input model.
+  * Ben Curtis suggested using extensible enums to future-proof the schema as LLM parameters evolve.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* **Core Draft Open Issues:** Agreed to proceed with restricting transfer dialogue indices to single integer values and making the `start` parameter optional in `draft-ietf-vcon-vcon-core`.
+* **CDDL:** Agreed to include CDDL as an informative appendix in the next versions of `draft-ietf-vcon-vcon-core` and `draft-ietf-vcon-cc-extension`.
+
+### Action Items
+* **Dan Petrie:** Update `draft-ietf-vcon-vcon-core` and `draft-ietf-vcon-cc-extension` with CDDL appendices and the agreed-upon transfer-related schema updates.
+* **Charles Eckel:** Request an early review of `draft-ietf-vcon-privacy-primer` from the Security/Privacy Directorate.
+* **Hank Birkholz & Thomas Fossati:** Collaborate with Jonathan Rosenberg and other interested WG members on how to integrate the Verifiable Agent Conversations (VAC) model and its extension points into VCON (specifically exploring whether agent properties like "reasoning" and "tool calls" can apply to human parties as well).
+
+---
+
+## Next Steps
+* Initiate mailing list discussions to resolve the design of segmented recordings / recording sets in `draft-ietf-vcon-vcon-core`.
+* Solicit more reviews for `draft-ietf-vcon-overview` and `draft-ietf-vcon-privacy-primer`.

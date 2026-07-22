@@ -1,0 +1,116 @@
+# [ICCRG](../wg/iccrg.html)
+
+## Summary
+The ICCRG session at IETF 126 featured updates on active research group drafts, reports on congestion control implementations from the IETF 126 Hackathon, and presentations on novel congestion control algorithms and queue management systems. The discussions spanned transport pacing specifications, cumulative SACK extensions for RDMA, queueing-theoretic congestion control updates, disaggregated architectures for LLM inference, and approximate performance isolation mechanisms for heterogeneous network environments.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome, Status, and Chair Slides
+**Presenter**: Simone Ferlin  
+**Slide Deck**: [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-iccrg-chair-slides-00)
+
+*   **Status Update**: The LEDBAT++ specification (`draft-ietf-ledbat-plus-plus`) has successfully entered the RFC Editor publication queue. 
+*   **Administrative**: The chairs reminded the group of the IRTF intellectual property rights, privacy policies, and code of conduct. 
+
+---
+
+### 2. Pacing in Transport Protocols
+**Presenter**: Michael Welzl  
+**Slide Deck**: [Pacing in Transport Protocols, draft-irtf-iccrg-pacing-02](https://datatracker.ietf.org/meeting/126/materials/slides-126-iccrg-pacing-in-transport-protocols-draft-irtf-iccrg-pacing-02-00)  
+**Document**: `draft-irtf-iccrg-pacing-02`
+
+*   **Technical Updates**:
+    *   Incorporated discussion of Appropriate Byte Counting (ABC) and TCP Congestion Control (RFC 5681). Noted that High Start++ recommends ignoring the strict slow-start rule of limiting window growth to 1 SMSS per ACK when pacing is active.
+    *   Refined the FreeBSD-related implementation text with an improved "backpack drill" example.
+    *   Added details on Apple's pacing implementation: Features an API to configure pacing and maximum rate, uses a microburst budget of approximately $244\,\mu\text{s}$ (minimum of 1 MSS) implemented via a leaky bucket scheme, and passes timestamps down to the queue management layer.
+*   **Discussion**:
+    *   Michael Tuexen noted that the $244\,\mu\text{s}$ budget represents the reciprocal of 4096 ($1/4096$ seconds), likely chosen because powers of two are highly efficient to compute in kernel environments using bitwise shifts.
+    *   Christian Huitema highlighted a tension regarding burst sizes and L4S/Prague: Prague sets a low ECN marking threshold, making it easy to exceed the threshold if pacing bursts are too large. Conversely, achieving high performance with UDP/QUIC GSO requires bursting at least 10 packets, creating a competing design constraint.
+
+---
+
+### 3. Windowless Cumulative SACK Extension for RDMA Retransmission
+**Presenter**: Danielle  
+**Slide Deck**: [Windowless Cumulative SACK Extension for RDMA Retransmission](https://datatracker.ietf.org/meeting/126/materials/slides-126-iccrg-windowless-cumulative-sack-extension-for-rdma-retransmission-00)
+
+*   **Technical Details**:
+    *   RDMA's default "go-back-N" retransmission mechanism performs poorly under packet loss in wide-area networks (WAN). Standard SACK alternatives are constrained by RTT and window sizing.
+    *   The proposal introduces a "windowless" SACK mechanism. The sender transmits data continuously at a precise rate without adjusting its rate in response to packet loss.
+    *   The receiver tracks incoming packets across a cumulative confirmation time $T$ and cumulative packet count $N$. Upon reaching these thresholds, the receiver triggers a SACK using a new `TC_ACKH` header format extending the standard RDMA packet.
+*   **Discussion**: No questions were raised by the room.
+
+---
+
+### 4. Testing Congestion Control and Queue Management Mechanisms - IETF 126 Hackathon Update
+**Presenter**: Mohit P. Tahiliani  
+**Slide Deck**: [Testing Congestion Control and Queue Management Mechanisms - IETF 126 Hackathon Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-iccrg-testing-congestion-control-and-queue-management-mechanisms-ietf-126-hackathon-update-00)
+
+*   **Technical Details**:
+    *   **FQ-PIE vs. FQ-CoDel**: Evaluated FQ-PIE (`draft-ietf-tsvwg-aqm-fq-pie`) and FQ-CoDel (RFC 8290) over real WiFi access points and mobile hotspots using the "Flexible Network Tester" (Flet) tool. FQ-PIE consistently demonstrated superior tail latency performance.
+    *   **PicoQuic in NS-3**: Integrated Christian Huitema's PicoQuic implementation into NS-3 via a thin wrapper. This enables realistic evaluations of BBR, Cubic, and Multipath QUIC topologies in simulation.
+    *   **LEDBAT implementations**: Contributed native NS-3 models for LEDBAT++ and rLEDBAT (RFC 9438), fixing a legacy bug in NS-3's baseline LEDBAT model.
+    *   **FreeBSD contributions**: Merged a patch to align Proportional Rate Reduction (PRR, RFC 6937) behavior in FreeBSD (assisted by Michael Tuexen).
+    *   **Network Stack Tester (NEST)**: Added multiple-bottleneck topology helpers (Generic Fairness Configuration 1 and 2).
+*   **Discussion**:
+    *   Simone Ferlin inquired about the progress of the congestion control evaluation suite. Mohit P. Tahiliani responded that they are developing a testing suite compliant with RFC 9743 and will share updates at the next meeting.
+
+---
+
+### 5. Using a Little’s-Law-Based Queueing-Theoretic Approach for Congestion-Window Updates
+**Presenter**: Ndumiso Gasela  
+**Slide Deck**: [Using a Little’s-Law-Based Queueing-Theoretic Approach for Congestion-Window Updates](https://datatracker.ietf.org/meeting/126/materials/slides-126-using-a-littles-law-based-queueing-theoretic-approach-for-congestion-window-updates-00)
+
+*   **Technical Details**:
+    *   Proposed the Queueing-Theoretic Stationary Delay Regulator (QTSDR). Under stationary delay conditions, Little's Law ($Occupancy = Arrival Rate \times Delay$) is differentiated to design a predictor-corrector loop.
+    *   Maintains a target RTT ($R_{\text{target}} = \alpha \times RTT_{\text{prop}}$), using a default $\alpha = 1.2$ (allowing a 20% queuing delay budget).
+    *   Uses periodic probing (similar to BBR) to track minimum RTT and ensure fairness.
+    *   In single-bottleneck simulations, QTSDR operated close to the optimal Kleinrock operating point, keeping RTT low and achieving a higher normalized power metric than Cubic or BBR, while preserving throughput.
+*   **Discussion**:
+    *   An attendee asked if QTSDR had been tested against loss-based congestion controls (such as Cubic) sharing the same link, or in high-jitter environments like WiFi. 
+    *   Ndumiso Gasela acknowledged that heterogeneous coexistence with loss-based flows has not been fully evaluated and noted that QTSDR might track the inflated RTT caused by competing buffer-filling flows. Jitter also remains a challenge. The implementation will be made open-source on GitHub for wider community testing.
+
+---
+
+### 6. Mooncake - Disaggregated Architecture for LLM Inference
+**Presenter**: Minqing Wu  
+**Slide Deck**: [Mooncake - Disaggregated Architecture for LLM Inference](https://datatracker.ietf.org/meeting/126/materials/slides-126-iccrg-mooncake-disaggregated-architecture-for-llm-inference-00)
+
+*   **Technical Details**:
+    *   To optimize Large Language Model (LLM) multi-turn inference, Mooncake separates the process into three disaggregated resource pools: Prefill (computation-heavy, H800 GPUs), Decode (bandwidth-heavy, H20 GPUs), and KV-Cache (capacity-heavy, CPU DRAM/SSD).
+    *   A critical component is transferring the KV-Cache between the prefill and decode instances over the network.
+    *   Introduced the Mooncake Transfer Engine (MTE), which exposes a unified memory segment abstraction to route transfers over RDMA, NVLink, or TCP.
+    *   MTE implements adaptive slice splitting to balance transfers across multiple NICs based on real-time path latency estimates, and features automatic failover mechanisms to reroute traffic if an RDMA link or NIC fails.
+*   **Discussion**:
+    *   Simone Ferlin shared that Red Hat has been using Mooncake to evaluate how LLM workloads behave on the wire, focusing on comparing TCP zero-copy mechanisms against RDMA for KV-cache replication and disaggregation.
+
+---
+
+### 7. Managing Congestion Control Heterogeneity on the Internet with Approximate Performance Isolation
+**Presenter**: Ayush Mishra  
+**Slide Deck**: [[New]Managing Congestion Control Heterogeneity on the Internet with Approximate Performance Isolation](https://datatracker.ietf.org/meeting/126/materials/slides-126-iccrg-newmanaging-congestion-control-heterogeneity-on-the-internet-with-approximate-performance-isolation-00)
+
+*   **Technical Details**:
+    *   Bandwidth fairness is often an unsuitable goal when different applications require different trade-offs (e.g., maximizing throughput vs. minimizing delay). Mixing these algorithms in a FIFO queue forces delay-sensitive flows (like Vegas) to shift their operating point under contention from buffer-fillers (like Cubic).
+    *   While per-flow fair queuing (FQ) provides perfect isolation, it requires substantial state and queues. The proposal, *Santa*, achieves *Approximate Performance Isolation* using a small, fixed number of queues.
+    *   Santa dynamically shuffles active flows between queues based on their real-time behavior. Highly aggressive ("naughty") flows are moved to throughput-oriented queues, while conservative ("nice") flows are steered to low-latency queues.
+    *   New and short-lived flows are placed in a high-priority, dedicated MICE queue for their first 10-20 packets.
+*   **Discussion**:
+    *   Jana Iyengar highlighted that Santa represents an elegant way to achieve flow isolation without requiring per-flow state for short flows, and asked how it compared to L4S. Ayush Mishra noted that unlike L4S, Santa requires no end-host cooperation or modification, preventing endpoints from gaming the queues.
+    *   Stuart Cheshire supported the premise that throughput is over-emphasized, but clarified that L4S/Prague is not about priority queuing, but rather "better information." In L4S, endpoints have no incentive to lie because misbehaving hosts only degrade their own performance.
+    *   An attendee asked if packet shuffling causes reordering. Ayush Mishra replied that reordering in evaluations was negligible due to the specific ordering of queue migrations and dequeuing.
+    *   Chris Box asked about CPU utilization. Ayush Mishra replied that while Santa's shuffling takes control plane cycles in the P4 switch, it is lightweight.
+    *   Gorry Fairhurst suggested evaluating Santa using the "harm" metric framework defined in RFC 9743 and comparing its queue complexity directly to L4S.
+    *   Mohit P. Tahiliani and Michael Welzl suggested comparing or integrating Santa's mechanics with FQ/FlowQueue (RFC 8290), which natively isolates sparse, non-queue-building flows (like VoIP and gaming) from active queues. Ayush Mishra noted that Santa keeps inactive flows in the MICE queue using inactivity timers.
+
+---
+
+## Decisions and Action Items
+*   **Decision**: `draft-irtf-iccrg-pacing-02` will proceed to Working Group Last Call (WGLC). Simone Ferlin to initiate the last call on the ICCRG mailing list.
+
+---
+
+## Next Steps
+*   **QTSDR evaluation**: Ndumiso Gasela to publish the NS-3 implementation of QTSDR on GitHub for community testing, particularly focusing on heterogeneous coexistence and network jitter.
+*   **Congestion Control Evaluation Suite**: Mohit P. Tahiliani to continue the development of an RFC 9743-compliant congestion control test suite in NS-3 and report back at a future meeting.

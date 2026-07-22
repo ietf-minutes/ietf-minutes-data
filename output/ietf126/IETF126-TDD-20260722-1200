@@ -1,0 +1,50 @@
+# [TDD](../wg/tdd.html)
+
+## Summary
+
+The Technical Deep Dive (TDD) session at IETF 126 was dedicated to **CBOR** (Concise Binary Object Representation, RFC 8949) and **CDDL** (Concise Data Definition Language, RFC 8610). 
+
+Andrew Newton introduced an expanded chair/program committee to manage future TDD sessions. Carsten Bormann then delivered a comprehensive technical presentation on the history, design choices, and security properties of CBOR, COSE (RFC 9052), and CDDL. The presentation was followed by an open discussion and Q&A focusing on developer tooling, protocol design, test vector generation, CBOR Web Tokens (CWT, RFC 8392), and future integrations with AI and Large Language Models (LLMs).
+
+## Key Discussion Points
+
+### Agenda and Chairs Update
+* Andrew Newton presented the [Agenda Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-tdd-agenda-slides-00).
+* Andrew announced that to streamline operations, the TDD chair team has been expanded to a program committee including himself, Warren Kumari, and Mohamed Boucadair, alongside other volunteers.
+
+### CBOR and CDDL Presentation
+Carsten Bormann presented the core technical briefing using the slide deck [CBOR and CDDL](https://datatracker.ietf.org/meeting/126/materials/slides-126-tdd-cbor-and-cddl-01).
+
+* **The Three-Layer Model:** Data representation can be understood via three distinct perspectives:
+  1. *Information Model:* Semantics and taxonomies (what the data means).
+  2. *Data Model:* Abstract syntax (JSON, XML, or CBOR structures).
+  3. *Serialization:* Concrete syntax (byte sequences on the wire).
+* **Design Space Coordinates:** Carsten contrasted schema-dependent formats (e.g., XDR, ASN.1, Protobuf) with schema-independent formats (e.g., XML, JSON, CBOR), and text-based formats with binary serializations. 
+* **CBOR Properties:** Built to extend the JSON data model into a concise, schema-independent binary format. It is optimized for constrained IoT environments and can be implemented in under 1 KB of code. It natively supports byte strings and extensibility via "tags".
+* **Security Considerations:** Structural parser vulnerabilities are common in Type-Length-Value (TLV) formats when length fields are nested and manipulated. CBOR mitigates this by keeping length indicators at the leaves of the data tree. 
+* **COSE (RFC 9052):** Formulated as a lightweight, binary equivalent to JOSE (JSON Object Signing and Encryption). While COSE does not strictly require deterministic encoding, deterministic CBOR is straightforward to implement and is utilized in specifications like C509 certificates.
+* **CDDL (RFC 8610):** A data definition language designed with ABNF-style syntax and RELAX NG concepts. It defines machine-readable schemas to validate CBOR and JSON structures using Types (e.g., text, bytes, ranges) and Groups (sequences that compose arrays or maps).
+
+### Q&A and Chat Interactions
+
+* **Developer Tooling & COSE Complexity:** Joseph Heenan raised concerns about developer friction and the lack of robust tooling for COSE and CDDL compared to JOSE/JSON. Carsten Bormann agreed that COSE is complex to implement as a general library, but noted that CDDL validation tools work well in CI/CD pipelines. He also highlighted Nordic Semiconductor’s tool which generates CBOR parsers directly from CDDL specifications.
+* **CDDL Doctor:** Brian Sipos inquired about establishing a "CDDL doctor" or structured review system similar to the YANG doctors. Carsten Bormann noted that while CDDL validation is integrated into many draft CI systems, there is no formal IETF review body yet.
+* **Embedded CBOR in COSE:** Carl questioned the design motivation behind wrapping signed/encrypted data in CBOR byte strings (embedded CBOR). Carsten Bormann explained that this lets decoders treat nested payloads as opaque blobs, delaying parsing, saving memory, and preserving exact byte alignment for signature validation. Brian Sipos noted in the chat that this also creates valuable, skippable subtrees.
+* **CDDL for Test Vectors:** A participant highlighted the utility of using CDDL to write clear, unambiguous test vectors (with explicit hex/byte distinctions and formatting) in RFCs. Carsten Bormann confirmed this is an excellent best practice used in recent RFCs (e.g., RFC 9942 and RFC 9943).
+* **Skipping Unknown Tags:** Jonathan Hoyland asked how a decoder skips an unknown tag if CBOR lengths are only at the leaves. Carsten Bormann explained that since a tag always wraps exactly one item (which may be a map or an array), a schema-independent decoder can structurally parse and skip the wrapped item without needing to understand its semantic meaning.
+* **CDDL Bounds and Constraints:** Jonathan Hoyland asked if CDDL can restrict values to specific ranges. Carsten Bormann confirmed that CDDL supports numerical ranges and control operators (such as `.ne`, `.ge`, `.lt`).
+* **Conditional Rules in CDDL vs. ABNF:** In the chat, Junxiao Shi and Emil Lundberg discussed the difficulty of representing conditionally present elements in ABNF. Emil demonstrated how CDDL's group operators (`//` and `.and`) natively support expressing conditional presence (e.g., fields being mandatory or forbidden based on a type identifier).
+* **CWT vs. JWT & Deployment Pitfalls:** Paul Bastian and Christian Amsüss discussed interoperability issues with CBOR Web Tokens (CWT, RFC 8392). Christian noted that implementations often break because they handle CBOR tags inconsistently. Carsten Bormann agreed that a Best Common Practice (BCP) document or a collaborative Wiki page to document implementation "pitfalls" would be highly beneficial. Hannes Tschofenig clarified that many CWT validation failures are actually application-layer policy and semantic issues (information model level) rather than flaws in the underlying COSE or CBOR specifications.
+* **JSON-to-CBOR Translation Efficiency:** A participant observed that directly translating JSON schemas to CBOR often results in bloated keys (retaining verbose text strings instead of mapping them to concise integers). Carsten Bormann suggested using CDDL generics to gracefully define schemas that map verbose text keys to compact binary alternatives.
+* **CBOR and Artificial Intelligence:** Chuang Feng asked if CBOR is suitable for data exchange between AI agents, or if AI requires a new data format. Carsten Bormann remarked that the Thing-to-Thing Research Group (T2TRG) is actively investigating how to represent CBOR data structures efficiently as sequences of LLM tokens.
+* **Non-Self-Describing Formats:** Julius Rüberg asked if the IETF has worked on non-self-describing binary formats similar to Protobuf. Carsten Bormann responded that while there is no active group for a schema-dependent binary format, there is a JSON Schema working group and a registered protobuf media type.
+
+## Decisions and Action Items
+
+* **Action Item:** Carsten Bormann to review and follow up on the highly technical, lengthy questions raised in the Zulip chat log.
+* **Action Item (Community Initiative):** Establish a community Wiki page (and potentially a future draft) to document common implementation pitfalls and interoperability best practices for CBOR, COSE, and CWT (proposed by Christian Amsüss, supported by Carsten Bormann).
+
+## Next Steps
+
+* Encourage wider development of programming language-specific libraries for CDDL and COSE to reduce developer entry barriers.
+* Monitor ongoing research in the T2TRG regarding the serialization of structured IoT data (such as CBOR) for AI/LLM consumption.

@@ -1,0 +1,158 @@
+# [RATS](../wg/rats.html)
+
+## Summary
+
+The Remote Attestation Procedures (RATS) Working Group met to discuss several key drafts nearing Working Group Last Call (WGLC), review hackathon results, and discuss new proposals. Major progress was reported on evidence encoding for Hardware Security Modules (HSMs), Concise Reference Integrity Manifests (CoRIM), and Concise Selector for Endorsements and Reference Values (CoSERV). The working group also discussed the newly adopted multi-verifier architecture, a proposed EAT profile for trustworthy device assignment, geographic attestation, and a privacy framework dealing with the coercive use of attestation. Plans were established to schedule a virtual interim meeting following this session.
+
+---
+
+## Key Discussion Points
+
+### 1. Administrative and Status Update
+**Presenter:** Ned Smith and Kathleen Moriarty  
+**Slides:** [Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-chair-slides-00)
+
+*   **Note Well & Code of Conduct:** The chairs presented the Note Well and reminded participants of the IETF Code of Conduct.
+*   **Virtual Interim Meeting:** Due to limited time during this session, a virtual interim meeting will be scheduled. A poll is active to collect availability and preferences from the working group.
+
+---
+
+### 2. Evidence Encoding for HSMs
+**Presenter:** Mike Ounsworth  
+**Draft:** [draft-ietf-rats-pkix-key-attestation](https://datatracker.ietf.org/doc/draft-ietf-rats-pkix-key-attestation/)  
+**Slides:** [Evidence Encoding for HSMs](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-evidence-encoding-for-hsms-01)
+
+*   **Draft Structure:** The draft provides a data format (using DER-encoded "To Be Signed" (TBS) objects) to attest that a private key is held in hardware and describe its PKCS#11 properties.
+*   **Recent Updates:**
+    *   **ASN.1 Module:** Rewritten to eliminate the outdated `ANY` keyword (moving from 1988 to 2002 syntax) with help from Russ Housley and Mike StJohns. This broke backward compatibility but cleaned up the wire format.
+    *   **Extended Key Usage (EKU):** Now registers an EKU under the LAMPS arc to explicitly identify Attestation Key (AK) certificates.
+    *   **Terminology:** Renamed "entity" to "element" across the entire draft (e.g., key element, platform element).
+    *   **Removal of User Mods:** Proprietary third-party code execution features ("user mods") were removed due to the difficulty of defining them in a vendor-agnostic way.
+    *   **Reference Implementation:** A Python-based reference implementation and verifier have been added to the RATS WG GitHub repository. It compiles sample appendix data automatically.
+*   **Technical Debate (CMS vs. TBS-like structures):**
+    *   Carl Wallace (via chat and microphone) questioned why the authors designed a new TBS-like structure (with custom certificate bags and countersignatures) instead of reusing Cryptographic Message Syntax (CMS) `SignedData` structures (RFC 5652).
+    *   Mike Ounsworth, Jean-Pierre Fiset, and Michael Richardson noted that HSMs require parsing inside tight trust boundaries. HSM vendors surveyed indicated they do not have CMS parsers in their kernels and do not want to implement them. A simpler, stripped-down TBS structure is easier and safer to implement inside HSM firmware than a full CMS stack, which would require extensive "MUST NOT use" profiles.
+    *   Carl Wallace maintained his preference for CMS reuse but agreed to take the technical discussion to the mailing list.
+*   **Next Steps:** The authors believe the draft is functionally complete and ready for Working Group Last Call (WGLC) once remaining minor nits and the signature identifier naming collision are resolved.
+
+---
+
+### 3. CoSERV Progress Update
+**Presenter:** Paul Howard  
+**Draft:** [draft-ietf-rats-coserv](https://datatracker.ietf.org/doc/draft-ietf-rats-coserv/)  
+**Slides:** [CoSERV Progress Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-coserv-progress-update-00)
+
+*   **Context:** CoSERV serves as a conveyance protocol enabling verifiers to query, collect, and cache endorsements and reference values from supply chain sources using HTTP caching semantics.
+*   **Recent Updates:**
+    *   **Query Model Extension:** Expanded beyond environment-based queries to support direct, lightweight query models based on specific reference integrity manifest (RIM) identifiers (e.g., CoRIM, CoMID).
+    *   **HTTP Directorate Review:** Early review from the HTTP directorate is scheduled for completion by the end of the month.
+    *   **In-Flight Features:** Development of topology-based environment queries to retrieve domain dependencies and membership.
+*   **Technical Challenges (COTS Dependency):** 
+    *   The draft currently takes a normative dependency on the expired Concise Trust Anchor Stores (COTS) draft. The authors plan to discuss options on the list, such as removing the dependency or abstracting it.
+*   **Security Concerns:**
+    *   Muhammad Usama Sardar raised concerns that if the "aggregator" entity is malicious, the security argument for the system breaks down. 
+    *   Paul Howard responded that CoSERV does not introduce aggregators but simply recognizes they exist in real-world deployments. Standardizing them provides transparency.
+    *   Kathleen Moriarty took an action item to review the draft and the comments on-list to resolve this.
+*   **Next Steps:** The authors are aligning CoSERV's timeline to queue directly behind CoRIM's finalization. Yogesh Deshpande was assigned as the Document Shepherd.
+
+---
+
+### 4. CoRIM Progress Update
+**Presenter:** Yogesh Deshpande  
+**Draft:** [draft-ietf-rats-corim](https://datatracker.ietf.org/doc/draft-ietf-rats-corim/)  
+**Slides:** [CoRIM Progress Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-corim-progress-update-00)
+
+*   **Restructuring:** The document underwent a major restructure following reviews from the HTTP, Art, and Security directorates. Section 8 (Appraisal Phases) and Section 9 (Reference Verifier) were consolidated.
+*   **Algorithmic Standardization:** 
+    *   The document transitioned from prose descriptions to explicit pseudocode for internal transformations and the main processing loop.
+    *   A unified "Match and Augment" pattern is now consistently applied across all triple types (reference values, endorsements, and conditional endorsements).
+    *   External triples are parsed into an internal Representation of Condition-Addition triples (ECTs) to reduce processing complexity.
+*   **Next Steps:** Working group participants (especially past reviewers) are requested to review the restructured draft. The authors hope to proceed to WGLC by the next meeting.
+
+---
+
+### 5. Multi Verifier Progress Update
+**Presenter:** Yogesh Deshpande  
+**Draft:** [draft-ietf-rats-multi-verifier](https://datatracker.ietf.org/doc/draft-ietf-rats-multi-verifier/)  
+**Slides:** [Multi Verifier Progress Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-multi-verifier-progress-update-00)
+
+*   **Working Group Adoption:** The draft was successfully adopted as a WG item and migrated to the official RATS repository.
+*   **Open Source Reference Code:** The authors have developed library APIs (in Rust/Go) inside the Veraison project for setting, validating, and CBOR encoding/decoding composite attestation tokens (utilizing CMW collections). A private branch implements the rest API and dispatch tables.
+*   **Emergent Challenges:** 
+    *   **Discovery:** How verifiers discover other verifiers or endorsement services.
+    *   **Trust Establishment:** Establishing trust networks among multiple verifiers and relying parties.
+    *   **Freshness:** Managing challenges/nonces across heterogeneous nested sub-components.
+*   **Scope & Discussion:** Henk Birkholz noted that these challenges should remain out-of-scope for the core architecture document to avoid scope creep, serving instead as topics for separate drafts. The group discussed the DAWN BOF (Discovery of Well-Known Nodes) in this context; Hoda Alkhzaimi noted DAWN may narrow its scope specifically to AI agents, reinforcing the need for RATS-specific discovery mechanisms.
+*   **Next Steps:** A side meeting to discuss composite attestation and discovery was scheduled. The chairs called for volunteers to review the draft; Hannes Tschofenig, Michael Richardson, Yaron Sheffer, Paul Howard, Mark Baugher, and Kathleen Moriarty volunteered.
+
+---
+
+### 6. Hackathon Report: Separating Verifier and Relying Party Responsibilities in TEEP
+**Presenter:** Kentaro Takahashi  
+**Slides:** [Hackathon Report: Separating Verifier and Relying Party Responsibilities in TEEP](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-hackathon-report-separating-verifier-and-relying-party-responsibilities-in-teep-00)
+
+*   **Experiment:** The hackathon team implemented a Trusted Application Manager (TAM) for TEEP that acts as a Relying Party, but currently embeds Verifier functionality (validating Intel SGX quotes directly).
+*   **Observations:** The team separated Verifier-specific checks (e.g., signature validity, cert status) from Relying Party-specific decisions (e.g., whether the enclave configuration warrants provisioning the application).
+*   **Vulnerability Discussion:** 
+    *   Muhammad Usama Sardar pointed out that standard bindings between nonces and public keys are vulnerable to relay attacks (referencing CVE-2026-33697, "intra-handshake fail").
+    *   Ken Takayama responded that the `AttesTAM` implementation prevents this by computing a SHA-384 hash of the public key coordinates and a fresh, globally unique TAM-generated challenge, which is placed inside the SGX Quote's report data. This challenge is strictly one-time and marked as used to prevent replay. Ken agreed to take further analysis of this CVE risk to the mailing list.
+
+---
+
+### 7. EAT DA (Trustworthy Device Assignment)
+**Presenter:** Thomas Fossati  
+**Draft:** [draft-ietf-rats-daa](https://datatracker.ietf.org/doc/draft-ietf-rats-daa/)  
+**Slides:** [EAT DA](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-eat-da-00)
+
+*   **Problem Statement:** In confidential computing, assigned devices (GPUs, NICs) must be appraised before being trusted inside a VM’s trust boundary. Buses speak various native formats (SPDM, PCIe legacy, CXL, CHI). 
+*   **Solution (DAT / Deed):** The draft defines a translation framework that maps native bus measurements and challenge-response transcripts into uniform, standardized EAT claims (submodules).
+*   **Heterogeneity as a Constant:** Thomas Fossati explained that heterogeneous devices (with and without native EAT or SPDM support) will remain a permanent state of hardware deployments. Defining a standardized translation layer (syntactic only, without adding semantics) is necessary.
+*   **Polling Results:**
+    *   **Poll 1:** How many people have read the draft?  
+        *   **Yes:** 6, **No:** 2, **No Opinion:** 0 (Total: 40)
+    *   **Poll 2:** What is the interest in adopting?  
+        *   **Yes:** 13, **No:** 0, **No Opinion:** 0 (Total: 41)
+*   **Next Steps:** The chairs will take the adoption call to the mailing list.
+
+---
+
+### 8. Verifiable Proof of Environment Attestation Profile (V-PEA)
+**Presenter:** Michael Richardson  
+**Slides:** [Verifiable Proof of Environment Attestation Profile (V-PEA)](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-verifiable-proof-of-environment-attestation-profile-v-pea-00)
+
+*   **Context:** Systems require geographic or jurisdictional location attestation (e.g., geofencing, proving green energy connections, or local jurisdictional constraints).
+*   **Architecture:** The proposed layout splits the work across multiple drafts and working groups (e.g., NTP for time-based speed-of-light proofs of distance, and RATS for geofencing and geographic results). 
+*   **Discussion:**
+    *   Muhammad Usama Sardar expressed support, noting that verifying location is critical to ensure TEE keys are not being emulated or ran in unexpected jurisdictions.
+    *   Dave Thaler noted via chat and microphone that his previous concerns regarding GNSS (GPS) spoofing had been successfully addressed in Section 6.2.2 of the geofencing draft.
+    *   Chairs discussed that geofencing work carries regulatory sensitivities that must be considered when defining scope.
+
+---
+
+### 9. RATS Privacy Framework
+**Presenter:** Mike Ounsworth  
+**Slides:** [RATS Privacy Framework](https://datatracker.ietf.org/meeting/126/materials/slides-126-rats-rats-privacy-framework-00)
+
+*   **Core Problem:** Coercive use of remote attestation (e.g., a malicious verifier or relying party forcing an attester to reveal sensitive configuration states, or using attestation to block devices based on manufacturer rather than security state).
+*   **Solution Elements:** Providing attesters with mechanisms to authenticate verifiers, encrypt evidence specifically for trusted verifiers, and enforce selective disclosure.
+*   **Feedback:**
+    *   Ned Smith and Henk Birkholz challenged the presentation's premise, stating that RFC 9334 does not mandate that an attester must answer any verifier. Trust and communication layers beneath RATS are responsible for establishing identity and authorization.
+    *   Dave Thaler suggested separating the framework into two distinct models: the **Passport Model** (where the attester has an explicit, pre-established relationship with the verifier) and the **Background Check Model** (where the attester passes evidence to a relying party with no prior knowledge of the backend verifier).
+    *   Mike Ounsworth agreed to incorporate this feedback to adjust the slides ahead of his presentation at the Security Area Open Meeting (SAG).
+
+---
+
+## Decisions and Action Items
+
+*   **Action Item (Chairs):** Open a doodle/poll to schedule the RATS virtual interim meeting.
+*   **Decision (Chairs):** Assigned Yogesh Deshpande as Document Shepherd for [draft-ietf-rats-coserv](https://datatracker.ietf.org/doc/draft-ietf-rats-coserv/).
+*   **Action Item (Chairs):** Kathleen Moriarty to review [draft-ietf-rats-coserv](https://datatracker.ietf.org/doc/draft-ietf-rats-coserv/) on-list to resolve the malicious aggregator security concern raised by Muhammad Usama Sardar.
+*   **Action Item (Chairs):** Issue an official Working Group Adoption call on the mailing list for [draft-ietf-rats-daa](https://datatracker.ietf.org/doc/draft-ietf-rats-daa/).
+*   **Action Item (Authors - draft-ietf-rats-pkix-key-attestation):** Address the `signature identifier` naming collision pointed out by Carl Wallace.
+
+---
+
+## Next Steps
+
+*   **Reviews:** Volunteer reviews are underway for [draft-ietf-rats-multi-verifier](https://datatracker.ietf.org/doc/draft-ietf-rats-multi-verifier/) by Hannes Tschofenig, Michael Richardson, Yaron Sheffer, Paul Howard, Mark Baugher, and Kathleen Moriarty.
+*   **Mailing List:** Technical discussions regarding CMS vs. TBS-like structures for HSM evidence and TEEP TAM binding security (CVE-2026-33697) will continue on the mailing list.

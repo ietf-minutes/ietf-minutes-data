@@ -1,0 +1,105 @@
+# [TIPTOP](../wg/tiptop.html)
+
+## Summary
+
+The TIPTOP Working Group met at IETF 126 to discuss progress on its core documents and address several key technical challenges for IP in Deep Space. Co-chairs Marc Blanchet and Padma Pillay-Esnault presided over the session. 
+
+The meeting covered updates to the active working group documents `draft-ietf-tiptop-usecase` and `draft-ietf-tiptop-ip-architecture`. The working group engaged in a detailed debate on addressing architecture and registry models for interplanetary networks, comparing a centralized single-RIR allocation model to a distributed multi-RIR model. The session also featured an evaluation of QUIC in deep space, an update on the QUIC profile draft, a proposal for using CoAP in space, and a brief discussion on signaling interplanetary path constraints to hosts. A formal adoption poll was conducted for the QUIC profile document.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status and Use Case Update
+*   **Presenters**: Marc Blanchet, Padma Pillay-Esnault
+*   **Presentation**: [IP in Deep Space: Key Characteristics, Use Cases and Requirements: update on draft-ietf-tiptop-usecase](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-ip-in-deep-space-key-characteristics-use-cases-and-requirements-update-on-draft-ietf-tiptop-usecase-00)
+*   **Draft**: `draft-ietf-tiptop-usecase`
+
+Marc Blanchet presented updates implemented in version 02 of the use cases and requirements document. Key changes include:
+*   **Connectivity Scenarios**: Added a dedicated section using two-letter acronyms (e.g., Earth-Moon, Earth-Mars, solar conjunctions, intermittent vs. full connectivity) to centralize scenario descriptions and avoid redundancy across other protocol-specific documents.
+*   **Asynchronous Operation & Energy constraints**: Clarified asymmetric operational requirements where constrained nodes (e.g., rovers) minimize transmissions at the expense of well-resourced ground systems.
+*   **Security Considerations**: Added discussions on forward secrecy and post-compromise security in highly delayed, store-and-forward architectures.
+*   **Discussion**: Erik Kline noted the importance of ensuring that store-and-forward requirements in this document do not conflict with or replicate DTN Bundle Protocol work, as defined during chartering. Marc Blanchet requested that the WG review the updated text to confirm this boundary is maintained.
+
+### 2. Architecture for IP in Deep Space
+*   **Presenter**: Wesley Eddy
+*   **Presentation**: [An Architecture for IP in Deep Space](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-an-architecture-for-ip-in-deep-space-00)
+*   **Draft**: `draft-ietf-tiptop-ip-architecture`
+
+Wesley Eddy presented the updates to the active architecture draft:
+*   **Address Space**: Integrated high-level guidance focused on maximizing aggregation without dictating specific policy approaches.
+*   **Technical Details**: Expanded details regarding Path Computation Element (PCE) architectures, centralized routing, and security considerations (specifically detailing threat vectors unique to delayed/intermittent links).
+*   **Discussion**: Éric Vyncke (serving as AD) requested the removal of specific suggestive text regarding RIR policies (e.g., "just to help to maximize aggregation...") to keep the document focused strictly on the technical architecture. Wesley Eddy agreed to make this change. Marc Blanchet called for volunteers to review the draft over the next two weeks. Éric Vyncke, Dan York, and Jorge Amodio (via chat) volunteered to submit reviews.
+
+### 3. Space Address Space Allocation (Joint Discussion)
+*   **Presenters**: Tony Li, Warren Kumari
+*   **Presentations**:
+    *   [draft-li-tiptop-address-space update](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-draft-li-tiptop-address-space-update-00) (Tony Li)
+    *   [Addressing the Final Frontier](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-addressing-the-final-frontier-01) (Warren Kumari)
+
+The working group held a combined debate on how IPv6 address blocks should be allocated and managed for celestial bodies:
+*   **Single RIR Model (Tony Li)**: Argued that addressing must strictly follow physical/orbital topology to enable maximum routing aggregation and keep routing tables (FIB/RIB) small. Proposed that IANA allocate a dedicated prefix for space, which is managed by a single, neutral RIR to minimize operational complexity.
+*   **Multi-RIR Model (Warren Kumari)**: Contended that geopolitics (e.g., economic sanctions, national security) makes a single RIR model operationally impossible for international space missions. Proposed that IANA set aside a large block, which is then subdivided by celestial body and distributed among all existing RIRs (ARIN, RIPE, APNIC, etc.). This allows operators (e.g., NASA, Roscosmos, commercial entities) to obtain space-designated prefixes directly from their regional registries.
+*   **Discussion**:
+    *   Jim Reid raised concerns about how RIRs would validate and authenticate address requests for deep space assets.
+    *   Hans Peter Holen (RIPE NCC CEO) affirmed that existing RIRs already manage complex sanction-related compliance, indicating that Warren's model aligns better with political realities, though implementation details remain challenging.
+    *   Kim Davies (IANA) advised the WG to clearly separate technical requirements (e.g., what routing characteristics the address block must satisfy) from policy implementation, suggesting the WG define the "success criteria" first before determining the administrative allocation model.
+    *   Martin Duke and Peter Koch pointed out that the IETF is not a policy-making body; the WG should focus on the technical constraints of the address space and leave execution to the NRO, IANA, and broader stakeholders.
+    *   Erik Kline expressed skepticism toward rigid celestial/geographic routing aggregation, arguing that topological routing in space will likely be dictated by commercial and agency routing agreements rather than physical planet-by-planet divisions.
+    *   Dan York summarized that the IETF's role should be specifying the technical reasons for a space-specific allocation block (e.g., to prevent terrestrial routing leakage and support aggregation) and leaving the registry operational model to IANA and the NRO.
+
+### 4. Evaluation of QUIC in Interplanetary Networks
+*   **Presenter**: Johannes
+*   **Presentation**: [Evaluation of QUIC in Interplanetary Networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-evaluation-of-quic-in-interplanetary-networks-00)
+
+Johannes presented simulations evaluating QUIC (using the Quirin stack/ns-3) over simulated Earth-Mars links:
+*   **Handshake/Timers**: Standard QUIC configurations fail immediately over deep space links because the default 30-second idle timeout and the default 333 ms initial RTT values trigger continuous timeouts. Adjusting these parameters is mandatory.
+*   **Flow/Congestion Control**: High Bandwidth-Delay Products (BDP) require flow control limits to be scaled up significantly (1 to 2 times the BDP) to avoid starvation.
+*   **Loss and Asymmetry**: Cubic and NewReno performed poorly under high random loss due to delayed feedback loops (1 RTT = 20 mins). BBRv1 was able to recover, but link blackouts disrupted its probing mechanisms. Rate-limited, open-loop transmission proved to be the most stable approach.
+*   **ACK Overhead**: Bandwidth asymmetry causes ACK traffic to congest the highly constrained uplink, choking downlink goodput. Implementing the QUIC ACK Frequency extension successfully mitigated this bottleneck.
+*   **Discussion**: Lars Eggert cautioned that while BBRv1 worked in these random-loss simulations, actual space links are highly scheduled, and further research is needed to determine if BBR's assumptions fit scheduled link models. Jonas emphasized the need to test multiple independent QUIC codebases to ensure profiling recommendations are not skewed by implementation-specific behaviors.
+
+### 5. QUIC Profile for Deep Space
+*   **Presenter**: Marc Blanchet
+*   **Presentation**: [QUIC Profile for Deep Space: draft-many-tiptop-quic-profile update](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-quic-profile-for-deep-space-draft-many-tiptop-quic-profile-update-00)
+
+Marc Blanchet outlined the restructuring of the QUIC profile document:
+*   **Restructuring**: Reorganized the flat list of features into logical sections (connection establishment, maintenance, bandwidth management, TLS, etc.) and mapped parameters directly to the specific scenarios defined in `draft-ietf-tiptop-usecase`.
+*   **TLS Key Updates**: Verified that using the proposed extended key update mechanism successfully refreshed keys over highly delayed links without dropping the connection.
+*   **Discussion**: Lars Eggert warned against profiling QUIC so aggressively that it becomes incompatible with standard terrestrial QUIC. He cited padding as an example, noting that while padding represents overhead in space, certain padding is mandatory for QUIC compliance and path validation. He suggested that as a baseline compliance test, any "space-profiled" QUIC stack must still be capable of establishing a connection with a standard terrestrial server (e.g., Cloudflare or Google).
+
+### 6. CoAP in Space
+*   **Presenter**: Carlos Gomez
+*   **Presentation**: [CoAP in Space](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-coap-in-space-00)
+
+Carlos Gomez proposed utilizing the Constrained Application Protocol (CoAP) for space-based IoT and sensor networks:
+*   **Suitability**: CoAP is lightweight (4-byte header), supports asynchronous request/response exchanges, utilizes OSCORE for handshake-free security, and natively supports caching, proxying, and multicast/group communication.
+*   **Reference Parameters**: The draft provides transmission/retransmission timer tables calculated specifically for Earth-Moon and Earth-Mars propagation delays.
+*   **Discussion**: Padma Pillay-Esnault and Marc Blanchet noted that CoAP is not currently in the TIPTOP charter. They advised the authors to map CoAP's unique strengths (such as multicast and group updates) to the official `draft-ietf-tiptop-usecase` document to demonstrate technical utility. Alexander Pelov and Michel supported CoAP's potential, especially for carrying compact YANG models (CORE-CONF) to manage resource-constrained landers and sensors.
+
+### 7. Interplanetary Hops: Signaling Path Constraints
+*   **Presenter**: Alexander Pelov
+*   **Presentation**: [Interplanetary hops: should path constraints be signaled to hosts?](https://datatracker.ietf.org/meeting/126/materials/slides-126-tiptop-interplanetary-hops-should-path-constraints-be-signaled-to-hosts-00)
+
+Alexander Pelov raised a brief architectural question: Should there be an in-band or out-of-band signaling mechanism to notify a standard host when its packets cross an interplanetary boundary? This would allow standard terrestrial transport stacks to dynamically adjust their RTT and timeout parameters without needing statically hardcoded space profiles.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+*   **`draft-ietf-tiptop-ip-architecture` Update**: Wesley Eddy will update the architecture draft to remove the policy-suggestive text regarding aggregation (per Éric Vyncke's AD feedback) to focus strictly on technical architectural requirements.
+
+### Action Items & Polls
+*   **Adoption Poll for QUIC Profile**: A formal poll was taken on the readiness of the QUIC Profile for deep space.
+    *   **Question**: "Do you think this document is ready for WG adoption?"
+    *   **Result**: yes: 16, no: 2, no_opinion: 22 (total: 86)
+    *   **Action**: The poll shows a strong majority of those expressing an opinion favor adoption. The chairs will take the adoption call to the mailing list to confirm working group consensus.
+*   **Document Reviews**: Éric Vyncke, Dan York, and Jorge Amodio will review `draft-ietf-tiptop-ip-architecture` within the next two weeks.
+
+---
+
+## Next Steps
+
+1.  **Address Space Allocation Interim**: Instead of forming a formal design team, the chairs will organize a dedicated virtual interim/side meeting specifically focused on the address space allocation problem. The objective is to define the technical requirements and success criteria for space address blocks, involving RIR representatives (NRO) and IANA, before submitting the technical requirements to the appropriate allocation authorities.
+2.  **CoAP in Space Proposal**: The authors of the CoAP proposal are encouraged to submit text mapping CoAP functionalities to the official TIPTOP use cases and use the mailing list to gauge wider working group interest in adding CoAP-specific guidance to the charter.

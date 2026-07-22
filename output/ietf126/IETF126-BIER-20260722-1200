@@ -1,0 +1,39 @@
+# [BIER](../wg/bier.html)
+
+## Summary
+
+The BIER Working Group session at IETF 126 was chaired by Sandy Zhang, Tony Przygienda, and Greg Shepherd (remote). The meeting covered the current WG document status, a detailed architectural update on fast reroute mechanisms for BIER, and a general discussion on BIER applicability to AI workloads.
+
+## Key Discussion Points
+
+### WG Status Update
+Sandy Zhang presented the [01-WG-status](https://datatracker.ietf.org/meeting/126/materials/slides-126-bier-01-wg-status-00) slide deck:
+* **RFC Publication:** RFC 9974 (OAM Requirements) has been published.
+* **WGLC & IPR Calls:** Working Group Last Call (WGLC) and IPR calls have completed for BGP RS extensions and [draft-ietf-bier-bierin6](https://datatracker.ietf.org/meeting/126/active/). However, outstanding IPR responses from some authors are still required before these can progress to the next stage.
+* **OAM Draft:** The OAM draft is being actively updated on GitHub to address the final set of review comments.
+* **Gated Drafts:** Tony Przygienda requested that Jeffrey Zhang refresh the non-MPLS extensions draft, as it is currently gating progress on multiple other dependent drafts in the queue.
+
+### BIER-FRR Update
+Toerless Eckert presented updates to [draft-ietf-bier-frr](https://datatracker.ietf.org/meeting/126/active/) using the slide decks [BIER-FRR Update rev 14](https://datatracker.ietf.org/meeting/126/materials/slides-126-bier-bier-frr-update-rev-14-00) and [BIER-FRR Update rev 14 v1.3](https://datatracker.ietf.org/meeting/126/materials/slides-126-bier-bier-frr-update-rev-14-v13-00). 
+* **Context:** The draft previously failed during IESG evaluation. The current revisions aim to significantly improve text quality and make the benefits of unicast Fast Reroute (FRR) easily map to BIER for operators who may not be familiar with multicast details.
+* **Scope Limits:** Toerless proposed keeping traditional tunnel technologies (like RSVP-TE or GRE) and partial deployment architectures out of scope to focus on SPF-based IGPs.
+* **Forwarding Models:** Toerless detailed three proposed models to address FRR behavior and packet duplication trade-offs:
+  1. **BIER Adjacency FRR:** Requires no changes to BIER forwarding. It replaces standard neighbors with LFA/RLFA/TI-LFA adjacencies. If a link/node fails, the backup path is used. This is simple but can lead to duplicate packets on intermediate hops.
+  2. **BIER FRR with Backup FBMs (Forwarding Bitmasks):** Introduces a separate backup FBM to match against when a primary path fails. This reduces duplication but cannot completely prevent duplicates in all topologies due to BIFT entry evaluation ordering constraints.
+  3. **Sorted Backup FRR (SBFRR):** Reorders BIFT entry evaluation dynamically (processing failed interface bits first) to completely eliminate duplicates. A variation of this model (SBFRR for MPLS) uses standard unicast FRR adjacencies with primary and backup BIFT IDs.
+* **Discussion:**
+  * Jeffrey Zhang noted that in scenarios involving ECMP, the FBM is functionally a property of a particular BFR neighbor rather than of an individual BIFT entry. He suggested that modeling the FBM as a neighbor property would simplify the architecture. Toerless agreed to collaborate offline on this change.
+  * Tony Przygienda commended the structured overview of the trade-offs between the three models.
+
+### AI Workloads and BIER Applicability
+Jeffrey Zhang and Tony Przygienda shared updates on discussions from recent side meetings regarding multicast and AI training workloads:
+* **Context:** AI workloads require optimized collective communication patterns. Using multicast (and specifically BIER) can significantly improve GPU utilization and reduce overall job completion times.
+* **Gaps:** Side-meeting participants identified several requirements and gaps. The BIER WG plans to review these gaps and work on necessary BIER extensions or enhancements.
+
+## Decisions and Action Items
+* **Action Item:** Jeffrey Zhang to refresh the non-MPLS extensions draft to unblock dependent WG documents.
+* **Action Item:** Toerless Eckert and Jeffrey Zhang to collaborate offline to refine the FRR forwarding models, exploring how to simplify FBM representation as a property of BFR neighbors.
+
+## Next Steps
+* The authors of [draft-ietf-bier-frr](https://datatracker.ietf.org/meeting/126/active/) will focus on defining IGP control plane calculations for backup adjacencies ahead of the next IETF meeting.
+* Contributions addressing multicast requirements for AI environments will be brought to the BIER WG for discussion.

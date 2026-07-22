@@ -1,0 +1,100 @@
+# [CFRG](../wg/cfrg.html)
+
+## Summary
+
+The Crypto Forum Research Group (CFRG) met during IETF 126 in Vienna. The session was chaired by Alexey Melnikov and Nick Sullivan, with Stanislav Smyshlyaev participating remotely. The meeting covered administrative updates, including the renewal of the Crypto Review Panel, followed by an open discussion on Post-Quantum (PQ) Key Encapsulation Mechanism (KEM) security considerations. Technical presentations spanned zero-knowledge proofs (Longfellow ZK), hybrid post-quantum password-authenticated key exchange (PAKE), non-separable hybrid signatures (Silithium), asynchronous remote key generation (ARKG), and compact PQ mutual authentication (PQuAKE).
+
+A formal poll was taken regarding the adoption of hybrid PQ/T signatures.
+
+---
+
+## Key Discussion Points
+
+### Admin and Document Status
+* **Crypto Review Panel:** The panel has been renewed for a two-year term with a mix of continuing and new members.
+* **Document Status:** 
+  * `draft-irtf-cfrg-rsa-guidance` is in IESG review.
+  * `draft-irtf-cfrg-cpase` is in IRSG review.
+  * Three errata reports were presented with proposed resolutions.
+
+### Open Discussion: PQ KEM Security Considerations
+* **Context:** The chairs opened the floor to discuss how CFRG should handle the influx of security considerations drafts for various PQ KEMs, particularly regarding their usability by other working groups (e.g., TLS, IPsecME).
+* **Technical & Policy Debate on FrodoKEM:** 
+  * John Preuß Mattsson noted significant interest in FrodoKEM (`draft-longa-cfrg-frodokem`) from other IETF working groups (e.g., IPsecME's `draft-ietf-ipsecme-hybrid-kem-ikev2-frodo`).
+  * A central issue raised in the chat by Yoav Nir, Bas Westerbaan, and Pascal Schäfer is that the official FrodoKEM specification is published by ISO and sits behind a paywall. The IETF community strongly pushes back against normative references to paywalled documents. 
+  * Daniel Van Geest confirmed that the authors of the IETF draft are the ISO authors and the specifications are identical modulo minor formatting.
+  * Bas Westerbaan questioned whether there is a true international technical need for FrodoKEM over ML-KEM, warning against standardizing algorithms purely to satisfy national regulatory policies. Tanja Lange countered that FrodoKEM has different underlying mathematical assumptions compared to ML-KEM, making it a valuable conservative alternative.
+* **Guidance Structure:** 
+  * Scott Fluhrer argued that a single document cannot cover all KEMs due to subtle, algorithm-specific differences, particularly in authenticated use cases.
+  * Tanja Lange and Russ Housley supported the creation of a comparison or usability guidance document focusing on trade-offs (e.g., public key size vs. ciphertext size) to assist protocol designers, warning authors to remain neutral.
+  * Eliot Lear cautioned against duplicating `RFC 9958` (Post-Quantum Cryptography for Engineers) but supported neutral documentation addressing the security nuances of hybrid vs. non-hybrid approaches.
+  * Victor Duchovni flagged a growing inconsistency in key formats for hybrids between HPKE (which uses a master seed) and LAMPS (which uses separate seeds for individual components).
+
+### Longfellow ZK
+* **Presentation:** Abhi Shelat presented [Longfellow ZK](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-longfellow-zk-00).
+* **Technical Details:** Longfellow is a transparent, hash-based zero-knowledge argument system relying solely on the hardness of SHA-256. Recent work includes rewriting the implementation in Rust, formalizing parts of the circuit generation in Lean (with an equivalence proof for ECDSA verification), and verifying implementation properties using Verus.
+* **Proposed Draft Restructuring:** The authors plan to split the work:
+  1. Move the generic Fiat-Shamir construction to the interactive Oracle proof (IOP) section of the draft-michele-kathy-fiat-shamir-style document.
+  2. Maintain a core CFRG document containing the scheme and parameters.
+  3. Keep application-specific circuits separate.
+* **Discussion:** Christopher Wood supported the split and suggested standardizing a library of common, verified cryptographic gadgets (e.g., ML-DSA verification, Merkle trees, hash functions) within the CFRG to prevent application developers from implementing them incorrectly. Abhi Shelat agreed that establishing verified composition primitives is a strong direction.
+
+### Hybrid Post-Quantum Password Authenticated Key Exchange
+* **Presentation:** Christopher Wood presented [Hybrid Post-Quantum Password Authenticated Key Exchange](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-hybrid-post-quantum-password-authenticated-key-exchange-01).
+* **Technical Details:** The presentation detailed "APAIC" (OakQuake), a post-quantum PAKE design using a black-box approach. It integrates symmetric/asymmetric variants (OakQuake / OakQuake Plus) and sequential hybrid modes with CPAsE.
+* **Scope Proposal:** Christopher Wood proposed that CFRG adopt and specify the core cryptographic research building blocks (such as the hybrid combiner and the "splittable KEM" required by the Tempo variant to mitigate timing attacks on the password). The wire formats and protocol-specific engineering details should be handled in a dedicated, short-lived IETF working group.
+* **Discussion:** 
+  * Dan Harkins supported adoption but questioned the necessity of the "splittable binary uniform encoded KEM" (BUA-sKEM) abstraction, arguing that standard ML-KEM key generation combined with the `kemeleon` protocol is sufficient. He also advised removing strict bit-level encoding rules (e.g., LV encode/decode) from the CFRG draft.
+  * Christopher Wood responded that splitting the KEM public key is mathematically required in Tempo to block a severe side-channel timing attack on the password.
+  * Scott Fluhrer expressed skepticism regarding multi-round hybrid PAKEs due to integration challenges in existing protocols. Stefan Santesson strongly supported the work, emphasizing the industry's need for a standardized post-quantum replacement for Opaque.
+
+### Silithium: A Compact, Efficient and Non-Separable Hybrid Signature
+* **Presentation:** Sofian Brissaud presented [Silithium - A compact, efficient and non-separable hybrid signature](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-sessb-silithium-a-compact-efficient-and-non-separable-hybrid-signature-01).
+* **Technical Details:** Silithium is a hybrid signature scheme designed to provide "non-separability" (preventing an attacker from stripping one signature type and presenting the other). It uses an ML-DSA "sandwich" construction, embedding a classical Schnorr/ECC commitment directly into the ML-DSA context string.
+* **Discussion:** 
+  * Scott Fluhrer noted that if a repeated nonce under the same key can compromise security, the scheme must use a hedged or deterministic nonce generation mechanism for all elliptic curves (not just Ed25519). He also warned that appending the commitment to the message (rather than the context string) reduces the security bounds to those of composite signatures.
+  * John Preuß Mattsson strongly advocated for hedged over purely deterministic randomness due to side-channel injection vulnerabilities on physical IoT devices. 
+  * Steffen Kittel and several chat participants expressed concern over "hybrid signature overload" and the resulting interoperability and testing challenges, noting the abundance of existing proposals (e.g., 18 composite variants in LAMPS).
+  * Britta Hale and Kris Kwiatkowski noted via chat that hybrid signatures possess subtle security failure modes not present in hybrid KEMs, necessitating a deeper analysis of required properties before adoption.
+
+### Asynchronous Remote Key Generation (ARKG)
+* **Presentation:** Emil Nygren presented [The Asynchronous Remote Key Generation (ARKG) algorithm](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-sessb-the-asynchronous-remote-key-generation-arkg-algorithm-00).
+* **Technical Details:** ARKG allows a client to generate public keys asynchronously from a hardware-bound seed without requiring online interaction or user gestures for each key generation. It is highly relevant for the EU Digital Identity (EUDI) wallet to achieve unlinkability. The latest draft updates include detailed privacy considerations on seed secrecy and ciphertext integrity.
+* **Discussion:** 
+  * John Bradley (co-author) clarified that while zero-knowledge credentials (like Longfellow or BBS) are the preferred long-term privacy solution, ARKG represents the best currently deployable mechanism for batch-issuance and hardware security modules.
+  * Nick Sullivan asked which parts of the draft represented engineering rather than research. Emil Nygren responded that the core is based on existing peer-reviewed research, though the draft currently includes COSE wire-format bindings that could be moved to an IETF working group if requested.
+
+### PQuAKE: Compact Post-Quantum Mutual Authentication for Key Exchange
+* **Presentation:** Stanislav Smyshlyaev presented [PQuAKE: Compact post-quantum mutual authentication for key exchange](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-sessb-pquake-compact-post-quantum-mutual-authentication-for-key-exchange-00) on behalf of author Yuri Blumenthal.
+* **Technical Details:** PQuAKE is a protocol designed to achieve mutual authentication and key exchange using only KEMs, bypassing the need for large post-quantum signature schemes (such as ML-DSA). It significantly reduces handshake sizes and CPU overhead, making it attractive for constrained devices and high-throughput VPN gateways.
+* **Discussion:** 
+  * John Preuß Mattsson pointed out that the Lake working group recently adopted a similar KEM-based mutual authentication mechanism for EDHOC, which may limit the need for a separate design.
+  * Thom Wiggers (author of KEM-TLS) remarked that KEM-based authentication is highly protocol-specific due to varying requirements for identity hiding, transcript binding, and round-trip limits. He questioned whether a generic framework could be meaningfully standardized in CFRG.
+  * Goutam Paul supported the efficiency benefits of KEM-based authentication for battery-powered devices and suggested trying to unify the underlying cryptographic frameworks used by TLS, IKEv2, and EDHOC.
+
+---
+
+## Decisions and Action Items
+
+* **Hybrid PAKE Draft Split:** Christopher Wood will restructure the hybrid PAKE draft to separate the core cryptographic primitives (for CFRG) from the protocol-specific wire formats (for a future IETF working group / BoF) before initiating an adoption call.
+* **Longfellow Draft Split:** The authors of the Longfellow ZK draft will coordinate with the authors of the Fiat-Shamir draft to integrate the IOP sections and refine the core scheme/parameters document.
+
+---
+
+## Next Steps
+
+* **PQ KEM Security Considerations:** The chairs will compile the feedback from the session and initiate a structured discussion on the mailing list regarding the potential adoption of a general-purpose KEM guidance document.
+* **Hybrid PQ/T Signatures Adoption:** Given the split feedback in the session poll, the chairs will take the discussion to the mailing list to determine if and how CFRG should proceed with hybrid signature schemes.
+* **ARKG Review:** The chairs encouraged the WG to read and review `draft-nygren-cfrg-arkg` on the mailing list to gauge readiness for adoption.
+
+---
+
+## Session Polls
+
+### Poll 1
+* **Question:** Is the topic of Hybrid PQ/T Signatures something the CFRG should explore adopting?
+* **Result:** 
+  * **Yes:** 42
+  * **No:** 17
+  * **No Opinion:** 8
+  * **Total Votes:** 121

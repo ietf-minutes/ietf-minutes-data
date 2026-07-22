@@ -1,0 +1,93 @@
+# [TEAS](../wg/teas.html)
+
+## Summary
+The TEAS Working Group met to discuss several key traffic engineering initiatives, including power-aware traffic engineering, RSVP-TE extensions for native IP and SRv6 networks, Multipath Traffic Engineering (MP-TE) architecture and its corresponding signaling and data models, Multicast Traffic Engineering (MC-TE), carrying 5G network slice identifiers in IP headers, and high-performance computing/AI (HPC/AI) data models. 
+
+Polls were conducted to gauge working group interest in power-aware traffic engineering and MP-TE, showing solid support for further exploration of both topics.
+
+---
+
+## Key Discussion Points
+
+### Administrivia & WG Status
+* The session began with the [01 Administrivia & WG Status](https://datatracker.ietf.org/meeting/126/materials/slides-126-teas-01-administrivia-wg-status-01) presentation.
+* The Session Chair reminded participants of the Note Well guidelines.
+
+### Power Conserving Path Placement Strategy (PCPPS)
+* **Presenter**: Ron Bonica
+* **Discussion**:
+  * Ron Bonica presented an updated strategy to optimize network power consumption during low-demand periods by concentrating traffic on the smallest set of links and powering down idle resources.
+  * Recent draft updates replaced "power utilization" with "potential power savings" (the difference between active and sleeping power consumption) based on feedback from Carlos Pignataro, acknowledging that sleeping interfaces may still consume power on some hardware architectures.
+  * The draft's status was changed from Informational to Proposed Standard due to its dependency on a linked LSR draft that defines IGP power information advertisements.
+  * The Session Chair advised maintaining close coordination with the GREEN Working Group. Tony Li confirmed that coordination has occurred and that their work is aligned; the LSR/TEAS work focuses on compact IGP encoding, while the GREEN WG addresses broader YANG-based modeling.
+  * Zafar Ali raised concerns about the complexity of low-level power modeling, suggesting that simpler interface- or laser-level attributes might be more practical to implement and deploy. Ron Bonica noted that power savings data can be derived programmatically or through manual configuration based on vendor spec sheets.
+* **Polls**:
+  * **Poll 1**: *Does the WG think that Power-aware traffic Engineering is a topic of interesest for TEAS WG?*
+    * **Yes**: 29, **No**: 2, **No Opinion**: 5 (Total: 57)
+  * **Poll 2**: *Is this document a good starting point for discussing power-aware traffic Engineering ?*
+    * **Yes**: 18, **No**: 3, **No Opinion**: 16 (Total: 63)
+
+### RSVP-TE Extensions for Point-to-Point IP-TE Tunnels
+* **Presenter**: Pavan Beeram (on behalf of co-authors Tarek Saad and Andy Smith)
+* **Discussion**:
+  * The authors revived this work (previously presented at IETF 105) to address distributed bandwidth engineering challenges in native IPv4/IPv6 networks without MPLS.
+  * The solution relies on egress nodes maintaining an Egress Address Block (EAB) of private IP addresses (RFC 1918 / RFC 4193). RSVP-TE signals the path, and transit nodes program EAB routes dynamically.
+  * The updated version introduces an SRv6 switching type, where EABs are taken from a dedicated SRv6 locator and programmed with SRv6 end behaviors at the egress, triggering Segment Routing Header (SRH) processing.
+  * Kireeti Kompella expressed interest in referencing this draft to support the IP-controlled data plane for MP-TE.
+  * Zafar Ali raised concerns that using RSVP-TE signaling introduces state into a stateless Segment Routing fabric, representing a significant deviation from the base SR architecture, and suggested this needs a larger discussion in the SPRING WG. Pavan Beeram agreed to discuss this in SPRING.
+  * Lou Burger questioned the value of using IP-in-IP encapsulation instead of simple n-tuple matching. Pavan Beeram explained that using a private EAB space prevents other routing protocols from taking over EAB routes in failure scenarios, mimicking the loop-free semantics of MPLS.
+  * Boris Khasanov noted in the session chat that this work correlates with the PCECC architecture.
+
+### Multipath Traffic Engineering (MP-TE)
+* **Presenters**: Kireeti Kompella, Pavan Beeram, and Andrew Stone
+* **Discussion**:
+  * **Architecture** (`draft-kompella-teas-mpte`): Kireeti Kompella outlined the architectural goal of combining multipathing and traffic engineering using Directed Acyclic Graphs (DAGs) and "junctions" to perform optimal, weighted load balancing end-to-end. The solution supports multi-ingress and multi-egress topologies and utilizes local weight-shifting to handle link failures quickly with minimal network churn.
+  * **Signaling & YANG Models**: Pavan Beeram presented the RSVP-TE signaling and YANG data model specifications. The signaling procedures were tightened, and the YANG model was expanded to include "DAG span constraints" (junction counts, next hops, metric margins, and retry timers). Both have prototype implementations.
+  * **Segment Routing Realization** (`draft-stone-spring-mpte-sr`): Andrew Stone presented a controller-based realization of MP-TE in SR networks. It defines "junction segments" on junction nodes using SR Policy candidate paths with null endpoints and unique colors to represent the DAG. It leverages binding SIDs for hierarchical reuse and supports TI-LFA protection and path monitoring via Seamless BFD (S-BFD).
+  * **General Discussion**:
+    * Lou Burger noted that MP-TE is highly relevant to DETNET's Radio Aware WAN (RAW) and support for packet replication/protection (1+1 and 1-for-N protection). Kireeti Kompella agreed that Multicast TE (MC-TE) can help fulfill these use cases.
+    * Zafar Ali strongly challenged the MP-TE architecture draft, stating that the problem has already been solved and shipped via SR Policies (RFC 9256). He criticized the draft for failing to reference RFC 9256 and characterized the lack of acknowledgment of existing SR work as academic dishonesty. Kireeti Kompella thanked Zafar for the feedback.
+* **Polls**:
+  * **Poll 3**: *Is MP-TE a topic of interest for TEAS WG?*
+    * **Yes**: 21, **No**: 3, **No Opinion**: 8 (Total: 75)
+  * **Poll 4**: *Is this document a good starting point for discussing the architecture for MP-TE?*
+    * **Yes**: 21, **No**: 2, **No Opinion**: 3 (Total: 74)
+  * **Poll 5**: *Is this document a good starting point for defining the data model for MP-TE?*
+    * **Yes**: 16, **No**: 1, **No Opinion**: 8 (Total: 74)
+  * **Poll 6**: *Is this document a good starting point for defining the RSVP-TE based signaling for MP-TE?*
+    * **Yes**: 14, **No**: 3, **No Opinion**: 15 (Total: 74)
+
+### Multicast Traffic Engineering (MC-TE)
+* **Presenter**: Kireeti Kompella
+* **Discussion**:
+  * Kireeti Kompella proposed applying the junction concept from MP-TE to Point-to-Multipoint (P2MP) LSPs. Rather than signaling multiple sub-LSPs (RFC 4875), which creates significant Path State Block (PSB) and Resv State Block (RSV) overhead, MC-TE introduces a Junction State Block (JSB) to collapse state on replication nodes and reduce signaling churn during leaf joins/leaves.
+  * Andrew Stone pointed out that this concept overlaps significantly with SR Replication Segments (SR P2MP Policies) already defined in SPRING/BGP/PCEP and cautioned that DAG-based multicast optimization must carefully address complex loop-prevention issues.
+  * Changzhou asked if the proposal supports Steiner vs. non-Steiner tree computations. Kireeti Kompella clarified that the computation is orthogonal; once the tree shape is determined, JSB is used for efficient signaling.
+  * Lou Burger recalled that the sub-LSP concept in RFC 4875 allowed single-PSB state collapsing as a standard compromise for faster implementation. He suggested investigating whether the desired junction behavior can be achieved with minimal modifications to the existing sub-LSP protocols rather than creating new ones.
+
+### Carrying 5G Network Slice Identifiers in IP Headers for QoS Assurance Beyond the 3GPP Domain
+* **Presenter**: Changzhou (on behalf of co-authors Jerry and Gong Yu)
+* **Discussion**:
+  * Changzhou presented the slides [13 Carrying 5G Network Slice Identifiers in IP Headers for QoS Assurance Beyond the 3GPP-Managed Domain](https://datatracker.ietf.org/meeting/126/materials/slides-126-teas-13-carrying-5g-network-slice-identifiers-in-ip-headers-for-qos-assurance-beyond-the-3gpp-managed-domain-01).
+  * The draft proposes mapping the 3GPP 32-bit slice identifier (S-NSSAI) into an IPv6 Hop-by-Hop (HbH) option (leveraging the 6man network resource option format) as packets transition from the UPF into the IP backbone. This allows backbone routers to enforce slice-specific QoS policies.
+  * Nathan raised concerns about the overhead of adding 12 bytes to packet headers and questioned whether mapping the traffic to simpler QoS slice types rather than propagating the full slice ID would be a more practical approach. The presenter agreed to follow up on the mailing list.
+
+### High-Performance Computing / AI (HPC/AI) Data Models
+* **Presenter**: Quan
+* **Discussion**:
+  * Quan presented three new drafts defining YANG models to map HPC/AI scheduling metadata, service intents, and tunnel realization.
+  * The Session Chair noted that while the scheduling metadata and service intent models likely fall outside the scope of the TEAS WG, the third draft on tunnel realization (augmenting TE tunnels) could be discussed here. The presenter was encouraged to socialize the work on the mailing list.
+
+---
+
+## Decisions and Action Items
+* **Power-Aware Traffic Engineering**: The chairs will initiate a formal call for adoption on the mailing list. Authors need to maintain coordination with the GREEN WG and address simplification comments raised during the session.
+* **IP-TE and SRv6-TE Tunnels**: Discussion on the implications of introducing RSVP-TE state into segment routing networks will be brought to the SPRING WG.
+* **Multipath Traffic Engineering (MP-TE)**: Based on strong poll results, the chairs will initiate adoption calls for the MP-TE architecture, RSVP-TE signaling, and YANG model drafts.
+* **5G Network Slice Identifiers**: The presenter will follow up on the mailing list regarding header overhead concerns and alternative QoS mapping designs.
+
+---
+
+## Next Steps
+* **MP-TE Workshop**: A hands-on lab workshop is planned for October to allow service providers to test and provide feedback on the CLI and telemetry aspects of the MP-TE implementation.
+* **Multicast TE (MC-TE)**: The authors plan to refine the MC-TE signaling details, prepare prototype implementations, and present a more detailed comparison against RFC 4875 at the next IETF meeting.
