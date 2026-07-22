@@ -1,0 +1,86 @@
+# [PIM](../wg/pim.html)
+
+## Summary
+The PIM Working Group met at IETF 126 to discuss the status of its active drafts, gather operational feedback, and evaluate several new proposals. Key discussion areas included lessons learned from decades of multicast deployment, running IPv4 PIM over IPv6-only cores, RPF vector conflict resolution, energy-aware "eco-mode" signaling, link-scoped IPv6 addressing, LISP multicast deployment experiences, and the evolving multicast requirements for AI environments (including in-network aggregation).
+
+---
+
+## Working Group Status
+Stig Venaas presented the [Agenda/working group status](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-agendaworking-group-status-01) slide deck, summarizing the progress of active drafts:
+* **`draft-ietf-pim-rfc1112bis`**: Nearly ready for publication request; awaiting remaining IPR clearances.
+* **Point-to-Multipoint (P2MP)**: Two new RFCs have been published.
+* **GAP (Group Address Allocation Protocol)**: Currently in IETF Last Call.
+* **`draft-ietf-pim-flex-algo`**: Multi-Topology in PIM was adopted prior to the last meeting and is progressing.
+* **`draft-ietf-pim-multipath-igmpmldproxy`**, **`draft-ietf-pim-evpn-multicast-yang`**, and **`draft-ietf-pim-multicast-over-srv6`**: Not discussed during this session but making progress.
+
+---
+
+## Key Discussion Points
+
+### 1. Multicast Lessons Learned
+Mike McBride presented the [lessons learned](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-lessons-learned-00) slides for **`draft-ietf-pim-multicast-lessons-learned`**. 
+
+* **Overview**: The draft has been updated with five new sections covering socket APIs and scope IDs, QoS and data plane considerations (replication load and hardware limits), control plane scalability/resilience, multicast scoping, and mobility.
+* **Feedback**:
+  * Prasad Miriyala suggested adding historical context on Multicast OAM.
+  * Stig Venaas suggested including Pretty Good Multicast (PGM) and LISP-based mobility.
+  * David Lamparter noted that multicast behavior on loopback interfaces differs across OSs and should be documented as a lesson learned.
+
+### 2. IPv4 PIM in IPv6 Core
+Stig Venaas presented [IPv4 PIM in IPv6 core](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-ipv4-pim-in-ipv6-core-00), which proposes forwarding native IPv4 multicast over an IPv6-only core by running IPv4 PIM using IPv6 headers and introducing a new "all PIM routers" IPv6 multicast address.
+
+* **Discussion**: David Lamparter questioned if the effort to modify PIM is worth getting rid of the last remaining IPv4 address in the core. Nils Warnke (Deutsche Telekom) supported the work, confirming that operators have valid use cases for this architecture in parts of their networks.
+* **Poll Results**:
+  * *Adopt this ipv4 in ipv6 draft?* — yes: 6, no: 0, no_opinion: 1 (total: 27)
+
+### 3. RPF Vector Conflict Resolution
+Yisong Liu presented [PIM Reverse Path Forwarding (RPF) Vector Conflict Resolution](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-pim-reverse-path-forwarding-rpf-vector-conflict-resolution-00). The draft updates RFC 5496 and RFC 7891 by defining handling rules when conflicting PIM joins are received (e.g., prioritizing shorter lists of vectors or prioritizing joins without a vector).
+
+* **Discussion**: Stig Venaas raised concerns about backward compatibility with older implementations that might ignore list lengths and instead only compare the first attribute. He suggested that a hello option might be required to negotiate support. Prasad Miriyala supported updating the existing RFC.
+* **Poll Results**:
+  * *Adopt this rpf vector conflict resolution draft?* — yes: 1, no: 0, no_opinion: 4 (total: 28)
+
+### 4. Eco-Mode Signaling
+Luis Contreras presented [draft-contreras-pim-eco-mode](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-draft-contreras-pim-eco-mode-00), a proposal using IGMP/MLD extensions to let listeners signal their preference for energy-efficient or carbon-aware content delivery (e.g., lowering resolution to save power).
+
+* **Discussion**: Prasad Miriyala pointed out that upgrading host application stacks (like set-top boxes) is operationally difficult. He suggested that mapping different "eco modes" to separate multicast groups would be easier. Stig Venaas noted that if eco-mode translates to path optimization (rather than source modification), dynamic signaling to routers remains useful.
+
+### 5. Sub-Link Scoped IPv6 Multicast Addressing
+David Lamparter presented [Sub-Link Scoped IPv6 Multicast Addressing](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-sub-link-scoped-ipv6-multicast-addressing-01). The draft defines a new scope for IPv6 multicast addresses that map to specific link-local Ethernet addresses (such as those used by LLDP) to prevent packets from traversing switches or entering overlay networks (e.g., VXLAN).
+
+* **Discussion**: David highlighted open questions regarding MLD snooping. He proposed that hosts should not be required to send MLD reports for these addresses and that snooping switches must not alter their forwarding behavior.
+
+### 6. LISP Multicast Deployments
+Junie presented [LISP multicast deployments](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-lisp-multicast-deployments-00), detailing real-world experiences running Layer 2 BUM traffic and Layer 3 routed multicast concurrently over a native multicast underlay.
+
+* **Discussion**: Key operational issues identified include high troubleshooting complexity across two distinct layers (overlay and underlay) and join latency/convergence issues for highly dynamic, short-lived "push-to-talk" sessions where the first packets are often lost before the multicast state converges.
+
+### 7. Multicast for AI Evaluation
+Mike McBride presented [mcast4ai-p2mp-eval](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-mcast4ai-p2mp-eval-00), exploring the use of P2MP multicast (such as BIER or PIM) for AI training and inference.
+
+* **Discussion**: A primary gap identified in existing multicast protocols is the lack of native ACK aggregation (reduction of acknowledgments back to the source). Toerless Eckert questioned if ACK aggregation on routers is actually necessary, noting that application-layer solutions might be more appropriate. Tony Przygienda agreed, warning against embedding application-specific reliable transport layers directly into routing headers.
+
+### 8. Unified Framework for In-Network Aggregation and Multicast
+A Futurewei Representative presented [A Unified Framework for In-Network Aggregation and Multicast](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-a-unified-framework-for-in-network-aggregation-and-multicast-00), proposing a unified bit-position or node-set encoding scheme to manage both multicast and in-flight data aggregation (e.g., All-Reduce in AI).
+
+* **Discussion**: Tony Przygienda and Jeffrey Zhang commented that BIER already natively supports bidirectional capabilities, parallel trees, and sparse node list proposals (such as "uBIER"). They advised against mixing in-network computation semantics into transport headers. Toerless Eckert suggested analyzing specific scale requirements before designing new headers.
+
+### 9. Problem Statements: ASM & MoFRR
+Prasad Miriyala presented [Problem Statements](https://datatracker.ietf.org/meeting/126/materials/slides-126-pim-problem-statements-00), focusing on two major operational pain points:
+1. **ASM Complexity**: Proposing to eliminate RP/MSDP complexity by using BGP to announce source discovery, allowing immediate (S,G) joins.
+2. **MoFRR Failures**: Describing blind spots in RIB-based MoFRR where a link failure occurs away from the Last Hop Router (LHR), leading to traffic loss because the local next-hop does not change. He proposed utilizing telemetry and IGP updates to allow the LHR to dynamically detect distant failures.
+
+* **Discussion**: Nils Warnke (Deutsche Telekom) confirmed that fast failovers remain a significant issue in live IPTV networks, where delays above 150-300ms result in visible artifacts. Sunny Zhang (Nokia) suggested using BFD-based remote failure reporting to trigger fast LHR switchovers.
+
+---
+
+## Decisions and Action Items
+* **`draft-ietf-pim-multicast-lessons-learned`**: Authors will incorporate feedback regarding OAM history, loopback interface nuances, PGM, and LISP into the next revision.
+* **IPv4 PIM in IPv6 core**: The chairs will initiate an adoption call on the mailing list based on positive room feedback.
+* **RPF Vector Conflict Resolution**: An adoption call will be taken to the mailing list, and authors will address backward compatibility concerns.
+
+---
+
+## Next Steps
+* Luis Contreras will update the energy-saving draft to explore alternative approaches (such as mapping eco-mode parameters to distinct multicast groups) to avoid requiring upgrades to host IGMP/MLD stacks.
+* Discussions regarding multicast for AI workloads and in-network aggregation will continue in coordination with the BIER working group and relevant side meetings.

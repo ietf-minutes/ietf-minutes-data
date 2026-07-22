@@ -1,0 +1,49 @@
+# [WITAREA](../wg/witarea.html)
+
+## Summary
+
+The Web and Internet Transport Area (WITAREA) meeting at IETF 126 was chaired by Area Directors (ADs) Gorry Fairhurst and Mike Bishop. The session was split into two main parts: an update on current working group activities and directorates across the WIT area, followed by an in-depth technical discussion on designing protocols and applications over QUIC, UDP, TCP, and HTTP. The session concluded with a call for volunteers to establish a Wiki-based checklist of design guidelines for protocol designers.
+
+---
+
+## Key Discussion Points
+
+### 1. Area Director Updates and Directorate Reports
+The ADs presented the [1. AD Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-witarea-1-ad-slides-02), summarizing active drafts and working groups:
+* **Working Group Status:** Gorry Fairhurst highlighted transport protocol document progress, including Stream Reset in IETF Review and NFSv4 approaching IETF Last Call. Mike Bishop reported on the rechartering of the Dispatch Working Group to cover ART, SEC, and portions of WIT where the appropriate working group destination is not immediately obvious.
+* **TSV-ART (Transport Area Review Team):** Magnus Westerlund reported that the team reviewed 16 documents since the last IETF. He issued a call for more reviewers, particularly those with expertise in congestion control and the intersection of transport and security.
+* **HTTP Directorate:** Mike Bishop described the directorate’s mission to assist other working groups in correctly mapping their protocols to HTTP. He encouraged early review requests to avoid structural design conflicts late in the IESG review cycle.
+
+### 2. Foo over Internet Transport
+The second half of the meeting was dedicated to the presentation [2. Foo over Internet Transport](https://datatracker.ietf.org/meeting/126/materials/slides-126-witarea-2-foo-over-internet-transport-01), focusing on how to choose a transport layer and design applications on top of QUIC.
+
+* **QUIC Primitives & Mechanics:** Lucas Pardue outlined key features of QUIC (RFC 9000), such as TLS 1.3 integration, single congestion control context (noting upcoming changes with multipath QUIC), flow control, and connection migration. He detailed the logical byte stream model (bidirectional vs. unidirectional streams) and warned that stream resets can happen asynchronously under an application, which may require custom handling.
+* **Datagrams:** Lucas Pardue noted that QUIC Datagrams (RFC 9297) are congestion-controlled but not flow-controlled, mimicking raw UDP. However, QUIC does not inherently multiplex datagrams; this must be handled at the application layer (e.g., using a variable-length integer identifier as in HTTP Datagrams).
+* **QMux and TCP Fallback:** Lucas Pardue introduced QMux (an active QUIC WG draft), which attempts to backport QUIC’s stream model to TCP to provide a reliable multiplexing fallback when UDP is blocked by middleboxes. 
+  * *Chat Contribution:* Ted Hardie noted that he does not want QMux to become the common API for these transports.
+* **WebTransport vs. Raw QUIC vs. HTTP:** Magnus Westerlund clarified the operational differences between Raw QUIC and WebTransport, noting that WebTransport operates under browser-constrained APIs while Raw QUIC allows fine-grained, cross-layer transport details. Yaroslav suggested that building directly on top of HTTP is an underutilized, "batteries-included" option that guarantees high success rates through middleboxes (stickiness). 
+  * *Chat Contribution:* Rahul Gupta expressed support for more concrete advice regarding HTTP mappings.
+* **Operations Area Protocols over QUIC:** Benoit Claise and Perra Nachon highlighted the growing demand to run operational/management protocols (Syslog, IPFIX, Yang Push, Telemetry) over QUIC to gain built-in security, reliability, and transport efficiency. Perra Nachon requested help from the transport community to profile QUIC as a suitable drop-in replacement for TCP in these control-plane contexts.
+* **Evolvability and Greasing:** Lucas Pardue mentioned his ongoing IAB draft on protocol greasing and variability, emphasizing that designers should consider future-proofing and error-code greasing early in their protocol designs.
+
+---
+
+## Decisions and Action Items
+
+### Establishing Transport Selection and Design Guidelines
+A major discussion ensued regarding whether the IETF should produce a Best Current Practice (BCP) document or a dynamic Wiki checklist for developers designing new protocols over transport protocols:
+* Ted Hardie cautioned that any BCP must avoid ossifying the transport layer. He referenced the QUIC Invariants (RFC 8999) and stressed that guidelines should clearly differentiate between guaranteed core transport properties and version-specific behaviors.
+* Martin Duke suggested that any checklist should explicitly target QUIC v1 and v2, and noted that Media over QUIC (MoQ) had struggled extensively with head-of-line blocking and flow control, proving that these design choices are highly non-trivial.
+* Brian Trammell pointed out that RFC 9308 (QUIC Applicability) and RFC 9312 (QUIC Manageability) were helpful but represented static snapshots of their time. He strongly advocated for a dynamic, discoverable Wiki checklist to guide both developers and port reviewers, referencing *draft-trammell-four-four-three-is-enough*.
+
+**Decision:** The WIT area will initiate the creation of a transport selection and protocol design checklist hosted on the IETF Wiki, rather than starting an immediate BCP draft.
+
+**Action Item:** Establish the Wiki space and begin drafting transport guidelines, prioritizing simple decision paths (such as short-circuiting to HTTP/WebTransport where appropriate) and outlining critical QUIC design considerations.
+
+---
+
+## Next Steps
+
+* **Volunteers:** Brian Trammell, Magnus Westerlund, and Lucas Pardue volunteered to facilitate and draft the initial Wiki guidelines.
+* **Discussion:** Further discussion and refining of the checklist contents will take place on the WIT area mailing list.
+* **Planning:** A follow-up on the progress of the Wiki-based guidelines will be scheduled for the next WITAREA session at IETF 127.
