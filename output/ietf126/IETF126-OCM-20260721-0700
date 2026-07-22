@@ -1,0 +1,101 @@
+# [OCM](../wg/ocm.html)
+
+## Summary
+
+The OCM (Open Cloud Mesh) Working Group held its first in-person meeting at IETF 126. The session focused on the status of the core working group document, extensibility mechanisms through proposed IANA registries, protocol developments for webapp sharing and federated groups using MLS, notification design refactoring, and real-world implementation updates from Nextcloud and FileSender. The working group also discussed how to securely align the protocol's access models with existing open standards like OAuth.
+
+---
+
+## Key Discussion Points
+
+### 1. Document Status and Roadmap
+*   **Presentation**: [OpenCloudMesh state of the art and roadmap (OCM)](https://datatracker.ietf.org/meeting/126/materials/slides-126-ocm-opencloudmesh-state-of-the-art-and-roadmap-ocm-01) by Giuseppe Lo Presti.
+*   **Discussion**:
+    *   The core document `draft-ietf-ocm-open-cloud-mesh` was recently updated from version -04 to -06.
+    *   Giuseppe Lo Presti provided historical context on the OCM protocol, which originated ten years ago to allow institutional sharing of resources across administrative domains without a common login. 
+    *   The protocol is now the foundation for the European Open Science Cloud (EOSC) federation. Nextcloud and Reva/ScienceMesh serve as the primary implementation drivers.
+    *   Key components like the invitation flow, sharing flow, and discovery endpoints are highly stable. The immediate roadmap priorities include finalizing notifications, defining resource lifecycles, establishing secure group management, completing a security assessment, and registering the well-known discovery endpoint.
+
+### 2. IANA Registries for OCM Extensibility
+*   **Presentation**: [IANA registries for OCM extensibility](https://datatracker.ietf.org/meeting/126/materials/slides-126-ocm-iana-registries-for-ocm-extensibility-00) by Mikael Nordfeldth.
+*   **Discussion**:
+    *   Mikael Nordfeldth outlined the need for modular extension points to avoid proprietary single-vendor extensions.
+    *   The proposed registration policy is "Specification Required" (requiring a stable, publicly available specification, but not necessarily an RFC).
+    *   The draft introduces a registry group called "OCM Parameters" with five subregistries:
+        1.  **OCM Resource Types** (initial entries: `file`, `folder`)
+        2.  **OCM Protocols** (initial entries: `webDAV`, `webDAV receive`, `webapp`, `webapp receive`, `SSH`, `SSH receive`)
+        3.  **OCM Share Types** (initial entries: `user`, `group`, `federation`)
+        4.  **OCM Share Payloads** (binds resource types, share types, and protocols to a payload specification)
+        5.  **OCM Notification Types** (carries application-specific events)
+    *   Additional IANA registrations cover the `.well-known` URI, a JSContact type for OCM addresses, and an MLS exporter label. Early review from IANA has been requested.
+
+### 3. Sharing Webapps and OCM Integration Protocol (OCM-IP)
+*   **Presentation**: [Sharing webapps and OCM Integration Protocol (OCM-IP)](https://datatracker.ietf.org/meeting/126/materials/slides-126-ocm-sharing-webapps-and-ocm-integration-protocol-ocm-ip-00) by Mikael Nordfeldth.
+*   **Discussion**:
+    *   Mikael Nordfeldth reported on successful interoperability testing of sharing Jupyter notebooks between Nextcloud and Reva/ScienceMesh.
+    *   The OCM Integration Protocol (OCM-IP) was introduced to decouple OCM servers from managing backend transport details. It defines three integration modes:
+        1.  **Provisioned**: Uses API endpoints on the protocol server with secure tokens.
+        2.  **Self-contained**: Relies directly on signed JWTs.
+        3.  **Introspected**: Uses an introspection endpoint to retrieve metadata minus the shared secret.
+    *   This protocol enables implementers to write a protocol integration once and deploy it across various storage or computing platforms.
+
+### 4. Notifications Update
+*   **Presentation**: [Notifications Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-ocm-notifications-update-00) by Giuseppe Lo Presti.
+*   **Discussion**:
+    *   The legacy notification format is largely unspecified and lacks structure. Giuseppe Lo Presti proposed standardizing a minimal, structured JSON payload.
+    *   The new format drops the reliance on shared secrets in favor of HTTP Signatures to validate identity, and moves the `providerId` out of the general envelope.
+    *   The proposed layout splits notifications into a fixed envelope and a flexible nested object tailored to specific protocols.
+    *   **Feedback**:
+        *   David Nüscheler raised concerns regarding security in resharing scenarios, emphasizing that data owners must have mechanisms to prevent data from being reshared into specific jurisdictions.
+        *   Mikael Nordfeldth recommended introducing a version indicator in the envelope to preserve backward compatibility during the transition.
+        *   Anna Larch questioned the decision to drop resharing support. Giuseppe Lo Presti clarified that converting reshares into direct shares keeps data owners informed and prevents inefficient, multi-hop transport chaining.
+
+### 5. Federated Groups over MLS (OCM-MLS)
+*   **Presentation**: [Federated groups over MLS (OCM-MLS)](https://datatracker.ietf.org/meeting/126/materials/slides-126-ocm-federated-groups-over-mls-ocm-mls-00) by Mikael Nordfeldth.
+*   **Discussion**:
+    *   Mikael Nordfeldth introduced a design to manage federated groups spanning multiple OCM servers without relying on central infrastructure.
+    *   The design leverages MLS (Message Layer Security) solely for group membership and key management via the Ratchet Tree. The group creator's home server acts as the delivery service.
+    *   The design supports two operation modes for handling member removal: a cryptographically strict "re-encryption mode" and a "key reuse mode" for trusted federations where high-frequency re-encryption is impractical.
+    *   **Feedback**:
+        *   Ben asked how the MLS Ratchet Tree handles users with multiple devices and whether distinct devices can be mapped to the same user. Mikael Nordfeldth noted that while the OCM server typically acts as the client, users can generate multiple leaf nodes. He requested the MLS community's feedback to refine this mechanism.
+
+### 6. Implementer Experience: FileSender Platform
+*   **Presentation**: [Use of OCM in the FileSender platform](https://datatracker.ietf.org/meeting/126/materials/slides-126-ocm-use-of-ocm-in-the-filesender-platform-00) by Guido Aben.
+*   **Discussion**:
+    *   Guido Aben described FileSender's goal to facilitate cloud-to-cloud file transfers.
+    *   Integrating OCM allows FileSender to decouple the upload and deposit control planes, enabling users to transfer files from one cloud provider to another through a web browser.
+    *   The development is funded for the upcoming year and will leverage OCM libraries to ensure compatibility across diverse cloud backends.
+
+### 7. Implementer Experience: Nextcloud
+*   **Presentation**: [Open Cloud Mesh in Nextcloud - Where We Are · Who Built It · Where We're Headed](https://datatracker.ietf.org/meeting/126/materials/slides-126-ocm-open-cloud-mesh-in-nextcloud-where-we-are-who-built-it-where-were-headed-00) by Anna Larch.
+*   **Discussion**:
+    *   OCM capabilities are natively integrated within Nextcloud Core, covering WebDAV, token exchange, and discovery. 
+    *   Anna Larch raised architectural questions regarding the classification of resources. While calendar and contacts are natively WebDAV collections, establishing them as first-class OCM resource types could allow cleaner specification of custom properties.
+    *   Regarding the proposed notification changes, Nextcloud's high-performance talk backend currently relies on shared secrets, meaning that dropping them would require significant restructuring.
+    *   Mikael Nordfeldth suggested developing the contact and calendar OCM specifications outside of the core working group drafts and registering them via the newly established IANA registry.
+
+### 8. Authentication and OAuth Security Models
+*   **Discussion**:
+    *   Aaron Parecki (representing the OAuth WG) asked whether the protocol's core architecture assumes user-to-user sharing (requiring user-scoped OAuth tokens) or server-to-server federation. He emphasized that this distinction dictates whether OCM should utilize OAuth token exchange or HTTP Signatures to assert domain-level identity.
+    *   Mikael Nordfeldth and Giuseppe Lo Presti clarified that while SSH sharing can rely on public keys, WebDAV sharing requires standard bearer authorization to keep implementation modifications to a minimum. Both agreed that leveraging standard, unmodified OAuth flows is highly desirable.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+*   The Working Group updated `draft-ietf-ocm-open-cloud-mesh` to version -06.
+*   Two formal polls were conducted to gauge consensus on adopting companion specifications:
+
+#### Poll 1
+*   **Question**: Poll for adoption of Webapp "Integration Protocol" draft as a Working Group document
+*   **Results**: yes: 12, no: 0, no_opinion: 0 (total: 27)
+
+#### Poll 2
+*   **Question**: Interest in adopting MLS basis for federation, persistent groups that can cover multiple resources and shares - adopt Micke's draft as a WG doc?
+*   **Results**: yes: 11, no: 0, no_opinion: 3 (total: 32)
+
+### Action Items
+*   **Chairs**: Initiate formal Working Group adoption calls on the mailing list for the Webapp "Integration Protocol" draft (OCM-IP) and the MLS Federation draft (OCM-MLS).
+*   **Mikael Nordfeldth**: Reach out to the MLS Working Group for design feedback on `draft-ietf-ocm-open-cloud-mesh` integration, specifically focusing on multi-device leaf representations in the Ratchet Tree.
+*   **Aaron Parecki / Working Group**: Collaborate on the mailing list to clarify the user-to-user vs. server-to-server security architecture and refine OCM's OAuth and HTTP Signature security model.

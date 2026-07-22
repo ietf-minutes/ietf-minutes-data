@@ -1,0 +1,114 @@
+# [DNSSD](../wg/dnssd.html)
+
+## Summary
+
+The DNSSD working group met at IETF 126, chaired by Chris Box and Florian Obser. The session began with status updates on active documents, followed by a discussion and a successful poll to progress the revised working group charter text. The group then evaluated the individual proposal for "Unicast Local Discovery" (ULD) and polled the room for adoption. Technical updates and open issues were presented for the active working group drafts: `draft-ietf-dnssd-tsr` and `draft-ietf-dnssd-advertising-proxy`. The session also featured individual presentations on improvements to DNS SIG(0), SRP Hints for constrained networks, and a brief introduction to Zero-Configuration Agent Discovery.
+
+---
+
+## Key Discussion Points
+
+### 1. WG Status and Charter Revision
+* **Presentation**: [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-chair-slides-00) (presented by Chris Box)
+* **Status of Adopted Drafts**:
+  * Multiple query types draft is with the RFC Editor.
+  * `draft-ietf-dnssd-tsr` and `draft-ietf-dnssd-advertising-proxy` received recent updates.
+  * SRP replication is currently on hold but will be resumed.
+* **Charter Revision**: The chairs presented a proposed revision of the WG charter (revising the older text) to cover Service Registration Protocol (SRP), Discovery Proxy, Unicast DNS, and the Simple Network Association Consensus (SNAC) border router case.
+  * **Discussion**:
+    * Ted Lemmon noted the need to ensure multicast DNS (mDNS) proxy cooperation is explicitly in-scope so that protocol changes or timing optimizations are not inadvertently excluded.
+    * Esko Dijk and Ted Lemmon agreed that the second bullet in the charter (improving efficiency, availability, and effectiveness) should explicitly mention mDNS. In the session chat, Esko Dijk noted that the revised charter looked good overall and that the concern of the "advertising proxy draft expired" no longer holds.
+    * Frank Brockners asked if defining new service types for agent discovery should happen in this group or elsewhere. Stuart Cheshire responded that the DNSSD WG has the necessary expertise to serve as consultants/advisors to other groups (such as AI agent discovery), though it does not necessarily need to be a chartered work item.
+    * Éric Vyncke emphasized that the charter represents a formal contract with the community and noted that chairs from other working groups often request cross-reviews from DNSSD.
+  * **Poll 1**: 
+    * *Question*: "I'm happy for this charter text to proceed (when we clarified mDNS being in scope)."
+    * *Result*: yes: 15, no: 0, no_opinion: 11 (total: 47)
+
+### 2. Unicast Local Discovery (ULD)
+* **Presentation**: [Unicast Local Discovery](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-unicast-local-discovery-00) (presented by Carsten Sperling)
+* **Technical Details**: The individual draft "DNSSD and infrastructure" (proposed as "Unicast Local Discovery" or ULD) aims to enable link-local discovery without relying heavily on multicast, reducing power consumption for sleeping/constrained Wi-Fi clients. The server acts as an SRP registrar, discovery proxy, advertising proxy, and unicast DNS server.
+* **Key Changes from v02**:
+  * Uses the `.local` domain directly for both SRP registrations and queries. This necessitates updating RFC 6762 to allow `.local` queries to be routed to either the ULD server or via multicast.
+  * Uses a normal DNSSD service query (e.g., ULD over TCP) for discovery.
+  * Adds an IPv6 Router Advertisement (RA) option flag for infrastructure ULD server discovery.
+  * Adds standard unicast query support for shared records (using short-lived DNS push-like subscriptions) for constrained clients that lack TLS support.
+* **Discussion**:
+  * Éric Vyncke suggested that the text regarding the RA flag needs to be clearer and stricter to handle race conditions properly.
+  * Ted Lemmon advocated for utilizing RA options for ad-hoc servers to carry priority information, which avoids unnecessary mDNS queries. He also supported allowing DNS push over TCP without TLS for constrained devices where user privacy is not a concern, and suggested moving conflict resolution logic to the advertising proxy draft.
+  * Esko Dijk questioned why the TXT record is used for priorities instead of standard SRV priority/weight fields. Ted Lemmon noted that existing APIs often make exposing SRV priorities difficult.
+  * François Michel asked about signaling conflicts through return codes. Carsten Sperling explained that if implementations want to preserve existing API behaviors (such as automatic renaming), the client needs to receive feedback when an mDNS conflict is detected.
+  * Stuart Cheshire provided background on the Matter ecosystem, emphasizing that 100+ IoT devices on Wi-Fi cause excessive multicast traffic, and ULD provides a needed forward/backward-compatible migration strategy.
+* **Poll 2**: 
+  * *Question*: "Do you believe this draft is ready for a call for adoption?"
+  * *Result*: yes: 11, no: 0, no_opinion: 18 (total: 54)
+
+### 3. mDNS Conflict Resolution using TSR
+* **Presentation**: [mDNS conflict resolution using TSR](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-mdns-conflict-resolution-using-tsr-00) (presented by Esko Dijk)
+* **Technical Details**: Review of `draft-ietf-dnssd-tsr` which uses the Time Since Received (TSR) EDNS option to resolve conflicts when a client registers across multiple proxies (e.g. SNAC routers). The newer registration (TSR=0) automatically wins and causes the stale registration (TSR > 0) to be removed.
+* **Key Updates**: Editorial corrections, formalized terminology, format diagrams, addition of multi-packet and suppression guidelines, and a descriptive appendix.
+* **Discussion**:
+  * Esko Dijk raised a scope question regarding Section 3.8 on SRP replication, suggesting that TSR processing should be specified independently of record origin. Ted Lemmon remarked that the SRP replication draft is old and will be updated, but suggested adding a checksum/hash of the registered data within the TSR option to easily identify identical updates.
+  * Esko Dijk and Stuart Cheshire discussed probing on updated records. Stuart Cheshire clarified that in standard mDNS, updating Rdata on an already claimed name does not require a new probe. Ted Lemmon clarified that SRP registrations currently achieve updates via re-registration (to clean up stale records), which can trigger unnecessary probing, and this needs to be cleanly addressed.
+  * Jenny Huang asked about the presence of the advertising proxy requirement in the SNAC router specifications. Esko Dijk and Éric Vyncke confirmed that the normative reference remains in `draft-ietf-snac-simple`.
+
+### 4. DNSSD Advertising Proxy
+* **Presentation**: [DNSSD Advertising Proxy](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-dnssd-advertising-proxy-00) (presented by Ted Lemmon)
+* **Technical Details**: Discussion of `draft-ietf-dnssd-advertising-proxy`. The document has transitioned from being strictly SRP-specific to defining how to replicate any DNS zone in mDNS.
+* **Key Issues**:
+  * **Scoped Addresses**: A proposed heuristic was discussed—if the proxy knows an address is routable/on-link, it should advertise it. Otherwise, link-local addresses should only be advertised if no other routable addresses are present.
+  * **mDNS Conflicts**: To prevent conflicts, a hybrid approach is proposed where names are registered under a subdomain of `.local` (e.g., `hostname.dataset-id.local`). For legacy compatibility, the proxy can dual-publish directly under `.local` but fall back to the subdomain or report conflicts back if a collision occurs.
+  * **Other Issues**: Transition of clients from SRP to native mDNS, publishing key records in mDNS, and adjusting TTLs when translating from unicast DNS to mDNS.
+* **Discussion**:
+  * Carsten Sperling noted that some legacy clients (including current Matter implementations) look up service instance IDs directly under `.local` without querying PTR records first, which means subdomain scoping could break discovery for those devices.
+  * Stuart Cheshire clarified that in Matter, operational discovery uses unique cryptographic IDs as service instance names, meaning name conflicts at the service level are rare, and hostnames are merely glue. Stuart and Ted debated whether clients should browse first or direct-query, and agreed that optimizing multicast traffic is critical when dealing with large numbers of devices.
+
+### 5. DNS SIG(0)
+* **Presentation**: [DNS SIG(0)](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-dns-sig0-00) (presented by Donald Eastlake)
+* **Technical Details**: Donald Eastlake (author of RFC 2931) presented a proposal for an improved SIG(0) resource record (RR) to address original deficiencies:
+  * Lack of an original ID field (which breaks recursive forwarding).
+  * Inability to support multiple SIG(0) RRs in a single message.
+  * Lack of extensibility, extended error codes, and key state indicators.
+  * The new SIG(0) design includes a time sign, fudge time, and an original ID field.
+* **Discussion**:
+  * Ondřej Surý warned that because SIG(0) acts as an Access Control List (ACL), verifying the cryptographic signature occurs before the ACL is applied. This creates a potential denial-of-service (DoS) attack vector on servers that must process expensive cryptographic operations for unauthenticated packets. He noted that implementers will have to support both old and new versions, and offered to contribute to the security considerations section.
+
+### 6. SRP Hints
+* **Presentation**: [SRP Hints](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-srp-hints-00) (presented by François Michel)
+* **Technical Details**: François Michel shared experimental results on reducing Thread mesh congestion during network synchronization events (e.g., reboots). Instead of sending a full 600-byte SRP registration, clients send a 4-byte hash ("hint") of their configuration. If the server finds the hash in its persistent cache, it re-registers the device.
+* **Results**: On a testbed of 50 Matter-over-Thread devices, enabling SRP hints reduced the average registration convergence time by over 30 seconds and significantly reduced variance.
+* **Discussion**:
+  * The main challenge is differentiating the 8-byte SRP hints from standard DNS packets on port 53 (which have a 12-byte header).
+  * Options discussed included using a different port, encapsulating hints inside a valid DNS/EDNS option, or utilizing a distinct starting byte sequence.
+  * Éric Vyncke and Ted Lemmon raised concerns about registrar storage management, suggesting that guidelines for cache garbage collection and handling changing TXT records are required. Both agreed that multiplexing non-DNS traffic on port 53 is unlikely to pass IETF consensus, making a separate port or standard DNS wrapping more viable.
+
+### 7. Zero-Configuration Agent Discovery
+* **Presentation**: [Zero-Configuration Agent Discovery](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnssd-zero-configuration-agent-discovery-00) (presented by Frank Brockners)
+* **Technical Details**: This informational presentation introduced a use case for local agent discovery (e.g., warehouse pick agents or mobile nursing devices in clinical environments).
+* **Feedback Requested**: The authors requested input from the DNSSD WG regarding:
+  * Choosing service types (e.g., `_agent._tcp`).
+  * Using TXT records versus SVCB/SVD records.
+  * Handling long payload strings and addressing client privacy.
+* **Discussion**:
+  * Stuart Cheshire and Chris Box welcomed the work and invited the presenters to bring the technical questions to the DNSSD mailing list for offline collaboration.
+
+---
+
+## Decisions and Action Items
+
+* **Charter Revision**: The WG showed strong support (15-0) for the updated charter text with the clarification that mDNS efficiency and proxy mechanisms are explicitly in scope. The chairs will progress the charter text to the Area Director (Éric Vyncke).
+* **Unicast Local Discovery Adoption**: The adoption poll for the "Unicast Local Discovery" individual draft showed positive interest (11-0-18). The chairs will follow up on the mailing list to confirm working group adoption.
+* **TSR Draft (`draft-ietf-dnssd-tsr`)**: 
+  * Esko Dijk to update the draft to address TBDs and resolve the open issue around Section 3.8 (SRP replication).
+  * Authors to review the draft's "SHOULD" requirements and align them with the consensus from SNAC WG reviews.
+* **Advertising Proxy Draft (`draft-ietf-dnssd-advertising-proxy`)**:
+  * Ted Lemmon to initiate a mailing list discussion on `.local` subdomain heuristics and scoped address publication logic to finalize these components.
+* **DNS SIG(0)**: Donald Eastlake to coordinate with Ondřej Surý to incorporate robust security considerations regarding DoS mitigation into the new SIG(0) draft.
+
+---
+
+## Next Steps
+
+* Progress the revised WG charter through the IESG review process.
+* Issue a formal call for adoption for the Unicast Local Discovery draft on the mailing list.
+* Address open GitHub issues and publish updated versions of `draft-ietf-dnssd-tsr` and `draft-ietf-dnssd-advertising-proxy`.
+* Continue the architectural discussion on SRP Hints and Agent Discovery on the DNSSD mailing list.

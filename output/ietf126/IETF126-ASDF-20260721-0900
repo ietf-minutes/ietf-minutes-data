@@ -1,0 +1,87 @@
+# [ASDF](../wg/asdf.html)
+
+## Summary
+The ASDF Working Group met at IETF 126 in Vienna to discuss the status of its active drafts, advance documents in Working Group Last Call (WGLC), review updates to digital twin modeling, and discuss new proposals for compact representations and privacy-preserving schema translation. 
+
+The group reviewed the status of `draft-ietf-asdf-nipc` and `draft-ietf-asdf-sdf-protocol-mapping` (currently in WGLC), received an update on `draft-ietf-asdf-digital-twin`, and discussed `sdf-compact` as a candidate for WG adoption. A new individual draft on embedding privacy in SDF models was presented, and the session concluded with a discussion on creating educational/how-to resources for SDF modeling.
+
+---
+
+## Key Discussion Points
+
+### 1. Administration & Document Status
+* **Presenter:** Lorenzo
+* **Slides:** [chairs-slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-asdf-chairs-slides-02)
+* Lorenzo presented the Note Well and administrative slides. Ari Keränen volunteered for note-taking.
+* **Document Status Updates:**
+  * **In WGLC:** `draft-ietf-asdf-nipc` and `draft-ietf-asdf-sdf-protocol-mapping`.
+  * **Active WG Docs:** `draft-ietf-asdf-sdftype-link`, `draft-ietf-asdf-digital-twin`, `draft-ietf-asdf-instance-information`, `draft-ietf-asdf-sdf-mapping` (now called SDF Supplements), and `draft-ietf-asdf-sdf-nonaffordance`.
+  * **Adoption Candidates / Individual Drafts:** SDF Compact (adoption candidate), a new proxy privacy draft, and an API translation draft.
+
+### 2. NIPC and SDF Protocol Mapping
+* **Presenter:** Bart Stevens
+* **Drafts discussed:** `draft-ietf-asdf-nipc` and `draft-ietf-asdf-sdf-protocol-mapping`
+* Bart Stevens reported that both documents are technically complete from the authors' perspective and waiting for WGLC to conclude. 
+* An AI engine successfully implemented the specification from the drafts without requiring any spec changes. There are open-source implementations for Bluetooth and ZigBee, a closed-source Cisco implementation for both, and an open-source sample application for developers.
+* **IANA Registry Discussion:**
+  * Lorenzo asked whether to request new individual registries or reuse the existing ASDF registry group for NIPC and SDF protocol mapping IANA requirements.
+  * Bart Stevens clarified that they requested a registry for NIPC problem details (non-HTTP error codes) and protocol mappings.
+  * Ari Keränen suggested that the SDF protocol mapping registry is naturally an SDF extension and fits well under the ASDF registry. For NIPC problem details, there is no direct precedent, but since they are NIPC-specific and not generic SDF, a separate registry or NIPC-specific registry is appropriate.
+  * **Agreement:** Bart Stevens will adjust the text to append the protocol mapping registry to ASDF registries, and proceed with a separate registry for NIPC problem details. Lorenzo will continue working on the shepherd write-up.
+
+### 3. SDF Modeling for Digital Twin
+* **Presenter:** Yunjong
+* **Drafts discussed:** `draft-ietf-asdf-digital-twin` and `draft-ietf-asdf-sdf-nonaffordance`
+* Yunjong presented updates targeting Ari Keränen's previous comments regarding protocol-related text:
+  * The draft does not define a new protocol mapping mechanism or enforce specific communication protocols. Instead, Section 5 provides illustrative, non-normative examples of how an SDF model connects to runtime protocols (such as BLE or ZigBee) for operational digital twins. The text is being revised to make this distinction clearer.
+  * The authors aim to initiate WGLC by the November meeting (IETF 127).
+* **Discussion on Dependencies:**
+  * Ari Keränen asked about the status of `draft-ietf-asdf-sdf-nonaffordance`, as it is highly relevant for digital twin modeling. He suggested that trying to apply non-affordance information to the digital twin guidance would be a valuable exercise.
+  * Jungha Hong responded that `draft-ietf-asdf-sdf-nonaffordance` is not yet mature and will require two or three more updates.
+  * Ari Keränen inquired if other SDOs (like ITU-T SG11 or IEEE 2888) have provided feedback on whether the draft satisfies their digital twin modeling expectations.
+  * Yunjong noted that they are actively developing procedures in ITU-T SG11 and IEEE 2888 (e.g., for carbon emission management) and will share those documents once published.
+  * Lorenzo noted that the digital twin draft is currently missing a GitHub repository and committed to creating one.
+
+### 4. SDF Compact
+* **Presenter:** Karsten Bormann
+* **Slides:** [sdf-compact](https://datatracker.ietf.org/meeting/126/materials/slides-126-asdf-sdf-compact-00)
+* Karsten Bormann presented updates on SDF Compact, a YAML-based compact representation of SDF designed to make files more readable for humans than standard JSON.
+* Key features include:
+  * Simple UNIX-style RWX flags (e.g., `r` and `o` for read and observe) to reduce syntactic noise for readable/writable properties.
+  * A compact CDDL-based notation for data model expressions, which translate directly to JSON Schema snippets.
+* Karsten plans to publish the underlying open-source translation tool in Autumn, gather community feedback, publish a revised draft, and then formally request WG adoption.
+
+### 5. Proxy Privacy for ASDF
+* **Presenter:** Valentin Todor
+* **Slides:** [slides-draft-tudor-asdf-proxy-privacy-00](https://datatracker.ietf.org/meeting/126/materials/slides-126-asdf-slides-draft-tudor-asdf-proxy-privacy-00-00)
+* Valentin Todor presented a new proposal for privacy-preserving SDF proxy operations. 
+* **The Problem:** Translating proxies (such as third-party gateways, edge boxes, or cloud translators) need the full SDF schema to translate between APIs and devices. However, the schema metadata (human-readable labels, descriptions, types, units, and structural patterns) can leak sensitive context (e.g., medical conditions, device models, vulnerabilities, user occupancy), even if the actual payload is encrypted end-to-end.
+* **Proposed Solution:** Introduce a new `sdfPrivacy` quality at the object or thing level. 
+  * Features a `sensitivity` flag, a defined `privacyAlgorithm` (e.g., `obfuscateNamesVersion1`), and parameter controls (e.g., `removeMetadata`).
+  * In the preprocessing step, sensitive definitions are stripped of human/AI-readable metadata, namespace names are obfuscated into non-semantic identifiers, and padding affordances are added to resist traffic analysis/correlation.
+* **Operational Modes:**
+  1. *Without Trusted Execution Environments (TEEs):* The proxy translates obfuscated IDs. The constrained device maps these back to real affordances using pre-shared material.
+  2. *With TEEs:* The proxy enclave holds the plain-text SDF and performs translations securely inside the enclave, sending data over a tunneled channel to the device.
+* **Discussion:**
+  * Daniel Smolon praised the work and suggested extending the metadata tags to support value-level Privacy-Enhancing Technologies (PETs), such as indicating if differential privacy has been applied. Valentin agreed but suggested keeping value-level PETs and metadata-level privacy separate for now.
+  * Bart Stevens asked for clarification on whether this applies to NIPC gateways (proxies vs. gateways) and noted that applications could simply send partial, minimized SDF models. Valentin and Ari Keränen agreed, noting that `sdfPrivacy` serves as a standardized way to define and signal these transformations.
+  * Daniel Smolon warned against sending partial models alongside un-obfuscated non-sensitive models, as correlation attacks can easily reconstruct the sensitive context.
+  * Niklas Widell and Karsten Bormann pointed out that this touches on previous, undeveloped ideas regarding access control and authorization filters on top of SDF models.
+
+### 6. Open Discussion & Any Other Business (AOB)
+* Ari Keränen and Bart Stevens proposed creating an informational guidance document on how to model things using SDF, to write down "institutional knowledge" gained from the NIPC work.
+* Eliot Lear suggested that rather than an IETF document, this would be better served by "vibe-coded" demo programs, snippets, and a dedicated website (e.g., an `sdf.io` site) showing practical code examples.
+* Daniel Smolon strongly supported having practical modeling guidance to make SDF more accessible to outside groups attempting to utilize it.
+
+---
+
+## Decisions and Action Items
+* **`draft-ietf-asdf-sdf-protocol-mapping`:** Bart Stevens to integrate protocol mapping registry definitions into the existing ASDF registry.
+* **`draft-ietf-asdf-nipc`:** Authors to establish a separate registry group for NIPC problem details. Lorenzo to proceed with the shepherd write-up.
+* **`draft-ietf-asdf-digital-twin`:** Lorenzo to set up a dedicated GitHub repository for the draft and share it with Yunjong. Yunjong to align text to reflect that protocol sections are non-normative examples.
+
+---
+
+## Next Steps
+* The chairs will schedule an ASDF virtual interim meeting in approximately one month (targeted for a Wednesday) and will send a scheduling poll to the mailing list.
+* Discussion on whether to create an SDF ".io" informational website or a wiki page for "how-to" modeling guidance will continue on the mailing list and during interim meetings.

@@ -1,0 +1,75 @@
+# [PEARG](../wg/pearg.html)
+
+## Summary
+
+The Privacy Enhancing Technologies Research Group (PEARG) session at IETF 126 focused on the modern landscape of online tracking, automated de-anonymization, and emerging architectural privacy challenges. The session featured administrative updates regarding a MASQUE-related draft, followed by three main presentations:
+1. Real-Time Bidding (RTB) privacy and security implications.
+2. Large-scale online de-anonymization using Large Language Models (LLMs).
+3. Client source IP privacy in a post-Encrypted Client Hello (ECH) world.
+
+---
+
+## Key Discussion Points
+
+### Chair Updates and Administrative Topics
+Sara Dickinson presented the [Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-pearg-chair-slides-01) and outlined the agenda:
+* **MASQUE Draft Update:** A draft proposing a ciphertext inference tool for MASQUE was recently discussed at SecDispatch. The consensus was to split the draft into two parts:
+  * A privacy analysis and evaluation of the proposed Fully Homomorphic Encryption (FHE) technique, which will be updated and brought to PEARG.
+  * A separate protocol integration draft, which will be directed to the MASQUE Working Group.
+* **Research and Community Agenda:** Sara highlighted the need for PEARG to look at concrete measurements, formal threat modeling (specifically regarding hyperscalers and AI), and potential technical or sociotechnical mitigations. She raised the idea of organizing a workshop on these topics.
+
+---
+
+### Real-Time Bidding (RTB) and Privacy
+Johnny Ryan presented [Real time bidding - how advertising interacts with your privacy](https://datatracker.ietf.org/meeting/126/materials/slides-126-pearg-real-time-bidding-how-advertising-interacts-with-your-privacy-00), detailing how user profiles are processed and broadcast online:
+* **The RTB Pipeline:** When a user visits a website, an empty ad slot triggers an auction. Supply-Side Platforms (SSPs) run auctions of auctions, broadcasting user data (bid requests) to tens or hundreds of Demand-Side Platforms (DSPs).
+* **Data Leakage and Scale:** These broadcasts act as a recurring, massive data breach. Bid requests contain highly specific, sensitive data, including precise location, URLs, device metadata, and classifications from the Interactive Advertising Bureau (IAB) taxonomy (such as medical conditions, sexual orientation, political views, and family status). Google's Authorized Buyers list alone contains over 2,000 companies that can receive this data.
+* **National Security & Personal Harms:** Data brokers package these broadcasts into purchaseable audience segments (e.g., targeting active military personnel or national security decision-makers). This data has been used by private intelligence companies and has resulted in severe personal harms, such as the public outing of individuals using location and dating app histories.
+* **Proposed Solution:** Johnny suggested reforming the RTB specification by truncating or removing unique, longitudinal, and probabilistic identifiers (~8% of the standard fields), and slightly introducing jitter into bid timestamps to prevent cross-bid linkage.
+
+#### Discussion:
+* **Daniel** asked whether users can query their own IAB classifications directly in the browser or via Subject Access Requests (SARs). Johnny responded that client-side header bidding exposes some data, but the majority of server-to-server traffic is hidden. He confirmed that sending a SAR to ad tech firms (e.g., the Trade Desk) is highly effective at revealing what the industry believes about an individual.
+* **Andrew Campling** suggested that the IETF publish a second edition of RFC 7258 (Pervasive Monitoring is an Attack) to focus specifically on the surveillance capitalism of the tech industry alongside government surveillance. 
+* **Valentin** asked about the efficacy of ad blockers and cross-device tracking. Johnny answered that ad blockers are highly effective at stopping client-side RTB triggers. However, cross-device tracking, while heavily market-hyped, is frequently undermined by massive ad fraud and botnets masquerading as humans.
+* **Will Earp** asked if toggling GDPR consent checkboxes successfully prevents tracking. Johnny characterized consent dialogues as "compliance theater" with no technical enforcement behind them, stating that the only real solution is technical blocking (e.g., using Brave).
+* **Nick Doty** commented that cross-context, persistent unique identifiers (such as mobile advertising IDs or unique email hashes) are the primary vector for longitudinal tracking. He warned against introducing new identifier standards, such as the Email Verification Protocol (`draft-hardt-email-verification-01`), which could provide easily accessible unique identifiers.
+* **Tara Tarakiyee** noted that RFC 7258 remains highly relevant because it has successfully forced adversaries off the direct network path and onto these application-level data choke points.
+
+---
+
+### Large-Scale Online De-anonymization with LLMs
+Simon Lerman presented [Large-scale online deanonymization with LLMs](https://datatracker.ietf.org/meeting/126/materials/slides-126-pearg-large-scale-online-deanonymization-with-llms-00), illustrating how AI changes the economics of personal privacy:
+* **AI-Driven OSINT:** LLMs democratize target profiling by acting as low-cost, automated, and agentic investigators. They can extract semantic details from free text, search the web, and reason about potential identity matches across disparate platforms.
+* **Experimental Findings:**
+  * **Anonymized Transcripts:** In a test of redacted job interviews (the Anthropic dataset), LLM agents successfully identified 9 out of 125 candidates.
+  * **Social Media Cross-Linking:** Using LinkedIn profiles as a starting point, LLM agents matched anonymous Hacker News and Reddit accounts. At a 90% precision threshold, they achieved a 54% success rate in matching accounts.
+  * **Comparison to Classical Methods:** LLM-based de-anonymization significantly outperformed traditional structured metadata linkage (such as the Narayanan & Shmatikov Netflix/graph-matching models), especially when analyzing unstructured text.
+* **Emerging Threat Vector:** AI allows malicious actors to systematically construct comprehensive dossiers on individuals by scraping public profiles, forum comments, and historical breach databases.
+
+#### Discussion:
+* **Tara Tarakiyee** asked if LLMs are discovering fundamentally new linking mechanisms or simply automating existing manual processes. Simon clarified that LLMs excel at processing unstructured textual data and finding subtle "smoking gun" semantic correlations that traditional algorithms miss.
+* **Andrew Campling** observed that combining RTB broadcast data (from Johnny's presentation) with Simon's LLM de-anonymization framework would make individual de-anonymization trivial.
+* **Shivan Sahib** inquired if stylometric features were used to match identities. Simon responded that while they did not explicitly prompt the LLM to analyze stylometry, the models may naturally leverage stylistic speech patterns during semantic reasoning.
+* **Shivan Sahib** suggested organizing community initiatives—such as hide-and-seek games at events like DEFCON—to incentivize the development of new hiding techniques against LLM-based profiling.
+
+---
+
+### Source Privacy Post-ECH
+Gianpaolo presented [ECH-source-privacy](https://datatracker.ietf.org/meeting/126/materials/slides-126-pearg-ech-source-privacy-00):
+* **The Destination vs. Source Trade-off:** Encrypted Client Hello (ECH) successfully obscures the SNI (destination) from intermediate observers on the path. However, it does not hide the source IP address.
+* **Concentrated Observers:** Because a massive portion of the web is fronted by a few major CDNs (e.g., a single ASN handles 33% of traffic), these client-facing CDNs act as highly privileged observers. They can link incoming requests to the same source IP over long periods, even behind CGNAT.
+* **Mitigation Hypotheses:** Gianpaolo called for research into source IP anonymization and randomization at the network edge, multi-endpoint discovery for client-facing servers, and browser-level policies to prevent excessive reuse of the same CDN infrastructure across different domains.
+
+---
+
+## Decisions and Action Items
+
+* **MASQUE Ciphertext Inference Draft:** The authors will revise and split the draft. PEARG will adopt the portion containing the privacy analysis and Fully Homomorphic Encryption (FHE) applicability evaluation once it is resubmitted.
+* **Source Privacy Mailing List Thread:** The chairs will initiate a dedicated discussion on the PEARG mailing list to scope future research on client source privacy (post-ECH) and determine how specific architectural proposals fit into the group's charter.
+
+---
+
+## Next Steps
+
+* **Community Engagement:** Members are encouraged to share "blue sky" ideas on the mailing list regarding community-driven defensive tools to counter LLM-based OSINT and RTB tracking.
+* **Workshop Proposal:** Chairs will gather feedback on the mailing list regarding interest in a specialized workshop covering hyperscaler and AI-driven threats to anonymity.

@@ -1,0 +1,108 @@
+# [HAPPY](../wg/happy.html)
+
+## Summary
+
+The HAPPY Working Group met to discuss updates to the core Happy Eyeballs Version 3 specification (`draft-ietf-happy-happyeyeballs-v3`), hear implementation updates from major browser engines (Firefox, Chromium, and Apple), and discuss related proposals on Optimistic DNS, the Happy Eyeballs Webtester, event logging with qlog, and error reporting considerations.
+
+The working group made progress on resolving outstanding pull requests for the core draft, including guidance on IPv6-only/NAT64 networks and DNS server selection. A clear division of opinions emerged on whether to include DNS resolver selection details within the core Happy Eyeballs algorithm, which was resolved by a room poll. Implementation reports highlighted real-world deployment data, showing that over 80–97% of connections succeed on the first attempt, but highlighted the value of Happy Eyeballs for the remaining "long tail" of connections.
+
+---
+
+## Key Discussion Points
+
+### 1. Happy Eyeballs v3 Draft Updates & Open Issues
+**Presenters:** Nidhi Pinamaneni and Tommy Pauly  
+**Slides:** [Happy Eyeballs v3](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-happy-eyeballs-v3-00)  
+
+*   **Document Status (`draft-ietf-happy-happyeyeballs-v3`):** Editorial updates have been made to standardize language (e.g., "address" to "endpoint" and "interface" to "PVD"). Added details explaining IPv6 fragmentation issues and additional DNS answer processing examples.
+*   **PR 137 (IPv6-Only and NAT64 Handling):** Simplifies rules for sending queries based on provisioning domain (PVD) routes. Synthesized IPv4 literals and hints are treated as IPv4 addresses for sorting.
+    *   *Discussion:* Erik Nygren suggested pulling PVD, VPN, and network change topics out into a top-level section for readability. Jen Linkova raised questions about unsynthesizing. Philip Tiesel noted that split-tunnel VPNs behave similarly to implicit PVDs, but Tommy Pauly and Lorenzo Colitti cautioned that strict PVD-based isolation could break legacy split-tunnel expectations where DNS leaks are functionally relied upon.
+*   **DNS Server Address Selection (PR 137):** Discussed whether Happy Eyeballs should specify how to sort or prefer DNS resolver addresses (e.g., preferring IPv6 resolvers or penalizing unresponsive ones).
+    *   *Discussion:* Lorenzo Colitti suggested either leaving it unspecified or deferring to RFC 6724-bis. Benjamin Schwartz argued that DNS connection optimization is a distinct problem space with transport complexities (such as DoH/DoT) and should remain decoupled from Happy Eyeballs. Stuart Cheshire advocated keeping brief, non-normative explanatory text describing the concurrent/asynchronous philosophy.
+    *   **Poll 1:**
+        *   *Question:* Yes to keep the text and iterate, No to remove the text entirely
+        *   *Result:* yes: 5, no: 14, no_opinion: 6 (total: 70)
+*   **Exponential Connection Attempt Delay:** Max Tobler proposed reducing the static 250ms delay to 50ms with an exponential backoff. Chrome is moving from static delays to utilizing historical RTT data.
+
+### 2. Optimistic DNS
+**Presenter:** Gautam Tenneti  
+**Slides:** [Optimistic DNS](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-optimistic-dns-00)  
+
+*   **Overview:** A stub resolver mechanism that immediately returns expired cached records to the application while triggering an active refresh in parallel. Happy Eyeballs is what makes this practice safe by ensuring rapid failover if the expired record is no longer reachable.
+*   **Discussion:** 
+    *   Erik Nygren raised security, privacy, and operational concerns regarding ignoring TTLs for too long. For example, cloud providers reuse IPv4 addresses between tenants on the order of minutes (e.g., AWS reuses within ~30 minutes), creating a risk of sending data to the wrong tenant if stale TTLs are used. Additionally, operators need to drain servers during maintenance; extending TTLs past failures interferes with this.
+    *   Benjamin Schwartz suggested making this feature opt-in, potentially using a SvcParam in HTTPS/SVCB records to allow domains to signal that they permit optimistic stretching (e.g., up to two hours).
+    *   The chairs noted that the draft is currently targeted at DNSOP but has deep ties to the HAPPY working group.
+
+### 3. Implementation Updates
+
+#### Firefox
+**Presenter:** Max Tobler  
+**Slides:** [Update on Firefox implementation](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-update-on-firefox-implementation-00)  
+
+*   Firefox Nightly has HEv3 enabled by default (~15,000 active users) using a reusable, deterministic library (`mozilla/hev3`).
+*   Firefox uses a 25ms resolution delay (versus the draft's 50ms) and a 50ms connection attempt delay with a 2x backoff multiplier. 
+*   **Telemetry Highlights:** The first connection attempt succeeds in 84% of cases. Only 1 attempt is needed in 86% of cases. Alt-Svc accounts for 35% of HTTP/3 upgrades, while HTTPS resource records (SVCB) are only seen/used in 7% of attempts. Max launched `saferoundtrip.com` to encourage operators to publish HTTPS records.
+*   *Discussion:* Lorenzo Colitti asked about the statistics of the second attempt and whether simply sending duplicate packets to the first address would yield similar success rates. Tommy Pauly noted Apple sees HTTPS records in 17% of browser workloads, of which 30% trigger an upgrade to HTTP/3. Muhammad Anas suggested evaluating battery drain and protocol flapping across different network types (cellular vs. fixed).
+
+#### Chromium
+**Presenter:** Kenichi Ishibashi  
+**Slides:** [Update on Chromium implementation (revised)](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-update-on-chromium-implementation-revised-00)  
+
+*   Chromium is transitioning from separate TCP and QUIC code paths (HEv1) to a single cross-protocol coordination architecture using an asynchronous DNS resolver.
+*   TCP incremental resolution is shipping (with a 15ms delay if IPv6 is outstanding). QUIC incremental resolution is currently in development. Optimistic DNS is being tested in the field.
+*   *Discussion:* In response to Johannes Zirngibl, Nidhi Pinamaneni confirmed that Chromium waits for the TLS handshake to complete successfully to mark the TCP/TLS race as won. Regarding optimistic DNS, Kenichi Ishibashi clarified that stale cache records are cleared on network changes and are not persisted across browser relaunches. Benjamin Schwartz requested that Chromium support the SVCB target name capability and noted that Chromium's policy of not canceling pending QUIC connections when TCP wins (allowing subsequent requests to use QUIC) should be documented as the "connection escalator" behavior in the core draft.
+
+#### Apple
+**Presenter:** Tommy Pauly  
+**Slides:** [Apple Implementation Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-apple-implementation-update-00)  
+
+*   Apple’s implementation relies on historical RTT data rather than fixed timers. Telemetry indicates that 97% of connections succeed on the first attempt.
+*   Recent updates in beta include enforcing SVCB priority groups (reordering v4/v6 only within priority groups) and collecting granular resolution timings.
+*   *Discussion:* Andrew Campling suggested focusing more on analyzing the "unhappy path" (connection failures). Tommy Pauly agreed that capturing metrics on started-but-canceled connection attempts would be valuable.
+
+### 4. Happy Eyeballs Webtester
+**Presenter:** Johannes Zirngibl  
+**Slides:** [Happy Eyeballs Webtester](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-happy-eyeballs-webtester-00)  
+
+*   An update on the test framework at `happy-eyeballs.net` (and the staging version). The tool encodes test parameters directly into DNS names, allowing testers to configure delays for specific IP families, protocols, or TLS handshakes.
+*   New features include tracking incoming packets/DNS queries at the server, verifying ECH fallback, testing HTTPS alias/port modes, and testing delayed A-record injection.
+
+### 5. Event Logging & Error Reporting
+
+#### Event Logging with qlog
+**Presenter:** Mirja Kühlewind  
+**Slides:** [Happy Eyeballs v3 (HEv3) Event Logging with qlog](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-happy-eyeballs-v3-hev3-event-logging-with-qlog-00)  
+
+*   Introduced a draft targeting a standardized qlog format for Happy Eyeballs. It defines schemas for connection attempts, policies, DNS results, and specific execution events (resumptions, timeouts, and a final summary event).
+*   *Discussion:* Lars Eggert asked about the telemetry pipeline and how logs are transported from client to collector. Mirja clarified that the immediate goal is offline analysis and local debugging. Benjamin Schwartz and Lucas Pardue emphasized the critical importance of threading and session IDs to correlate related DNS, TCP, TLS, and QUIC events within qlog.
+
+#### Error Reporting Considerations
+**Presenter:** Philip Tiesel  
+**Slides:** [Considerations for Happy Eyeballs Error Reporting](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-considerations-for-happy-eyeballs-error-reporting-00)  
+
+*   Evaluated error reporting requirements across several personas: local developers/users, corporate/managed network operators, service providers/carriers, and content providers/CDNs.
+*   *Discussion:* Lars Eggert and Mike Blanche raised concerns over the privacy implications of reporting connection statistics to third-party transit/service providers. Martin Thomson questioned the need for custom application-layer reporting when network-layer tracing (PCAPs) or server-side telemetry is already available. Philip Tiesel and Jordi Palet countered that Happy Eyeballs silently hides network failures (such as IPv6 black holes), leaving ISPs and enterprise network administrators blind to critical routing failures without client-side reporting.
+
+#### Enhanced Dual Stack
+**Presenter:** Xipeng Xiao  
+**Slides:** [Xipeng Xiao v2 - Enhanced Dual Stack and the need for HEv3 OS Implementation Profile](https://datatracker.ietf.org/meeting/126/materials/slides-126-happy-xipeng-xiao-v2-enhanced-dual-stack-and-the-need-for-hev3-os-implementation-profile-00)  
+
+*   Highlighted that standard dual-stack deployments can disrupt user experiences when IPv6 is silently broken, discouraging enterprise adoption.
+*   Proposed that the HAPPY working group define an OS-level implementation profile for HEv3 to ensure that non-browser applications can benefit from concurrent connection fallback.
+
+---
+
+## Decisions and Action Items
+
+*   **Decision:** Based on the results of Poll 1, the working group decided to **remove** the proposed DNS server selection text from `draft-ietf-happy-happyeyeballs-v3`. The document will instead refer to existing specifications (such as RFC 6724-bis) and avoid defining standalone DNS transport/resolver selection logic.
+*   **Action Item:** The authors of `draft-ietf-happy-happyeyeballs-v3` will update **PR 137** to integrate feedback on split-tunnel VPN environments and pull up general PVD/network-state handling into a dedicated, top-level section.
+*   **Action Item:** The authors will review **PR 125** (submitted by Benjamin Schwartz) to refine the state machine description of connection racing in the draft text.
+
+---
+
+## Next Steps
+
+*   **Optimistic DNS Coordination:** The chairs will coordinate with the DNSOP chairs regarding the placement and dispatching of the Optimistic DNS draft.
+*   **Draft Progression:** The authors of `draft-ietf-happy-happyeyeballs-v3` plan to address the remaining PRs (including PR 137 and PR 125) over the coming weeks, aiming to prepare the draft for Working Group Last Call (WGLC).
+*   **Error Reporting Discussion:** The working group will continue discussing the error reporting personas, data constraints, and privacy boundaries on the mailing list to establish consensus on what is safe to report.

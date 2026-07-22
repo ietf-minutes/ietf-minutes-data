@@ -1,0 +1,79 @@
+# [CDNI](../wg/cdni.html)
+
+## Summary
+
+The Content Delivery Network Interconnection (CDNI) Working Group met at IETF 126. The session focused on progressing core documents, resolving architectural and technical issues in key drafts, and planning work for the upcoming months. Key discussions centered on error-handling alignment in the Control Interface/Triggers specification, security improvements for the Protected Secrets Metadata draft, transitioning the Metadata Expression Language (MEL) to ABNF, and tackling sidecar file management complexities in the Logging Extensions draft. The working group also planned a virtual interim meeting for September.
+
+## Key Discussion Points
+
+### 1. Administrivia & Milestone Review
+Sanjay Mishra and Chris Lemmons presented the [IETF 126 CDNI Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-cdni-ietf-126-cdni-chair-slides-01) and reviewed the active milestones:
+*   The working group’s primary focus is on `draft-ietf-cdni-processing-stages-metadata` and `draft-ietf-cdni-metadata-expression-language`, as several other drafts rely on them.
+*   Milestones for several dependent documents have been adjusted (e.g., `draft-ietf-cdni-cache-control-metadata` to February 2027; `draft-ietf-cdni-client-access-control-metadata` and `draft-ietf-cdni-source-access-control-metadata` to June 2027).
+*   The Footprint draft is currently on hold.
+*   Kevin Ma and Will Hawkins volunteered as notetakers.
+
+---
+
+### 2. Control Interface/Triggers
+Alan presented updates on `draft-ietf-cdni-ci-triggers-rfc8007bis` using the slides [RFC8007bis: Control Interface/Triggers](https://datatracker.ietf.org/meeting/126/materials/slides-126-cdni-rfc8007bis-control-interfacetriggers-00).
+
+*   **Draft -19 and -20 Status:** Feedback from Kevin Ma on draft-19 has been integrated into a pending draft-20. The authors target August for finalizing draft-20 to prepare for Working Group Last Call (WGLC).
+*   **Error Reporting Synchronization:** The draft reconciles two historical styles of error reporting:
+    1.  *Synchronous RESTful responses:* Returning immediate HTTP 4xx/5xx status codes.
+    2.  *Asynchronous status:* Setting the trigger state to "failed" and attaching an `error-v2` description object.
+    To ensure consistency, draft-20 mandates synchronous RESTful error reporting as the preferred style whenever errors are known at request time. If an immediate error occurs, the Downstream CDN (DCDN) will return structured details using the existing `error-v2` format inside the synchronous response body.
+*   **Cascading Errors:** In multi-CDN chains, transit CDNs that have accepted a request (returning 2xx) but later receive an error from downstream will propagate the `error-v2` details upward, preventing information loss.
+*   **Trigger Labels:** After feedback from Kevin Ma, the authors agreed to define trigger labels as a standard JSON key-value object (resembling Kubernetes label schemas) rather than using serialized strings.
+*   **Other Clarifications:** Minor fixes include clarifying FCI URL type support, defining accumulative counter aggregation across CDN chains, and recommending that DCDNs provide completion estimates.
+*   **Feedback:** Kevin Ma noted that some minor JSON schema syntax issues were identified using automated parsing tools and should be corrected before publishing draft-20.
+
+---
+
+### 3. Protected Secrets Metadata
+Ben Rosenblum presented updates on `draft-ietf-cdni-protected-secrets-metadata`.
+
+*   **Key Changes:** References to "HashiCorp Vault" were removed to ensure vendor neutrality. The draft now specifies a generic external store type.
+*   **Security Considerations:** Chris Lemmons noted that the draft currently lacks sufficient security considerations, which is critical for a document handling cryptographic secrets. Key issues include:
+    *   Addressing transport security (e.g., requiring HTTPS/TLS over the wire).
+    *   Specifying or restricting valid Cryptographic Message Syntax (CMS) algorithms since CMS permits insecure legacy configurations.
+*   **Next Steps:** Ben Rosenblum agreed to incorporate these points and reference the parent metadata interface security guidelines to satisfy the requirements for a future external security directorate review.
+
+---
+
+### 4. Metadata Expression Language (MEL)
+Glenn Deen and Will Hawkins led the discussion on `draft-ietf-cdni-metadata-expression-language` using the [Slides for MEL Discussion](https://datatracker.ietf.org/meeting/126/materials/slides-126-cdni-slides-for-mel-discussion-00).
+
+*   **Transition to ABNF:** Draft-02 successfully migrated the grammar specification from BNF to ABNF (RFC 5234).
+*   **Precedence and Associativity:** Will Hawkins presented a straw proposal defining operator precedence and associativity rules derived from comparative analysis of common languages (C++, Rust, Python, Lua, etc.). This includes defining the dot (`.`) operator's behavior during member access.
+*   **Core Variables & Typing:**
+    *   *Headers:* Header names often contain hyphens (e.g., `rec.h.content-type`), which violates variable name styles in most languages. Normalization suggestions (e.g., converting to lowercase and underscores) were discussed, though Glenn Deen expressed preference for keeping exact headers to avoid developer confusion.
+    *   *URI Components:* Accessing `rec.uri` directly returns the entire string, while sub-components (`rec.uri.path`) return nested string elements. It was proposed to restrict the full URI to `rec.uri.all` to maintain type consistency.
+*   **Implementation & Security Feedback:** Chris Lemmons raised concerns regarding:
+    *   *Regex Engine Security:* The choice of PCRE (regex-directed) has potential Regular Expression Denial of Service (ReDoS) implications. Additionally, PCRE lacks a formal, stable specification reference.
+    *   *Resource Limits:* The language needs mechanisms or specifications to prevent processors from creating/handling arbitrarily large variables.
+
+---
+
+### 5. Logging Extensions
+Ben Rosenblum discussed `draft-ietf-cdni-logging-extensions`.
+
+*   **Sidecar Metadata Approach:** Responding to mailing list reviews from Kevin Ma, Ben Rosenblum explained that the "sidecar" JSON file approach (metadata files alongside actual log files) was chosen to accommodate legacy log formats (such as CSV or XLS) that cannot natively embed metadata headers.
+*   **Technical Challenges:** Kevin Ma highlighted complexities regarding file-naming collision resolution on upstream CDNs, the mechanics of streaming logs, and the precedence rules when transit CDNs merge logging files from multiple downstream CDNs.
+*   **Resolution:** Ben Rosenblum noted that upcoming ASCII and SVG flow diagrams inside the document should help clarify these operational sequences. Kevin Ma requested more working group members review the draft to refine these mechanics.
+
+---
+
+### 6. Any Other Business (AOB)
+*   **IESG Document Progress:** Gorry Fairhurst (Area Director) highlighted that one CDNI document currently in IESG evaluation has active DISCUSS positions. The editors need to formulate responses to clear them. Sanjay Mishra committed to working with the author (Alfonso) to resolve the reviews.
+
+## Decisions and Action Items
+
+*   **Action Item:** Sanjay Mishra to coordinate with Alfonso to address outstanding IESG DISCUSS comments.
+*   **Action Item:** Alan to apply JSON corrections and publish `draft-ietf-cdni-ci-triggers-rfc8007bis` draft-20 to trigger WGLC.
+*   **Action Item:** Ben Rosenblum to revise `draft-ietf-cdni-protected-secrets-metadata` to include proper transport security requirements and metadata security references.
+*   **Action Item:** Glenn Deen to organize a dedicated interim/virtual work session for interested contributors to collaboratively edit the MEL ABNF grammar and resolve open issues.
+
+## Next Steps
+
+*   **Fall Interim Meeting:** A Doodle poll has been created to schedule a mid-September virtual interim. Working Group participants are requested to submit their availability by **August 7**.

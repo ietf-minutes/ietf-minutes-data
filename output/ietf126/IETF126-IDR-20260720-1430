@@ -1,0 +1,134 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The Inter-Domain Routing (IDR) Working Group met at IETF 126. The session focused primarily on BGP core protocols, management models, routing table scaling in AI datacenters, and operational/security enhancements. 
+
+Key discussions centered on advancing the BGP finite state machine (FSM) modifications, the BGP YANG base model, resolving route reflection scaling constraints, updating the base BGP-4 specification (`draft-ietf-idr-bgp4-rfc4271bis`), and introducing novel mechanisms for next-hop selection, canonical path attribute formatting, and source-selective BGP security.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status and Document Updates
+*Presenter: Susan Hares*
+
+*   **WG Process:** Drafts are being grouped and run through the adoption and pre-adoption review process in five main tracks: Core, SR (Segment Routing), SRTE (SR Traffic Engineering), BGP-LS, and FlowSpec v2. Status tracking has moved to daily updates on GitHub.
+*   **Document Status:** 
+    *   `draft-ietf-idr-linklocal-capability` has finished working group last call (WGLC) but needs further list comments to finalize.
+    *   `draft-ietf-idr-sdwan-edge-discovery` is waiting on minor shepherd updates.
+    *   `draft-ietf-idr-ts-flowspec-srv6-policy` received a late revision and shepherd review is progressing.
+    *   `draft-ietf-idr-bgp-ls-sr-policy-admin-flags` is in the adoption queue. 
+
+### 2. BGP BFD Strict-Mode & BGP FSM IANA
+*Presenter: Jeff Haas*
+*   **Slides:** [1-2. BGP BFD Strict-Mode](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-2-bgp-bfd-strict-mode-00)
+*   **Drafts:** `draft-ietf-idr-bgp-bfd-strict-mode` and `draft-ietf-idr-bgp-fsm-iana`
+
+*   **Discussion:** Jeff Haas detailed how differences in implementation timing between BFD state transitions and the BGP FSM can lead to wedged sessions or deadlocks. To prevent this, the proposed strict mode prevents BGP from transitioning to the `Established` state (by holding back the KEEPALIVE message) until BFD has successfully come up. The changes to the FSM are modeled using substates in the `OpenConfirm` state.
+*   **Status:** Both documents are stable, have at least three implementations, and are ready for Working Group Last Call (WGLC).
+
+### 3. BGP YANG Update
+*Presenter: Jeff Haas*
+*   **Slides:** [1-3. BGP YANG Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-3-bgp-yang-update-00)
+*   **Draft:** `draft-ietf-idr-bgp-model`
+
+*   **Discussion:** Jeff Haas reported on the final cleanup of the BGP YANG model. Key modifications include allowing neighbors to be keyed on values other than their IP address (flexible neighbor keys), aligning with IETF's semantic versioning standards, introducing a BNF representation for AS Path regex, and restructuring the extended community encodings to facilitate long-term maintenance.
+*   **Feedback:** 
+    *   Weiqiang Song (Broadband Forum Liaison) noted that BBF's upcoming specifications depend directly on this model and urged its publication.
+    *   Ketan Talaulikar highlighted that this is one of the largest YANG models in the IETF (at 240 pages) and strongly encouraged participants to voice support on the mailing list consensus call.
+
+### 4. Fully Adaptive Routing Ethernet (FARE) in Multi-Plane Scale-Out Networks
+*Presenter: Xiaohu Xu*
+*   **Slides:** [1-5-1. Fully Adaptive Routing Ethernet (FARE)](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-5-1-fully-adaptive-routing-ethernet-fare-00) & [1-5-2. Fully Adaptive Routing Ethernet in Multi-Plane Scale-Out Networks (FARE in MPSON)](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-5-2-fully-adaptive-routing-ethernet-in-multi-plane-scale-out-networks-fare-in-mpson-00)
+
+*   **Discussion:** Large-scale AI training clusters use multi-plane fabrics where RDMA NICs (rNICs) need to compute reachability and path bandwidth across multiple planes without inter-plane links. In a network of 100K GPUs across four planes, rNICs cannot handle the resulting 400K host routes. Xiaohu Xu proposed two scaling mechanisms:
+    1.  *Route Aggregation with Unreachability Notification:* Aggregating host routes at leaf switches, combined with path-bandwidth advertisements set to zero or using Unreachability Prefix Announcements (UPA).
+    2.  *Prefix Outbound Route Filtering (ORF)* with FIB suppression at the leaf switches.
+*   **Feedback:** 
+    *   Krishnaswamy Ananthamurthy questioned why a default route cannot be advertised to the NIC instead. Yingzhen Wang and Keyur Patel clarified that AI networks are rail-optimized (east-west traffic patterns), requiring specific subnets to prevent traffic rails from breaking down. 
+    *   Jeff Haas reminded the authors to respect the five-author limit on the draft before adoption.
+
+### 5. YANG Data Model for BGP Outbound Route Filtering (ORF)
+*Presenter: Weiqiang Cheng*
+*   **Slides:** [1-4. YANG Data Model for BGP Outbound Route Filtering](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-4-yang-data-model-for-bgp-outbound-route-filtering-00)
+
+*   **Discussion:** This individual draft introduces two new YANG modules: `ietf-bgp-orf` (generic ORF and address prefix ORF) and `ietf-bgp-vpn-prefix-orf` (VPN prefix ORF quotas). 
+*   **Feedback:** Ketan Talaulikar requested that the authors of this ORF module actively review and comment on the base BGP YANG model (`draft-ietf-idr-bgp-model`) WGLC since their work augments it. Jeff Haas added that once the base model is finalized, the chairs and routing working groups will need to establish a consistent review process for all such augmentations.
+
+### 6. BGP Route Reflector Deployment Considerations
+*Presenter: David Smith*
+*   **Slides:** [1-6. BGP RR Deployment Considerations](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-bgp-rr-deployment-considerations-00)
+
+*   **Discussion:** David Smith presented an informational draft analyzing route reflector deployment models (Multi-cluster, Multi-tier, and Multi-plane) and their associated performance trade-offs (such as client overload, blast radius, path hiding, and transport performance). The authors plan to rename the draft to "Route Reflector Design Considerations" to better align its scope.
+*   **Feedback:**
+    *   Keyur Patel suggested incorporating considerations for hot-potato routing, full-mesh vs. non-full-mesh client behaviors, IGP integration to avoid transit forwarding, and Graceful Restart optimization.
+    *   John Scudder and Jeff Haas suggested that this informational work belongs in the GROW Working Group rather than IDR, pointing out a 15% overlap with GROW's current operational security document. The chairs and ADs will coordinate to determine the best venue.
+
+### 7. RFC 4271bis-Border Gateway Protocol 4 (BGP-4)
+*Presenter: John Scudder*
+*   **Slides:** [1-1. RFC 4271bis-Border Gateway Protocol 4 (BGP-4)](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-revised-slides-for-rfc4271bis-01-00)
+*   **Draft:** `draft-ietf-idr-bgp4-rfc4271bis`
+
+*   **Discussion:** John Scudder presented updates in the `-01` version ("the low-hanging fruit edition"). He proposed a streamlined GitHub workflow where each issue maps to a pull request, avoiding mailing list confirmation for every single PR to prevent overhead.
+*   **Key Design Issues Raised:**
+    *   *Graceful Restart:* Since RFC 4724 heavily hacks the FSM, pulling it into the base spec as an optional feature would align the specification with running implementations.
+    *   *Extended Message Sizes (RFC 8654):* Required for BGP-LS attribute scaling and BGPsec. 
+    *   *Legacy NLRI Encoding:* The current base spec only describes the IPv4-specific encoding. John suggested either pointing readers to RFC 4760 (Multiprotocol Extensions) or rolling it in to properly document IPv6.
+    *   *Other features:* Proposing to mandate TTL 255 by default, removing the terms "mandatory" and "discretionary" for path attributes, and documenting "Remove Private AS".
+
+### 8. BGP Best Path Next-Hop Selection Enhancements
+*Presenter: Olivier Dugeon*
+*   **Slides:** [1-7. BGP best path next-hop selection enhancements](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-7-bgp-best-path-next-hop-selection-enhancements-00)
+
+*   **Discussion:** Olivier Dugeon discussed how the traditional RFC 4271 next-hop resolvability assumptions break in modern MPLS and SRv6 networks, leading to traffic drops (if next-hop is reachable but no valid LSP exists) or suboptimal path selection (BGP defaulting to IGP metrics instead of intent-aware SR policy metrics). The authors proposed a "resolution preference" mechanism to filter path candidates and a formalized "path resolution tuple" (forwarding address + optional context).
+*   **Feedback:** 
+    *   Chen Changli noted an overlap with an active China Mobile draft.
+    *   John Scudder advised that while this feature will not be standardized in time to be baked into `draft-ietf-idr-bgp4-rfc4271bis`, the working group should design the base spec's resolvability check to be pluggable to easily accommodate these enhancements later.
+
+### 9. Source-Selective BGP
+*Presenter: Kamiel Braat*
+*   **Slides:** [1-8. Source-Selective BGP](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-source-selective-bgp-01)
+
+*   **Discussion:** To mitigate terabit-level volumetric DDoS attacks, Kamiel Braat proposed "Source-Selective BGP." The mechanism introduces a "Source-Selective" BGP path attribute pointing to a new RPKI profile called "Source Prefix Authorization" (SPA). The SPA defines an allow-list of source prefixes authorized to send traffic to a given destination prefix. The solution requires Source Address Validation (SAV) to be deployed across participating customer cones.
+*   **Feedback:**
+    *   Alexander Azimov raised concerns about how this handles Layer 4 attacks with spoofed IPs, to which Kamiel replied that SAV is an absolute prerequisite.
+    *   John Scudder and Keyur Patel discussed the comparison to FlowSpec on the list and chat. While FlowSpec is typically reactive, Source-Selective BGP functions as a proactive, inter-domain authorization mechanism. Robert Raszuk and Jeff Haas cautioned about the scale of source-specific routing tables and the potential blast radius of a new BGP attribute deployed internet-wide.
+
+### 10. Canonical Textual Representation of BGP Path Attributes
+*Presenter: Maria Matejka*
+*   **Slides:** [1-9. Canonical textual representation of BGP Path Attributes](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-1-9-canonical-textual-representation-of-bgp-path-attributes-00)
+
+*   **Discussion:** Textual representations of BGP communities, extended communities, and AS paths vary significantly across vendor implementations and open-source tools. This inconsistency complicates machine parsing (e.g., in YANG and JSON engines) and human readability. Maria Matejka proposed defining a standardized canonical format for these attributes and creating JSON-based templates so that new communities can be dynamically parsed without router code changes.
+*   **Feedback:** Luuk Hendriks strongly supported the initiative. Jeff Haas recommended coordinating with Martin Pels' parallel BGP community formatting draft in the GROW working group and suggested utilizing YANG display hints.
+
+### 11. BGP Enhancements for ECMP EBGP Scenarios
+*Presenter: Yingzhen Wang*
+*   **Slides:** [1-10. BGP Enhancements for ECMP EBGP Scenarios](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-110-bgp-enhancements-for-ecmp-ebgp-scenarios-00)
+
+*   **Discussion:** In data center topologies with parallel EBGP sessions, the persistent route selection algorithm (RFC 5004) can be bypassed depending on the arrival order of prefix advertisements, causing churn in the best path. Additionally, redundant routes are unnecessarily advertised back to parallel peers in the same AS. Yingzhen Wang proposed extending RFC 5004 persistence logic across parallel EBGP sessions and suppressing redundant advertisements.
+*   **Feedback:** Jeff Haas warned that any modifications to BGP path selection—especially time-based persistence—are highly delicate and prone to routing loops and bugs, requiring thorough scrutiny on the list.
+
+### 12. Threat Model for BGP Color Extended Community
+*Presenter: Yuan Zhang*
+*   **Slides:** [1-11. Threat Model for BGP Color Extended Community](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-11-threat-model-for-bgp-color-extended-community-00)
+
+*   **Discussion:** Yuan Zhang presented security gaps in the BGP Color Extended Community. Because color is an ordinary transitive attribute without cryptographic binding to the AS_PATH or origin, transit ASes can manipulate, inject, or strip color values to redirect traffic or bypass policies. The draft defines threat vectors (injection, re-coloring, stripping) and proposes future directions, including cryptographically binding color to an origin AS (via BGPsec or signed objects) and introducing sequence numbers/timestamps to prevent replay attacks.
+*   **Feedback:** Susan Hares suggested investigating the use of the community container. Jeff Haas recommended coordinating with GROW's operational security and community scrubbing efforts.
+
+---
+
+## Decisions and Action Items
+
+1.  **`draft-ietf-idr-bgp-bfd-strict-mode` & `draft-ietf-idr-bgp-fsm-iana`:** Approved to proceed to Working Group Last Call (WGLC).
+2.  **`draft-ietf-idr-bgp-model`:** The Working Group consensus call is active. Authors of dependent drafts (such as the ORF model) must review and provide final comments on the list.
+3.  **BGP Route Reflector Deployment Considerations:** The chairs and ADs will coordinate to decide whether this informational work belongs in the GROW or IDR Working Group.
+
+---
+
+## Next Steps
+
+*   **`draft-ietf-idr-bgp4-rfc4271bis`:** John Scudder to continue merging low-controversy issues on GitHub and drive discussions on the list regarding the integration of Graceful Restart, Multiprotocol NLRI, and Attribute Flags registries.
+*   **FARE (Fully Adaptive Routing Ethernet):** Xiaohu Xu to trim the author list to meet the five-author limit in preparation for the base draft's adoption call.
+*   **Next-Hop Selection Enhancements:** IDR chairs to initiate a Working Group adoption call for the next-hop selection work after IETF 126.
+*   **Canonical Textual Representation:** Maria Matejka to coordinate with Martin Pels (GROW) on aligning canonical JSON formats for BGP communities.

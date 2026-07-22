@@ -1,0 +1,116 @@
+# [IEPG](../wg/iepg.html)
+
+## Summary
+
+The IEPG (Internet Engineering Planning Group) met at IETF 126. As a traditional pre-IETF operational forum, the session was highly packed with technical presentations focusing on DNS resolution complexity, BGP traffic engineering abuses, RPKI ASPA deployment status, active measurements of Encrypted Client Hello (ECH), security vulnerabilities in attested TLS implementations, Post-Quantum Cryptography (PQC) readiness in enterprise sectors, and the networking metrics of agent networks running over libp2p.
+
+---
+
+## Key Discussion Points
+
+### 1. DNS, Transitive Trust and How Many is Many?
+* **Presenter:** Andrej Surý
+* **Slides:** [01_DNS, Transitive Trust and How Many is Many?](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-dns-transitive-trust-and-how-many-is-many-00)
+* **Technical Discussion:**
+  * Andrej presented an analysis of DNS query complexity arising from out-of-bailiwick delegations, transitive trust dependencies, and deep CNAME chains.
+  * Using BIND 9 with a cold cache, resolution complexity was measured across different software releases. For example, resolving `teams.microsoft.com` (which features multiple CNAME hops) required up to 142 queries in BIND 9.18, but dropped to 80 queries in BIND 9.20, and was reduced to around 8 queries in the BIND 9.21 development branch.
+  * When DNSSEC validation is enabled, query volume can balloon to between 182 and 329 queries for a single incoming request.
+  * Reverse DNS (PTR) zones, particularly IPv6 PTR records containing 32 labels, suffer severely from out-of-bailiwick delegations. This causes resolvers to hit query limit caps (e.g., BIND's hard cap of 50 or 100 outgoing queries), resulting in resolution and mail delivery failures.
+  * Key BIND optimizations in 9.21 include transitioning from child-centric to parent-centric resolution, which successfully limits unnecessary upstream queries.
+  * *Recommendations:* Operators should prefer in-domain delegations; limit TLD diversity across managed DNS providers; avoid deep CNAME chains; simplify PTR delegations; and run up-to-date resolver software.
+* **Q&A and Chat:**
+  * **Peter Thomason** questioned the real-world operational impact, noting that resolvers rarely start with a cold cache. Andrej and **Petr Špaček** replied that when TTLs expire (which happens frequently due to short CDN TTLs), the query explosion occurs, introducing non-determinism and causing random, hard-to-debug failures for end users.
+  * **Geoff Huston** suggested quantifying this overhead on warm caches for massive platforms like Facebook or Google. Andrej noted that major platforms configure their zones correctly, but smaller zones frequently suffer.
+  * **David Lawrence** asked via chat if these numbers included DNSSEC validation queries. Andrej confirmed that the highest query counts indeed included DNSSEC validation and noted that QNAME minimization does not fully resolve this complexity.
+  * **Shane Kerr** observed in the chat that many managed DNS vendors deliberately assign unique, per-customer name servers across different TLDs (e.g., Azure DNS) to isolate zones from attacks, which inherently increases query complexity.
+
+### 2. BGP ORIGIN Attribute Inconsistencies
+* **Presenter:** Carlos Martínez (on behalf of Celsa Sanchez)
+* **Slides:** [BGP ORIGIN Attribute Inconsistencies](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-bgp-origin-attribute-inconsistencies-01)
+* **Technical Discussion:**
+  * Carlos presented a study on how the BGP ORIGIN attribute (IGP, EGP, Incomplete) is used in the wild.
+  * While RFC 4271 specifies that ORIGIN is a well-known mandatory attribute set by the originating router that should not be changed by downstream BGP speakers, data from Route Views and RIS collectors in the LACNIC region reveals widespread "mixed" origin values for identical prefix-AS pairs.
+  * This trend emerged significantly in early 2023. Outreach to regional operators confirmed that some actively rewrite the ORIGIN attribute (e.g., to EGP) for routes learned from certain peers. This is done as a traffic engineering "knob" to manipulate the BGP decision process (where lowest origin type is evaluated early, in third place) without altering the AS path length.
+* **Q&A and Chat:**
+  * **Warren Kumari** commented that using ORIGIN as a subtle traffic-engineering knob dates back to the early 2000s, as modifying AS path length is often too blunt a hammer.
+  * **Jeffrey Haas** mentioned that the IDR working group has debated deprecating the ORIGIN attribute, but some operators actively use it. He invited community contribution to the core BGP update (`draft-ietf-idr-rfc4271bis`), which seeks to reflect modern operational realities (tracked in [GitHub Issue #105](https://github.com/ietf-wg-idr/RFC4271bis/issues/105)). He added that origin rewriting is frequently combined with optimal route reflection to manage traffic across large geographies.
+  * **Tony Li** commented in the chat that the operational abuse of BGP attributes for traffic engineering does not mean the underlying protocol intent has changed.
+
+### 3. Observations on ASPA in the Wild
+* **Presenter:** Tim Bruijnzeels
+* **Slides:** [03_Observations on ASPA in the Wild](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-observations-on-aspa-in-the-wild-00)
+* **Technical Discussion:**
+  * Tim presented on the deployment status and path verification behavior of Autonomous System Provider Authorization (ASPA) (`draft-ietf-sidrops-aspa-profile`) in the global RPKI system.
+  * ASPA registers cryptographically signed customer-to-provider relationships to allow upstream and downstream validation, effectively mitigating route leaks through valley-free routing checks.
+  * The use of AS0 in ASPA records allows transit-free networks (Tier-1s) to assert they have zero upstream providers, which acts as a clean endpoint for validation.
+  * ASPA registration has grown rapidly since RIPE NCC integrated ASPA management into its hosted UI in November 2023, with subsequent adoption across APNIC, LACNIC, and ARIN.
+  * Analyzing path segments ending at AS0-publishing networks via RIPE RIS parquet files, approximately 7% of paths with ASPA coverage were found to be invalid. This is expected to decline once routers begin actively dropping invalid paths.
+* **Q&A and Chat:**
+  * **Jeffrey Haas** noted that the interaction between ASPA and BGP Roles (RFC 9234) can be complex for hybrid peering relationships, and highlighted that networks with backdoor/loop paths must plan their ASPA declarations carefully.
+  * **Job Snijders** highlighted that ASPA is currently in Working Group Last Call in SIDROPS. He noted that OpenBSD (via rpki-client and OpenBGPD) already supports integrated ASPA validation, and most major router vendors plan to roll out support in the next 12–24 months. He warned that the scaling properties of ASPA (since a change in an ASPA record can affect large portions of the routing table) remain an active area of production study.
+  * **Geoff Huston** expressed concern over the complexity of ASPA and the lack of a "Plan B" if global adoption fails, stating that origin validation (ROV) without path protection is insufficient but ASPA's multi-party dependency makes it operationally fragile.
+
+### 4. Encrypted Client Hello (ECH) - An active measurement perspective
+* **Presenter:** Jan Rüth
+* **Slides:** [04_Encrypted Client Hello (ECH) - An active measurement perspective](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-encrypted-client-hello-ech-an-active-measurement-perspective-00)
+* **Technical Discussion:**
+  * Jan presented empirical data on real-world Encrypted Client Hello (ECH) (`draft-ietf-tls-esni`) deployments gathered through active TLS client hello probing rather than relying solely on DNS resource records.
+  * ECH encrypts the Server Name Indication (SNI) using public keys retrieved via DNS or a HelloRetryRequest retry mechanism.
+  * Active probing revealed that Cloudflare is the largest ECH deployment (hosting over 4 million ECH-capable domains). Meta is the second-largest (around 4,600 domains).
+  * Interestingly, 34% of ECH-capable domains do not publish their ECH configurations in public DNS. For example, Meta uses ECH in its mobile applications (as verified on iOS devices) by hardcoding or out-of-band caching ECH configurations rather than querying DNS.
+  * Cloudflare rotates its ECH keys hourly but continues to accept expired keys for up to 4 hours to prevent unnecessary connection retries for clients with cached keys.
+  * The latency impact of ECH encryption/decryption was measured to be sub-millisecond, proving highly performant.
+* **Q&A and Chat:**
+  * **Stephen Farrell** and **Shane Kerr** discussed the out-of-band delivery of ECH configurations, noting that browsers and mobile clients can easily cache these configurations or retrieve them via retry handshakes.
+  * **Andrew Campling** shared a link to `draft-campling-ech-deployment-considerations`, which discusses ECH deployment implications.
+
+### 5. Intra-handshake.fail (CVE-2026-33697)
+* **Presenter:** Muhammad Usama Sardar
+* **Slides:** [05_Intra-handshake.fail (CVE-2026-33697)](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-intra-handshakefail-cve-2026-33697-00)
+* **Technical Discussion:**
+  * Muhammad presented on "intra-handshake.fail", a high-severity security vulnerability (CVE-2026-33697, CVSS 7.5) in the implementation of attested TLS handshakes.
+  * Attested TLS is used in confidential computing environments (such as secure AI enclaves) to combine TLS authentication with hardware attestation (RATS, RFC 9334).
+  * The researchers performed formal verification using Proverif and discovered that "intra-handshake attestation" (binding attestation evidence during the TLS handshake before the peer is fully authenticated) is fundamentally vulnerable to relay and diversion attacks.
+  * The vulnerability allowed an active man-in-the-middle attacker to intercept and relay attestation evidence, tricking a client into establishing a secure session with the attacker instead of the genuine enclave.
+  * Affected implementations included Cocos AI (v0.8.2), Edgeless Systems, and drafts under discussion in SEAT and TLS working groups. Cocos AI migrated to "post-handshake attestation" in v0.9.0 based on this disclosure.
+* **Q&A and Chat:**
+  * **Warren Kumari** and **Rich Salz** noted that detailed protocol design discussions regarding this vulnerability belong in the SEAT or TLS working groups.
+  * **Muhammad Usama Sardar** proposed forming a "Confidential Computing Research Group" in the IRTF to address these foundational security modeling challenges.
+
+### 6. PostQuantumCryptography
+* **Presenter:** Nalini Elkins
+* **Slides:** [06_PostQuantumCryptography](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-06-postquantumcryptography-00)
+* **Technical Discussion:**
+  * Nalini presented a horizontal and vertical measurement of Post-Quantum Cryptography (PQC) readiness and certificate sizes across enterprise sectors (specifically financial and healthcare industries).
+  * PQC transition requires deploying Key Encapsulation Mechanisms (KEMs) and Digital Signature Algorithms (DSAs). While KEMs (e.g., ML-KEM) are relatively mature, DSAs (e.g., ML-DSA) significantly increase certificate sizes.
+  * Standard ECDSA keys are 65–97 bytes, whereas ML-DSA keys and signatures are several kilobytes.
+  * Nalini's measurements showed that 7% of US financials still only support TLS 1.2, which is frozen and cannot support PQC. Only internet-native companies and large CDNs currently show significant PQC KEM adoption (over 60%).
+  * Larger keys and signatures increase the TLS handshake's certificate transfer time. However, the absolute latency increase is approximately 150–200ms, which is negligible for most standard web users but critical for high-frequency trading or low-latency environments.
+  * The deployment of Merkle Tree Certificates (MTC) is being explored to avoid transmitting large signatures, though their viability for complex enterprise certs (with extensive SANs and custom OIDs) and forensic admissibility in legal scenarios remains an open question.
+
+### 7. Operating and Measuring Agent Networks over libp2p
+* **Presenters:** Johanna Rooney (operating as Johanna Morin) and Manu Gupta
+* **Slides:** [IEPG_Operating and Measuring Agent Networks over libp2p_Johanna_Manu](https://datatracker.ietf.org/meeting/126/materials/slides-126-iepg-sessa-iepg-operating-and-measuring-agent-networks-over-libp2p-johanna-manu-01)
+* **Technical Discussion:**
+  * The presenters shared operational insights and telemetry needs for running decentralized AI agent networks using libp2p as the underlying communication substrate.
+  * The libp2p stack provides a modular, language-agnostic substrate supporting multiple transport protocols, structured data encoding (via CBOR), and content-addressable storage using Content Identifiers (CIDs).
+  * Operational challenges in peer-to-peer agent networks include discovery latency, NAT traversal, and high relay dependencies.
+  * The authors emphasized the need for cross-layer correlation and standardized telemetry to diagnose "invisible" network-induced application failures (such as peer timeouts and DHT resolution bottlenecks).
+* **Q&A and Chat:**
+  * **Eric Vyncke** asked if the presenters were measuring IPv4 vs IPv6 performance, noting that running peer-to-peer agent networks over IPv4 NATs seems operationally unsustainable.
+  * **Manu Gupta** confirmed that libp2p fully supports IPv6 across its core implementations (Go, C++, Python, JavaScript) and agreed that IPv6 is critical for scalable, direct peer-to-peer agent routing.
+
+---
+
+## Decisions and Action Items
+
+* No formal consensus decisions were taken during this informal operational meeting.
+
+---
+
+## Next Steps
+
+* **DNS Resolution:** Operators are encouraged to review BIND resolver versions and their delegation layouts to mitigate recursive query inflation.
+* **BGP ORIGIN:** Input is requested on the core BGP update (`draft-ietf-idr-rfc4271bis`) regarding the operational rewriting of the BGP ORIGIN attribute.
+* **ASPA Validation:** Interested participants should track the progress of ASPA in the SIDROPS working group (`draft-ietf-sidrops-aspa-profile`).
+* **Intra-handshake Vulnerabilities:** Discussions regarding the intra-handshake attestation vulnerability (CVE-2026-33697) will continue within the SEAT and TLS working groups, alongside the proposed IRTF Confidential Computing Research Group.

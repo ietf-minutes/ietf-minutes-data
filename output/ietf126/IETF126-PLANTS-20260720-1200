@@ -1,0 +1,108 @@
+# [PLANTS](../wg/plants.html)
+
+## Summary
+
+The PLANTS Working Group met at IETF 126. The session featured an update on the primary working group item, [draft-ietf-plants-merkle-tree-certs](https://datatracker.ietf.org/doc/draft-ietf-plants-merkle-tree-certs/), a discussion on log reconciliation strategies, an exploration of deployment use cases for private PKIs, a report on measuring post-quantum TLS authentication deployment characteristics in large enterprise environments, and ACME interoperability results from the Hackathon.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Administration
+Tom Ritter presented the [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-chair-slides-00), reviewing the Note Well, meeting agenda, and current working group status. 
+* The GitHub repository is operating in issue discussion mode, with automated weekly activity summaries active.
+* No changes or bashes were made to the agenda.
+
+---
+
+### 2. Merkle Tree Certificates Draft Update
+David Benjamin presented the [MTC Draft Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-mtc-draft-update-00) covering updates to [draft-ietf-plants-merkle-tree-certs](https://datatracker.ietf.org/doc/draft-ietf-plants-merkle-tree-certs/) since previous versions.
+
+* **CA Representation & Cosigners**: The specification now clearly defines how to represent a Merkle Tree Certificate (MTC) CA using an X.509 certificate. The public key is placed in the SPKI field, accompanied by a critical extension detailing parameters and identifying it as an MTC CA. To simplify CRL and OCSP path validation, the draft now designates exactly one cosigner per CA sharing the CA's name, replacing the previous arbitrary cosigner limits.
+* **Log Generations**: To address the statefulness of Merkle Tree-based PKIs, CAs operate a sequence of logs. If a log is wedged, the CA increments the log number and advances. The serial number format was updated to include a 16-bit log number and a 48-bit entry index. The CA cert includes a `maxSerial` field to restrict the total number of allowed log generations.
+* **Log Entry Extensions**: A new extensibility field was added to log entries to accommodate features like randomizers or binary search locators without blocking current specification progress.
+* **ACME Integration**: The ACME mechanism settled on a new link relation (replacing the previous alternate link relation which caused errors on some clients when landmark certificates were missing) and a specific HTTP error code.
+* **Trust Anchor Representation**: The draft defines Trust Anchor IDs used to map between OIDs (TLS), RDNs (X.509), and origin strings (TLOG). A discussion ensued regarding whether to represent this ID in the RDN attribute as a relative OID or a UTF-8 string containing dotted decimals. 
+
+#### Technical Discussion & Chat Notes:
+* **TBSCertificate Entropy & Randomizers**: In the chat, Mike Ounsworth questioned how MTC handles TBSCertificate entropy given the shift to deterministic sequential serial numbers. Bas Westerbaan and David Benjamin noted that if the underlying hash (e.g., SHA-256) is collision-resistant, a randomizer is technically unnecessary at a 128-bit security level. However, to keep options open, David Benjamin suggested allocating extension zero for "16 random bytes" as a potential future randomizer extension. 
+* **Implementations**: Bob Beck announced that OpenSSL will implement MTC (no formal timeline committed). Alexander Bokovoy announced that Akamu has already implemented MTC draft-05. David Benjamin committed to adding cert verification capabilities to the spec's demo tool in the coming weeks.
+
+To resolve the RDN attribute representation issue, a poll was taken:
+
+**Poll Question**: Prefer Relative OID?
+* **Yes**: 24
+* **No**: 1
+* **No opinion**: 16
+* **Total votes**: 100 (including those not voting)
+
+---
+
+### 3. Log Reconciliation
+Brandon Sloane presented [Log Reconciliation](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-log-reconciliation-00), proposing a mechanism to merge and reconcile log forks (pairwise) rather than relying solely on the "log generations" strategy of discarding wedged logs.
+
+* **Reconciliation Process**: If a log presents inconsistent forks to different mirrors, the log can regress a mirror to a common ancestor, place subsequent certificates in a temporary backlog (during which no new cosignatures are produced), resubmit missing entries, and replay the backlog.
+* **Discussion**:
+  * Wes Hardaker queried the behavior of reconciliation during network splits with multiple out-of-sync mirrors.
+  * Dennis Jackson and Joe DeBlasio voiced concerns over shifting complexity into the mirror implementations, noting that a mirror failure blocks issuance, whereas monitor failures only temporarily degrade observability.
+  * Aaron Gable proposed standardizing a specific "rebased/forked" leaf entry type within [draft-ietf-plants-merkle-tree-certs](https://datatracker.ietf.org/doc/draft-ietf-plants-merkle-tree-certs/) rather than offloading the entire reconciliation process to the TLOG mirror protocol.
+  * David Benjamin noted that rebasing changes a certificate's position in the tree, which changes its serial number. Since serial numbers are the key mechanism for revocation, transparent rebases risk making it unclear to relying parties which certificates are actually revoked.
+  * Devon O'Brien suggested focusing on overall ecosystem agility to handle log rotation rather than introducing complex graph-theoretic recovery modes. Jay also raised concerns regarding performing rebases on malicious or conflicting histories.
+
+---
+
+### 4. MTC Deployment Use Cases
+John Gray presented [MTC Deployment Use Cases](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-mtc-deployment-use-cases-01) on behalf of co-authors Jan Klasner, El Tindil, and Ganesh Meletta.
+
+* **Use Cases Covered**:
+  * **Landmark Certificate Verification**: How non-browser environments and private PKIs can discover and verify landmark certificates. The draft introduces a "landmark distribution point" fetching mechanism.
+  * **Code Signing**: Utilizing batch signing and transparency logs to detect software supply chain tampering.
+  * **PQC Migration**: Utilizing MTC log structures to detect downgrade attacks during post-quantum migrations in private PKIs.
+  * **Constrained Devices**: Exploring MTC in offline or power-constrained topologies.
+  * **Revocation**: Applying Merkle trees (e.g., Merkle Tree Ladders) to compress CRLs and make OCSP-like validation more efficient.
+* **Discussion**:
+  * Dmitry Belyavsky questioned how parallel PKIs (PQ and traditional) detect downgrade attacks if a resource is intentionally serving traditional certificates to support legacy clients.
+  * Dennis Jackson recommended moving high-level use cases into an appendix of the working group's upcoming architecture document, and spinning out specific mechanisms (like landmark distribution points) into separate, focused drafts.
+  * Aaron Gable suggested a CRL extension to revoke contiguous ranges of sequential serial numbers to optimize log generation retirements.
+  * Omri noted that the SCITT working group has active specifications (RFC 9942, RFC 9943) addressing software supply chain integrity with Merkle trees.
+  * Victor Dukhovni suggested that instead of embedding HTTP clients in every application to fetch landmarks, a local, system-wide service (Plan 9 style) should handle landmark fetching and distribution.
+
+---
+
+### 5. Measuring Deployment Characteristics of PQ TLS Authentication Mechanisms
+Nalini Elkins presented [Measuring Deployment Characteristics of PQ TLS Authentication Mechanisms](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-measuring-deployment-characteristics-of-pq-tls-authentication-mechanisms-00), focusing on the operational requirements of large enterprise environments (financials, healthcare, government agencies).
+
+* **Observations**:
+  * Big tech companies show high experimental PQ hybrid adoption (~63%), but government healthcare agencies (e.g., Medicare at 18%) and regional banks (India at 23%) lag behind.
+  * Under ML-DSA-44, certificate sizes and transfer overhead increase significantly, though absolute handshake latency increases are relatively low (150-200ms).
+  * Analysis of real-world certificate chains showed that most deployments use 2 or 3 certificates, though some use 4.
+* **Discussion**:
+  * Devon O'Brien clarified that MTCs are fully valid X.509v3 certificates containing standard fields, extensions, and SANs, but use a new signature algorithm containing a Merkle inclusion proof. MTCs naturally allow "intermediate elision," entirely removing the need to transmit intermediate certificates.
+  * Alizia Cario pointed out that verifying an MTC signature requires an external landmark certificate, representing a structural difference from traditional validation.
+  * Nalini Elkins requested that the working group produce clear guidance or a terminology document for enterprise engineers to understand how MTC integrates into legacy environments. Bas Westerbaan agreed, noting that MTC is not suited for all environments and standard ML-DSA may be preferred for simple private PKIs.
+
+---
+
+### 6. Akamu ACME Server Hackathon Interop Results Report
+Alexander Bokovoy presented the [Akamu ACME server Hackathon interop results report](https://datatracker.ietf.org/meeting/126/materials/slides-126-plants-akamu-acme-server-hackathon-interop-results-report-00).
+
+* **Hackathon Work**: The Akamu project (a Rust-based implementation developed under an EU-funded research project) conducted interoperability testing with Corey Bonnell's ACME client.
+* **MTC Integration**: Akamu completed implementation of [draft-ietf-plants-merkle-tree-certs](https://datatracker.ietf.org/doc/draft-ietf-plants-merkle-tree-certs/) draft-05, including TLOG format support.
+* **Visualizations**: The presenter demonstrated a timeline-based visualization approach for administrators to manage MTC issuances, rather than rendering literal tree graphs.
+
+---
+
+## Decisions and Action Items
+
+* **Decisions**: 
+  * The working group selected **Relative OID** over UTF-8 string for representing Trust Anchor IDs within the RDN attribute.
+* **Action Items**:
+  * David Benjamin to add certificate verification support to the [draft-ietf-plants-merkle-tree-certs](https://datatracker.ietf.org/doc/draft-ietf-plants-merkle-tree-certs/) spec repository tool.
+
+---
+
+## Next Steps
+
+* **Architecture Document**: The chairs and editors will begin drafting the MTC Architecture document to define overall system goals and design.
+* **MTC Draft Progression**: Work will continue on updating the main specification to reflect the Relative OID decision and further clarify implementations based on testing.
+* **Use Cases**: Authors of the MTC Use Cases document will look to align with the upcoming Architecture draft and potentially split out concrete protocol proposals (like landmark fetching) into separate documents.

@@ -1,0 +1,77 @@
+# [ANRW](../wg/anrw.html)
+
+## Summary
+
+The second session of the Applied Networking Research Workshop (ANRW) at IETF 126 was chaired by Georg Kot. The session was dedicated to Security and Privacy, featuring five technical presentations on unequal privacy in multi-party proxy infrastructures, zero-shot IoT device labeling, algebraic frameworks for source address validation, the real-world deployment limitations of Discovery of Designated Resolvers (DDR), and the performance of QUIC-based encrypted DNS in Indian access networks.
+
+---
+
+## Key Discussion Points
+
+### 1. Unequal Cover: Measuring Privacy Disparities in Proxy Infrastructure
+*   **Presentation:** [Security and Privacy - Unequal cover](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-security-and-privacy-unequal-cover-00)
+*   **Presenter:** Paul Schmidt
+*   **Discussion Summary:**
+    *   Paul Schmidt presented a study evaluating the geographic and socioeconomic disparities in privacy protections offered by Multi-Party Relays (MPRs), with a specific focus on Apple's iCloud Private Relay in the United States. 
+    *   The research modeled how the allocation of egress IP addresses to maintain local geolocation accuracy affects the size of the anonymity set ("crowd size") for users. Using US census tract data, the study found that rural tracts experience 9.3 times smaller median crowd sizes compared to urban areas.
+    *   In rural tracts, smaller crowd sizes strongly correlate with lower median income and education levels, resulting in a compounding disadvantage for vulnerable populations. 
+    *   A simulation showed that by strategically consolidating or removing roughly 19% of the smallest egress locations, systems can increase the median crowd size by 2.5 times (from 5,800 to 14,000) with only a negligible penalty to geographic accuracy (mean distance to egress rising from 8.6 km to 10.2 km).
+*   **Q&A and Comments:**
+    *   Tommy Pauly noted that iCloud Private Relay includes a user setting to opt for a broader "time zone" granularity instead of "local location," which aligns with the presentation's suggestion of expanding the anonymity set. He asked about the study's adoption rate metric; Paul Schmidt clarified they assumed a uniform 0.11% adoption baseline based on APNIC data. Tommy Pauly suggested that expanding the study to measure international disparities would be highly valuable.
+
+### 2. Zero-Shot IoT Device Type Labeling
+*   **Presentation:** [Security and Privacy - Zero-Shot IoT Device Type Labeling](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-security-and-privacy-zero-shot-iot-device-type-labeling-00)
+*   **Presenter:** Virit Shibakaschasida
+*   **Discussion Summary:**
+    *   Virit Shibakaschasida introduced "Zelle," a system designed to label previously unseen IoT devices (vendor and device function) completely offline and without prior training samples (zero-shot). 
+    *   Zelle extracts passive telemetry data (such as MAC prefixes, hostnames, and domains) and enriches it by querying search engines to retrieve contextual details from blogs, forums, and manuals. 
+    *   A zero-shot classification model (RoBERTa) then maps the enriched data against a pre-compiled catalog of 1,040 vendors and 41 device functions. Zelle achieved 86% accuracy in vendor labeling and 55% (lab) / 81% (wild) accuracy in function labeling.
+*   **Q&A and Comments:**
+    *   Suresh Krishnan asked whether the system could ingest Manufacturer Usage Description (MUD) profiles ([RFC 8520](https://datatracker.ietf.org/doc/html/rfc8520)) to improve accuracy. The presenter agreed that using such standardized manufacturer specifications could serve as a valuable input.
+    *   Stuart Cheshire raised a security design question regarding the inherent tension between device privacy (preventing tracking/fingerprinting) and a local network operator's need for visibility. He also asked how the increasing trend toward end-to-end traffic encryption affects Zelle. Virit Shibakaschasida responded that the system is intended to run on security gateways/firewalls where SSL/TLS decryption or edge inspections are performed. Future work will investigate resolving devices obscured behind NATs and hubs.
+
+### 3. An Algebraic Framework for Source Address Validation
+*   **Presentation:** [Security and Privacy - An Algebraic Framework for Source Address Validation](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-security-an-algebraic-framework-for-source-address-validation-01)
+*   **Presenter:** Li Bin Liu
+*   **Discussion Summary:**
+    *   Li Bin Liu presented "SAV-A," the first algebraic framework designed to unify and analyze Source Address Validation (SAV) mechanisms.
+    *   The framework mathematically formalizes SAV states as a trust-level lattice with distinct aggregation and extension operators. This allows legacy SAV approaches—such as Strict, Loose, and Enhanced Feasible Unicast Reverse Path Forwarding (EFR-URPF)—as well as the newer SAVNET protocol to be modeled as specific instantiations of the same algebra.
+    *   Using this framework, the authors proved convergence to a unique least fixed point, analyzed correctness under asymmetric routing, and evaluated how the system behaves during topology changes. 
+    *   Evaluations across large-scale AS topologies demonstrated 100% agreement with real-world behavior and showed that a partial SAV deployment of 10% can successfully filter out 96.4% of spoofed traffic.
+*   **Q&A and Comments:**
+    *   Suresh Krishnan commended the formalization of SAV. Li Bin Liu invited interested working group members to participate in the SAVNET session.
+
+### 4. The Illusion of DDR Deployment
+*   **Presentation:** [Security and Privacy - The Illusion of DDR Deployment](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-security-and-privacy-the-illusion-of-ddr-deployment-00)
+*   **Presenter:** Yevgenia
+*   **Discussion Summary:**
+    *   Yevgenia presented an updated analysis of Discovery of Designated Resolvers (DDR) deployment among open resolvers.
+    *   While initial measurements suggested that roughly 300,000 open resolvers supported DDR, over 90% of those resolvers returned DDR records pointing to major public resolvers (e.g., Google or Cloudflare) rather than their own designated endpoints.
+    *   To investigate this discrepancy, the researcher added a forwarder-detection scan. The results confirmed that this "deployment" is an illusion caused by transparent DNS forwarders. Instead of handling queries for `_dns.resolver.arpa` locally (as mandated by the DDR specification), these forwarders pass queries upstream to public resolvers and return the unverified upstream DDR response to the client. 
+    *   In reality, only about 900 open resolvers have correctly deployed and configured DDR.
+*   **Q&A and Comments:**
+    *   Marco Davitz asked whether the research included client-side measurements, noting that he had struggled to get modern browsers to upgrade to encrypted DNS via a correctly configured local resolver. Yevgenia clarified her studies only measured resolver-side behaviors.
+    *   An unnamed Firefox developer thanked the presenter, stating that Firefox is actively implementing DDR and that knowing how many networks correctly match local IP addresses to their certificates is highly valuable.
+    *   Tommy Pauly asked if the scanning setup could detect whether intermediate networks were dropping or blocking DDR discovery records. Yevgenia replied that the current scanner design could not detect such path-blocking events.
+    *   Lohit Karyala asked about the frequency and consistency of the measurements. Yevgenia indicated she has run these scans weekly and monthly for three years, and the deployment numbers have remained statically flat. A researcher from the Hasso Plattner Institute also confirmed that their independent studies yielded identical findings.
+
+### 5. QUIC Meets Reality
+*   **Presentation:** [Security and Privacy - QUIC Meets Reality](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-security-and-privacy-quic-meets-reality-00)
+*   **Presenter:** Jayshree (on behalf of co-author Lohit Karyala)
+*   **Discussion Summary:**
+    *   This presentation was delivered by Jayshree after the initial presenter, Lohit Karyala, experienced severe audio connectivity issues.
+    *   The research evaluated the real-world deployment and performance of encrypted DNS protocols over QUIC, specifically DNS-over-QUIC (DoQ) and DNS-over-HTTP/3 (DoH3), within Indian access networks (focusing on major ISPs Jio and Airtel, alongside academic networks).
+    *   Using custom scanning tools (`QDNSscope` and `QDNSperf`), the study discovered 28 validated encrypted DNS resolvers in India across 13 ASNs and 18 ISPs. 
+    *   Among these, 18 supported DNS-over-HTTPS (DoH), 13 supported DoQ, and only 2 supported DoH3. Additionally, 82.1% of these resolvers possessed valid certificates, while the remainder used self-signed or expired certificates.
+    *   The geographic distribution of these resolvers was heavily skewed toward Western and Southern India, with almost no deployment in Eastern or Northern regions. Despite limited adoption, the measurements showed clear connection-startup and latency performance benefits for DoQ compared to standard DoH.
+*   **Q&A and Comments:**
+    *   Suresh Krishnan noted that the research currently relies on a single vantage point and asked about expanding the scope. Jayshree confirmed that evaluating performance from multiple heterogeneous vantage points is the primary focus of their future work.
+
+---
+
+## Next Steps
+
+*   **Unequal Cover:** Further studies are planned to assess geolocation anonymity and MPR deployment patterns across countries outside the United States.
+*   **Zero-Shot IoT Device Labeling:** The authors of Zelle will investigate methods for labeling IoT devices located behind NAT gateways or hubs.
+*   **DDR Deployment:** Browser and OS developers (including the Firefox security team) will leverage these findings to refine client-side validation logic when dealing with transparent forwarders that leak unverified DDR records.
+*   **QUIC in India:** The research team plans to scale their performance evaluation by utilizing multiple geographically distributed vantage points across Indian broadband and cellular networks.

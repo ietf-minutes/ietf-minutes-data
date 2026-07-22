@@ -1,0 +1,164 @@
+# [LAKE](../wg/lake.html)
+
+## Summary
+
+The LAKE Working Group met at IETF 126 to discuss progress on its active drafts, coordinate post-quantum transition efforts, and review formal verification results of its protocol specifications. 
+
+The group reached consensus to deprecate the expansion of the "EDHOC" acronym and transition to referring to the protocol as "the LAKE protocol" across ongoing documents. Key updates were presented on lightweight authorization, implementation considerations, application profiles, GREASE mechanisms, remote attestation, and pre-shared key (PSK) authentication. Additionally, the Post-Quantum EDHOC Design Team presented its final summary, followed by technical discussions on KEM-based and hybrid KEM/signature-based authentication methods and their corresponding formal verification models.
+
+---
+
+## Key Discussion Points
+
+### 1. Protocol Renaming Discussion
+Presented by Mališa Vučinić and Renzo Navas ([00-Chairs slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-00-chairs-slides-04))
+
+* **Context:** With the working group introducing post-quantum capabilities, "Ephemeral Diffie-Hellman Over COSE" (EDHOC) has become a misnomer. Externally, the protocol is increasingly referred to as "LAKE" or "LAKE/EDHOC". 
+* **Discussion:** 
+  * Göran Selander supported taking action, preferring a combination of deprecating the expansion while keeping the acronym and starting to use "LAKE" in terminology.
+  * Tero Kivinen noted that IEEE 802.15.9 recently published a specification using EDHOC, and expanding the full name was highly cumbersome. Transitioning to "LAKE" would simplify external standard references.
+  * John Preuß Mattsson agreed with using "LAKE" and deprecating the expansion of "EDHOC" but suggested that publishing an RFC 9528 bis immediately might be too heavy, proposing IANA registry updates instead.
+* **Polls:**
+  * *Which option on renaming do you prefer? — yes: 0, no: 0, no_opinion: 0 (total: 5)*
+  * *Do you agree on proceeding with both Option 2 (deprecate expansion, keep acronym EDHOC) and Option 3 (start using LAKE to refer to the protocol with a clarifying terminology sentence), as shown on the slide? — yes: 31, no: 0, no_opinion: 3 (total: 56)*
+
+### 2. Lightweight Authorization using EDHOC (ELA)
+Presented by Geovane Fedrecheski ([01-Lightweight Authorization using EDHOC](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-lightweight-authorization-using-edhoc-00))
+
+* **Updates in [draft-ietf-lake-authz](https://datatracker.ietf.org/doc/draft-ietf-lake-authz/):**
+  * Discussed a proposed flow to send voucher requests/responses on message 3 and 4. The authors decided to keep the ELA protocol within the LAKE WG rather than migrating it to the ACE WG because returning a credential on message 4 would not be viable.
+  * Fixed a CDDL bug in the Voucher Response where optional items of the same type in an array caused decoding ambiguity. The array was converted into a map.
+  * Addressed a query from Gabriel Lopez-Millan regarding returning detailed authorization information from W (authorizing side) to V (verification side) by adding a registerable field to the new map.
+  * Discussed whether to use the same ephemeral key for both ELA and EDHOC to save 32 bytes. The authors opted to keep separate ephemeral keys to ensure design homogeneity and simplify KEM-based implementations.
+* **Status:** The draft is considered highly stable and ready for Working Group Last Call (WGLC).
+
+### 3. Implementation Considerations for EDHOC
+Presented by Marco Tiloca ([02-20260720-lake-draft-ietf-lake-edhoc-impl-cons](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-20260720-lake-draft-ietf-lake-edhoc-impl-cons-00))
+
+* **Updates in [draft-ietf-lake-edhoc-impl-cons](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-impl-cons/):**
+  * Version -07 addresses WGLC comments from Brian, Rickard, and others.
+  * Added Section 3 on the "Retention of completed EDHOC sessions" explaining when completed sessions should be discarded or kept.
+  * Clarified that an EID field can contain multiple EID items.
+  * Added a compact table summarizing trust policies.
+  * Added considerations for handling error messages in completed sessions to prevent availability/denial-of-service attacks. Once a responder successfully processes message 3, matching error messages can be safely ignored (unless message 4 is used).
+  * John Preuß Mattsson agreed with the clarifications on handling errors for completed sessions.
+
+### 4. Coordinating the Use of Application Profiles for EDHOC
+Presented by Marco Tiloca ([03-20260720-lake-draft-ietf-lake-app-profiles](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-20260720-lake-draft-ietf-lake-app-profiles-01))
+
+* **Updates in [draft-ietf-lake-app-profiles](https://datatracker.ietf.org/doc/draft-ietf-lake-app-profiles/):**
+  * Addressed WGLC comments from Yuxuan Song, Brian, Geovane Fedrecheski, Elsa Perez, and Gabriel Lopez-Millan.
+  * Clarified the purpose of the `uprof` parameter.
+  * Provided CDDL extraction instructions using regex and made the CDDL more pluggable.
+  * Added a new boolean parameter `PSK resumption` to explicitly indicate resumption support.
+  * Renamed the new error code to "unspecified error and supported EDHOC application profiles".
+  * Resolved a code point conflict raised during IANA review on GitHub.
+* **Status:** The draft will proceed to the IESG but will wait in the RFC Editor queue for its normative references ([draft-ietf-lake-edhoc-psk](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-psk/) and others).
+
+### 5. GREASE to EDHOC Extensibility
+Presented by Christian Amsüss ([04-GREASE](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-04-grease-00))
+
+* **Updates in [draft-ietf-lake-edhoc-grease](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-grease/):**
+  * Addressed comments from Marco Tiloca and Mailing.
+  * Discussed preventing hardcoded GREASE-filtering by adding more EAD items with identical semantics over time.
+  * Diverged from TLS GREASE specifications: allowed automated retries for GREASE failures in IoT environments since headless devices require connectivity to report failure states.
+  * Clarified that GREASE failure reporting should go to the operator (e.g., via CoAP) rather than being public/automated, due to privacy concerns.
+  * Recommended using the cryptographically secure random source already available in EDHOC.
+  * Decided against adding test vectors as no new cryptographic primitives are introduced.
+  * Investigating alignment with the IAB on treating "Grease" as a standard word rather than an acronym.
+
+### 6. Remote Attestation over EDHOC
+Presented by Yuxuan Song ([05-Remote Attestation over EDHOC](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-remote-attestation-over-edhoc-00))
+
+* **Updates in [draft-ietf-lake-ra](https://datatracker.ietf.org/doc/draft-ietf-lake-ra/):**
+  * Versions -04 and -05 reduced dimensions from three to two (Target: Initiator/Responder; Model: Background Check/Passport).
+  * Supports both intra-handshake (evidence in message 3) and post-handshake (evidence in message 4) attestation.
+  * Defined unique authorization binders: post-handshake utilizes the EDHOC exporter; intra-handshake utilizes key derivation bound to the hash of previous messages and the identity credential.
+  * Section 5.1 and 5.2 subsections will be removed to avoid redundancy.
+* **Attestation Discussion & Debate:**
+  * Muhammad Usama Sardar questioned the utility of intra-handshake attestation, arguing that attestation is a point-in-time check that must be run repeatedly (post-handshake), rendering intra-handshake attestation redundant and potentially vulnerable to attacks similar to Attested TLS (referencing CVE-2026-33697).
+  * Göran Selander clarified that certain use cases, like smart physical locks, trigger a full handshake on every interaction, making concurrent authentication and attestation inside the handshake highly relevant.
+  * Muhammad Usama Sardar requested access to the authors' open-source implementation to demonstrate a concrete attack trace. Yuxuan Song agreed to share the implementation offline once it has been reviewed.
+  * Mališa Vučinić noted that the working group previously designated an independent reviewer (Vaishnavi Sundararajan) to evaluate the formal analysis claims, but artifacts had not been provided by Muhammad Usama Sardar. Muhammad Usama Sardar noted he is willing to provide the ProVerif artifacts once his paper is accepted, but urged the WG to focus on evaluating the concrete implementation directly.
+
+### 7. EDHOC Authenticated with Pre-Shared Keys (PSK)
+Presented by Elsa Perez ([06-EDHOC with Pre-Shared Key Authenticaation draft-ietf-lake-edhoc-psk-07 (slides-126-lake-edhoc-with-pre-shared-key-authenticaation-draft-ietf-lake-edhoc-psk-07)](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-06-edhoc-with-pre-shared-key-authenticaation-draft-ietf-lake-edhoc-psk-07-slides-126-lake-edhoc-with-pre-shared-key-authenticaat-00))
+
+* **Updates in [draft-ietf-lake-edhoc-psk](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-psk/):**
+  * Associated the PSK with a hash function rather than a full cipher suite to allow cipher suite agility without requiring PSK reprovisioning.
+  * Configured PSK resumption configuration via application profiles. Set the default key identifier (`kid`) length to 2 bytes to balance collision probability with network overhead.
+  * Clarified that using by-reference identities minimizes overhead.
+  * Specified that when combined with OSCORE, message 4 is still required for responder authentication, and the responder is not authenticated until the OSCORE response is verified.
+  * Clarified that post-compromise security applies to PSK resumption with key rotation, but not when using long-lived external PSKs without rotation.
+  * Updated test vectors to reflect the 2-byte key identifier.
+  * Discussed adding an optional identity hint in message 2 to assist the initiator in selecting the correct PSK (similar to TLS 1.2).
+* **Discussion on Identity Hints:**
+  * Jonathan Hoyland cautioned that identity hints could introduce key-confusion/binding attacks if not carefully bound to the key state.
+  * John Preuß Mattsson noted that incorporating the hint as an External Authorization Data (EAD) item (Option 1) would be least disruptive to the current draft and its formal verification.
+
+### 8. Formal Verification of EDHOC-PSK with Ephemeral KEM
+Presented by Clement ([07-EDHOC-PSK with Ephemeral KEM: a Formal Verification using Sapic+](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-edhoc-psk-with-ephemeral-kem-a-formal-verification-using-sapic-00))
+
+* **Verification of [draft-ietf-lake-edhoc-psk](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-psk/) under PQC:**
+  * Evaluated replacing Ephemeral Diffie-Hellman with an Ephemeral KEM in the symbolic model using Sapic+ and Tamarin/ProVerif backends.
+  * Modeled KEMs using two approaches: a classical model (similar to symmetric encryption) and a theoretical model (incorporating structured randomness).
+  * Verified key security properties, including session key secrecy, mutual authentication, injective agreement, and resistance to key-share attacks.
+  * Muhammad Usama Sardar asked about the new insights gained. Clement and Vaishnavi Sundararajan clarified that this confirms classic EDHOC security properties carry over safely when replacing Diffie-Hellman with KEMs in a post-quantum environment.
+
+### 9. Post-Quantum EDHOC Design Team Summary
+Presented by Renzo Navas ([08-PQ-EDHOC-DT-Summary-IETF126Presentation](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-08-pq-edhoc-dt-summary-ietf126presentation-00))
+
+* **Summary of Design Team Outputs:**
+  * **Objective 1 (Scenarios):** Conducted empirical evaluations of memory (RAM/flash), link-layer MTU, and bit-rate constraints. PSK and KEM-based authentication demonstrated the lowest memory overhead (suitable for Class 1 devices), while signature-based methods reduced wire size but heavily increased CPU usage.
+  * **Objective 2 (PQC Cipher Suites):** Recommended the adoption of [draft-ietf-lake-pqsuites](https://datatracker.ietf.org/doc/draft-ietf-lake-pqsuites/) (defining suites 4, 5, 6).
+  * **Objective 3 (KEM Authentication):** Recommended the adoption of [draft-ietf-lake-authkem-edhoc](https://datatracker.ietf.org/doc/draft-ietf-lake-authkem-edhoc/).
+  * **Objective 4 (CFRG Input):** Identified the need to advise CFRG on compact PQC schemes for heavily constrained links.
+
+### 10. KEM-based Authentication for EDHOC
+Presented by Lydia ([09-KEM-based Authentication for EDHOC](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-8-kem-based-authentication-for-edhoc-00))
+
+* **Overview of [draft-ietf-lake-authkem-edhoc](https://datatracker.ietf.org/doc/draft-ietf-lake-authkem-edhoc/):**
+  * Specifies a signature-free, post-quantum secure authentication method using KEMs.
+  * Reuses ephemeral KEM keys to handle mutual authentication, reducing CPU and memory overhead for Class 1 devices.
+  * Integrates KEM shared secrets directly into the session state (Noise-style).
+* **Discussion:**
+  * Addressed IANA comments from Brian, John Preuß Mattsson, and Marco Tiloca. COSE algorithm registrations will be managed in the COSE WG, and EDHOC cipher suite registrations will be offloaded to [draft-ietf-lake-pqsuites](https://datatracker.ietf.org/doc/draft-ietf-lake-pqsuites/). This draft will only retain the EDHOC method registrations.
+  * Eric Anderlind suggested considering unilateral authentication to reduce message flights. Lydia noted that unilateral mode degrades security properties and requires stronger use-case justification before being adopted.
+  * Christian Amsüss and Marco Tiloca are collaborating with the authors to evaluate whether message 5 can be made optional, similar to message 4 in classical EDHOC.
+
+### 11. Formal Verification of KEM-based Authentication
+Presented by Vaishnavi Sundararajan ([10-Formal-verification-of-EDHOC-with-KEM-based-authentication](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-09-formal-verification-of-edhoc-with-kem-based-authentication-01))
+
+* **Verification of [draft-ietf-lake-authkem-edhoc](https://datatracker.ietf.org/doc/draft-ietf-lake-authkem-edhoc/):**
+  * Formally analyzed the KEM-based authentication draft using ProVerif and Tamarind.
+  * Evaluated three KEM modeling options: KEM TLS model, the Jacob et al. model, and the Cremers et al. "Keeping up with the KEMs" Tamarind library.
+  * Successfully verified session key confidentiality, mutual authentication, injective agreement, PFS, and initiator identity protection. Responder identity is only protected against passive adversaries.
+* **Discussion:**
+  * Muhammad Usama Sardar asked if different KEM models yielded different security properties. Vaishnavi Sundararajan replied that both models yielded identical security results, though the second model terminated faster during verification.
+  * Thom Wiggers added that while the second model lacks an explicit binding of the public key to the shared secret (which can lead to attacks in some protocols), EDHOC's use of a full transcript hash prevents such vulnerabilities, ensuring security across both models.
+
+### 12. Hybrid KEM/Signature-Based Methods
+Presented by Lydia ([11-KEM/Signature-Based Methods](https://datatracker.ietf.org/meeting/126/materials/slides-126-lake-10-kemsignature-based-methods-00))
+
+* **Overview:** Proposed an asymmetric authentication scheme where a highly constrained device authenticates using a KEM (avoiding expensive PQC signature generation), while the less constrained peer authenticates using PQC signatures (e.g., Falcon or ML-DSA).
+* **Discussion:** Göran Selander supported this approach, stating that handling asymmetric constraints (both Chem-Sig and Sig-Chem) is highly relevant for real-world deployments and should be prioritized over unilateral authentication.
+
+---
+
+## Decisions and Action Items
+
+* **Decision (Renaming):** The WG agreed to deprecate the "EDHOC" acronym expansion and transition to "LAKE" to refer to the protocol (adopting Options 2 and 3). Document editors must update ongoing drafts to use "the LAKE protocol" and include a clarifying sentence in their terminology sections.
+* **Decision (ELA):** The ELA protocol will remain in the LAKE WG rather than being transferred to ACE.
+* **Action Item (Chairs):** Initiate Working Group Last Call (WGLC) for [draft-ietf-lake-authz](https://datatracker.ietf.org/doc/draft-ietf-lake-authz/).
+* **Action Item (Chairs):** Assign a document shepherd for [draft-ietf-lake-edhoc-impl-cons](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-impl-cons/) to progress it to the IESG.
+* **Action Item (Attestation Team):** Yuxuan Song and the attestation draft authors will share their open-source implementation with Muhammad Usama Sardar offline to validate his proposed attack claims.
+* **Action Item (AuthKEM Team):** Lydia to update [draft-ietf-lake-authkem-edhoc](https://datatracker.ietf.org/doc/draft-ietf-lake-authkem-edhoc/) to remove COSE algorithm and cipher suite registrations, pointing to the COSE WG and [draft-ietf-lake-pqsuites](https://datatracker.ietf.org/doc/draft-ietf-lake-pqsuites/) respectively.
+
+---
+
+## Next Steps
+
+* **[draft-ietf-lake-app-profiles](https://datatracker.ietf.org/doc/draft-ietf-lake-app-profiles/):** Will wait in the RFC queue as part of a publication cluster due to normative dependencies.
+* **[draft-ietf-lake-edhoc-grease](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-grease/):** Christian Amsüss to evaluate aligning terminology with IAB GREASE specifications (treating "Grease" as a standard word rather than an acronym).
+* **[draft-ietf-lake-edhoc-psk](https://datatracker.ietf.org/doc/draft-ietf-lake-edhoc-psk/):** Authors will publish a new version incorporating WGLC feedback and the outcome of the identity hint discussions.
+* **KEM/Signature Hybrid Methods:** The working group will continue discussing the asymmetric KEM/Signature proposal on the mailing list to gauge interest for future adoption.

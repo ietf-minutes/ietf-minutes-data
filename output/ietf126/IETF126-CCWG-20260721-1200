@@ -1,0 +1,144 @@
+# [CCWG](../wg/ccwg.html)
+
+## Summary
+
+The Congestion Control Working Group (CCWG) met at IETF 126 to discuss updates on hackathon interoperability efforts, active working group drafts, and experimental proposals. The session kicked off with updates from the IETF 126 Hackathon, showcasing successful integrations of `picoquic` into `ns-3` and L4S interoperability testing. The group then reviewed progress on the active working group drafts: BBR Congestion Control (`draft-ietf-ccwg-bbr`) and SCReAMv2 (`draft-ietf-ccwg-rfc8298bis-screamv2`). This was followed by presentations and real-world experimental results for SEARCH (`draft-chung-ccwg-search`) in Firefox, and a progress update on the C4 congestion control algorithm.
+
+---
+
+## Key Discussion Points
+
+### 1. Hackathon Updates
+* **Presentation**: [IETF 126 Hackathon Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-ccwg-ietf-126-hackathon-update-00)
+* **Presenters**: Mohit P. Tahiliani and Abhishuddhay
+
+* **Key Achievements**:
+  * Evaluated FQ-PIE and FQ-CoDel in mobile hotspot and Wi-Fi access point scenarios. Initial observations indicated that FQ-PIE's tail latency and jitter were slightly better than FQ-CoDel, though median latencies were similar.
+  * Successfully completed the integration of Christian Huitema's `picoquic` library into `ns-3` using a thin wrapper, which supports multipath QUIC simulation.
+  * Submitted and merged a patch to FreeBSD to align Proportional Rate Reduction (PRR) with RFC 6937.
+  * Open-sourced models for Ledbat++ and Rledbat in `ns-3` (currently open for review), and built a native FLENT-like bufferbloat testing application in `ns-3`.
+
+* **Discussion**:
+  * **Rafael** asked about the difficulty of maintaining the `picoquic` wrapper as the library evolves. **Mohit P. Tahiliani** and **Abhishuddhay** clarified that the wrapper is very thin and independent; unless public API signatures change significantly, internal `picoquic` updates will not break the integration.
+  * **Alessandro Ghedini** asked about the effort required to integrate other QUIC libraries like `MsQuic` into `ns-3`. **Mohit P. Tahiliani** noted that libraries with different threading models (e.g., multi-threaded `MsQuic` versus single-threaded `picoquic`) present unique integration challenges.
+
+---
+
+### 2. Hackathon - L4S Interoperability
+* **Presentation**: [Hackathon - L4S Interop](https://datatracker.ietf.org/meeting/126/materials/slides-126-ccwg-hackathon-l4s-interop-00)
+* **Presenter**: Greg White
+
+* **Key Achievements**:
+  * Continued testing of the SCReAM integration with `LibwebRTC`.
+  * Tested the Netflix Network Delivery Time Control (NDTC) congestion controller.
+  * Tested Apple's responsiveness tool in L4S mode.
+  * Prepared for testing of the SRM network configuration and the latest `iPerf2` Android client.
+
+---
+
+### 3. BBR Congestion Control (BBRv3)
+* **Presentation**: [BBRv3](https://datatracker.ietf.org/meeting/126/materials/slides-126-ccwg-bbrv3-00)
+* **Presenter**: Ian Swett
+* **Relevant Draft**: [draft-ietf-ccwg-bbr](https://datatracker.ietf.org/doc/draft-ietf-ccwg-bbr/)
+
+* **Key Updates**:
+  * Clarified timestamp accuracy, aligned pseudocode with the normative text, and improved TCP undo logic definitions.
+  * Introduced **Precautionary Bandwidth Probing**: designed to reduce queue pressure and packet loss. If BBR experiences excess loss during a probe, the next time it enters `PROBE_UP`, it only probes up to the safe long-term inflight limit (`inflight_lo`), drains the queue, and verifies path safety before proceeding. This has been implemented in open-source Linux BBRv3 since 2019.
+  * A 15-case test suite has been added to the draft to help implementers validate their code.
+
+* **Open Issues**:
+  * Changing the `ProbeRTT` interval to 10 seconds (from 5 seconds) can cause the `MinRTT` filter to expire right as `ProbeRTT` is entered, artificially inflating the target congestion window. Two potential mitigations are being considered: extending the filter length or saving the `MinRTT` value prior to entering `ProbeRTT`.
+
+* **Discussion**:
+  * **Altanai** asked if precautionary probing is optional or mandatory. **Ian Swett** and **Neal Cardwell** confirmed it is intended to be mandatory, as it significantly improves fairness and queue health with minimal code complexity.
+  * **Alessandro Ghedini** shared that Cloudflare is increasingly enabling its QUIC BBR implementation on production traffic.
+
+---
+
+### 4. SCReAM v2
+* **Presentation**: [SCReAM v2](https://datatracker.ietf.org/meeting/126/materials/slides-126-ccwg-scream-v2-00)
+* **Presenter**: Magnus Westerlund
+* **Relevant Draft**: [draft-ietf-ccwg-rfc8298bis-screamv2](https://datatracker.ietf.org/doc/draft-ietf-ccwg-rfc8298bis-screamv2/)
+
+* **Key Updates**:
+  * Replaced the queue delay deviation estimation with a simpler average of short and long-term values to improve robustness against clock drift.
+  * Introduced an adaptive reference window overhead that restricts bytes in flight when the path is congested but allows more aggressive behavior when uncongested.
+  * Optimized handling of reference window undershoot to prevent over-aggressive window reductions when the application bitrate drops.
+  * Added link-layer loss robustness: window reduction on loss is ignored if the loss rate is below a 1% threshold and queue delay is low, preventing spurious drops on lossy links.
+
+* **Discussion**:
+  * **Christian Huitema** expressed concern over the use of loss thresholds, warning that ignoring low-level packet loss impacts competing flows and invalidates classic-to-L4S transition modeling (which assumes every packet loss triggers a window reduction). He suggested the WG produce a draft to align on loss threshold behaviors. **Mirja Kühlewind** agreed that aligning BBR and SCReAM loss thresholds is a good idea.
+  * **Neal Cardwell** and **Stuart Cheshire** advised against implementing explicit network rate policer detection, recommending instead that the core congestion control algorithm naturally respond to packet loss in a way that behaves acceptably under policed environments.
+  * On documenting the evaluation criteria in RFC 9743, **Gorry Fairhurst** and **Martin Duke** suggested that a separate WG report or internal wiki page is preferable to a massive document appendix.
+
+---
+
+### 5. SEARCH Updates
+* **Presentation**: [SEARCH Updates on SS Exit Signal Quality and Draining Phase](https://datatracker.ietf.org/meeting/126/materials/slides-126-ccwg-search-updates-on-ss-exit-signal-quality-and-draining-phase-00)
+* **Presenter**: Jay
+* **Relevant Draft**: `draft-chung-ccwg-search`
+
+* **Key Updates**:
+  * **Signal Quality Analysis**: Explained why SEARCH uses normalized delivery rate difference rather than RTT inflation as an exit signal. Delivery rate SNR (Signal-to-Noise Ratio) increases prior to hitting the BDP (Bandwidth-Delay Product) and remains high, whereas RTT inflation is highly susceptible to noise.
+  * **Draining Phase**: Introduced a gradual draining phase upon slow start exit. Instead of immediately slashing the congestion window (which can disrupt fast retransmit), the sender slowly drains the excess queue by reducing the window by 1 packet for every 3 packets acknowledged.
+
+* **Discussion**:
+  * **Christian Huitema** pointed out that rate calculations rely on RTT measurements, meaning RTT jitter still impacts the accuracy of the delivery rate signal. He also noted that focusing solely on the slow start exit point is insufficient if the subsequent congestion avoidance phase is too slow to recover on high-BDP paths.
+  * **Neal Cardwell** asked how SEARCH handles application-limited flows. **Jay** explained that SEARCH uses SNR to verify signal confidence; if the SNR is low (as with app-limited flows), the algorithm will not trigger a slow start exit.
+
+---
+
+### 6. Firefox QUIC Slow Start Experiments
+* **Presentation**: [Firefox QUIC Slow Start Experiments (Classic/SEARCH/HyStart++) v2 with bonus plots](https://datatracker.ietf.org/meeting/126/materials/slides-126-ccwg-firefox-quic-slow-start-experiments-classicsearchhystart-v2-with-bonus-plots-00)
+* **Presenter**: Oscar
+
+* **Experiment Details & Metrics**:
+  * Firefox implemented SEARCH and HyStart++ in its `neqo` QUIC stack and conducted A/B/C testing on production release traffic.
+  * Over 91% of connections were entirely app-limited and never grew their congestion window. Of the remaining flows, only 4.42% exited slow start.
+  * Heuristic exit rates: Classic (0%), HyStart++ (2.5%), SEARCH (12.6%). Most exits were triggered by actual congestion events (loss/ECN), not the heuristics.
+  * SEARCH demonstrated a lower packet loss ratio in the 95th and 99th percentiles compared to HyStart++ and Classic, though throughput metrics remained inconclusive.
+  * In the lower percentiles, SEARCH frequently exited slow start at very low ssthresh values, suggesting it may suffer from premature exits when encountering application-limited transmission patterns.
+
+* **Discussion**:
+  * **Matt Joras** suggested looking at browser-level metrics, such as page load time or request completion time, to evaluate user-visible impacts.
+  * **Mirja Kühlewind** suggested measuring the time-to-exit normalized by RTT.
+  * **Kazuho Oku** commented that the data might be skewed because only connections experiencing losses on lower-BDP paths are fully captured in the exit distribution.
+
+---
+
+### 7. Updating C4
+* **Presentation**: [Updating C4 (Christian’s CC Code)](https://datatracker.ietf.org/meeting/126/materials/slides-126-ccwg-updating-c4-christians-cc-code-00)
+* **Presenter**: Christian Huitema
+
+* **Key Updates**:
+  * Created a dedicated **Careful Resume** state to store and test prior path parameters safely over two RTTs, simplifying debugging.
+  * Added **Continuous Pushing**: If a probing cycle is predicted to succeed, the algorithm enters an exponential push state (+25%) instead of waiting an entire RTT, drastically improving recovery times.
+  * Optimized **Persistent Congestion Response**: If two congestion backsteps occur consecutively, C4 immediately drops its sending rate to the measured link capacity rather than stepping down incrementally.
+  * Implemented an **Initial Startup Pacing Floor** of 1 Mbps to prevent flows from getting stuck on short RTT paths.
+
+---
+
+## Session Polls
+
+The following polls were taken during the session regarding `draft-chung-ccwg-search`:
+
+* **Poll 1**: *I have read a version of draft-chung-ccwg-search*
+  * **Yes**: 10
+  * **No**: 41
+  * **No Opinion**: 2
+  * **Total**: 86
+
+* **Poll 2**: *I have implemented or am planning to implement a version of SEARCH*
+  * **Yes**: 5
+  * **No**: 33
+  * **No Opinion**: 6
+  * **Total**: 86
+
+---
+
+## Next Steps
+
+* **draft-ietf-ccwg-bbr**: Implementers and authors will coordinate PRs to resolve the ProbeRTT/MinRTT overlap issue and implement the precautionary bandwidth probing mechanism in QUIC stacks.
+* **draft-ietf-ccwg-rfc8298bis-screamv2**: Complete ongoing field evaluations of SCReAM L4S in WebRTC (with Google) and draft a report assessing the algorithm against the RFC 9743 evaluation criteria.
+* **draft-chung-ccwg-search**: Authors will refine the algorithm's SNR detection to prevent premature slow start exits during application-limited periods, utilizing feedback from the Firefox experiments.
+* **C4**: Christian Huitema will expand simulation scenarios to evaluate performance over satellite networks, with larger bottlenecks (20x BDP), and under active RED/ECN AQMs.

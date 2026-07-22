@@ -1,0 +1,142 @@
+# [LSR](../wg/lsr.html)
+
+## Summary
+
+The Link State Routing (LSR) Working Group met at IETF 126. The session covered working group status updates, including document progression, followed by presentations and technical discussions on power-aware routing, security/replay protection, database synchronization, active measurement provisioning, traffic engineering for microbursts, distributed congestion mitigation, egress protection, and process ID verification.
+
+---
+
+## Key Discussion Points
+
+### 1. WG Status Update
+* **Presenters**: Yingzhen Qu and Acee Lindem
+* **Slides**: [01-LSR_Status](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-01-lsr-status-00)
+* **Key Points**:
+  * One RFC has been published since the last meeting, and several drafts are on the queue.
+  * `draft-ietf-lsr-distoptflood` is expected to be scheduled for an IESG telechat in the near future.
+  * A new document on Flex-Algo was recently adopted.
+  * Work on YANG conformance documents continues. Authors are encouraged to integrate YANG sections directly within protocol drafts to keep models concurrent with protocol changes.
+
+### 2. Using IS-IS to Advertise Power Groups
+* **Presenter**: Ron Bonica
+* **Slides**: [02-Using IS-IS to Advertise Power Groups](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-using-is-is-to-advertise-power-groups-00)
+* **Key Points**:
+  * The presentation covered IS-IS support for the Power Conserving Path Placement Strategy (PCPPS). During low-demand periods, PCPPS concentrates traffic onto a minimum set of links and nodes, allowing idle resources to be powered down.
+  * *Changes in version 02*: No longer assumes powered-down components consume zero power; instead, it models "power savings potential" (based on feedback from Carlos Pignataro). Power group structural modeling has been shifted to the companion TEAS draft, keeping this LSR draft focused purely on IS-IS advertisements.
+  * *Code points/Adoption Ask*: The authors requested working group adoption and early code point allocation to aid running implementations.
+* **Discussion**:
+  * Peter Psenak suggested exploring how Flexible Algorithms (Flex-Algo) could interact with PCPPS.
+  * Zafar raised concerns about the abstract hierarchy of the power groups, questioning if vendor-specific hardware behaviors can be accurately modeled. Ron Bonica invited Zafar to provide a hardware model that the abstraction cannot support so it can be adapted. Zafar agreed to coordinate offline.
+  * Tony Li noted that coordination with the Green Working Group showed no overlapping conflicts, and standard-track progression is recommended as some customers value power-management features over pure functionality.
+  * Vishnu Beeram noted in the chat that the companion draft (`draft-many-teas-power-steering`) was scheduled for discussion in the TEAS WG later that week.
+* **Poll**:
+  * A poll was taken on whether to adopt the draft:
+    * *Do you object adopting the draft? — yes: 10, no: 20, no_opinion: 4 (total: 67)*
+  * *Poll Discussion*: Zafar objected to adoption, arguing that the underlying TEAS modeling work should stabilize first. Tony Li countered that modeling objections are relevant to the TEAS WG, not the transport mechanics in LSR. Acee Lindem supported adopting the draft, noting the simplicity of the IGP extensions.
+
+### 3. IS-IS Replay Protection
+* **Presenter**: Tony Przygienda
+* **Slides**: [03-lsr-timestamp](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-lsr-timestamp-00)
+* **Key Points**:
+  * The draft was renamed to focus on replay protection, and the YANG database checksum mechanism was split into a separate document.
+  * Replay protection using nonces on Hello messages is feasible but creates MTU/fragmentation problems for LSP flooding. Therefore, a timestamp-based approach is proposed.
+  * To handle clock synchronization, the draft introduces a "proxy clock" mechanism. This enables nodes that lack NTP access to derive a proxy clock from NTP-synchronized neighbors.
+  * The mechanism defines "small delta" (maximum skew for Hello validation) and "large delta" (skew for LSP flooding). It also defines LSP and purge acceptance rules to prevent sequence number/lifetime attacks.
+* **Discussion**:
+  * Acee Lindem remarked that while OSPF has replay protection (via HMAC specifications), this represents the first comprehensive proposal for IS-IS.
+  * Les Ginsberg pointed out that IS-IS replay protection is already covered under RFC 7602 (using cryptographic sequence numbers) and noted that historical working group discussions concluded LSPs do not require replay protection. Les Ginsberg agreed to post relevant historical threads and carp-related links to the mailing list.
+  * Peter Psenak and Acee Lindem cautioned about the complexity of introducing tight time-synchronization dependencies in IGPs, noting that NTP drift could cause valid LSPs to be erroneously discarded. Tony Przygienda acknowledged that while NTP drift widens the attack window (the "large delta" must be several seconds), it avoids the need for complex L2 fragmentation.
+
+### 4. Aggregated SNP Hashes (ASH)
+* **Presenter**: Tony Przygienda
+* **Slides**: [04-ash-00](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-ash-00-00)
+* **Key Points**:
+  * Formerly known as Hierarchical CSNP, the draft introduces Aggregated SNP Hashes (ASH). It establishes Complete Aggregated Hash (CACH) and Partial Aggregated Hash (PACH) packets, designed to operate similarly to CSNP and PSNP.
+  * The draft transitioned to using 64-bit SipHash (Sip1-3) to eliminate collision risks.
+  * Simulations of large link-state databases (up to 100k fragments) demonstrate a reduction of up to 92% in the number of synchronization packets transmitted.
+* **Discussion**:
+  * Acee Lindem clarified the packet savings. Tony Przygienda explained that the 92% savings represents the overhead reduction compared to transmitting full CSNPs.
+  * In response to a question on the simulated database churn, Tony Przygienda stated the modeling assumed standard lifetime refreshes combined with a 1-2% hourly LSP churn.
+
+### 5. IGP Active Measurement Group
+* **Presenter**: Acee Lindem
+* **Slides**: [05 - IGP Active Measurement Group](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-igp-active-measurement-group-01)
+* **Key Points**:
+  * This proposal aims to automatically provision active measurement sessions (such as STAMP or TWAMP) through the IGP, similar to Seamless BFD.
+  * *Changes*: Added a Group ID (currently 8-bit, with considerations to expand to 16-bit) to cluster groups of IGP routers. The protocol selection bitmap was also simplified to a single 8-bit active measurement protocol identifier per sub-TLV.
+* **Discussion**:
+  * Rakesh Gandhi noted that STAMP lacks control channel signaling to convey reflector parameters to the sender. He mentioned that Cisco is working on resolving this using IGP and BGP extensions and suggested coordinating these efforts. Acee Lindem agreed to initiate offline discussions to align the solutions.
+
+### 6. IS-IS Traffic Engineering Extensions for Microburst
+* **Presenter**: Tianyang Yang
+* **Slides**: [06-IS-IS Traffic Engineering Extensions for Microburst](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-06-is-is-traffic-engineering-extensions-for-microburst-02)
+* **Key Points**:
+  * Microbursts are transient traffic spikes that cause packet loss despite low average link utilization.
+  * The draft proposes extending IS-IS, OSPF, and BGP-LS to advertise real-time microburst metrics (e.g., burst count, drop rate, queue depths) to SDN controllers for path optimization.
+* **Discussion**:
+  * Acee Lindem asked how controllers or head-ends would map these generic microburst events to specific traffic flows to perform intelligent path pruning.
+  * Tony Li questioned the lack of concrete operational guidelines on throttling the frequency of these metric advertisements to avoid flooding the IGP.
+  * Tony Przygienda, Robert Raszuk (via chat), and Jeff Tantsura raised strong objections to flooding high-frequency telemetry data through the routing control plane. Jeff Tantsura stated that routing protocols operate too slowly for real-time microburst mitigation and suggested that mechanisms like IPFIX are more appropriate for transporting this telemetry.
+
+### 7. Distributed Congestion Mitigation (DCM) for Flex-Algo
+* **Presenter**: Peter Psenak
+* **Slides**: [07-ISIS_DCM_IETF_126](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-isis-dcm-ietf-126-00)
+* **Key Points**:
+  * DCM is an informational proposal to mitigate long-lived congestion by distributedly offloading small increments of traffic onto a congestion-free Flex-Algo topology.
+  * It employs two distinct link affinities: a "congestion affinity" to exclude a link from the offload topology, and a "high-utilization affinity" to signal neighboring nodes to stop routing additional offload traffic over that link to prevent further congestion.
+* **Discussion**:
+  * Acee Lindem asked why a separate Flex-Algo is needed rather than incorporating congestion metrics into a single algorithm. Peter Psenak explained that splitting the topologies guarantees a safe, congestion-free backup path without altering the primary routing path.
+  * John (Huawei) raised concerns regarding frequent SPF computations triggered by transient microbursts. Peter Psenak clarified that the high-utilization affinity does not change the topology, thereby avoiding excessive SPF calculations.
+  * Ka (Huawei) expressed concern over hardware limits on the number of concurrent Flex-Algos. Peter Psenak replied that networks typically deploy very few algorithms, and DCM is intended to be applied selectively (e.g., only to best-effort traffic).
+  * Wei Chang questioned how long-lived congestion is distinguished from microbursts. Peter Psenak explained that sampling intervals are configured for tens of seconds (e.g., 30–60 seconds) to filter out short spikes.
+  * Ji (Huawei) asked about standardization. Peter Psenak stated that while DCM relies on existing protocol machinery, standardizing the high-utilization affinity behavior is necessary to ensure multi-vendor interoperability.
+  * Jeff Tantsura asked if ECN or other local queue-marking mechanisms were considered. Peter Psenak clarified that DCM is designed for WAN environments where fast, data-center-style reaction times are not required.
+
+### 8. SRv6 Egress Protection IGP Encoding
+* **Presenter**: Tao
+* **Slides**: [08-srv6-mirror-sid-igp-encoding](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-8-srv6-mirror-sid-igp-encoding-02)
+* **Key Points**:
+  * This draft defines the IS-IS and OSPFv3 encodings for the SRv6 egress protection mechanism (the companion architectural work lives in the RTGWG).
+  * It advertises the Mirror SID (End.M behavior, type 74) and its protected locators at a locator-level granularity.
+  * It reuses the SRv6 Locator TLV and SRv6 End.SID sub-TLV, adding a new "Protected Locators" sub-sub-TLV.
+* **Discussion**:
+  * Acee Lindem noted that previous comments regarding sub-TLV reuse had been addressed. Since the companion routing working group draft is maturing, he suggested initiating a working group adoption call for this encoding draft soon.
+
+### 9. IGP Originator Sequence Number Checksum (OSNC)
+* **Presenter**: Shraddha Hegde
+* **Slides**: [09-hegde-lsr-isis-osnc-00](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-draft-hegde-lsr-isis-osnc-00-00)
+* **Key Points**:
+  * As routing information (such as SRv6 SIDs) is added, attributes can overflow, forcing data to shift into new LSP fragments.
+  * Due to the asynchronous nature of flooding, receivers may process these fragments out of order, leading to transient route flaps or false adjacency-down states.
+  * The draft proposes a new Originator Sequence Number Checksum (OSNC) TLV, carrying a 64-bit SipHash computed across all self-originated fragments. Receivers delay processing database updates until the checksum matches, or until a configurable guard timer expires.
+* **Discussion**:
+  * Shraddha Hegde noted feedback from Les Ginsberg regarding scenarios where a mismatch persists because only some fragments are updated. The authors plan to introduce a global transaction ID and flags to specify when fragments are shifting information, which will resolve these corner cases.
+
+### 10. IS-IS Process Verification
+* **Presenter**: Zohua
+* **Slides**: [11-isis-process-verification](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsr-draft-hu-lsr-isis-process-verification-00)
+* **Key Points**:
+  * When multiple IS-IS process instances run on a single router, process IDs are locally significant. If misconfigured at boundary nodes, routing loops can occur even though adjacencies remain up.
+  * The draft proposes two options to verify process ID consistency before establishing adjacencies:
+    * *Option A*: A new Process ID TLV carried directly in IS-IS Hellos.
+    * *Option B*: Extending the existing Instance Identifier TLV (RFC 8202) with a Process ID sub-TLV.
+* **Discussion**:
+  * Les Ginsberg strongly objected to the proposal, stating that IS-IS already uses area addresses to prevent incorrect adjacency formations. He emphasized that process IDs are operating system constructs and do not belong in routing protocol packets.
+  * Tony Li agreed, stating that local operating system concepts should not be leaked into routing protocols. He added that if it were to be done, the field should be at least 32 bits, not 16 bits.
+  * Sasha Weinstein and Acee Lindem questioned why the existing multi-instance specification (RFC 8202) is insufficient, noting that routers could simply run a single instance of the multi-instance specification to achieve the desired isolation.
+
+---
+
+## Decisions and Action Items
+
+* **IS-IS Replay Protection**: Les Ginsberg to post historical links and references to the mailing list regarding RFC 7602 and the carp WG discussions on LSP security.
+* **IGP Active Measurement Group**: Acee Lindem and Rakesh Gandhi to coordinate offline to align IGP and BGP extensions for conveying STAMP reflector parameters.
+* **IGP Originator Sequence Number Checksum**: Shraddha Hegde to update the draft to incorporate transaction IDs and transition flags to handle partial fragment updates.
+
+---
+
+## Next Steps
+
+* **Power Groups Draft**: The chairs will take the adoption discussion for `draft-ietf-lsr-isis-sr-vtn-mt` / "Using IS-IS to Advertise Power Groups" to the mailing list.
+* **SRv6 Egress Protection**: A working group adoption call is expected for `draft-hu-lsr-isis-process-verification-00` / "srv6-mirror-sid-igp-encoding" once aligned with the RTGWG timeline.
+* **Interim Meeting**: The chairs will monitor list discussion to determine if a virtual interim meeting is warranted to address outstanding drafts.

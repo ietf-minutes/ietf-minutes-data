@@ -1,0 +1,86 @@
+# [ANRW](../wg/anrw.html)
+
+## Summary
+
+The Applied Networking Research Workshop (ANRW) session at IETF 126 focused on the latest academic and practical research in transport protocols, media streaming, and quality of experience (QoE) management. The presentations covered a wide range of topics, including the evaluation of QUIC in space networks, multiplexing techniques for WebRTC and Media over QUIC (MoQ), new scheduling architectures for Multipath QUIC (MP-QUIC), and a C-based open-source implementation of IETF Transport Services (TAPS). 
+
+## Key Discussion Points
+
+### 1. QUIC in Space: Initial Measurements and Analysis
+**Presenter:** Natalia Petroski
+*   **Discussion:** Natalia presented research evaluating the performance of QUIC and its extensions over simulated satellite links, targeting lunar and deep space communication characteristics. The study focused on two protocol extensions:
+    *   **ACK Frequency:** Intended to optimize asymmetric links by delaying ACKs (via adjusting `max_ack_delay` and `ack_threshold`). In evaluations using the Quinn implementation, it showed no significant improvements in flow completion times.
+    *   **Careful Resume:** Caches congestion control parameters (CWND and minRTT) to shorten the slow start phase in recurring connections. This showed promise in Quiche but had minor performance degradation in Quinn's BBR implementation due to implementation issues.
+    *   The study also evaluated single and dual outages, demonstrating that Cubic (specifically in Quinn) struggled to recover compared to BBR, which recovered faster due to its bursty transmission characteristics.
+*   **Q&A:**
+    *   **Gorry Fairhurst** noted that testing like this is valuable for stress-testing protocols. He highlighted that previous work on Careful Resume in Cloudflare's Quiche also revealed unexpected timing errors during recovery. He asked if "Happy Eyeballs" (RFC 8305) was considered for racing QUIC and TCP; Natalia replied it was not.
+    *   **Robert** asked how the 25 Mbps bottleneck data rate was selected. Natalia explained that this corresponds to the inter-satellite link capacity of Iridium satellites.
+    *   **Danish** asked whether the simulated outages were designed to align with BBR's probing phases (bandwidth or RTT probing). Natalia confirmed they did not take BBR's specific phase into account.
+
+### 2. u and i: H3 Prioritization for Cooperative Scheduling in MASQUE
+**Presenter:** Daniel
+*   **Discussion:** Daniel presented a study on how the Extensible Prioritization Scheme for HTTP (EPS, RFC 9218) can enable cooperative scheduling in MASQUE proxies. Using the `u` (urgency) and `i` (incremental) parameters, the client can signal transport intent directly to the proxy.
+    *   The authors designed "MASQUE-NADA", a prototype built on tokio-quiche featuring a pluggable scheduling interface at the proxy.
+    *   **Key Findings:** While priority semantics are lost under unreliable MASQUE (as EPS only applies to streams), reliable MASQUE streams successfully used urgency to prioritize flow completion times. The incremental flag prevented head-of-line blocking among parallel streams. An "EPS-aware" scheduler was shown to dynamically balance path performance under heterogeneous path conditions.
+*   **Q&A:**
+    *   **Lucas Pardue** commented that proxy scheduling (especially with multipath) is highly complex. He shared a link to his draft, [draft-pardue-masque-dgram-priority](https://datatracker.ietf.org/doc/draft-pardue-masque-dgram-priority/), which focuses on Datagram priorities, and suggested exploring potential overlaps.
+
+### 3. QUIC as Multiplexing Layer in WebRTC
+**Presenter:** Matthijs Engelbart
+*   **Discussion:** Matthijs presented an architecture for multiplexing data channels and media in WebRTC using QUIC to replace the traditional UDP/DTLS/SCTP stack. 
+    *   By running RTP over QUIC (`draft-ietf-avtcore-rtp-over-quic`) alongside data channels on a single QUIC connection, they share a single congestion controller (such as Google Congestion Control - GCC). This prevents SCTP data channels from starving real-time RTP media.
+    *   A prototype was implemented in Go, incorporating the packet receive timestamp extension for delay-based bandwidth estimation. The system prioritizes media over data channels while allowing elastic data channels to utilize remaining bandwidth.
+*   **Q&A:**
+    *   **Gorry Fairhurst** asked if partial reliability was considered for media streams. Matthijs clarified that they utilized standard QUIC streams but canceled them after a specific timeout if the frames became too late to render.
+    *   **Francois Michel** asked about the applicability of this approach to WebTransport. Matthijs indicated that while RTP over QUIC is currently optimized for raw QUIC, adapting it for WebTransport is a logical next step to make it easily deployable in web browsers.
+    *   **Dirk Kutscher** asked for clarification on whether QUIC streams were used for encapsulation, which Matthijs confirmed.
+
+### 4. Reset the Stream, Keep the Keyframe: Low-Latency Live Streaming over MoQ
+**Presenter:** Sebastian (Gdańsk University of Technology)
+*   **Discussion:** Sebastian discussed strategies for managing network congestion in Media over QUIC (MoQ) live streaming. 
+    *   Under high congestion or packet loss, simply resetting a stream when a timer expires can result in the loss of crucial Group of Pictures (GOP) keyframes, wasting transmission bandwidth.
+    *   The proposed solution leverages the `ResetStreamAt` extension (`draft-ietf-quic-reliable-stream-reset`) to set a reliable boundary directly after the keyframe. This ensures that keyframes are guaranteed delivery, while subsequent, dependent P-frames can be safely discarded during congestion.
+    *   Evaluations showed that protecting keyframes bounding stalls to approximately one GOP duration (one second) with negligible latency cost.
+*   **Q&A:**
+    *   **Gorry Fairhurst** asked if different types of video with varying keyframe-to-P-frame ratios were evaluated. Sebastian replied that while keyframe size remains relatively constant, P-frame sizes are highly scene-dependent, which would require adjusting testbed bandwidth profiles.
+    *   **Lucas Pardue** noted that the `ResetStreamAt` draft had just progressed to IETF Last Call. He asked how the scheduler handled the retransmission of lost data. Sebastian noted that during the IETF 126 Hackathon, they experimented with prioritizing fresh data over retransmissions, though discarding data entirely still performed better.
+
+### 5. Multiplexing Synchronized Media
+**Presenter:** Ali Begen
+*   **Discussion:** Ali introduced "Mocktail" (available at MoQtail.dev), an open-source MoQ implementation designed for "Watch Party" (social co-viewing) use cases.
+    *   Traditionally, watch parties require a complex, dual-stack setup: LL-HLS for the main stream and WebRTC for video conferencing. This "Frankenstein" approach results in competing congestion controllers and high integration complexity.
+    *   The proposed MoQ solution uses a single QUIC connection with dual transport pipes:
+        1.  **Context Pipe (High Priority):** Carries the main synchronized live stream reliably over QUIC streams.
+        2.  **Excitement Pipe (Medium/Low Priority):** Carries real-time conferencing audio and video. Audio is sent via unreliable QUIC datagrams, while video is marked as lowest priority and subjected to early discard during congestion.
+*   **Q&A:**
+    *   **Suresh Krishnan** asked if there were numerical or experimental results demonstrating that this approach performs better than the multi-stack LL-HLS/WebRTC solution. Ali confirmed that experimental results are detailed in the accompanying paper.
+
+### 6. Tokens, Not Packets: A New MP-QUIC Scheduling Model
+**Presenter:** [Tokens, Not Packets](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-transport-and-media-tokens-not-packets-00) Presenter
+*   **Discussion:** The presenter argued that traditional Multipath TCP/QUIC schedulers act as "per-packet" decision functions, which prevents schedulers from deciding what content goes inside the packet (e.g., redundant transmissions, control frame prioritization, and stream multiplexing).
+    *   The proposed model decouples the scheduling logic from packet assembly by executing the scheduler *upfront*. 
+    *   The scheduler generates a snapshot of the connection state (`ConState`) and populates persistent per-path queues containing **stream tokens** and **datagram tokens**. A separate packet assembly loop then drains these tokens based on the available congestion window.
+    *   This model allows for highly customizable scheduling behaviors (such as redundant retransmissions, minRTT scheduling, and control frame prioritizing) by making simple parameter changes to the tokens.
+*   **Q&A:**
+    *   **Gorry Fairhurst** thanked the presenter, noting that scheduling models are a key area of discussion in transport working groups.
+
+### 7. Quantifying QoE-Aware Resource Sharing
+**Presenter:** Sebastian (Ericsson Research)
+*   **Discussion:** Sebastian presented an analysis of Quality of Experience (QoE) resource sharing for real-time interactive video (e.g., cloud gaming, XR).
+    *   Because spatial complexity is highly time-variant, equal bitrate allocations result in highly unequal spatial quality (measured in VMAF) among concurrent sessions.
+    *   Using an oracle-based second-by-second dynamic allocation model, they evaluated a **Max Utility** policy (prioritizing bringing all sessions above an acceptable VMAF threshold of 50 before optimizing for higher quality).
+    *   **Key Finding:** Dynamic second-by-second reallocation can keep 30 active sessions at acceptable quality using only 35 Mbps of bottleneck capacity, whereas static, peak-rate-based allocation models fail to achieve this even at 100 Mbps.
+*   **Q&A:**
+    *   **Gorry Fairhurst** commended the work and the inclusion of extensive real-world measurement data.
+
+### 8. An Open Source Implementation of IETF Transport Services
+**Presenter:** Ingrid Tovin
+*   **Discussion:** Ingrid presented **cTAPS**, a C-based open-source implementation of the IETF Transport Services (TAPS) architecture (developed for her Master's thesis at the University of Oslo).
+    *   cTAPS provides a generic, callback-based API that abstracts transport selection (QUIC, TCP, UDP), security, and lower-level network features (such as local path recovery and DSCP configuration) away from the application. It represents the first open-source TAPS implementation to support QUIC.
+*   **Q&A:**
+    *   **Michaud** asked if TAPS operates in kernel space or user space and how it bridges the gap with existing socket standards. Ingrid explained that cTAPS is a user-space abstraction library that utilizes standard sockets under the hood, meaning it requires no remote peer cooperation to be beneficial.
+    *   **Thomas Witt** asked how a standardized API like TAPS can counter the trend of operating system and cloud vendors introducing proprietary, high-level APIs that undermine open standards. Ingrid responded that because TAPS is defined through open IETF RFCs, cTAPS serves as a democratic, open-source alternative to proprietary ecosystems.
+
+## Next Steps
+
+*   **Chairs' Announcement (Suresh Krishnan):** The ANRW program page will be updated by the end of the week. This update will include links to all slide decks on the Datacker, the official ACM proceedings link for the published papers, and the session video recordings.

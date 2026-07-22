@@ -1,0 +1,132 @@
+# [MLS](../wg/mls.html)
+
+## Summary
+
+The Messaging Layer Security (MLS) Working Group met at IETF 120. The session focused on progressing several active working group drafts toward Working Group Last Call (WGLC), discussing optimization techniques for Post-Quantum (PQ) MLS (such as SlimMLS and Server-Aided MLS), and reviewing proposed extensions for decentralized deployments, large attachments, and two-party profiles. 
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status Update
+* **Presenter:** Sean Turner
+* **Slides:** [Chairs' Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-chairs-slides-00)
+* **Discussion:**
+  * **[draft-ietf-mls-partial] (Partial MLS):** Has completed WGLC twice but received very little working group feedback. Rowen Minahan has pending comments that will be incorporated. Sean Turner emphasized that the chairs need documented mailing list reviews to progress the document.
+  * **MLS Combiner:** The draft has been revised and is ready for WGLC.
+  * **[draft-ietf-mls-ratchet-tree-options] (MLS Ratchet Tree Options):** Rowan Minahan recently updated this draft to the next version. The document is ready for WGLC. Detailed updates can be referenced in the [MLS Ratchet Tree Options update (ref only)](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-ratchet-tree-options-update-ref-only-00) slide deck.
+
+### 2. ML-KEM and Hybrid Cipher Suites for MLS
+* **Presenter:** Rowan Minahan
+* **Slides:** [MLS PQ Ciphersuites](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-pq-ciphersuites-00)
+* **Document:** [draft-ietf-mls-pq-ciphersuites]
+* **Discussion:**
+  * Two new ciphersuites were added to the draft: a pure ML-KEM ciphersuite for the amortized combiner, and a post-quantum ciphersuite using ChaChaPoly (highly requested for software-implementation efficiency).
+  * **Open Issue (KDF Components):** HPKE defines `extract` and `expand` only for two-stage KDFs, but the HPKE PQ draft registers one-stage KDFs. To avoid defining a new extract function, Rowan proposed using HMAC KDF (SHA-384 and SHA-256) inside these ciphersuites. SHAKE and SHA-3 would still be used within ML-KEM and the hybrid combiner. 
+  * There are three known implementations of the draft; establishing a clear choice for these functions is necessary to guarantee interoperability.
+  * **Path Forward:** Rowan will merge the open PR and publish a new version. The chairs will then initiate another WGLC.
+
+### 3. MLS Extensions
+* **Presenter:** Raphael Robert
+* **Slides:** [MLS Extensions, Targeted Messages, Virtual Clients, Two-Party Profile, & SlimMLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-extensions-targeted-messages-virtual-clients-two-party-profile-slimmls-00)
+* **Document:** [draft-ietf-mls-extensions]
+* **Discussion:**
+  * Currently, OpenMLS implements a subset of the draft. Rowan Minahan noted that `mls-rs` implements almost the entire list, excluding last resort key packages and safe HPKE.
+  * Features such as weak multicredential and content advertisement remain to be fully integrated in OpenMLS but are deemed essential for long-term interoperability and will not be removed.
+
+### 4. MLS Targeted Messages
+* **Presenter:** Raphael Robert
+* **Slides:** [MLS Extensions, Targeted Messages, Virtual Clients, Two-Party Profile, & SlimMLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-extensions-targeted-messages-virtual-clients-two-party-profile-slimmls-00)
+* **Document:** [draft-ietf-mls-targeted-messages]
+* **Discussion:**
+  * Raphael summarized the resolution of feedback from the prior meeting: external senders are excluded as they would alter the core architecture; PQ composition requires no unique additions; and the mechanism will remain a simple building block rather than building a complex ratchet.
+  * Key draft updates include: signing the ciphertext, removing group context from the HPKE context (as the PSK already binds it), adding test vectors, and resolving a circular dependency by moving away from the one-shot HPKE API.
+  * **Next Steps:** Rowan Minahan raised a point regarding extending the draft to support multiple recipients. Once discussed and resolved, the draft will proceed to WGLC.
+
+### 5. MLS Virtual Clients
+* **Presenter:** Konrad Kohbrok
+* **Slides:** [MLS Extensions, Targeted Messages, Virtual Clients, Two-Party Profile, & SlimMLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-extensions-targeted-messages-virtual-clients-two-party-profile-slimmls-00)
+* **Document:** [draft-ietf-mls-virtual-clients]
+* **Discussion:**
+  * Virtual clients allow multiple physical devices to act as a single "virtual" MLS client, reducing leaf nodes in large groups and hiding device counts from other group members.
+  * OpenMLS has implemented the draft. The core concepts are stable, but implementation-driven minor fixes were added. Konrad requested review and interoperability testing from other implementers.
+
+### 6. Two-Party Profile (Individual Draft)
+* **Presenter:** Konrad Kohbrok
+* **Slides:** [MLS Extensions, Targeted Messages, Virtual Clients, Two-Party Profile, & SlimMLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-extensions-targeted-messages-virtual-clients-two-party-profile-slimmls-00)
+* **Discussion:**
+  * This profile defines how two clients can negotiate commit ordering directly without a delivery service, allowing MLS to function as a drop-in replacement for 1-to-1 secure channel protocols.
+  * **Use Cases & Integration:** Gaëtan Wattiau shared SandboxAQ's implementation experience using `mls-rs`. He highlighted an API friction point where the same `IdentityProvider` validates both local and peer credentials (making mixed basic/X.509 credential setups awkward) and suggested adding a PSK derivation output to the profile to aid integration.
+  * **Interception Concerns:** Jonathan Hoyland warned that combining virtual clients with a TLS record layer drop-in could facilitate TLS 1.3 interception. Konrad noted that TLS working group previously rejected putting MLS into TLS key exchange itself.
+  * **Protocol Concerns:** Rowan Minahan requested explicit signaling/negotiation mechanisms to indicate "two-party mode" and clear timeout definitions. Carlos Melchor inquired about upgrading a group from two-party to multi-party; Konrad noted this is on the to-do list but requires additional signaling.
+
+### 7. SlimMLS (Individual Draft)
+* **Presenters:** Raphael Robert, Konrad Kohbrok
+* **Slides:** [MLS Extensions, Targeted Messages, Virtual Clients, Two-Party Profile, & SlimMLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-extensions-targeted-messages-virtual-clients-two-party-profile-slimmls-00)
+* **Discussion:**
+  * **Motivation:** Post-Quantum cryptography drastically increases the size of public keys and signatures, making MLS welcomes and commits too large for mobile operating systems (which strictly limit background execution time, stack space, and memory).
+  * **Mechanics:** SlimMLS replaces large objects (like unused update path nodes and redundant leaf nodes) with hash references. It also optimizes signatures (e.g., merging duplicate signatures in commits and batching key package signatures).
+  * **Comparison to other drafts:**
+    * **[draft-ietf-mls-partial] (Partial MLS):** Partial MLS focuses on bypassing initial membership verification, whereas SlimMLS focuses purely on minimizing transport size for PQ parameters.
+    * **Server-Aided MLS:** Server-Aided MLS focuses narrowly on optimizing commits, while SlimMLS optimizes all large objects across the protocol.
+  * **Large Object Retrieval:** Clients retrieve the original objects referenced by hashes via a "Large Object Carrier" (an unsigned payload sidecar), local cache, or on-demand fetch.
+  * **Feedback:** 
+    * Ted Hardie asked about the performance cost of recomputing hashes. Raphael and Rowan responded that hashing is a minor overhead compared to public-key operations and tree-hash computations. 
+    * Ted Hardie and Rowan Minahan noted that separating metadata and using carriers allows clients to stream payloads in chunk sizes compatible with mobile OS background limits.
+    * Bas Westerbaan suggested in the chat that batch signatures and double-signature removal might be useful as independent optimizations.
+
+### 8. Distributed and Decentralized Uses of MLS (Individual Draft)
+* **Presenter:** Mark Baugher
+* **Slides:** [Distributed and Decentralized Uses of MLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-draft-xue-mls-decentralized-01)
+* **Discussion:**
+  * This draft serves as a combined disambiguation document that compares different decentralized architectures to guide implementers.
+  * It highlights two distinct paths: "Decentralized MLS" (optimized for large federated environments with central assistance to resolve state forks) and "Distributed MLS" (optimized for smaller, highly-disrupted local networks where local state consistency is preferred over sublinear scaling).
+
+### 9. Server-Aided MLS (Individual Draft)
+* **Presenter:** Joel Alwen
+* **Slides:** [Server Aided MLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-server-aided-mls-00)
+* **Discussion:**
+  * Server-Aided MLS aims to reduce commit download sizes for receivers by allowing an intelligent Delivery Service (DS) to customize the commit payload.
+  * **Mechanics:** The commit is split into `s_header` (signed, containing proposals/leaf node) and `s_commit` (unsigned, containing the update path). The DS strips the update path, sending each receiver only the single HPKE ciphertext they actually need to decrypt.
+  * **Security Model:** It relaxes the strict MLS agreement property (moving from CCA to an RCCA-like model) by signing only what "matters" to the epoch state. Agreement is still cryptographic, verified via the tree-hash and a confirmation-like epoch identifier derived from the key schedule.
+  * In private wire format, the update path elements are not encrypted, which was a deliberate design choice to save bandwidth.
+
+### 10. MLS Attachments (Individual Draft)
+* **Presenter:** Nick Sullivan
+* **Slides:** [MLS Attachments](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-mls-attachments-00)
+* **Discussion:**
+  * Proposes using Random Access Authenticated Encryption with Additional Data (RA-AEAD) via "SEAL" (Symmetric Encryption for Abundant Landscapes) to split massive attachments (up to 128 GB) into smaller segments.
+  * The attachment is bound to the MLS session as a "safe extension" by placing a snapshot authenticator in the frame content. This allows random-access decryption of specific blocks (e.g., seeking through a video file) without decrypting the entire file.
+  * **Feedback:**
+    * Ted Hardie questioned how random-access maps to existing streaming formats (like DASH) that rely on external manifests, noting that the mapping and manifest creation might be complex.
+    * Rowan Minahan expressed skepticism about bringing file-transport mechanics into the MLS working group, arguing that MLS should only handle the reference and keying material, while transport/manifests should be dispatched to other areas of the IETF.
+    * Brendan McMillion argued that because MLS enforces a sign-then-encrypt pattern, defining how segment signatures are structured and verified is indeed relevant MLS work.
+
+### 11. Thinking About MLS Extension Compatibility
+* **Presenter:** Rowan Minahan
+* **Slides:** [Thinking about MLS extension compatibility](https://datatracker.ietf.org/meeting/126/materials/slides-126-mls-thinking-about-mls-extension-compatibility-00)
+* **Discussion:**
+  * Rowan analyzed how current extensions interact and cautioned against using "heavy" tools like new wire formats when a simpler extension or component would suffice.
+  * He highlighted the need to design extensions that are compatible across both public-commit and private-commit delivery services.
+  * In federated environments, policy enforcement (e.g., roles or room policies) could be handled in private-commit groups by sending encrypted proofs to the DS without leaking the underlying Ratchet Tree state.
+  * Sean Turner asked about the status of federated MLS work. Rowan noted that the MIMI protocol is currently frozen, but encouraged interested parties to discuss federation interop offline.
+
+---
+
+## Decisions and Action Items
+
+* **[draft-ietf-mls-pq-ciphersuites]**: Rowan Minahan to merge the PR defining KDF components (HMAC KDF SHA-256 and SHA-384) and publish a new revision. 
+* **WGLCs**: The chairs will launch Working Group Last Calls for:
+  * `draft-ietf-mls-pq-ciphersuites` (once the new revision is published)
+  * `draft-ietf-mls-ratchet-tree-options`
+  * `draft-ietf-mls-partial` (pending inclusion of Rowan Minahan's comments)
+  * MLS Combiner
+
+---
+
+## Next Steps
+
+* **[draft-ietf-mls-extensions]**: OpenMLS and other implementers will work on completing the implementation of the remaining draft features (specifically weak multicredential and content advertisement).
+* **[draft-ietf-mls-targeted-messages]**: Authors will discuss Rowan Minahan's proposal on multi-recipient targeted messages before moving the draft to WGLC.
+* **SlimMLS / Server-Aided MLS**: Implementers interested in PQ optimizations are encouraged to review both proposals and explore potential implementation/interop testing.
+* **MLS Attachments**: Nick Sullivan to present the underlying "SEAL" cryptographic primitive in a side meeting on Thursday to determine the appropriate IETF home for the transport work.

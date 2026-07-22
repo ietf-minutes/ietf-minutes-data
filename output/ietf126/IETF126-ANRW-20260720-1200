@@ -1,0 +1,69 @@
+# [ANRW](../wg/anrw.html)
+
+## Summary
+
+The Applied Networking Research Workshop (ANRW) session at IETF 126 featured a dedicated track on network measurements, comprising seven long papers and one short paper. The presentations spanned novel datasets and measurement frameworks, reproducibility in network emulation, incident triage, multicast routing improvements, IPv4 subnet detection, reliable VPN transport options, RTC relay deployments, and formal algebraic measurement specifications. 
+
+## Key Discussion Points
+
+### 1. [pcapML](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-pcapml-00)
+* **Presenter:** Paul Schmidt (Cal Poly / Princeton University)
+* **Technical Details:** Machine learning models for network traffic depend heavily on labeled traces. However, dataset pipelines are often underspecified, with labels stored separately from PCAPs (e.g., encoded in filenames or external text files). This leads to inconsistent data reconstruction (for example, the popular "VPN, non-VPN" dataset has been parsed into anywhere from 2 to 31 distinct classes by subsequent researchers). To address this, the authors introduced `pcapML`, which encodes arbitrary metadata directly into the `pcapng` comment fields, keeping labels self-contained within the packet capture. The tool supports live capture via eBPF (associating sockets to process names in the kernel) and offline conversion.
+* **Discussion:**
+  * Danish asked about the runtime overhead of performing live labeling. Paul replied that while it does inflate the PCAP file size, they did not find a performance limit during tests on a desktop and an OpenWrt router.
+  * The Session Chair suggested that the tool could be extended to include structured information about the packet type (such as TLS or QUIC) directly inside the comment fields to optimize subsequent filtering and analysis. Paul agreed this would be a valuable addition.
+
+### 2. [NixNet](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-nixnet-00)
+* **Presenter:** Benedict (Technical University of Munich)
+* **Technical Details:** Replicating emulated network experiments is difficult due to unmanaged dependencies, compiler discrepancies, host environment pollution, and deprecated packages. NixNet is a lightweight, virtual network emulation platform that uses the Nix package manager to pin and construct the complete dependency graph (build-time and runtime closures) of an experiment. NixNet isolates experiment execution using Linux namespaces (similar to Docker but without requiring root privileges) and uses a declarative schema to automatically generate reproducible configurations.
+* **Discussion:**
+  * Shavit (Tel Aviv University) questioned the ultimate value of strict environmental reproducibility, noting that if network experiments are highly sensitive to minor system parameters, the underlying scientific results themselves might not be robust. Benedict replied that while network emulation is inherently non-deterministic, having an identical, shareable baseline environment is crucial for researchers seeking to verify or build directly on top of prior work.
+  * An audience member asked how network impairments (such as packet loss and latency) are integrated. Benedict explained that NixNet leverages standard Linux traffic control (`tc-netem`) but supports custom bash hooks to integrate external emulators.
+  * An audience member asked whether NixNet relies on the upstream NixOS testing framework's topology builder. Benedict clarified that NixOS's testing framework is too restrictive for complex topologies, so NixNet uses its own custom JSON-like schema to generate virtual ethernet interfaces and namespaces.
+
+### 3. [Explainable Routing-Aware Incident Triage](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-explainable-routing-aware-incident-triage-01)
+* **Presenter:** Petia Vasilova (CERN / Worldwide LHC Computing Grid)
+* **Technical Details:** The Worldwide LHC Computing Grid (WLCG) transfers up to 10 petabytes of scientific data daily. To monitor performance, WLCG deploys perfSONAR active measurement nodes. Aligning these measurements is challenging due to varying cadences (latency is measured every minute, traceroutes every 10 minutes, and throughput every 6 to 24 hours). The authors developed a framework that models paths as graphs using 32-dimensional node embeddings (using AS numbers or IPv6 /64 prefixes) combined with structural path features (such as path length, TTL gaps, and IP repetition). This model calculates a composite anomaly score to triage routing-induced performance incidents without requiring external BGP feeds.
+* **Discussion:**
+  * Anant (Netflix) asked if a 10-minute traceroute frequency is sufficient to capture transient routing events and whether they perform link-level analysis. Petia noted that due to storage limits, they cannot increase the traceroute frequency and must focus on longer-lasting routing incidents rather than transient ones. Paths are analyzed at the AS and prefix level.
+  * Sam (University of Trento) asked why they deployed a custom probing mesh instead of using public platforms like Ripe Atlas. Petia clarified that the decision to use a dedicated perfSONAR infrastructure was established by the WLCG community before she joined the project.
+
+### 4. [Intradomain Multicast Routing for Modern Routers](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-intradomain-multicast-routing-for-modern-routers-00)
+* **Presenter:** Anthony (UCLouvain)
+* **Technical Details:** Traditional multicast routing protocols like Protocol Independent Multicast (PIM) do not account for physical router hardware limits. Modern routers have multicast Forwarding Information Base (mFIB) capacities ranging from 1,000 to hundreds of thousands of entries. If a router's mFIB is exhausted, incoming PIM joins are silently ignored, causing traffic loss without notifying the receiver. The authors proposed exposing mFIB capacity and usage in the control plane using Link State Protocols (OSPF or IS-IS) with a threshold-based flooding approach. They introduced two path-computation algorithms, Pruned Shortest Path (Pruned SP) and Shortest Widest Path, to dynamically route multicast joins around congested routers.
+* **Discussion:**
+  * Max asked if they considered combining link bandwidth capacities with mFIB constraints during path computation. Anthony confirmed this is possible and is a planned extension of the work.
+  * Thomas Schmidt asked why this state propagation wasn't engineered directly into PIM and suggested that flooding the entire network with mFIB state might be excessive compared to local threshold signaling. Anthony replied that leveraging link-state routing protocols aligns with modern standards design (like Segment Routing) and that their coarse-grained thresholds at low utilization help minimize control plane overhead.
+
+### 5. [Detecting IPv4 Subnets in the Wild](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-detecting-ipv4-subnets-in-the-wild-00)
+* **Presenter:** Faribhar (Max Planck Institute for Informatics)
+* **Technical Details:** Discovering how network operators partition BGP prefixes into internal subnets helps improve IP resource utilization studies, geolocation, and abuse handling (referencing RFC 1997). The authors developed two active probing methodologies: ICMP Echo (pinging network and broadcast boundaries) and ICMP Address Mask (utilizing deprecated RFC 950 queries). Lab experiments showed that Cisco routers uniquely populate the ICMP Echo reply source address with the receiving interface IP when pinged on a subnet broadcast address. Probing the entire routable IPv4 space yielded 2 million subnets via ICMP Echo and 1.8 million via Address Mask.
+* **Discussion:**
+  * The Session Chair pointed out that directed broadcast has been disabled by default on Cisco routers for a long time and asked about the firmware versions tested. Faribhar clarified that they tested Cisco 2900 series routers in their lab and that despite default configurations, a substantial number of active devices on the Internet still respond to these probes.
+  * Sam (University of Georgia) asked how the methodology detects /31 subnets (which lack traditional broadcast addresses) and whether the team validated their findings with network operators. Faribhar explained that they filter out cases where the network and broadcast pings yield identical source IPs to eliminate false positives.
+
+### 6. [Reliable Virtual Private Networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-reliable-virtual-private-networks-00)
+* **Presenter:** Kilian (Technical University of Munich)
+* **Technical Details:** Demanding site-to-site WAN use cases require VPNs to provide reliable transport, low loss, and minimal delay. The authors compared WireGuard, OpenVPN, and MASQUE (which utilizes HTTP/3 and QUIC). They benchmarked MASQUE under simulated random and burst loss conditions using four reliability mechanisms: retransmissions, Forward Error Correction (FEC), multipath QUIC, and connection nesting (overlays). While retransmissions successfully prevent end-to-end packet loss, they introduce significant tail latencies (~100ms) under burst loss. Implementing FEC successfully eliminated end-to-end losses while keeping the one-way delay low (~44ms) by avoiding retransmission round-trip times.
+* **Discussion:**
+  * An audience member from the Chinese University of Hong Kong asked about the specific real-world use cases for reliable VPNs. Kilian answered that they are primarily needed for legacy industrial applications that were not designed to operate over lossy wide-area networks, as well as high-reliability site-to-site connectivity.
+
+### 7. [RTC Relay](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-rtc-relay-00)
+* **Presenter:** Pei Jin (University of Maryland)
+* **Technical Details:** Real-Time Communication (RTC) applications rely on relay servers (TURN/STUN) when direct peer-to-peer connections cannot be established. The authors conducted a global measurement study of the relay infrastructures used by Discord, WhatsApp, and Zoom. Employing distributed Azure VMs and Xcode-automated iOS clients to make repeated automated calls, they mapped relay locations and analyzed fallback behaviors. Zoom Free was found to rely on only two self-hosted, US-based relays, while Zoom Business features 11 nodes. Discord uses a hybrid model (80% Cloudflare, 16% Google Cloud, 5% i3d.net). WhatsApp has the largest footprint (25 global locations, all self-hosted by Meta) and uses a joint-aware STUN binding allocation that measures end-to-end latency to pick the optimal relay.
+* **Discussion:**
+  * Danish (MPI) asked whether using Azure VMs as the call vantage points might skew the discovered relay locations. Pei Jin acknowledged that they likely missed some regional relays but emphasized that the study's primary goal was to compare the structural deployment and selection strategies across the different platforms.
+
+### 8. [Towards Extensible, Auditable, and Modular Measurement](https://datatracker.ietf.org/meeting/126/materials/slides-126-anrw-measurement-towards-extensible-auditable-and-modular-measurement-00)
+* **Presenter:** Innocent (University of Washington)
+* **Technical Details:** The short paper proposes a formal, relational algebra framework called the Measurement Template Language (MTL). Active measurements are often tightly coupled to specific CLI utilities (e.g., calling `ping` or `scamper` directly in scripts). MTL decouples the abstract logical probe, the measurement driver/tool, and the physical resource execution layer. By defining mathematical relations and guard interfaces, components can be swapped dynamically (such as exchanging `scamper` for native Linux `ping`) without breaking higher-level experimental logic or policies.
+* **Discussion:**
+  * The Session Chair asked if there is a concrete, usable software implementation. Innocent responded that they have verified the design in their lab by driving `scamper` and are currently developing an open-source Go library to implement the algebraic measurement semantics.
+
+## Next Steps
+
+* **pcapML:** The developers plan to implement a standard `libpcap` wrapper to allow the tool to run natively on macOS and Windows without requiring eBPF.
+* **NixNet:** The authors plan to support macOS targets by running Linux virtual machines, as the current namespace-based isolation is Linux-specific.
+* **Intradomain Multicast:** Future research will explore incorporating real-time link bandwidth and latency metrics directly into the multicast tree path selection algorithm.
+* **RTC Relay:** Future work includes running measurements over a longer, continuous time horizon, increasing the geographical coverage of the testing VMs, and expanding the analysis to other real-time communication applications.
+* **MTL (Measurement Template Language):** The authors are working on releasing a public, open-source Go library implementing the modular measurement framework.

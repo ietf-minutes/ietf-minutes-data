@@ -1,0 +1,99 @@
+# [CURRENT](../wg/current.html)
+
+## Summary
+
+The CURRENT (Continuous Updating and Ratcheting for rekeying Encrypted Network Transport) BOF session at IETF 126 met to discuss the potential formation of a working group focused on combining Messaging Layer Security (MLS) and Transport Layer Security (TLS) (specifically referred to as MLS-TLS) to handle long-term connections, unidirectional transports, and resource-constrained environments. Key security goals discussed include forward secrecy (FS), post-compromise security (PCS), and post-quantum cryptography (PQC) integration. 
+
+While proponents presented several use cases—including telecom, drone swarms, network sensors, and VPNs—much of the feedback from the room highlighted that the problem statement is not yet sufficiently clear or scoped. Concerns were raised regarding the restriction of the proposed work to a two-party protocol while several presented use cases were inherently multi-party, and whether existing TLS extensions could already solve the highlighted issues. The session concluded with polls showing that the problem statement is not yet well-understood, though there is some community willingness to help clarify it.
+
+---
+
+## Key Discussion Points
+
+### 1. Introduction and Background
+Russ Housley presented the [Background](https://datatracker.ietf.org/meeting/126/materials/slides-126-current-background-02) slides. 
+* Modern security protocols are heavily optimized for the web and browser environments. The goal of this work is to support non-browser environments, handle asynchronous key updates, support post-quantum algorithms, and rely on protocols that have undergone formal cryptographic analysis.
+* The proposal utilizes MLS-TLS, running an MLS handshake instead of a TLS handshake to derive session secrets via the MLS exporter, which are then used in the TLS record protocol. 
+* Proponents pointed out that MLS-TLS has running code and is deployed in at least one production environment, offering seamless session resumption and recovery during network failures.
+
+### 2. Telecom & Unidirectional Use Cases
+John Preuß Mattsson presented [Use Cases Preuß Mattsson](https://datatracker.ietf.org/meeting/126/materials/slides-126-current-use-cases-preu-mattsson-01).
+* Highlighted the need for FS, PCS, and static key exfiltration mitigation in long-term 5G/6G telecom connections. 3GPP SA3 has indicated that these properties, along with re-authentication, are best practices.
+* Changing the application layer to handle rekeying in TLS is often complex and costly. Implementing key management at the lower layers is preferred.
+* Highlighted unidirectional communication as a tool for radio privacy (e.g., a Greenpeace drone wanting to avoid revealing its location through transmission acknowledgments).
+* **Clarifying Discussion**: Eric Rescorla asked how the system handles packet loss of a key update on a purely unidirectional channel, as failing to receive a key update prevents decryption of future traffic. John Preuß Mattsson acknowledged that unidirectional channels have inherent limits in recovery, but MLS represents the best available option for this scenario.
+
+### 3. Drone Swarms
+Scott Simon (presenting on behalf of Daniel Apon) presented [Drone Swarm](https://datatracker.ietf.org/meeting/126/materials/slides-126-current-drone-swarm-00).
+* Explored a scenario of a trusted drone swarm where a single node may be compromised. To recover, the swarm must regain PCS without needing to contact a distant Certificate Authority (CA) or announce its location.
+* Using MLS-TLS properties allows the detection of rogue duplicate nodes trying to masquerade as active drones.
+* **Clarifying Discussion**: Hannes Tschofenig questioned the requirement for the DTLS record layer since it contains legacy fields. 
+
+### 4. SandboxAQ Use Case for MLS-TLS
+Gaëtan Pradel presented [SandboxAQ Use Case for MLS-TLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-current-sandboxaq-use-case-for-mls-tls-00).
+* SandboxAQ deploys network sensors in client environments where latency is highly unstable, risking data loss if connections drop and require heavy TLS handshakes to reconnect.
+* MLS-TLS provides 0-RTT early data with built-in replay protection utilizing MLS epoch transitions, avoiding the need to manage anti-replay protection at the application layer.
+* **Clarifying Discussion**: Eric Rescorla noted that 0-RTT replay protection difficulties in TLS are typically issues of multi-server state synchronization rather than protocol limitations, and can be solved within the TLS stack. Hannes Tschofenig asked if the presenters had evaluated the TLS Working Group's active draft `draft-ietf-tls-extended-key-update` to achieve PCS. Gaëtan Pradel indicated they had not yet reviewed it.
+
+### 5. MLS-TLS for VPNs
+Conrad Sandmann presented [MLS-TLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-current-mls-tls-01).
+* Described a VPN product utilizing MLS-TLS for long-running connections requiring FS, PCS, and post-quantum readiness.
+* Argued that TLS is not optimal because the `draft-ietf-tls-extended-key-update` specification does not provide explicitly signed/authenticated key updates, whereas MLS natively supports signed key updates. Additionally, MLS allows amortizing expensive post-quantum updates by mixing them with lower-frequency classical updates.
+* **Clarifying Discussion**: Jonathan Hoyland asked about the cryptographic analysis of the binding between MLS and the TLS record layer. Conrad Sandmann noted that composition relies on treating MLS output as a pseudo-random key. Carlos Aguilar Melchor added that academic cryptographers are currently completing a formal pen-and-paper reduction proof of the MLS-TLS construction.
+
+---
+
+## Open Mic and Charter Discussion
+
+* **Two-Party vs. Multi-Party Scope**: 
+  * Ted Hardie and Stephen Farrell highlighted a disconnect: while the BOF's proposed scope is strictly limited to a two-party protocol, several presented use cases (e.g., Drone Swarms, MIKEY-SAKKE) are fundamentally multi-party. Ted Hardie suggested that if group communication is intended for the future, the charter should explicitly state that group communication is out of scope for the initial phase rather than remaining silent.
+  * Stephen Farrell suggested a charter requirement that "no undetectable ghost group members" are allowed.
+  * Eric Rescorla cautioned against "smuggling" a multi-party group communication problem under the guise of a two-party protocol.
+
+* **Gap Analysis and Problem Statement**:
+  * Christopher Wood, Martin Thomson, Dennis Jackson, Daniel Kahn Gillmor, and Eric Rescorla expressed that the current problem statement is unclear and reads like "a solution looking for a problem." They urged the proponents to write a problem statement that completely avoids using the acronyms "MLS" or "TLS" to first clarify what actual transport security gaps need solving.
+  * Daniel Kahn Gillmor expressed concern that using MLS in TLS might be used to introduce multi-party escrow keys into what is expected to be a secure two-party protocol.
+
+* **Space and DTN Use Cases**:
+  * Suhas Nandakumar and Rick Taylor (speaking as DTN Chair) noted that Delay-Tolerant Networking (DTN) and TIPTOP have strong interest in MLS for environments with extreme round-trip times (e.g., interplanetary IP), though they do not run standard TLS. Standardizing MLS key-ratcheting mechanisms is of interest to these groups.
+
+* **PQC Amortization and Alternatives**:
+  * Britta Hale noted that the "continuous key agreement" aspect of MLS is key for resource-constrained sensors because it allows spreading the heavy overhead of post-quantum handshakes over time, whereas TLS forces a heavy handshake upon every reconnection.
+  * Tom Jones suggested that using single-use session tickets in TLS could potentially resolve the 0-RTT issues highlighted by proponents without introducing the state complexity of MLS.
+
+---
+
+## Decisions and Action Items
+
+* No decision was made to charter a working group at this time, as the consensus was that the problem statement is not sufficiently defined.
+* **Action Item**: Proponents must refine and clarify the problem statement, specifically detailing the gaps in existing TLS/DTLS/QUIC mechanisms (such as `draft-ietf-tls-extended-key-update` or session resumption) that necessitate an MLS-based key exchange.
+* **Action Item**: Proponents must resolve the scoping issues, particularly regarding the alignment of two-party limits with multi-party use cases.
+
+---
+
+## Next Steps
+
+* Interested participants are encouraged to join the CURRENT mailing list to collaborate on refining the problem statement.
+* Proponents will work on a revised problem statement document ahead of future proposals.
+
+---
+
+## Session Polls
+
+1. **Do you think that the problem statement is well-understood, solvable, and useful to solve?**
+   * Yes: 23
+   * No: 67
+   * No opinion: 11
+   * Total: 140
+
+2. **Do you think there are real problems in this space to solve, butyour  are not sure if  MLS is the right starting point**
+   * Yes: 17
+   * No: 9
+   * No opinion: 23
+   * Total: 142
+
+3. **Are you willing to work on clarification of the problem statement?**
+   * Yes: 24
+   * No: 43
+   * No opinion: 13
+   * Total: 143

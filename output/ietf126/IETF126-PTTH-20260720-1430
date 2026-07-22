@@ -1,0 +1,117 @@
+# [PTTH](../wg/ptth.html)
+
+## Summary
+
+The Protocol for Transposed Transactions over HTTP (PTTH, also historically referred to as POTATO) BOF session was held to discuss the creation of a working group to standardize "Reverse HTTP." The session was chaired by David Schinazi and Hannes Tschofenig. 
+
+In traditional HTTP, the transport-layer client initiates HTTP requests, and the transport-layer server responds. PTTH aims to address scenarios where a transport-layer client (e.g., a "worker" behind a firewall or NAT) establishes a connection to a transport-layer server (e.g., a "proxy" or "gateway"), but the roles are transposed at the HTTP layer, allowing the proxy to send HTTP requests to the worker. 
+
+The community discussed several use cases including Content Delivery Networks (CDNs), Zero Trust Network Access (ZTNA), and dynamic service integration. There was strong support for the problem space, with participants agreeing that the IETF is the right venue to solve it. A draft charter was reviewed, and consensus-building will continue on the mailing list to refine the working group's scope.
+
+---
+
+## Key Discussion Points
+
+### Introduction & Terminology
+David Schinazi and Hannes Tschofenig introduced the session using the [Chairs](https://datatracker.ietf.org/meeting/126/materials/slides-126-ptth-chairs-06) slide deck. They highlighted that the idea of reversing HTTP roles has been explored since at least 2008. To clarify discussions, the following terminology was adopted:
+*   **Worker**: The transport-layer client that initiates the network connection but acts as the HTTP server.
+*   **Proxy / Gateway**: The transport-layer server that accepts the network connection but acts as the HTTP client, forwarding requests downstream.
+
+### Use Cases
+
+#### 1. CDN Backends
+Kazuho Oku presented the CDN perspective using the slides [Use Case - Kazuho](https://datatracker.ietf.org/meeting/126/materials/slides-126-ptth-use-case-kazuho-00).
+*   **Benefits**: 
+    *   **Firewall Simplification**: Workers connect outbound to the CDN proxy using DNS hostnames, eliminating the need to whitelist fast-changing CDN IP blocks.
+    *   **Dynamic Scaling**: Operators can spin up new worker instances that automatically register with the proxy by establishing connections, removing the need for a load balancer between the proxy and the worker.
+    *   **Prioritization**: The proxy acts as a centralized request queue, letting it push highly important requests first.
+    *   **Heavyweight Request Limits**: Simplifies managing long-running tasks without complex, separate message-queueing middleware.
+*   **Discussion**: Martin Duke asked if workers pulling requests implies a new queuing mechanism. Kazuho clarified that PTTH simplifies current deployments by utilizing the proxy itself as the queue.
+
+#### 2. Zero Trust Network Access (ZTNA)
+Yaroslav Rosomakho presented on ZTNA requirements using the slides [Yaroslav](https://datatracker.ietf.org/meeting/126/materials/slides-126-ptth-yaroslav-00).
+*   **Benefits**: 
+    *   Eliminates public-facing VPN concentrators (which represent a significant zero-day attack surface) by having on-premises workers connect outbound to a cloud-based broker.
+    *   Standardizing this layer allows for vendor-agnostic ZTNA gateways.
+    *   **Bidirectionality**: Having a standardized reverse HTTP Connect method would enable managing on-premises client devices (e.g., SSH, RDP) through the established tunnel.
+*   **Discussion**: Kent Watsen noted similarities to RFC 8071 (NETCONF/RESTCONF Call Home) but pointed out that reversing roles is harder with HTTP/3 and QUIC than TLS/TCP. Ted Hardie asked if the connection initiation is in-band or out-of-band. Yaroslav responded that existing proprietary implementations separate signaling and enrollment from the data plane.
+
+#### 3. Dynamic Integration and Worker Lifecycle
+Marius Kleidl presented remotely on lifecycle signaling using the slides [Marius](https://datatracker.ietf.org/meeting/126/materials/slides-126-ptth-marius-00).
+*   **Benefits**: 
+    *   Workers have the best view of their capacity and lifecycle. PTTH can enable workers to directly signal readiness, request drainage before shutting down, or request rate limits over the established channel.
+    *   Allows workers to dynamically register which URL paths or hostnames they can handle (e.g., delaying requests for endpoints until a heavy cache or LLM model has finished pre-warming).
+*   **Discussion**: Hannes Tschofenig highlighted the lifecycle management and "congestion control/backpressure" aspects of this presentation as important considerations for the WG to analyze.
+
+### Defining the Problem Scope
+Martin Thomson presented a structural breakdown of the problem using the slides [Martin](https://datatracker.ietf.org/meeting/126/materials/slides-126-ptth-three-problems-00). He categorized the work into three key areas:
+1.  **Plumbing**: How bits and requests are routed (essential and straightforward).
+2.  **Authorization**: How the proxy determines which worker is allowed to serve which requests (important, but can rely on existing HTTP mechanisms).
+3.  **Scaling/Control**: Richer signaling for load management, scaling workers, etc. (complex and suggested to be left out of scope initially).
+
+**Discussion on Scope and Chartering**:
+*   **HTTP Semantics**: Mark Nottingham recommended explicitly stating in the charter that the group *must not change HTTP semantics*, preventing semantic drift between standard and reversed HTTP. This suggestion received strong support.
+*   **Fractional Origins**: Benjamin Schwartz raised concerns about routing "fractions of an origin" (e.g., routing different paths to different workers) and how that affects authority. Jonathan Lennox suggested that fractional origin support should be left as a working group design decision rather than being predefined or excluded in the charter.
+*   **Identity**: Benjamin Schwartz and Hannes Tschofenig discussed the complexity of defining identity systems (e.g., WebPKI client certificates vs. proprietary tokens) and agreed the WG should avoid defining a new global identity framework.
+*   **HTTP Versions**: Lucas Pardue cautioned against mandating support for all versions of HTTP (such as HTTP/1.1) if there is no implementer demand, suggesting the core protocol be abstract enough to map onto specific HTTP versions as needed.
+*   **Transport Layer Limits**: Lucas Pardue and Magnus Westerlund advised keeping transport-layer changes (such as modifications to QUIC connection migration or multipath) explicitly out of scope.
+
+---
+
+## Decisions and Action Items
+
+1.  **Out-of-Scope Definitions**:
+    *   Developing new transport protocols or transport-layer modifications is out of scope.
+    *   Modifying or extending core HTTP semantics is out of scope.
+2.  **Charter Updates**: Martin Thomson submitted a pull request (PR #8) to the WG charter repository to integrate the feedback raised during the session (including explicit exclusions on transport modifications and semantics changes).
+3.  **Liaisons**: The chairs agreed to establish a close liaison coordination with the W3C Technical Architecture Group (TAG) to keep them informed on how PTTH affects web architecture and capabilities.
+
+---
+
+## Session Polls
+
+The following polls were conducted during the session.
+
+1.  **Is the problem space sufficiently well understood?**
+    *   Yes: 43
+    *   No: 3
+    *   No opinion: 5
+    *   *Total*: 96
+
+2.  **Is there a problem worth solving?**
+    *   Yes: 44
+    *   No: 1
+    *   No opinion: 7
+    *   *Total*: 96
+
+3.  **Is the IETF the right place to solve this problem?**
+    *   Yes: 54
+    *   No: 0
+    *   No opinion: 2
+    *   *Total*: 97
+
+4.  **Is this proposed charter the right basis to form an IETF working group?**
+    *   Yes: 29
+    *   No: 0
+    *   No opinion: 8
+    *   *Total*: 96
+
+5.  **Do you plan to help discuss, write, review, implement, or deploy 🥔?**
+    *   Yes: 27
+    *   No: 7
+    *   No opinion: 11
+    *   *Total*: 97
+
+6.  **Would you actively participate in PTTH?**
+    *   Yes: 21
+    *   No: 6
+    *   No opinion: 12
+    *   *Total*: 97
+
+---
+
+## Next Steps
+
+1.  **Charter Refinement**: The chairs and proponents will refine the charter text on GitHub using Martin Thomson's PR and the outstanding GitHub issues.
+2.  **Mailing List**: Further discussion on outstanding design boundaries (such as handling of fractional origins and identity constraints) will take place on the PTTH mailing list.
+3.  **IESG Submission**: Once the charter text is finalized by the proponents, the Area Director (Mike Bishop) will guide the proposed charter through the formal IESG review process.

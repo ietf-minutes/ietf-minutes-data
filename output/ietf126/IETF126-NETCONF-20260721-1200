@@ -1,0 +1,149 @@
+# [NETCONF](../wg/netconf.html)
+
+## Summary
+
+The NETCONF Working Group met at IETF 126 to discuss the status of its active drafts, coordinate post-Working Group document issues, and evaluate new proposed work. Two RFCs have been published since the last meeting: RFC 9918 (NETCONF over TLS 1.3) and RFC 9984 (YANG Groupings for UDP Clients and UDP Servers). 
+
+Key discussions focused on resolving transport issues for YANG Notifications over HTTPS and CBOR, clarifying the implementation of private candidate datastores, aligning the "Call Home" strategy for NETCONF over QUIC, progressing list pagination mechanisms, and laying the groundwork for YANG Push version 2. The Working Group also conducted a successful adoption poll for a new error registry document. A presentation on network state exchange for agent-assisted operations was determined to be more appropriate for the NMOP Working Group.
+
+---
+
+## Key Discussion Points
+
+### 1. Administration and Document Status
+* **Chairs**: Kent Watsen, Per Andersson
+* **Secretary**: Fanny (referred to as Fonf in transcript)
+* **YANG Library Augmented By Status**: Tarek Saad highlighted a compiler issue found during implementation of the post-WG document `draft-ietf-netconf-yang-library-augmented-by` where inheriting a deprecated node in the module-state tree failed in ConfD. Rob Wilton noted this is an interpretation bug in YANG that should be clarified in YANG Next (Issue 27). Mahesh Jethanandani proposed resolving this non-semantic issue directly at the RFC Editor level rather than recalling the document from the queue.
+
+---
+
+### 2. Chartered Items
+
+#### [01-YANG based HTTPS notification](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-yang-based-https-notification-01)
+* **Presenter**: Mahesh Jethanandani
+* **Draft**: [draft-ietf-netconf-https-notif](https://datatracker.ietf.org/id/draft-ietf-netconf-https-notif.html)
+* **Discussion**:
+  * The draft moved forward after being blocked by dependencies on the HTTP Client/Server draft.
+  * Key updates in version -16 include media type corrections (using `application/yang-data+json` and `application/yang-data+xml`), formalizing the capability structure using a YANG schema (RFC 8791), restructuring endpoints to align with the updated HTTP client/server module structure, and isolating legacy RFC 5277 support into a dedicated section.
+  * Alex Huang Feng submitted comments to help unbind the application message from the transport layer to facilitate future reuse by YANG Push v2.
+  * **Next Steps**: Authors will address Alex Huang Feng's comments and the chairs will initiate a Working Group Last Call (WGLC). Qin Wu (shepherd) will update the write-up.
+
+#### [02-NETCONF and RESTCONF Private Candidates](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-netconf-and-restconf-private-candidates-00)
+* **Presenter**: James Cumming
+* **Draft**: [draft-ietf-netconf-privcand](https://datatracker.ietf.org/id/draft-ietf-netconf-privcand.html)
+* **Discussion**:
+  * **Coexistence**: The draft is written with the expectation that private and shared candidates do not coexist within the same session, though they may coexist across different sessions. The shared candidate remains a prerequisite due to YANG 1.0 feature limitations. There were no objections to this design.
+  * **Compare Operation**: A previous suggestion to introduce checkpoint and recovery timestamps was explicitly declared out of scope to avoid adding stateful complexity. Qin Wu agreed with this stateless approach.
+  * **In-Conflict Metadata**: A suggestion to use metadata annotations for in-conflict markers was discussed. Rob Wilton suggested specifying the metadata annotation as optional but not mandatory. This will be considered for the next revision.
+  * **Conflict Resolution**: Rob Wilton pointed out that for systems in auto-update mode, a commit operation should be a no-op instead of failing. The authors agreed to clarify this in the draft.
+  * **Delete-Config**: The authors agreed to remove mentions of `delete-config` from the draft since the RPC only supports startup/URL data stores.
+  * **Next Steps**: Authors will publish version -10 to incorporate these decisions, coordinate with Rob Wilton on his latest review, and post a summary of the resolution to the list.
+
+#### [03-YANG Groupings for QUIC clients and QUIC servers](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-yang-groupings-for-quic-clients-and-quic-servers-00)
+* **Presenter**: Tarek Saad
+* **Draft**: [draft-ietf-netconf-quic-client-server](https://datatracker.ietf.org/id/draft-ietf-netconf-quic-client-server.html)
+* **Discussion**:
+  * Key updates include adding QUIC versions to groupings, correcting the transport parameters type to a leaf-list, aligning with the security template from RFC 9607, and adding operational considerations from the WGLC.
+  * A private review from Robert Varga suggested allowing arbitrary bytes for transport parameters instead of enumerations. Tarek Saad noted the WG previously rejected this approach but agreed to reach out to Robert Varga again.
+  * Marc Blanchet recommended obtaining a review from QUIC experts (TSVART) to ensure the groupings align properly with the underlying QUIC stack.
+  * **Next Steps**: Request an early TSVART review and a YANG Doctors review. The WGLC remains open to gather more feedback (including promised reviews from Rob Wilton and Mahesh Jethanandani).
+
+#### [04-NETCONF over QUIC](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-netconf-over-quic-00)
+* **Presenter**: Bo Wu
+* **Draft**: [draft-ietf-netconf-over-quic](https://datatracker.ietf.org/id/draft-ietf-netconf-over-quic.html)
+* **Discussion**:
+  * Key updates include minor text fixes and adding a paragraph on QUIC access information to the security considerations.
+  * **Call Home**: The authors presented two options: (1) Exclude Call Home from this draft, keeping it equivalent to the base SSH/TLS bindings, and address it in a future document (e.g., an RFC 8071 bis); or (2) Defer the draft until a mature reverse-QUIC solution is defined.
+  * Kent Watsen noted that reverse-QUIC is still years away. The Working Group supported Option 1 to proceed with publishing the draft without Call Home support, as it is already useful for standard client-to-server operations.
+  * **Next Steps**: The authors will update the draft to clarify that Call Home is out of scope and request a WGLC.
+
+#### [05-List Pagination for YANG-driven Protocols](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-list-pagination-for-yang-driven-protocols-03)
+* **Presenter**: Qin Wu
+* **Drafts**: 
+  * [draft-ietf-netconf-list-pagination](https://datatracker.ietf.org/id/draft-ietf-netconf-list-pagination.html) (Base)
+  * [draft-ietf-netconf-list-pagination-nc](https://datatracker.ietf.org/id/draft-ietf-netconf-list-pagination-nc.html) (NETCONF Extensions)
+  * [draft-ietf-netconf-list-pagination-rc](https://datatracker.ietf.org/id/draft-ietf-netconf-list-pagination-rc.html) (RESTCONF Extensions)
+* **Discussion**:
+  * **Updates**: The base draft now allows undefined prefixes in XPath expressions, supports optional conditional node identifiers, centralizes error information, and adds a `cursor-offset` choice. The NETCONF draft replaced query parameters with RPC input parameters per Andy Bierman's review. The RESTCONF draft applied prefix binding to all YANG modules.
+  * **Cursor Page Size**: The authors discussed whether the cursor should embed page size. Rob Wilton advocated for keeping the cursor stateless/context-free so the server does not need to maintain session state.
+  * **Feature Statements for Cursor/Offset**: The authors disagreed on whether to make `cursor` and `offset` features under a mandatory choice. 
+    * *Trade-off A (Kent Watsen)*: Put the onus on the client to support both, allowing servers to choose the more performant `cursor` option without being forced to implement expensive `offset` operations. Rob Wilton supported this, noting that `offset` is highly inefficient for large datasets.
+    * *Trade-off B (Per Andersson)*: Make `offset` mandatory for all servers as it is trivial to implement.
+  * **Next Steps**: Mahesh Jethanandani confirmed he will run another WGLC once the authors resolve the cursor and feature behavior, as the changes from the previous version are substantial.
+
+#### [06-CBOR Encoding for HTTPS-based YANG Notifications Transport](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-cbor-encoding-for-https-based-yang-notifications-transport-00)
+* **Presenter**: Maher El-Aawar
+* **Draft**: [draft-ietf-netconf-https-notif-cbor](https://datatracker.ietf.org/id/draft-ietf-netconf-https-notif-cbor.html)
+* **Discussion**:
+  * Updates include media type alignment (`application/yang-data+cbor`), endpoint restructuring, and capability formalization. 
+  * Progress has been made on implementing CBOR named identifier support in the upstream `libyang` library.
+  * Michel Veillette pointed out that the examples in the current draft use invalid/unallocated YANG SIDs. Alex Huang Feng suggested that since the draft is adopted, the authors should request early SID allocations from IANA.
+  * **Next Steps**: The authors will correct the examples with temporary or allocated SIDs. This draft will be progressed in a WGLC cluster alongside the base HTTPS notification draft.
+
+#### [07-YANG Push v2 Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-07-yang-push-v2-update-00)
+* **Presenter**: Rob Wilton
+* **Draft**: [draft-ietf-netconf-yang-push-2](https://datatracker.ietf.org/id/draft-ietf-netconf-yang-push-2.html)
+* **Discussion**:
+  * **Adoption**: The draft has been successfully adopted. Rob Wilton reassured the WG that this work will not block the publication of active v1 subscription drafts.
+  * **YANG Path (YPath)**: To keep the draft clean, James Cumming is moving YPath specifications into a separate document so it can be reused across other protocols (like NETCONF/RESTCONF or YANG packages).
+  * **Simplification**: The authors agreed to remove the "replace" operation, relying entirely on "merge" semantics for on-change notifications. Deletions will be handled via explicit, separate delete messages. This aligns with GNMI behavior and simplifies implementation for message brokers.
+  * **Notification Envelope**: The WG agreed with the previous decision to pull the envelope schema ([draft-ietf-netconf-notif-envelope](https://datatracker.ietf.org/id/draft-ietf-netconf-notif-envelope.html)) directly into this draft to reduce document overhead.
+  * **Statistics/Dampening**: Managing on-change subscriptions on fast-changing statistics remains an open issue. Thomas Graf noted that dampening capabilities should be visible to clients, but shouldn't be client-configurable to prevent overloading the router.
+  * **Next Steps**: Authors will continue to resolve open issues and migrate the development repository to the NETCONF WG GitHub organization.
+
+---
+
+### 3. Non-Chartered Items
+
+#### [08-Error List and Error Identities Registries for YANG-driven protocols](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-error-list-and-error-identities-registries-for-yang-driven-protocols-00)
+* **Presenter**: Tarek Saad
+* **Discussion**:
+  * The proposal defines IANA registries to centralize and manage error lists and error identities across NETCONF, RESTCONF, and other YANG-driven protocols. This registry will also be backed by IANA-maintained YANG modules.
+  * Rob Wilton and Balazs Lengyel spoke in support of the registry.
+  * **Next Steps**: An adoption poll was conducted. The Working Group will proceed with adopting the document.
+
+#### [09-Requirements for Network State Exchange in Agent-Assisted Netops](https://datatracker.ietf.org/meeting/126/materials/slides-126-netconf-requirements-for-network-state-exchange-in-agent-assisted-netops-00)
+* **Presenter**: Unnamed Presenter
+* **Discussion**:
+  * The presentation outlined requirements for extracting and compressing network state (using structures like sketches) to feed into LLMs/AI agents efficiently, avoiding high token costs and reasoning hallucinations.
+  * Kent Watsen (Chair) and Mahesh Jethanandani questioned how the draft fits into the NETCONF WG charter.
+  * Thomas Graf suggested that while the requirements are useful background for YANG Push and filtering, the draft needs to be translated into specific protocol mechanism requirements. Rob Wilton expressed skepticism about standardizing requirements for rapidly evolving LLM technologies.
+  * **Next Steps**: The presenter confirmed that this work is also being presented in the NMOP Working Group, which is a more appropriate venue.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **YANG Library Augmented By**: Do not recall the draft from the RFC Editor queue; resolve the ConfD compilation issue via editorial/non-semantic modifications at the RFC Editor level.
+2. **NETCONF over QUIC**: Proceed with Option 1 (exclude Call Home functionality from [draft-ietf-netconf-over-quic](https://datatracker.ietf.org/id/draft-ietf-netconf-over-quic.html) and advance it as is).
+3. **YANG Push v2**: Pull the schema from [draft-ietf-netconf-notif-envelope](https://datatracker.ietf.org/id/draft-ietf-netconf-notif-envelope.html) directly into [draft-ietf-netconf-yang-push-2](https://datatracker.ietf.org/id/draft-ietf-netconf-yang-push-2.html) and remove the "replace" operational semantic.
+
+### Session Polls
+* **Adoption Poll**:
+  * *Question*: "Do you think the Error Registry document should be adopted?"
+  * *Result*: yes: 23, no: 0, no_opinion: 3 (total: 52)
+  * *Outcome*: The draft will be adopted by the Working Group.
+
+---
+
+## Next Steps
+
+1. **draft-ietf-netconf-https-notif**:
+   * Address Alex Huang Feng's comments.
+   * Chairs to initiate WGLC.
+2. **draft-ietf-netconf-privcand**:
+   * James Cumming and Rob Wilton to align on outstanding comments and post a summary to the mailing list.
+   * Publish version -10 to resolve conflict resolution behavior and remove `delete-config`.
+3. **draft-ietf-netconf-quic-client-server**:
+   * Chairs/Authors to request early TSVART and YANG Doctors reviews.
+   * Tarek Saad to follow up with Robert Varga on private comments.
+4. **draft-ietf-netconf-over-quic**:
+   * Update draft to declare Call Home out of scope.
+   * Chairs to initiate WGLC.
+5. **List Pagination Drafts (-nc, -rc, and base)**:
+   * Authors to finalize decisions on cursor state and feature structures.
+   * Mahesh Jethanandani to run a new WGLC upon update.
+6. **draft-ietf-netconf-https-notif-cbor**:
+   * Correct invalid SID examples.
+   * Progress in a WGLC cluster with the base HTTPS notification draft.

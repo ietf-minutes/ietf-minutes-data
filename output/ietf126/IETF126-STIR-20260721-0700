@@ -1,0 +1,69 @@
+# [STIR](../wg/stir.html)
+
+## Summary
+
+The STIR working group met at IETF 126 to discuss the status of its active documents, progress the proposed Version 3 of the working group charter, and review the latest updates to the Vesper profile. Key discussions focused on identifying entities behind calls, binding telephone numbers (TNs) to domain names in certificates, and determining where dynamic call attributes (such as Do Not Originate) should be stored within the STIR architecture. 
+
+Additionally, the ACME Working Group Chair raised an urgent request for STIR participants to review a dependent draft currently in ACME Working Group Last Call (WGLC).
+
+---
+
+## Key Discussion Points
+
+### 1. Document Status and Introduction
+Russ Housley presented the [Chair Introduction](https://datatracker.ietf.org/meeting/126/materials/slides-126-stir-chair-introduction-00). 
+* Since the last meeting, two RFCs have been published.
+* The OCSP-related document is in the RFC Editor queue.
+* Three documents are currently with the IESG.
+
+### 2. Charter Version 3 Discussion
+Chris Wendt and John Peterson summarized the recent mailing list discussions regarding the Version 3 charter update (see [Charter draft](https://datatracker.ietf.org/doc/charter-ietf-stir/)).
+* **Scope of Entity Identification**: The primary goal is to standardize mechanisms for identifying the entity behind a call.
+* **Trust Models**: The working group agreed to stick to the authority model defined in RFC 8226. Alternative trust models that allow arbitrary entities to attest to telephone numbers without a relationship to the administrative/routing authority are explicitly out of scope.
+* **Jurisdictional Constraints**: Eric Burger had contributed helpful list comments regarding keeping jurisdictional and regulatory elements out of scope, which remains the case in the new text. 
+* **SIP URIs**: John Peterson noted that the principles of authority apply to all identifiers (including domain-bound SIP URIs), not just telephone numbers.
+* Charles Eckel confirmed that the charter remains open to multiple mechanisms for entity identification should others be proposed in the future.
+
+### 3. Vesper Profile Discussion
+Chris Wendt presented the [Vesper Profile Discussion](https://datatracker.ietf.org/meeting/126/materials/slides-126-stir-vesper-profile-discussion-00), detailing how the Vesper drafts are evolving from exploratory concepts (like wallets and selective disclosure) into a consolidated profile of existing STIR tools (RFC 8226, RFC 9060, etc.).
+
+* **Entity Identification via TN-to-Domain Binding**:
+  * Instead of standardizing complex KYC (Know Your Customer) policies, the profile proposes binding a TN to a domain name. 
+  * The certificate's Subject Alternative Name (SAN) contains the domain URL. Domain control is proven via standard ACME processes, and the right to use the TN is validated via a TN auth list token. These are bound together in a delegate certificate.
+  * John Peterson agreed that this tight binding provides strong security properties and aligns well with WebPKI methodologies.
+* **Global Deployment Barriers**:
+  * Ryan raised questions regarding the practical barriers to deploying caller authentication globally (e.g., in Ghana) and how countries with existing registration schemes still face spoofing.
+  * Chris Wendt and Eric Burger noted that while the IETF standardizes the protocols, deployment depends on country-specific regulatory frameworks, numbering plans, and how trust anchors/certificate authorities are managed.
+* **TN Attributes and Passport Placement Service (PPS)**:
+  * Chris Wendt proposed renaming the "Call Placement Server" (CPS) to "Passport Placement Service" (PPS) to avoid confusing acronym collisions with "Certificate Practice Statements".
+  * The profile introduces self-asserted attributes to the certificate, such as Do Not Originate (DNO) and "Authorized Originators" (explicitly listing which providers are permitted to sign calls for a given TN).
+  * **Technical Critique**: 
+    * John Peterson and Russ Housley strongly objected to baking highly dynamic attributes (like DNO) into certificates. In X.509 architectures, certificate fields are vetted by a CA, making "self-assertion" technically contradictory.
+    * John Peterson stated that "Authorized Originators" conflicts with the delegation model in RFC 9060 and serves as an unnecessary "end run" around it.
+    * Roger Anderson suggested that once a TN is bound to a domain name, the domain's DNS could be used to store and discover these dynamic attributes. Chris Wendt acknowledged this as a valid path.
+    * In response to Ryan's question about certificate scale, Chris Wendt noted that delegate certificates (RFC 9060) are short-lived to bypass the overhead of CRLs or OCSP for revocation.
+* **Out-of-Band Discovery**:
+  * Based on previous feedback, Chris Wendt removed specific API definitions from the out-of-band draft, focusing strictly on discovery.
+  * John Peterson suggested that instead of baking PPS URIs into the certificate for discovery, the domain should publish signed wrapper objects containing those pointers, keeping the certificate clean of discovery-specific dependencies.
+
+### 4. ACME Working Group Last Call
+Mike Ounsworth (ACME WG Chair) raised an urgent issue regarding `draft-ietf-acme-authority-token-jwt-claim-constraints` (JWT Claim Constraints Profile of ACME Authority Token).
+* The draft is a key dependency for STIR's ACME authority tokens.
+* It has been in ACME WGLC since July 4, but has received zero responses. 
+* Mike warned that the WGLC will fail unless STIR participants actively review the document and post support/comments to the ACME mailing list.
+
+---
+
+## Decisions and Action Items
+
+* **STIR Charter V3**: The working group confirmed consensus on the proposed Version 3 charter text. The text will proceed to the IESG.
+* **Vesper Profile**: The group agreed to separate the core Vesper framework and the TN-to-domain binding mechanism from the more controversial TN attributes draft.
+* **Action Item**: STIR members are requested to review `draft-ietf-acme-authority-token-jwt-claim-constraints` and send confirmation of its usability/readiness to the ACME mailing list. Russ Housley/Ben Campbell will cross-post a reminder to the STIR mailing list.
+
+---
+
+## Next Steps
+
+* Progress the rechartering process through the IESG.
+* Refine the Vesper drafts (specifically `draft-wendt-stir-vesper` and the TN-to-domain binding mechanism) to address concerns regarding the storage of dynamic attributes and out-of-band discovery architectures.
+* Initiate formal adoption calls for the Vesper suite once the new charter is active.

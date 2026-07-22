@@ -1,0 +1,136 @@
+# [DTN](../wg/dtn.html)
+
+## Summary
+
+The Delay-Tolerant Networking (DTN) Working Group met at IETF 126. The session was chaired by Edward Birrane and Rick Taylor. The meeting covered updates to several active working group drafts and new individual proposals, with a strong focus on technical alignment, architectural clarity, and modularity. Key presentations included CoAP over BP updates, individual drafts from Brian Sipos (Manifest Block and SAFE key agreement), the BPv7 Echo Service, the resurrection of Bundle-in-Bundle Encapsulation (BIBE) rescoped to exclude custody transfer, reliability considerations, and a DTN access gateway for IP edge networks.
+
+---
+
+## Key Discussion Points
+
+### 1. CoAP over BP
+**Presenter:** Carles Gomez  
+**Slides:** [CoAP over BP](https://datatracker.ietf.org/meeting/126/materials/slides-126-dtn-sessa-coap-over-bp-00)
+
+*   **Status & Updates:** Carles Gomez presented revision 04, which resolves review comments from Marco Davids. Notable updates include clarifying that the maximum aggregation delay parameter is independent of confirmable (CON) or non-confirmable (NON) message types, and security considerations regarding the promotion of the payload length option from Class U (unprotected) to Class E (encrypted/integrity-protected) using hop-by-hop OSCORE with OSCORE-capable proxies.
+*   **Implementation:** Carles Gomez noted that UPC has an existing implementation that will be updated to conform to the latest version of the draft. 
+*   **Discussion:** 
+    *   The CoAP Working Group chairs plan to declare version 04 stable to implement.
+    *   Rick Taylor raised a concern regarding the mention of `.dtn.arpa` as a URI scheme, noting that the working group's understanding of DTN EIDs beyond RFC 9171 is limited and its interaction with DNS is an open question. He suggested removing the reference to `.dtn.arpa` to avoid stalling the draft, while retaining `.ipn.arpa`. Carles Gomez agreed that this was a reasonable approach.
+    *   The chairs suggested initiating a Working Group Last Call (WGLC) once the UPC implementation is verified as fully conformant to the latest draft.
+
+---
+
+### 2. Sipos Individual Drafts
+**Presenter:** Brian Sipos  
+**Slides:** [Sipos individual drafts](https://datatracker.ietf.org/meeting/126/materials/slides-126-dtn-sessa-sipos-individual-drafts-00)
+
+#### DTN Manifest Block
+*   **Status & Updates:** This draft defines a way to take a cryptographic "snapshot" of a bundle's blocks at a specific point in time to support the Secure BP Audit Mechanism (S-PAM) and transit network preservation. Version 01 splits out the encoding structure (purpose code, block identity, and metadata map) to avoid dependency on CBOR map encoding order and adds a key identifier to the security block processing based on S-PAM feedback.
+*   **Discussion:**
+    *   Rick Taylor suggested adding a flag in the primary block to indicate the presence of a manifest block, helping to detect man-in-the-middle attacks where a manifest block is stripped entirely. 
+    *   Brian Sipos noted that enforcing the presence of a manifest block is best handled via out-of-band policy/configuration since in-band signaling can still be manipulated.
+    *   Edward Birrane asked whether the manifest is a snapshot of source blocks or expected destination blocks. Brian Sipos clarified it represents a snapshot of selected blocks at the moment the manifest is added, and multiple manifest blocks can coexist.
+
+#### Security Associations Key Exchange (SAFE)
+*   **Status & Updates:** Brian Sipos presented the SAFE draft, which defines an in-band key agreement protocol using ephemeral Diffie-Hellman over COSE (EDHOC) to establish and upkeep symmetric keys. It is designed to support unilateral, out-of-band rekeying by the content key owner. It is forward-compatible with the COSE security context defined in [draft-ietf-dtn-bpsec-cose](https://datatracker.ietf.org/draft-ietf-dtn-bpsec-cose/).
+*   **Discussion:** 
+    *   Eric expressed support for adoption, comparing SAFE's role in BPsec to IKEv2's role in IPsec.
+    *   Edward Birrane requested that Brian Sipos formally ask for adoption on the mailing list to initiate a Working Group adoption call.
+
+---
+
+### 3. BPv7 Echo Service
+**Presenter:** Rick Taylor  
+**Slides:** [BPv7 Echo Service](https://datatracker.ietf.org/meeting/126/materials/slides-126-dtn-sessa-bpv7-echo-service-00)
+
+*   **Status & Updates:** Rick Taylor presented revision 01 of the BP echo service, which standardizes "ping" behavior over BP. The draft was redesigned from an overengineered "reflector" model in v00 to a simple request-response wire contract. The responder creates a new independent bundle with a fresh timestamp and must preserve the payload exactly.
+*   **Interoperability:** The service has been successfully interoperated across several implementations (uD3TN, dtn7-rs, HDTN, dtn-me, ION, ESA BP, and CFS BP). 
+*   **IANA Request:** The draft requests the registration of IPN service number 128 (the lowest public reservable IPN service number).
+*   **Discussion:**
+    *   Edward Birrane suggested adding a security consideration regarding how the inclusion of extension blocks on ping requests can be used to probe network capabilities and verify processing behaviors of intermediate BPAs. 
+    *   Brian Sipos and Edward Birrane recommended adding an operational considerations section.
+    *   Scott Burleigh suggested explicitly excluding pings sourced from a null endpoint to prevent amplification and Denial of Service (DoS) attacks. Rick Taylor confirmed this is already excluded in the draft.
+    *   Rick Taylor will request Working Group adoption on the mailing list.
+
+---
+
+### 4. Bundle-in-Bundle Encapsulation (BIBE)
+**Presenter:** Rick Taylor (as individual contributor; chaired by Edward Birrane)  
+**Slides:** [Bundle-in-Bundle Encapsulation (BIBE)](https://datatracker.ietf.org/meeting/126/materials/slides-126-dtn-sessa-bundle-in-bundle-encapsulation-bibe-00)
+
+*   **Status & Updates:** Rick Taylor presented a proposal to resurrect the expired BIBE work, renaming and rescoping it to focus exclusively on encapsulation and segmentation (excluding custody transfer). 
+*   **Motivation:** The core motivation is the formal deprecation of Application Data Unit (ADU) fragmentation defined in RFC 9171, which is fundamentally incompatible with Bundle Protocol Security (BPsec). Standardizing a secure encapsulation and segmentation mechanism allows the IETF to publish a standards-track document that deprecates ADU fragmentation.
+*   **Technical Details:** The draft aligns with the technical mechanics of the CCSDS SIS-DTN Orange Book. It utilizes a CBOR array to represent either a complete encapsulated bundle or a segmented chunk (using total length and segment offset fields). It removes windowing machinery and fails silently when receiving corrupted or unreassembled segments.
+*   **Discussion:**
+    *   Scott Burleigh strongly endorsed the approach and confirmed that CCSDS is also removing custody transfer in favor of segmentation and reassembly. He agreed that this document should formally deprecate ADU fragmentation.
+    *   Tommy Jensen (AD) and Brian Sipos supported the rescoping. Brian Sipos suggested keeping the scope tight and avoiding unnecessary convergence-layer consolidation.
+    *   Edward Birrane noted the benefits of having these technical discussions in the open within the IETF. 
+    *   The proposed next step is to publish the updated text as the next revision of the WG document, removing "CT" (Custody Transfer) from the name to become `draft-ietf-dtn-bp` (updating `draft-ietf-dtn-bibe-ct`).
+
+---
+
+### 5. Reliability Considerations for DTNs
+**Presenter:** Sabrina Pellegrini  
+**Slides:** [Reliability Considerations for DTNs](https://datatracker.ietf.org/meeting/126/materials/slides-126-dtn-reliability-considerations-for-dtns-00)
+
+*   **Status & Updates:** Sabrina Pellegrini presented revision 02, which refines the architectural terminology (renaming "adaptation layer" to "convergence layer" [CL]) and introduces the concept of a "convergence layer protocol stack" representing the collection of protocols underneath the convergence layer adapter (CLA). Normative "should/shall" language was removed to align with the informational nature of the document.
+*   **Architecture Discussion:** 
+    *   The presenters proposed a four-layer architecture (Application, Bundle, Convergence, Underlay) that groups the CLs and CLA into the bundle node boundary. 
+    *   Scott Burleigh agreed that the CLA belongs inside the node, but questioned the practical necessity of separating the "underlay layer" from the "convergence layer". Edward Birrane clarified that this separation is useful for reasoning about scenarios where an unreliable underlay requires a thicker, more complex convergence layer stack.
+    *   Rick Taylor suggested that trying to strictly draw inside/outside node boundaries on logical architectures is counterproductive and warned against overengineering.
+    *   Edward Birrane and Scott Burleigh agreed that high-level architectural definitions and recursive stacking ("turtles all the way down") are better addressed in the ongoing revision of the DTN Architecture (RFC 4838-bis).
+    *   Brian Sipos suggested separating logical entity relationships and protocol stacking into two distinct diagrams to improve clarity.
+
+---
+
+### 6. DTN Access Gateway for IP Edge Networks
+**Presenter:** Sheng Jiang  
+**Slides:** [DTN Access Gateway for IP Edge Networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-dtn-dtn-access-gateway-for-ip-edge-networks-00)
+
+*   **Concept:** Sheng Jiang presented a boundary function to bridge local IP networks (which may not run the bundle protocol or understand DTN semantics, such as lunar surface assets) across deep-space DTN backbones. The gateway acts as a TCP/QUIC proxy on the IP side and a BPA on the DTN side, splitting the end-to-end IP connection into two local IP hops.
+*   **Key Mechanisms:**
+    *   *Dynamic Bundle Payload Construction:* Converts continuous bitstreams into bounded bundles using a shared, bounded buffer. Payloads are prepended with subheaders containing flow identifiers and offsets.
+    *   *Contact-Aware Admission Control:* Bundles are only submitted to the DTN side when contact storage, interval windows, and link capacity are available.
+    *   *Passive Back-Pressure:* When the DTN path is congested, the shared buffer fills, causing the gateway to pause reading from local IP connections, triggering standard TCP/QUIC flow control back to the original sender.
+    *   *IP-to-DTN Service Mapping:* Maps standard IP requests (e.g., HTTP over TCP) to DTN native services (e.g., HTTP over BP, or HTTP GET mapped to CFDP).
+*   **Discussion:**
+    *   Rick Taylor praised the work and noted that it is highly valuable for multi-vendor interoperability. He mentioned ongoing work to integrate BP information into the Domain Name System (DNS) to assist gateways in resolving IP destinations to EIDs.
+    *   Brian Sipos suggested that for applications using HTTP or CoAP, the gateway could leverage native proxying architectures, using raw IP encapsulation only as a fallback.
+    *   Edward Birrane and Rick Taylor encouraged Sheng Jiang to submit an individual draft detailing these mechanisms for discussion at the next meeting.
+
+---
+
+### 7. Open Mic: Key Establishment for Space Communications
+**Speaker:** Susan Tan  
+
+*   Susan Tan introduced upcoming work on key establishment protocols designed for space environments. Traditional secure channels (such as [draft-ietf-dtn-bpsec-cose](https://datatracker.ietf.org/draft-ietf-dtn-bpsec-cose/)) assume pre-shared keys are already in place.
+*   In high-latency or highly disrupted environments, interactive key exchange handshakes (like those in TLS or EDHOC) are impractical. 
+*   Susan highlighted Messaging Layer Security (MLS) as an asynchronous key establishment protocol that provides useful security features such as post-compromise security.
+*   **Announcement:** A Birds of a Feather (BoF) session for the "CURRENT" group is scheduled for Tuesday at 16:30 local time. Susan Tan will post the details on the DTN mailing list and present more details during DTN Session 2 on Thursday.
+
+---
+
+## Decisions and Action Items
+
+1.  **CoAP over BP:** 
+    *   Carles Gomez to update the UPC implementation to align with revision 04.
+    *   Carles Gomez to coordinate with the chairs to issue a Working Group Last Call (WGLC) once implementation conformance is confirmed.
+2.  **Sipos Individual Drafts:**
+    *   Brian Sipos to formally request Working Group adoption of the SAFE key agreement draft on the DTN mailing list.
+3.  **Echo Service:**
+    *   Rick Taylor to update the draft with operational considerations (as suggested by Brian Sipos) and security considerations regarding network probing via extension blocks.
+    *   Rick Taylor to formally request Working Group adoption on the mailing list.
+4.  **Bundle-in-Bundle Encapsulation (BIBE):**
+    *   The Working Group agreed to resurrect the expired BIBE work, rescoped to encapsulation and segmentation only.
+    *   The draft will be renamed to remove the "CT" suffix and published as a new revision of the active WG document sequence (`draft-ietf-dtn-bp`).
+5.  **DTN Access Gateway:**
+    *   Sheng Jiang to author and submit an individual internet-draft detailing the gateway's technical specifications for review at the next IETF meeting.
+6.  **Key Establishment:**
+    *   Susan Tan to post details of the CURRENT BoF to the DTN mailing list and prepare slides for the DTN Thursday session.
+
+---
+
+## Next Steps
+
+*   **Session 2 (Thursday):** The working group will resume technical discussions, specifically focusing on the detailed mechanics of the updated BIBE draft and Susan Tan's presentation on space key establishment.

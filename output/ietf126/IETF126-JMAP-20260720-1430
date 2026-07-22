@@ -1,0 +1,110 @@
+# [JMAP](../wg/jmap.html)
+
+## Summary
+
+The JMAP Working Group met at IETF 126. The session was divided into two main parts: calendar/contact specifications (CALEXT) and core JMAP extensions. 
+
+In the CALEXT section, updates were presented on JSCalendar, JSContact, vCard 4.0-bis, and Cryptographic Extensions. In the JMAP section, the working group discussed multiple active drafts, including mail sharing, object metadata, enhanced result references, email push, file nodes, and blob management. They also reviewed proposals for JMAP S/MIME, conditional changes, object history, and server settings.
+
+## Key Discussion Points
+
+### CALEXT Updates
+
+#### JSCalendar
+Robert Stepanek presented [jscalendar](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-jscalendar-00).
+* **Status**: The specifications (JSCalendar bis, JSCalendar iCalendar mapping, and related iCalendar changes) are technically complete and ready for publication.
+* **Key Changes**: Clarified recurrence rules, reintroduced the `sent by` property, restricted rescheduling to align with iCalendar, and removed null values (except in patch objects) to improve integration with JMAP calendars.
+* **JMAP Calendars Integration**: Neil Jenkins noted that the JMAP Calendars document had been held in AUTH48 to align with JSCalendar changes. He plans to publish an updated version, followed by a short, combined working group last call for all four documents.
+
+#### JSContact
+Robert Stepanek presented [jscontact](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-jscontact-00).
+* **Status**: JSContact 2.0 has been established by making the `UID` property optional, triggered by the integration of [draft-ietf-jmap-blobext](https://datatracker.ietf.org/draft-ietf-jmap-blobext/).
+* **Conversion (9555-bis)**: Aligned conversion idioms between vCard/JSContact and iCalendar/JSCalendar to simplify implementation. Publication will be held to coordinate with the vCard 4.0-bis effort.
+* **Deployment Feedback**:
+  * **Addresses**: Separating street names and numbers has proven problematic because rendering rules (such as whether a number precedes a name) are culture-dependent and CLDR lacks rendering guidance. The working group discussed requesting feedback from ISO regarding their address standards.
+  * **Social Profiles**: Apple's undocumented `x-social-profile` made mapping to `onlineService` difficult, leading to a temporary fallback to custom x-properties.
+  * **vCard 4.0 Prevalence**: vCard 3.0 remains the dominant format in the wild. Future iterations of JSContact may deprioritize absolute alignment with vCard 4.0 features if it hinders practical usability.
+
+#### vCard 4.0-bis Update
+Rick Signes presented [vCard 4.0-bis update](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-vcard-40-bis-update-00).
+* **Errata**: Addressed 33 errata, including resolving conflicting accepted errata.
+* **Comma Escaping in URIs**: Decided that comma escaping only applies to text values and components, preventing incorrect escaping in URI values.
+* **Text UIDs**: Addressed compatibility issues where vCard 4.0 group cards require URI-based member references but vCard 3.0 cards frequently use text UIDs. Added a `text` value type option to the `member` property.
+* **Text Directory Deprecation**: Discussion on whether the deprecation of the `text/directory` media type broke LDAP implementations. Andrew Alston (AD) suggested raising this on the active LDAP mailing list.
+
+#### Cryptographic Extensions
+Phillip Hallam-Baker presented [Cryptographic Extensions](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-cryptographic-extensions-00).
+* **Status**: Running code is synchronized with the draft.
+* **Breaking Change**: The `cryptoKey` object type currently has a mandatory `uri` property. To support inline JSON Web Keys (JWK) directly, it is proposed to make the `uri` optional. This is a breaking spec change, but there is no running code to break. Robert Stepanek supported this approach over bifurcating the object types.
+* **Property Renaming**: Renamed the `updates` class to `updateSource`.
+* **Registry**: A new IANA registry will be established under the JSContact folder for update source protocols.
+
+---
+
+### JMAP Updates
+
+#### Protocol Badges
+Bron Gondwana introduced the new JMAP protocol badges. High-quality files are available on the JMAP website for implementers to display compatibility.
+
+#### Mail Sharing, Metadata, and Result References
+Mário Blažević presented [JMAP Object Metadata, Enhanced Result References and Mail Sharing presentation](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-jmap-object-metadata-enhanced-result-references-and-mail-sharing-presentation-00).
+* **[draft-ietf-jmap-mail-sharing](https://datatracker.ietf.org/draft-ietf-jmap-mail-sharing/)**: Adds sharing support to JMAP email. It is ready for Working Group Last Call.
+* **[draft-ietf-jmap-metadata](https://datatracker.ietf.org/draft-ietf-jmap-metadata/)**: Adds public/private metadata to any JMAP object. Since version -01, the document has been simplified by removing the standalone `metadata` object and integrating metadata directly as properties (`metadata` and `privateMetadata`) on the targets. This allows standard JMAP methods to query and patch metadata inline.
+* **[draft-ietf-jmap-refplus](https://datatracker.ietf.org/draft-ietf-jmap-refplus/)**: Proposes extending JMAP query reference resolution with JSON Path instead of JSON Pointer to support more powerful chained queries and reduce client-server round trips.
+  * **Discussion**: Neil Jenkins expressed concerns that JSON Path introduces significant complexity for servers and proxies with minimal real-world gain. Arnt Gulbrandsen questioned how cascading errors and empty query results are handled. Alexey Melnikov suggested separating the expanded use of references from the JSON Path query language syntax. 
+
+#### JMAP Email Delivery Push Notifications
+Neil Jenkins provided an update on [draft-ietf-jmap-emailpush](https://datatracker.ietf.org/draft-ietf-jmap-emailpush/).
+* **Status**: The draft is waiting for implementation experience. Neil expects to have implementation results by the next meeting. Mário Blažević noted he has successfully implemented it but highlighted a previous discussion regarding bundling multiple push payloads.
+
+#### Core Extensions (Conditional Changes, Object History, Blob, File Node)
+Bron Gondwana presented [jmap-bron-slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-jmap-bron-slides-00).
+* **Conditional Changes**: Introduces an `ifUnchangedBy` patch mechanism. This allows clients to assert that an update should only succeed if specific fields have not changed, reducing state-clash failures on high-churn datasets.
+* **Object History**: Provides a mechanism to query past revisions or deletion status of objects.
+* **[draft-ietf-jmap-blobext](https://datatracker.ietf.org/draft-ietf-jmap-blobext/)**: Obsoletes RFC 9404, replacing the custom upload endpoint with standard JMAP `/set` methods ("blob2"). Supports range requests, diff patching, compression/decompression, and digest verification. Ben asked if random-access writes are supported; Bron confirmed they can be achieved using range-copying and combination operations. Ben requested practical examples for these use cases.
+* **[draft-ietf-jmap-filenode](https://datatracker.ietf.org/draft-ietf-jmap-filenode/)**: Heavily updated. Discussed file system locking mechanisms and POSIX atomic swap renames. Bron suggested adding an "all-or-nothing" execution flag to JMAP `/set` to satisfy transactional file system operations. Arnt Gulbrandsen suggested focusing completeness on S3-like operations rather than legacy file systems.
+
+#### JMAP S/MIME
+Alexey Melnikov presented [jmap-smime](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-jmap-smime-00).
+* **Status**: To support more complex S/MIME operations (like compression or double-signing), the draft transitioned from flat boolean flags to an array-of-operations model.
+* **Complexity Control**: To prevent Denial of Service attacks, the operations chain is capped (e.g., maximum of three or four operations).
+* **Integration**: Bron Gondwana proposed basing the decryption and format conversion operations on the standard `/set` convert mechanism in [draft-ietf-jmap-blobext](https://datatracker.ietf.org/draft-ietf-jmap-blobext/). Alexey agreed to explore this direction.
+
+#### JMAP Tasks, Notes, and Server Settings
+* **Tasks**: Rick Signes noted that while JSCalendar defines the task representation format, a minimal JMAP Tasks API is still required to manage task lists.
+* **Notes**: Hans-Joerg Happel inquired about personal notes implementations. Rick Signes suggested that plain text, HTML, or Markdown files inside [draft-ietf-jmap-filenode](https://datatracker.ietf.org/draft-ietf-jmap-filenode/) are preferable to defining a brand new, highly specific notes object type.
+* **Server Settings**: Mário Blažević discussed standardizing common server and user account settings (e.g., timezones, language, encryption settings). He agreed to publish a draft based on his implementation in Stalwart.
+
+---
+
+## Decisions and Action Items
+
+### CALEXT
+* **Decision**: Adopt the breaking changes to JSContact cryptographic keys to make `uri` optional and natively support JSON Web Keys (JWK).
+* **Action Item**: Bron Gondwana to engage the ISO liaison regarding standardization and rendering rules for separated street names and numbers.
+* **Action Item**: Rick Signes to contact the LDAP text mailing list regarding the deprecation of the `text/directory` media type.
+
+### JMAP
+* **Decision**: [draft-ietf-jmap-mail-sharing](https://datatracker.ietf.org/draft-ietf-jmap-mail-sharing/) is ready for Working Group Last Call.
+* **Action Item**: Bron Gondwana to issue a Call for Adoption on the *Object History* and *Conditional Changes* drafts.
+* **Action Item**: Bron Gondwana to add comprehensive examples of range reads, inline writes, and diff patching to [draft-ietf-jmap-filenode](https://datatracker.ietf.org/draft-ietf-jmap-filenode/).
+* **Action Item**: Alexey Melnikov to post the updated object-based version of [jmap-smime](https://datatracker.ietf.org/meeting/126/materials/slides-126-jmap-jmap-smime-00) as a working group draft.
+* **Action Item**: Mário Blažević to publish an initial draft on JMAP Server Settings.
+
+---
+
+## Next Steps and Milestones
+
+* **August 2024**:
+  * Issue WG Last Call for [draft-ietf-jmap-mail-sharing](https://datatracker.ietf.org/draft-ietf-jmap-mail-sharing/).
+  * Adopt JMAP Server Settings draft.
+  * Adopt JMAP Object History and JMAP Conditional Updates drafts.
+* **October 2024**:
+  * Submit [draft-ietf-jmap-emailpush](https://datatracker.ietf.org/draft-ietf-jmap-emailpush/) to IESG.
+* **November 2024**:
+  * Submit [draft-ietf-jmap-filenode](https://datatracker.ietf.org/draft-ietf-jmap-filenode/) to IESG.
+  * Submit vCard 4.0-bis and RFC 9555-bis.
+* **December 2024**:
+  * Submit JMAP S/MIME draft.
+* **March 2025**:
+  * Submit JMAP Tasks draft (at IETF 128 / Mumbai).

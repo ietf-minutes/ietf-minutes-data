@@ -1,0 +1,160 @@
+# [RPP](../wg/rpp.html)
+
+## Summary
+
+The RESTful Provisioning Protocol (RPP) Working Group met at IETF 120. Co-chaired by Marco Davids and Gavin Brown, the group reviewed the status of its core documents, discussed technical developments across several active drafts, and evaluated new proposals related to JSContact, OAuth 2.0, secure object transfers, and delegation management. The session concluded with a recap of the RPP hackathon.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status and Document Updates
+*Presented by Marco Davids*  
+**Slides:** [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-chair-slides-00)
+
+*   **`draft-ietf-rpp-requirements`**: This document has been finalized and is currently in a "parked" state. The chairs plan to hold publication until the rest of the RPP suite is ready, allowing for final updates if any gaps are identified during implementation.
+*   **`draft-ietf-rpp-architecture`**: Currently active, though immediate focus has shifted to downstream documents. Pavel Kovářík queried whether the working group should spend active cycles pushing this document to Working Group Last Call (WGLC) or focus entirely on other drafts.
+*   **Milestones and Deadlines**: The chairs noted that some existing milestones were overly optimistic and will be adjusted.
+
+---
+
+### 2. RPP Data Objects
+*Presented by Pavel Kovářík*  
+**Slides:** [RPP Data Objects](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-ietf-126-rpp-data-objects-00)
+
+*   **Draft Status (`draft-ietf-rpp-data-objects`)**: Adopted as a working group document (version -01). This draft now covers all main provisioning object types, including organizations, organization roles, and user objects based on RFC 8543.
+*   **Structural and Property Changes**:
+    *   Unique identifier elements have been explicitly defined.
+    *   A "direct access" flag has been introduced to help map sub-resources to URL paths in the core draft.
+    *   Properties starting with `@` are prohibited within standard objects to prevent ambiguity with JSON representation metadata.
+    *   Introduced "external data types" to cleanly integrate external specifications like JSContact.
+*   **Process Objects**:
+    *   Process objects represent transient states and mutations (e.g., renew, transfer, restore, create). 
+    *   A "create process" has been added to model "pending create" states where an object is registered but requires background actions to complete.
+*   **Open Issues & Discussion**:
+    *   *Client Representation*: The draft currently treats clients as simple identifiers. Pavel Kovářík proposed defining clients as data objects to allow registries to expose richer metadata (e.g., registrar names or contacts) over the provisioning interface.
+    *   *Array Ordering Constraint*: In previous discussions, the WG considered requiring registries to maintain the order of elements in arrays to facilitate JSON Patch index-based updates. Pavel Kovářík recommended dropping this constraint, as maintaining database array order is operationally complex and inconsistent with EPP. The WG discussed moving to value-based array matching instead.
+    *   *Other Planned Changes*: Removing the authInfo code from default responses (such as `info` queries) to improve security, removing the "urgent" flag, and reorganizing the IANA registry definitions.
+
+---
+
+### 3. RPP Core
+*Presented by Maarten Wullink*  
+**Slides:** [RPP Core - Updates](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-core-updates-00)
+
+*   **Draft Status (`draft-ietf-rpp-core`)**: Adopted as a working group document. 
+*   **Core Architectural Clarifications**: Section 1.1 explicitly states that RPP is independent of EPP and does not require an EPP server. To avoid tight coupling, property names in RPP will not be prefixed or postfixed with "EPP".
+*   **User and Multi-Tenancy Objects**:
+    *   User objects have been added to allow registrars to manage multiple sub-users and map them to modern authentication frameworks.
+    *   Maarten Wullink suggested modeling registries as organizations that act as parents to registrars, which in turn act as parents to resellers. This hierarchical model aims to simplify multi-tenant deployments.
+    *   *Discussion*: In the session chat, Andrew Newton, Jim Reid, and Barbara Bellis debated the hierarchy, noting that registry operators often manage multiple registries, and some registrars operate their own registry platforms. Gavin Brown raised concerns regarding multi-tenant environments where a single registrar is associated with multiple independent registries, meaning a strict single-parent model may not work. Maarten Wullink agreed to bring this question to the mailing list for wider feedback.
+*   **HTTP Methods and URIs**:
+    *   The core document defines mapping rules to convert RPP Data Objects into RESTful HTTP endpoints and methods (e.g., `POST` for creations, `GET` for reads).
+    *   Full updates will map to `PUT` (requiring a complete representation), whereas partial updates will map to `PATCH`.
+    *   Active processes (like transfers) will return the URL of the process in an HTTP Link header with the relation type `RPP-Process`.
+*   **Next Steps**: Translating data object elements to HTTP request parameters, aligning with HTTP Best Practices, and deprecating the header-based profile signaling option in favor of media type signaling.
+
+---
+
+### 4. JSON for RPP
+*Presented by Pavel Kovářík*  
+**Slides:** [RPP JSON](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-ietf-126-rpp-json-00)
+
+*   **Draft Status (`draft-ietf-rpp-json`)**: Adopted as a working group document.
+*   **JSON Serialization of External Data Types**:
+    *   If an external type has a native JSON representation (e.g., JSContact), it is embedded directly.
+    *   UTF-8 text-encoded representations are escaped inside a JSON string.
+    *   Other formats (binary) are Base64 encoded inside a JSON string.
+    *   *Discussion*: Andrew Newton raised a concern that some textual representations (like PEM-encoded keys) might end up double-encoded or require messy newline escaping, suggesting the WG think more carefully about text-based external type framing.
+*   **Partial Updates and JSON Patch**:
+    *   Standard JSON Patch (RFC 6902) is insufficient because it relies on index-based array operations, which are fragile when array ordering is unstable.
+    *   RPP JSON proposes an extension to JSON Patch that supports value-based matching (e.g., matching a status object in an array by its label/value rather than its index).
+    *   *Discussion*: Richard Wilhelm (in chat) and Rick Wilhelm (on mic) questioned why standard JSON Patch was not used. Pavel Kovářík explained that databases frequently return array items in arbitrary orders, which would cause index-based patches to modify the wrong elements. Value-matching solves this operational pain.
+*   **Localization**:
+    *   Pavel Kovářík proposed using an `@localizations` metadata property to write and read multiple localized contact variants in a single round-trip, addressing limitations of standard HTTP `Accept-Language` negotiation.
+*   **JSON Schema Normative References**:
+    *   Drafting normative JSON schemas using draft-07 or newer poses an RFC-editor reference issue because JSON Schema is not yet an RFC.
+    *   *Discussion*: Andrew Newton (speaking as the JSON Schema AD) suggested that RPP could keep JSON Schema as a normative reference, allowing the RPP draft to sit in the RFC Editor queue until the JSON Schema WG finishes its documents (expected around May 2027). Alternatively, the schemas could be made non-normative or described using CDDL.
+
+---
+
+### 5. RPP JSContact Profile
+*Presented by Pavel Kovářík*  
+**Slides:** [RPP JSContact Profile](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-ietf-126-rpp-jscontact-profile-00)
+
+*   **Overview**: This proposed draft defines a specific profile of JSContact (RFC 9553) for RPP. It aims to reduce representation ambiguity (such as mixed unstructured and structured addresses) to make it suitable for strict provisioning environments.
+*   **Key Profile Constraints**:
+    *   Limits names to `fullName`.
+    *   Limits addresses to structured components (street name, locality, region, postcode, country code) and excludes unstructured country fields.
+    *   Prohibits external patches, making it a strict subset of the RDAP JSContact profile.
+*   **Localization**: The profile defines the primary language for international post-addressing, while additional languages are handled as localizations (equivalent to EPP's localized postal variants).
+*   **Next Steps**: Address requirements to support multiple emails and phone/fax numbers, which were accidentally omitted when narrowing the profile. The chairs indicated they would issue a Working Group Adoption Call for this draft.
+
+---
+
+### 6. RPP - OAuth 2.0
+*Presented by Maarten Wullink*  
+**Slides:** [RPP - OAuth 2.0](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-oauth-20-01)
+
+*   **Proposed Mechanism**: Fulfills the requirement for granular authorization using OAuth 2.0. It supports interactive flows for users and Machine-to-Machine (M2M) flows for automated client systems.
+*   **Scopes and Claims**:
+    *   Scopes are mapped directly to data objects using CRUD actions (e.g., `domain:create`, `contact:read`).
+    *   RPP-specific claims such as `registrar_id` and `reseller_id` are included in the token, allowing servers to authorize actions without querying backend databases.
+*   **Discussion**:
+    *   Jim Reid raised concerns over the operational complexity of registries acting as OAuth providers.
+    *   Pavel Kovářík, Andrew Newton, and Ruth Trevor-Allen supported OAuth, noting that the registry ecosystem needs to move past Basic Auth, M2M OAuth 2.0 is a robust baseline, and many registries are already implementing OAuth-based solutions.
+    *   Barbara Bellis noted that client certificate authentication is also widely used.
+
+---
+
+### 7. RPP - Secure Object Transfer
+*Presented by Maarten Wullink*  
+**Slides:** [RPP - Secure Object Transfer](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-secure-object-transfer-01)
+
+*   **Proposed Mechanism**: Explores a pull-based domain transfer mechanism that replaces traditional EPP `authInfo` codes with cryptographically signed JSON Web Tokens (JWT) issued by the losing registrar.
+*   **Discussion**:
+    *   Rick Wilhelm argued that transfer friction is primarily a policy issue rather than a technical one. He recommended against investing significant time into this unless the gTLD policy landscape opens up to pull-based models.
+    *   Pavel Kovářík countered that ccTLDs operate under independent policy frameworks and are highly interested in piloting simpler, more secure transfer mechanisms.
+    *   Max Gerber pointed out security vulnerabilities associated with passing query parameters during HTTP redirects, emphasizing that standard OAuth flows should be strictly followed to ensure security. Maarten Wullink clarified that while OAuth is highly recommended, the mechanism shouldn't be rigidly bound to a single authorization framework.
+
+---
+
+### 8. RPP - Secure Delegation Management
+*Presented by Maarten Wullink*  
+**Slides:** [RPP - Secure Delegation Management](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-rpp-secure-delegation-management-00)
+
+*   **Proposed Mechanism**: A provisioning-layer alternative to scanning/polling parent zones (e.g., using CSYNC). It enables third-party DNS operators to securely publish DS and NS records directly to the registry via an authorized REST API endpoint.
+*   **Discussion**:
+    *   Jim Reid noted that Johan Stenstam is working on a DNSSEC key change notify mechanism in the DNSOP WG (`draft-ietf-dnsop-dnssec-key-change-notify`). He suggested that these efforts could be integrated.
+    *   Maarten Wullink agreed but noted that a provisioning-layer API simplifies authorization management and allows users to easily revoke DNS operator credentials.
+
+---
+
+### 9. Hackathon Recap
+*Presented by Maarten Wullink*  
+**Slides:** [Hackathon Recap](https://datatracker.ietf.org/meeting/126/materials/slides-126-rpp-hackathon-recap-00)
+
+*   **Outcomes**: A Go-based registry and registrar prototype was built to demonstrate the secure domain transfer flow. 
+*   **Demonstrated Flow**:
+    1.  The gaining registrar requests the losing registrar's transfer endpoint from the registry.
+    2.  The registrant is redirected to the losing registrar's portal to authenticate and approve the transfer.
+    3.  The losing registrar signs a JWT containing the transfer details and redirects the registrant back to the gaining registrar.
+    4.  The gaining registrar submits the JWT to the registry, which validates the signature using the losing registrar's public key and completes the transfer instantly without exposing secrets.
+
+---
+
+## Decisions and Action Items
+
+*   **Decision**: Remove the requirement to maintain strict array ordering in `draft-ietf-rpp-data-objects`. Implement value-based matching in partial updates.
+*   **Decision**: Standardize on the HTTP media type option for profile signaling in `draft-ietf-rpp-core` and remove the header-based option.
+*   **Action Item**: Co-chairs to initiate a Working Group Adoption Call on the mailing list for the RPP JSContact Profile draft.
+*   **Action Item**: Maarten Wullink to start a mailing list thread regarding registry/registrar parent-child hierarchy and how it affects multi-tenancy.
+*   **Action Item**: Maarten Wullink to solicit feedback on the mailing list regarding the prioritization of OAuth 2.0 integration, secure transfers, and secure delegation management.
+
+---
+
+## Next Steps
+
+1.  Synchronize and complete the JSON schemas in `draft-ietf-rpp-json` to match updates in `draft-ietf-rpp-data-objects`.
+2.  Refine the value-based matching algorithm in the JSON draft and gather implementation feedback.
+3.  Reorganize IANA registry definitions in the data objects draft to make them manageable for IANA.

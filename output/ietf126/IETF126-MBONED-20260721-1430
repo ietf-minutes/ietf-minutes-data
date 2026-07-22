@@ -1,0 +1,87 @@
+# [MBONED](../wg/mboned.html)
+
+## Summary
+The MBONED Working Group meeting focused heavily on recent deployment experiences, innovations in browser-based multicast, and end-to-end architectures. Key updates included advancements in Multicast QUIC (MC-QUIC) integrated with Media over QUIC (MoQ), live deployment reports from Aircast (including Wimbledon), a native multicast CDN deployment by Blockcast using the TreeDN architecture, and a proposal for running AMT over QUIC. The chairs also reviewed the status of active working group drafts and adjusted the Working Group Last Call (WGLC) strategy to improve community response rates.
+
+---
+
+## Working Group Documents Status
+
+*   **AMT YANG Model** (`draft-ietf-mboned-multicast-yang-model` / AMT portion): Currently in the RFC Editor queue.
+*   **Multicast YANG Model** (`draft-ietf-mboned-multicast-yang-model`): Failed its March WGLC due to zero non-author responses. It was subsequently reviewed by YANG Doctor Dhruv Dhody, updated by the authors, and approved by the reviewer. It is ready for another WGLC when the authors are prepared.
+*   **Multicast Redundant Ingress Router Failover** (`draft-ietf-mboned-redundant-ingress-failover`): Failed its March WGLC due to zero non-author responses. Directorate reviews were completed last year, the draft has been updated, and the authors have requested a re-review of the updates.
+*   **Non-source-routed Multicast in SR Networks** (`draft-ietf-mboned-non-source-routed-sr-mcast`): Failed its March WGLC with only two non-author responses. It has since undergone Routing and Ops Area directorate reviews, and the updates have been approved by the reviewers. Jeffrey Zhang requested a new WGLC, noting the draft's value to operators and vendors.
+*   **Security and Privacy Considerations for Multicast Transports** (`draft-ietf-mboned-multicast-security`): No text updates have been made yet, though issues have been opened on GitHub. Kyle Rose noted that the authors are waiting for further progress on Multicast QUIC to align the two specifications.
+*   **DORMS Draft** (discussed contextually): Max Franke and Kyle Rose noted that the directorate review was underwhelming. They agreed to "park" this draft close to the entrance until a concrete use case drives further development.
+
+**Process Decision:** Having run three concurrent WGLCs in March with poor response rates, the chairs decided to run future WGLCs consecutively (one at a time) to avoid overwhelming reviewers.
+
+---
+
+## Key Discussion Points
+
+### 1. MCQUIC in the Browser
+*   **Presenter:** Max Franke
+*   **Slides:** [MCQUIC in the browser](https://datatracker.ietf.org/meeting/126/materials/slides-126-mboned-mcquic-in-the-browser-01)
+*   **Discussion:**
+    *   Max Franke introduced the project, supported by a German government startup grant, which funds five full-time engineers working on Multicast QUIC (MC-QUIC).
+    *   MC-QUIC leverages a hybrid architecture: a unicast QUIC connection serves as the trust anchor (handling encryption, integrity frames, and signaling), while unidirectional SSM channels carry the multicast media. 
+    *   The implementation utilizes a "unicast-first" approach. The client starts with unicast, attempts to join the multicast channel (e.g., via AMT), and seamlessly cuts over to multicast once the path is confirmed ("goes green"). If multicast fails, it falls back to unicast.
+    *   The architecture integrates with Media over QUIC (MoQ) and WebTransport. A modified Firefox browser (using the Necko QUIC implementation) can play live video over native multicast transparently to the user.
+    *   To prevent packet injection from malicious receivers sharing the same keying material, the system utilizes integrity frames to hash packets. Performance testing showed that the integrity additions only introduce around 60ms of latency, with an 80% reduction in egress traffic compared to pure unicast.
+    *   **Q&A and Chat:**
+        *   Omar El-Sadek (noted as Omar Ramadan in chat) shared that Chrome has been implementing multicast via the Direct Sockets API (WICG/W3C) behind Isolated Web Apps. He expressed interest in coordinating browser API efforts. Kyle Rose noted in chat that the current MC-QUIC design achieves reliability via unicast recovery rather than Forward Error Correction (FEC), but FEC is under consideration.
+        *   Chris Needham (BBC, W3C Media WG Chair) welcomed the browser implementation work and offered to help coordinate API standards within the W3C context.
+
+### 2. Aircast's Internet Multicast Update (post Wimbledon)
+*   **Presenter:** Sanjay Gupta (Mishra)
+*   **Slides:** [Aircast's Internet Multicast Update (post Wimbledon)](https://datatracker.ietf.org/meeting/126/materials/slides-126-mboned-aircasts-internet-multicast-update-post-wimbledon-00)
+*   **Discussion:**
+    *   Sanjay Gupta presented Aircast's work achieving sub-second glass-to-glass latency using a flow-based transport over multicast and AMT.
+    *   Aircast conducted several high-profile live event deployments over the last year:
+        *   *US Open:* In-venue multicast over Wi-Fi (300–400ms latency).
+        *   *Australian Open:* In-venue and cellular (500–800ms latency).
+        *   *Wimbledon:* Multi-relay/multi-traffic server topology (500ms local, 800ms transatlantic latency).
+    *   Recent updates include resolving VLC RTP-over-UDP issues, fixing firewall/NAT traversal, implementing stream rate adaptation, and releasing a unified iOS app ("Aircast Live").
+    *   *Wimbledon IPv6 Challenge:* The mobile carrier at Wimbledon operated an IPv6-only network with NAT64. The client was IPv6, but the AMT relay was IPv4-only. Discovery worked, but the tunnel handshake failed. The team hot-fixed the client to use the NAT64-mapped address received during discovery. Long-term, relays must natively support IPv6.
+    *   **Q&A and Chat:**
+        *   Tim Chown (Jisc/Geant) lamented that VLC has lacked native IPv6 AMT support for five years. Max Franke clarified that his team's new Rust-based AMT gateway/relay implementation natively supports IPv6. Tim Chown offered to coordinate testing Max's relay implementation on the Geant/Jisc network.
+        *   Omar El-Sadek mentioned they have an un-upstreamed IPv6 Linux relay implementation and invited collaboration.
+
+### 3. Blockcast TreeDN E2E Deployment
+*   **Presenter:** Omar El-Sadek
+*   **Slides:** [Blockcast TreeDN E2E Deployment](https://datatracker.ietf.org/meeting/126/materials/slides-126-mboned-blockcast-treedn-e2e-deployment-00)
+*   **Discussion:**
+    *   Omar El-Sadek presented an end-to-end, native multicast CDN utilizing the TreeDN architecture, running from BGP/PIM-SSM core routing down to the Chrome browser.
+    *   To ensure scalability and avoid static state, Blockcast uses an on-demand model. Traffic is only pulled through the network when actively requested via PIM.
+    *   The core routing implements Dynamic Internet Multicast Tunnels (DIMT), based on `draft-ietf-mboned-redundant-ingress-failover` principles. Tunnels are dynamically established on the first PIM join and torn down on the last leave. Omar's team implemented this in FRR (Free Range Routing) and demonstrated successful interoperability with Junos.
+    *   On the client side, they use Chrome's upcoming SSM Direct Sockets API within an Isolated Web App (IWA). The client exposes a `window.multicast` API. If native multicast is unavailable, it discovers an AMT relay using Dryad.
+    *   **Q&A:**
+        *   Jeffrey Zhang praised the live implementation of the DIMT draft. He noted that BGP experts have suggested changing the extended community signaling to BGP attributes because operators can easily filter or modify extended communities. He expressed interest in discussing the non-transitive extended community design choices offline.
+        *   Tim Chown emphasized that the national research and education networks (NRENs) have widely deployed SSM (RFC 8815) but suffer from a severe lack of content.
+        *   Sanjay Gupta offered to share live, high-demand event content to help test and bootstrap these deployments.
+
+### 4. AMT over QUIC
+*   **Presenter:** Max Franke
+*   **Slides:** [AMT over QUIC](https://datatracker.ietf.org/meeting/126/materials/slides-126-mboned-amt-over-quic-00)
+*   **Discussion:**
+    *   Max Franke presented a solution to a major problem in traditional AMT deployments: packet loss inside the AMT tunnel. When reliable multicast streams (like MoQ stream frames) suffer loss in the tunnel, the server must retransmit the lost packet individually to every downstream client over unicast.
+    *   By running the AMT tunnel over QUIC, packet loss within the tunnel is repaired exactly once *inside* the tunnel, protecting all downstream clients.
+    *   AMT over QUIC also inherits TLS encryption, cryptographic client authentication, and DNS-based discovery. This ensures gateways only receive traffic from authenticated, verified senders (e.g., verifying a stream originates from a domain like Twitch).
+    *   A functional implementation of AMT over QUIC has been built and used in the presenter's demos.
+    *   **Q&A:**
+        *   Omar El-Sadek expressed strong interest in collaborating, specifically comparing AMT-level recovery with application-layer recovery (such as using MMT/FEC). Max noted that QUIC's flexibility allows operators to mix reliable stream frames and unreliable datagram frames inside the same tunnel based on application needs.
+
+---
+
+## Decisions and Action Items
+*   **WGLC Strategy:** The chairs will transition from running multiple concurrent WGLCs to consecutive, single-document WGLCs to focus reviewer attention.
+*   **Next WGLC:** The chairs will initiate a new WGLC for `draft-ietf-mboned-non-source-routed-sr-mcast` following positive directorate feedback.
+*   **Collaboration on Relays:** Tim Chown (Jisc/Geant), Max Franke, and Sanjay Gupta (Aircast) will coordinate offline to deploy and test IPv6-capable AMT relays on the European R&E network.
+*   **Browser API Coordination:** Max Franke, Omar El-Sadek, and Chris Needham (W3C) agreed to sync offline regarding unified browser APIs for multicast (`window.multicast` vs. Direct Sockets).
+
+---
+
+## Next Steps
+*   Max Franke plans to publish an Internet-Draft detailing the **AMT over QUIC** specification before the next IETF meeting.
+*   Max Franke invited participants to attend the QUIC working group session to show interest and support for multicast extensions to QUIC.

@@ -1,0 +1,111 @@
+# [T2TRG](../wg/t2trg.html)
+
+## Summary
+
+The Thing-to-Thing Research Group (T2TRG) met at IETF 126 to discuss the role of IETF IoT technologies in enabling AI agent interactions with IoT environments. The session covered administrative updates, active drafts, and five main presentations focusing on two key themes: discovery mechanisms for AI agents and enhancements to the device interaction stack (specifically CoAP and SDF). The meeting concluded with an invited, thought-provoking presentation on the systemic risks and complexities introduced by relying on AI-driven abstraction layers in machine-to-machine (M2M) communication.
+
+---
+
+## Key Discussion Points
+
+### 1. Administrivia & Document Status
+*Presented by Ari Keränen*  
+* **Chairs' Slides:** [Chairs' slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-t2trg-chairs-slides-00)
+
+* **Group Status:** 
+  * The RG's primary focus remains on long-term research issues related to the IoT, cooperating with the short-term engineering and standards work of the IETF.
+  * The main theme for this session is exploring how existing self-description technologies (such as CoRE Link Format, SDF, etc.) can help AI agents discover interaction capabilities, and where protocol and data format gaps remain.
+* **Document Status Updates:**
+  * **In IRSG Review:** *Operational security considerations of manufacture installed keys and trust anchors* (`draft-irtf-t2trg-ops-security-considerations`).
+  * **Approaching Last Call:** 
+    * *Guidance for RESTful design for IoT* (`draft-irtf-t2trg-rest-iah`).
+    * *Terminology and processes for initial security of IoT devices* (`draft-irtf-t2trg-secure-bootstrapping`).
+  * **In Progress:** *Application attacks using CoAP* (`draft-irtf-t2trg-coap-attacks`).
+  * **Upcoming Candidates for Adoption:** Routing with CoAP, distributed software updates with end-to-end group communication, and the dereferenceable identifier pattern.
+
+---
+
+### 2. DAWN BoF: Discovery of Agent Workloads & Named Entities
+*Presented by Adrian Farrel*  
+* **Session Slides:** [DAWN BoF](https://datatracker.ietf.org/meeting/126/materials/slides-126-t2trg-dawn-bof-00)
+
+* **Context:** The proposed DAWN (Discovery of Agent Workloads & Named Entities) WG aims to define discovery mechanisms for AI agents and workloads.
+* **Core Proposals:**
+  * Define what an "entity" is and how it overlaps with "things." The initial focus is tightly constrained to AI agents due to industry demand.
+  * Establish a basic framework for locating agents/entities using metadata without over-complicating the discovery protocol. Detailed capability exchange and trust negotiation should happen post-discovery.
+  * Evaluate DNS as a primary candidate for agent discovery before developing new protocols.
+  * Out of scope: Directory registration protocols, bulk capability retrieval, and agent-to-agent communication protocols (the latter is the focus of the parallel "Agent-Protocol" effort).
+* **Discussion:**
+  * **Dirk Kutscher** questioned DNS's suitability for agentic networks, noting that DNS is excellent for resolution at scale but struggles with dynamic, on-the-fly name creation. **Adrian Farrel** acknowledged this limitation, suggesting that dynamic, local domains might use non-DNS mechanisms to populate small registries.
+  * **Daniel Smullen** raised concerns about the semantics of "capabilities," noting that filtering by privacy policies, data types, and processing purposes introduces massive semantic complexity. He questioned where this vocabulary disambiguation should live. **Adrian Farrel** answered that discovery should only return a very basic set of properties, leaving complex capability negotiation to a bootstrapped agent-to-agent dialogue.
+
+---
+
+### 3. A Survey of AI Agent Discovery Mechanisms
+*Presented by Jari Arkko*  
+* **Session Slides:** [A Survey of AI Agent Discovery Mechanisms](https://datatracker.ietf.org/meeting/126/materials/slides-126-t2trg-a-survey-of-ai-agent-discovery-mechanisms-01)
+
+* **Key Concepts:**
+  * AI agents operate in an action-reasoning loop. Discovery is invoked dynamically when an agent realizes its current toolset is insufficient to execute a reasoning step.
+  * **Live Demo:** Jari demonstrated a soft-state agent directory (implemented via CoAP Resource Directory patterns, API catalogs, and HTTP caching). In the demo, agent "Alice" dynamically queried the directory to discover agent "Bob," cached Bob's travel capabilities, and subsequently communicated directly with Bob without intermediary routing.
+  * **Taxonomy of Discovery:** Scenarios include curated sets, local contexts (e.g., smart home), known partners, federated consortia, and free-form internet-wide search.
+  * **Identified Gaps:** Semantic search (free-text queries), interoperable federation, mapping agent tools to traditional API frameworks (like 3GPP CAPIF), trust bootstrapping (vetting if an agent does what it claims), and dynamic update propagation in pull-based architectures.
+* **Discussion:**
+  * **Dirk Kutscher** asked whether the survey evaluated scenarios where agents dynamically spawn sub-agents on demand and register them. **Jari Arkko** agreed this is an important area for future analysis.
+  * **Chat Debate on "Thingness"**: Inspired by **Carsten Bormann's** reference to the definition of "Things" in RFC 9880, participants debated what constitutes a "Thing" in discovery. **Jari Arkko** noted that instead of searching for a specific physical, networked sensor (e.g., a radar in a car), agents often want to discover environmental information (e.g., "who has camera eyes on these coordinates"). **Carsten Bormann** remarked that non-networked physical objects (like the sun) have a low level of "Thingness" in an IP sense, but are accessible via gateways using frameworks like Non-IP Control (NIPC).
+
+---
+
+### 4. LLM-Assisted Translation Between YANG and IoT Data Representations
+*Presented by Oscar Lopez*  
+* **Session Slides:** [LLM-Assisted Translation Between YANG and IoT Data Representations](https://datatracker.ietf.org/meeting/126/materials/slides-126-t2trg-llm-assisted-translation-between-yang-and-iot-data-representations-00)
+
+* **Core Proposals:**
+  * IoT suffers from data heterogeneity. The work evaluates using Large Language Models (LLMs) to perform semantic translation between YANG (used in Netconf/XML) and SDF (Semantic Definition Format, used in JSON).
+  * Equivalence is mapped between model constructs (e.g., a YANG `leaf` maps to an SDF `property`).
+  * To make small, on-device/edge LLMs viable, the team fine-tuned models using the Alpaca format, stripped unnecessary metadata via placeholders to save context window space, and established a deterministic validation pipeline (using Pyang and syntax libraries) alongside a fine-tuned validation agent.
+  * **Results:** Base LLMs performed poorly (10-40% accuracy), but fine-tuned models achieved up to 90% accuracy.
+* **Discussion:**
+  * **Niklas Widell** asked how the system handles unit conversions (e.g., translating Celsius in one model to Kelvin in another). **Oscar Lopez** acknowledged that semantic translation of values is a remaining challenge, as the LLM often skips subtle unit transformations due to hallucination risks.
+  * **Esko Dijk** questioned if on-the-fly translation is necessary on embedded devices, or if translating all existing models offline would be more efficient. **Oscar Lopez** explained that the goal was to evaluate LLM adaptability and that current performance is slow, but on-the-fly translation remains a target for highly dynamic environments.
+  * **Ari Keränen** asked where the most significant future performance improvements would come from. **Oscar Lopez** responded that future gains lie in a hybrid model: combining LLM reasoning with structured external tools (like LangChain or tool calling) and BNF grammar-constrained output decoding.
+
+---
+
+### 5. Enabling AI Agents on the IoT Stack: CoAP and SDF Enhancements
+*Presented by Lorenzo Cornea*  
+* **Session Slides:** [Enabling AI Agents on the IoT Stack: CoAP and SDF Enhancements](https://datatracker.ietf.org/meeting/126/materials/slides-126-t2trg-enabling-ai-agents-on-the-iot-stack-coap-and-sdf-enhancements-00)
+
+* **Key Proposals:**
+  * **CoAP Enhancements:** Introduce a new elective CoAP option called `Agent-ID` to distinguish requests made by AI agents from those made by humans or traditional machines. 
+    * This option carries a cryptographic signature or public key reference. 
+    * A validated `Agent-ID` allows the server to rate-limit crawlers, restrict data use (e.g., "do not use for training"), withhold sensitive fields, or return human-readable text descriptions instead of raw binary/JSON payloads.
+  * **SDF Enhancements:**
+    * Support content negotiation to allow agents to request textual self-descriptions (using `text/sdf`) rather than schema definitions.
+    * Introduce the `sdfBot` quality to embed natural language instructions inside SDF documents.
+    * Introduce `sdfStructuredExamples` to provide step-by-step templates (with pre-conditions, actions, and terminal `ready-when` clauses) to guide LLMs and prevent hallucinations during task execution (e.g., performing a firmware update).
+* **Discussion:**
+  * **Christian Amsüss** suggested that identifying the requester as an AI agent is better handled at connection/session establishment (e.g., via claims or subject fields in a CBOR Web Token (CWT) / OAuth credential) rather than introducing a new, per-packet CoAP option.
+
+---
+
+### 6. When the Tower Crumbles: Losing the End-to-End Language with the Tower of AI
+*Presented by Tobias Fiebig*  
+* **Session Slides:** [When the Tower Crumbles: Losing the End-to-End Language with the Tower of AI](https://datatracker.ietf.org/meeting/126/materials/slides-126-t2trg-when-the-tower-crumbles-losing-the-end-to-end-language-with-the-tower-of-ai-00)
+
+* **Core Premise:**
+  * Software engineering has a history of piling up abstraction layers (compilers, packaging, Docker, Kubernetes). AI-assisted M2M translation represents the ultimate, highly abstract layer.
+  * **The "Losing the Language" Risk:** If we outsource the translation of protocols, formats, and vendor differences to AI, humans will lose the core understanding of how these systems interoperate. If the "AI translator" layer is removed, or if commercial AI APIs vanish, the system collapses (the Tower of Babel effect).
+  * System interoperability failures are rarely technical; they are driven by business incentives (vendors deliberately choosing lock-in). Using AI to dynamically patch vendor incompatibilities is a technical patch for a social/business problem, reducing the pressure on vendors to adopt open standards.
+* **Discussion:**
+  * **Dirk Kutscher** asked how we can derive sound architectural principles given that abstractions are necessary (e.g., society functions by trusting highly complex flight systems we don't fully understand). **Tobias Fiebig** responded that we must weigh the massive ecological and resource costs of AI against its actual utility, noting that vendor compatibility is better solved with simple, open protocols rather than non-deterministic AI translators.
+  * **Christian Amsüss** added that good abstractions should clean up and simplify a domain, rather than merely hiding unresolved complexities.
+  * **Rahul Jadhav** questioned whether AI could be used to tame complexity and aid human understanding rather than increase system entropy. **Tobias Fiebig** cautioned that "understanding" is hard to measure; if an engineer cannot diagnose or configure a system without an AI summary, they do not truly understand it.
+  * **Carsten Bormann** contrasted AI with historical tools like compilers. Compilers are deterministic and subject to rigorous, automated validation testing. AI is non-deterministic. In safety-critical IoT environments, testing non-deterministic behavior is incredibly difficult because of physical side-effects (e.g., an agent trying to heat a room but accidentally turning off a refrigerator). He suggested SDF must evolve to better describe the real-world physical effects of device interactions.
+  * **Matthias Kovatsch** commented that modern systems (like the Linux kernel) are already too complex for a single human to understand. The role of architects is to establish descriptive, structured boundaries. Formatting documentation so both humans and AI can utilize it offers a path forward without losing complete control.
+
+---
+
+## Next Steps
+* **Interim Meetings:** T2TRG plans to schedule interim virtual meetings after the summer break to accommodate presentations that could not fit into the IETF 126 agenda.
+* **Document Reviews:** Members are encouraged to review the active RG drafts currently prepping for last calls (*Guidance for RESTful design for IoT* and *Terminology and processes for initial security of IoT devices*).

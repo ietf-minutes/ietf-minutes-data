@@ -1,0 +1,94 @@
+# [MAILMAINT](../wg/mailmaint.html)
+
+## Summary
+
+The MAILMAINT Working Group met at IETF 126 in Vienna. The session covered updates on active working group documents, technical discussions on mail autoconfiguration, SMTPUTF8 email address syntax, personal data portability archives, unobtrusive end-to-end signatures, and updates to IMAP Object IDs.
+
+---
+
+## Key Discussion Points
+
+### 1. Administrivia & Document Status Updates
+* **Chairs:** Alexey Melnikov and Barry Leiba.
+* **Note Taker:** Daniel Kahn Gillmor managed notes in Hedgedoc.
+* **Note Well:** Alexey Melnikov highlighted the Note Well slides, standards processes, and the code of conduct.
+* **OAuth Profile & PACC:** Barry Leiba reported on interoperability testing from the hackathon for [draft-ietf-mailmaint-oauth-public](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-oauth-public/) and [draft-ietf-mailmaint-pacc](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-pacc/). Two clients and two servers achieved successful interoperability. Aaron Parecki reviewed the OAuth profile and noted concerns about dynamic client registration, while Neil Jenkins agreed to make minor edits based on the review.
+
+---
+
+### 2. Mail Autoconfig
+* **Draft:** [draft-ietf-mailmaint-autoconfig](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-autoconfig/)
+* **Presentations:**
+  * [AutoConfig](https://datatracker.ietf.org/meeting/126/materials/slides-126-mailmaint-autoconfig-00)
+  * [autoconfig outstanding issues](https://datatracker.ietf.org/meeting/126/materials/slides-126-mailmaint-autoconfig-outstanding-issues-00)
+* **Presenter:** Ben Bucksch
+* **Discussion:**
+  * **OAuth Parameter Redundancy & Security:** Aaron Parecki queried the duplication of the authorization and token endpoints within the autoconfig XML, suggesting clients use OAuth server metadata discovery instead. Ben Bucksch responded that having these directly in the XML minimizes lookup latency. Neil Jenkins raised a security concern: duplicating these endpoints is risky because a malicious XML file could point a user's code exchange directly to an attacker's token endpoint. Aaron suggested explicitly documenting this trade-off if the current design is retained.
+  * **Relationship with PAC:** Bron Gondwana inquired if this draft competed with PAC ([draft-ietf-mailmaint-pacc](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-pacc/)). Chairs and Ben Bucksch clarified that [draft-ietf-mailmaint-autoconfig](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-autoconfig/) is an Informational document capturing highly deployed, historical practices, whereas PAC is the proposed standard for the future.
+  * **The `.well-known` / URI Path Problem:** Since this design dates to 2008, it uses a non-standard URI scheme (`autoconfig.example.com`) rather than a `.well-known` path. The HTTP Directorate strongly prefers `.well-known`. The proposed compromise is that clients try the `.well-known` path first and fall back to the historical path. John Klensin and Daniel Kahn Gillmor supported adding an appendix explicitly addressing why the historical path is documented (to reflect actual deployment), acknowledging that a modern design would use `.well-known`.
+
+---
+
+### 3. SMTPUTF8 Syntax
+* **Draft:** [draft-ietf-mailmaint-smtputf8-syntax](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-smtputf8-syntax/)
+* **Presentation:** [SMTPUTF8 syntax](https://datatracker.ietf.org/meeting/126/materials/slides-126-mailmaint-smtputf8-syntax-00)
+* **Presenter:** Arnt Gulbrandsen (noting that the companion draft [draft-ietf-mailmaint-interoperable-addresses](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-interoperable-addresses/) is deferred for now).
+* **Discussion:**
+  * **Scope of Updates:** The syntax draft is designed to update RFC 6532 (EAI) to prevent confusing or dangerous local-part character combinations (such as zero-width joiners) that present security and rendering risks.
+  * **ABNF vs. Text Rules:** Arnt proposed enforcing these rules using normative text rules rather than expanding the ABNF. John Klensin agreed in principle that ABNF is not helpful for these complex Unicode constraints but requested time to review how this intersects with UAX 31 and IDNA 2008.
+  * **Message/Global Encoding Issue:** Bron Gondwana raised a long-standing issue with RFC 6532 Section 3.7 regarding the bad semantics of non-identity transfer encodings on `message/global`. Arnt and Alexey Melnikov agreed this is a real issue but recommended keeping the current syntax draft focused and addressing the `message/global` issue in a separate, future draft.
+
+---
+
+### 4. PDP Archive (Personal Data Portability Archive)
+* **Draft:** [draft-ietf-mailmaint-pdparchive](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-pdparchive/)
+* **Presentation:** [PDP Archive](https://datatracker.ietf.org/meeting/126/materials/slides-126-mailmaint-pdp-archive-00)
+* **Presenter:** Lisa Dusseault (with co-authors Hans-Jörg Happel and Alexey Melnikov).
+* **Discussion:**
+  * **JSON Schemas:** Lisa added JSON schemas validating all examples using CI/CD. There was discussion on whether these schemas should live in this document or in their respective native specifications (e.g., JScalendar). Daniel Kahn Gillmor recommended keeping them in this document (possibly in an appendix) to ensure they are published. Robert Stepanek (JScalendar co-author) expressed interest in reviewing the schemas for coordination.
+  * **Tombstones for Deletions:** The group discussed how to handle deleted folders and messages. The draft currently allows a deleted folder to exist in the ZIP with metadata indicating it was deleted. Daniel Kahn Gillmor noted the privacy implications of leaving traces of deleted messages. Ben Bucksch suggested that tombstones are essential for incremental synchronizations (comparable to JMAP sync) but should be entirely excluded from full backups.
+  * **Synchronization vs. Migration:** Mario Loffredo asked why the draft supports incremental synchronization instead of acting solely as a one-shot migration tool. Lisa clarified that one-way incremental updates prevent highly frustrating duplicate imports (e.g., duplicate contact creation during successive imports).
+
+---
+
+### 5. Unobtrusive Signatures
+* **Draft:** [draft-ietf-mailmaint-unobtrusive-signatures](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-unobtrusive-signatures/)
+* **Presentation:** [Unobtrusive Signatures](https://datatracker.ietf.org/meeting/126/materials/slides-126-mailmaint-unobtrusive-signatures-02)
+* **Presenter:** Daniel Kahn Gillmor
+* **Discussion:**
+  * **MTA Modifications (Microsoft Exchange):** The authors aligned canonicalization with DKIM Simple. However, Microsoft Exchange frequently mangles HTML formatting, line breaks, and headers, which inevitably breaks these signatures. The authors determined that modifying the specification to accommodate Exchange's behavior would violate the core goals of unobtrusive signatures. 
+  * **Deployment Incentives:** Daniel and Kai Engert argued that the WG should proceed with publishing the specification. If unobtrusive signatures achieve wide deployment, the resulting broken signature statuses will incentivize Microsoft to prioritize a transport carve-out. Jim Fenton raised the issue of legacy MTAs adding `>` characters to lines starting with "From "; Daniel noted this is another case where transport-level breaking will simply result in a signature reverting to "unsigned" status with no harm to the user.
+  * **CMS Variant and Cryptography Expertise:** A CMS variant was added alongside OpenPGP. The authors are not CMS experts and noted that Tavy pointed out inaccuracies in the explanation text (though the test vectors are likely correct). Pete Resnick and Alexey Melnikov were urged to find or provide corrected CMS text.
+  * **Signature Lifetimes:** Bron Gondwana questioned whether these signatures are designed for long-term historical verification or if they are short-term signatures intended to be evaluated only at the point of receipt. Daniel noted this is out of scope for the current document and is a general problem shared with multipart/signed messages.
+
+---
+
+### 6. IMAP ObjectID Bis & Extensions Suggestions
+* **Drafts:** 
+  * [draft-ietf-mailmaint-imap-objectid-bis](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-imap-objectid-bis/)
+  * [draft-ietf-mailmaint-imap-extensions-suggestions](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-imap-extensions-suggestions/)
+* **Presenters:** Bron Gondwana, Mario Loffredo, and Ricardo Signes.
+* **Discussion:**
+  * **Flag Consistency:** Bron Gondwana discussed the challenge of handling IMAP flags across multiple copies of the same email. He agreed with Matt (on-list) that for JMAP/IMAP interoperability, all copies of a message sharing the same Email ID must expose identical flags, shifting the implementation complexity to the server.
+  * **Implementation Status:** Cyrus IMAP already implements the server-side changes. Because the response format has changed, client-side implementations are required before advancing the draft. Arnt Gulbrandsen and Bron Gondwana (via a JMAP proxy) indicated immediate plans to work on client-side implementations.
+  * **Extensions Suggestions:** Ricardo Signes reported that [draft-ietf-mailmaint-imap-extensions-suggestions](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-imap-extensions-suggestions/) is currently parked waiting for the completion of [draft-ietf-mailmaint-imap-objectid-bis](https://datatracker.ietf.org/doc/draft-ietf-mailmaint-imap-objectid-bis/).
+
+---
+
+## Decisions and Action Items
+
+* **[draft-ietf-mailmaint-autoconfig]:** Ben Bucksch to address remaining reviews from Murray Kucherawy and others. An appendix will be added explicitly documenting the history of the non-standard URI scheme and acknowledging the `.well-known` convention.
+* **[draft-ietf-mailmaint-smtputf8-syntax]:** The working group agreed to keep the scope restricted to syntax character rules. Bron Gondwana agreed to take the separate `message/global` encoding issue to the mailing list for future work.
+* **[draft-ietf-mailmaint-unobtrusive-signatures]:** The authors will retain the CMS variant, but urgently require a CMS expert to review the normative text and align it with the test vectors.
+* **[draft-ietf-mailmaint-imap-objectid-bis]:** The working group agreed to the model where messages sharing the same ID must present identical flags. 
+
+---
+
+## Next Steps
+
+1. **Working Group Last Call (WGLC):**
+   * [draft-ietf-mailmaint-autoconfig] will proceed to another WGLC once the `.well-known` and security considerations text is resolved.
+   * [draft-ietf-mailmaint-smtputf8-syntax] will target WGLC as soon as a second implementation is verified.
+2. **Implementation Work:**
+   * Robert Stepanek will review the JScalendar schema definitions in [draft-ietf-mailmaint-pdparchive].
+   * Arnt Gulbrandsen and Bron Gondwana will work on client-side implementations of [draft-ietf-mailmaint-imap-objectid-bis].

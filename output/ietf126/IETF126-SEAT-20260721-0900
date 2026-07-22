@@ -1,0 +1,98 @@
+# [SEAT](../wg/seat.html)
+
+## Summary
+
+The Secure Evidence and Attestation Transport (SEAT) Working Group met at IETF 126. The co-chairs, Yaroslav and Nancy Cam-Winget, announced the official adoption of the working group's first document: [draft-ietf-seat-use-cases](https://datatracker.ietf.org/doc/draft-ietf-seat-use-cases/). 
+
+The meeting featured presentations on the use cases and security goals, the proposed SEAT architecture, a comparative analysis of attested TLS protocols, and proposals for intra-handshake (early attestation) and post-handshake (exported authenticators) transport mechanisms. Strong technical discussions occurred around binding properties, replay protection, and coordination with other working groups such as TLS, RATS, SPICE, and HTTPBIS.
+
+## Key Discussion Points
+
+### 1. Welcome, Administration, and Document Status
+* **Slides**: [Chairs slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-chairs-slides-00)
+* **Presenter**: Yaroslav and Nancy Cam-Winget
+* **Discussion**:
+  * The co-chairs reminded participants of the Note Well guidelines.
+  * The first working group document has been successfully adopted: `draft-ietf-seat-use-cases`. 
+  * Ionuț Mihalcea will act as the sole document editor moving forward. The document is hosted in the SEAT GitHub repository, which will be used alongside the mailing list to progress the draft. There are currently no plans to progress this document to an RFC; it will remain an active working group document to guide protocol design.
+
+### 2. Use Cases and Security Goals Update
+* **Slides**: [Security Goals and Use Cases for Integrating Remote Attestation with Secure Channel Protocols](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-security-goals-and-use-cases-for-integrating-remote-attestation-with-secure-channel-protocols-01)
+* **Presenter**: Ionuț Mihalcea
+* **Discussion**:
+  * Ionuț summarized updates to `draft-ietf-seat-use-cases` since IETF 115. Notably, "properties" have been reframed as "security goals."
+  * Some use cases (including actor identity continuity, identity injection for WebPKI, and TLS terminating proxies) were temporarily frozen to prevent gridlock and facilitate adoption.
+  * Future steps include clarifying threat models, refining the boundaries between SEAT and other groups (such as TLS, RATS, and SPICE), and linking security goals to specific attacks.
+  * **Feedback**: 
+    * Thiru agreed that the focus should pivot toward refining requirements, threat models, and existing use cases rather than adding new ones, unless a new use case introduces novel security requirements.
+    * Mark emphasized on the mailing list and in the room that large enterprise and regulated customers care deeply about single points of failure and trust anchor separation, which should be made prominent in both use cases and architecture documents.
+
+### 3. SEAT Architecture
+* **Slides**: [Secure Evidence and Attestation Transport (SEAT) Architecture](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-secure-evidence-and-attestation-transport-seat-architecture-01)
+* **Presenter**: Nathanael Ritz
+* **Discussion**:
+  * Nathanael presented a proposed framework to unify the various individual solution designs and terminology. The architecture draft separates use-case-specific goals from cross-cutting concerns, details how to answer the IAB statement on privacy, and seeks to establish a shared vocabulary for keys and binders.
+  * **Feedback**:
+    * Muhammad Usama Sardar noted architectural overlaps with his own draft and criticized the binding model depicted for intra-handshake, pointing out that because Client Hello and Server Hello are public or transport-visible, they do not offer strong secrets against a malicious server. He also strongly opposed addressing EDHOC/Ad-hoc in this working group, noting that the LAKE WG has already adopted that work. He recommended utilizing established TLS and CCC (Confidential Computing Consortium) terminologies instead of inventing new keys.
+    * Yaron Sheffer supported the work but cautioned against attempting to unify key names as it risks entering the solution space. He also urged the authors to address the "time of measurement" (which can happen at boot time) instead of focusing solely on the signature freshness.
+    * Thomas Fossati (co-author) supported the draft, stating that `draft-ietf-seat-use-cases` alone is insufficient to bridge the gap to the solutions, making an architecture document an essential tool.
+
+### 4. Deployability and Attested TLS Selection
+* **Slides**: [Balancing Security and Deployability in the Selection of Attested TLS Protocol](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-balancing-security-and-deployability-in-the-selection-of-attested-tls-protocol-00)
+* **Presenter**: June
+* **Discussion**:
+  * June presented a comparison of pre-handshake, intra-handshake, and post-handshake attested TLS approaches, outlining trade-offs in security, middlebox compatibility, latency, and failure handling (soft vs. hard fail).
+  * **Feedback**:
+    * Paul Wouters noted that library support is a major advantage for intra-handshake. If common TLS libraries natively support attestation extensions, application code remains simple. Conversely, post-handshake solutions require application-level changes.
+    * Muhammad Usama Sardar responded that runtimes (like SCONE) already handle post-handshake attestation seamlessly without modifying applications. He also stated that because attestation is a continuous process, latency concerns over additional round-trips are overstated.
+    * Markus Rudy noted in the chat that in practice, evidence production takes time comparable to inter-continental round-trips, and remote verification calls to hardware vendors dwarfed all other latency concerns. Nathanael Ritz agreed, suggesting the exploration of per-connection binding to cached attestation results.
+    * Yaroslav (speaking as an individual) noted that in TLS 1.3, middleboxes establish separate connections to the client and server, meaning they cannot easily strip unknown TLS extensions unless they actively intercept the connection.
+
+### 5. Early Attestation (Intra-Handshake)
+* **Slides**: [Using Attestation in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-using-attestation-in-transport-layer-security-tls-and-datagram-transport-layer-security-dtls-00)
+* **Presenter**: Ionuț Mihalcea and Thiru
+* **Discussion**:
+  * Ionuț presented updates on early attestation (intra-handshake). The binding was updated to use `HKDF-Expand-Label` on the Client Hello and Server Hello transcripts. The draft also consolidated multiple negotiation extensions into a single "remote attestation extension."
+  * Thiru analyzed relay attacks, arguing that because the client and server contribute fresh random values and ephemeral keys, the Client Hello and Server Hello transcript is unique per session, rendering replay impossible without key compromise.
+  * **Feedback**:
+    * Muhammad Usama Sardar renewed his criticism that the draft introduces unnecessary complexity because post-handshake attestation is required for continuous attestation anyway. He also maintained that using `HKDF-Expand-Label` does not resolve security concerns regarding the key schedule, and that Client/Server Hello are public and can still be proxied.
+    * Thiru countered that because the client contributes ephemeral key shares, proxying or replaying the handshake is impossible unless the underlying keys are compromised.
+
+### 6. EXPAT and Binding Properties (Post-Handshake)
+* **Slides**:
+  * [Remote Attestation with Exported Authenticators](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-remote-attestation-with-exported-authenticators-00) (Presented by Thiru)
+  * [Binding properties of expat](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-binding-properties-of-expat-00) (Presented by Muhammad Usama Sardar)
+* **Discussion**:
+  * Thiru presented the post-handshake EXPAT design based on RFC 9261. It uses a new `CMW attestation` inside the certificate message. Freshness is achieved by pairing the TLS exporter secret with the changing certificate request context. Resumption via PSK without a full/ephemeral handshake is rejected to maintain security.
+  * Muhammad Usama Sardar analyzed the binding properties of EXPAT, categorizing them into three levels: G1 (binding to the Diffie-Hellman secret $g^{xy}$), G2 (binding to the handshake secret), and G3 (binding to the application traffic secret). He argued that G3 provides the strongest security binding, protecting against private key leaks, while G1 and G2 are insufficient on their own.
+  * **Feedback**:
+    * Markus Rudy noted that while G3 might appear stronger at generation, the final TLS connection state might render G1 and G3 equivalent in strength.
+    * Nathanael Ritz agreed, noting that transitively, a trusted signature over the certificate verify (G3) validates G1 and G2.
+    * Paul Wouters questioned the malicious server model used in the binding analysis, pointing out that in many architectures, the attester and the web server are separate entities, meaning the attester has no role in the web PKI portion of the TLS connection.
+
+### 7. Application-Layer Transport for EXPAT
+* **Slides**: [Application-Layer Transport for Exported Authenticators and Attestation](https://datatracker.ietf.org/meeting/126/materials/slides-126-seat-application-layer-transport-for-exported-authenticators-and-attestation-00)
+* **Presenter**: Thiru
+* **Discussion**:
+  * Thiru explained that RFC 9261 defines exported authenticators but not how they are transported by applications. This proposal outlines how to exchange these authenticators using HTTP capsules over HTTP/2 or HTTP/3 (extended CONNECT), or via a lightweight binary shim layer for non-HTTP, short-lived connections.
+  * **Feedback**:
+    * Muhammad Usama Sardar welcomed the proposal, calling it highly complementary to the EXPAT draft.
+    * Nathanael Ritz expressed support for the concrete details provided by the draft.
+    * Yaroslav (with co-chair hat on) strongly advised consulting the HTTP working group (HTTPBIS) early on to ensure the HTTP capsule and extended CONNECT mechanisms are designed correctly. Nancy Cam-Winget suggested seeking an HTTP Directorate review if the draft is eventually adopted.
+
+---
+
+## Decisions and Action Items
+
+* **Document Adoption**: `draft-ietf-seat-use-cases` is officially adopted by the SEAT working group. 
+* **Editor Appointment**: Ionuț Mihalcea is appointed as the sole editor for the use cases document. 
+* **GitHub Migration**: The use cases document has been migrated to the `ietf-wg-seat` GitHub organization.
+
+---
+
+## Next Steps
+
+* **Use Cases**: Ionuț Mihalcea to address outstanding issues on the GitHub repository and integrate mailing list feedback regarding enterprise deployment challenges, single points of failure, and trust anchor separation.
+* **Architecture Draft**: Nathanael Ritz and co-authors to continue refining the architecture proposal on the mailing list, specifically focusing on terminology reconciliation and "time of measurement" freshness properties.
+* **Solution Drafts**: Technical debates surrounding binding levels (G1 vs. G3), early attestation key schedules, and EXPAT session resumption are to be continued on the mailing list.
+* **Application-Layer Transport**: Thiru and co-authors to seek feedback from the HTTP working group and coordinate on the use of HTTP capsules.

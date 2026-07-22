@@ -1,0 +1,101 @@
+# [IPSECME](../wg/ipsecme.html)
+
+## Summary
+
+The IPSECME Working Group met at IETF 126 to discuss progress on active drafts, post-quantum cryptography (PQC) migration strategies, authentication enhancements, and potential new work including the integration of Message Layer Security (MLS) for group key management. 
+
+Key milestones include several active drafts currently in the RFC Editor queue and multiple documents passing Working Group Last Call (WLC). The group focused heavily on post-quantum migration challenges, specifically regarding signature sizes, fragmentation, transport options, and key exchange efficiency.
+
+---
+
+## Key Discussion Points
+
+### 1. WG Administration and Status Update
+* **Presentation**: [Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-chair-slides-00)
+* **Document Status**:
+  * No new RFCs have been published since the last meeting.
+  * The ML-KEM post-quantum key exchange draft and the downgrade-prevention draft are currently in the RFC Editor queue. 
+  * Paul Wouters noted that following discussions in the TLS WG regarding PRNG lines, a similar minor addition might be needed for the ML-KEM document during AUTH48 to ensure consistency.
+  * Three drafts have successfully completed Working Group Last Call: `draft-ietf-ipsecme-ikev2-reliable-transport`, `draft-ietf-ipsecme-diet-esp`, and `draft-ietf-ipsecme-ikev2-diet-esp-extension`.
+  * One draft is awaiting a Working Group adoption call, which will be initiated immediately following this meeting.
+
+### 2. Use of SHA-3 in IKEv2 and IPsec
+* **Presentation**: [Use of SHA-3 in the Internet Key Exchange Protocol Version 2 (IKEv2) and IPsec](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-use-of-sha-3-in-the-internet-key-exchange-protocol-version-2-ikev2-and-ipsec-00)
+* **Drafts**: `draft-ietf-ipsecme-sha3`, `draft-ietf-ipsecme-ikev2-prf-plus`
+* **Discussion**:
+  * Ben Seltz presented updates to `draft-ietf-ipsecme-sha3`, highlighting a simplified PRF+ construction using KMAC as an extensible output function (XOF). This eliminates the need to iteratively call PRF, aligning with `draft-ietf-ipsecme-ikev2-prf-plus`.
+  * The new optimization results in PRF and PRF+ yielding identical outputs given the same inputs. To address the resulting domain separation concerns, the authors proposed using KMAC customization strings to bind outputs to specific contexts.
+  * Sophie Schmieg and Jonathan Hoyland supported the use of customization strings, clarifying that wrapping XOFs to support customization is standardized and straightforward.
+  * Valery Smyslov proposed resolving the customization string issue globally within the generic variable-length PRF draft (`draft-ietf-ipsecme-ikev2-prf-plus`) and urged the working group to share opinions on the mailing list.
+
+### 3. Discussions and Improvements on RFC 9370 ADDKE Algorithm
+* **Presentation**: [Discussions and improvements on RFC 9370 ADDKE algorithm](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-discussions-and-improvements-on-rfc-9370-addke-algorithm-00)
+* **Discussion**:
+  * Guilin Wang presented scenarios from product testing of PQC migration where overlapping or duplicated algorithms across multiple ADDKE exchanges caused IKEv2 negotiation failures.
+  * The authors proposed extending the responder's selection logic to allow duplicate algorithm selections (Consideration 1) or fall back to implicit "None" selections (Consideration 2).
+  * Valery Smyslov, Scott Fluhrer, and Paul Wouters strongly opposed modifying the negotiation logic. They argued that these failures stem from broken initiator implementations and adding "fuzziness" to negotiation is highly undesirable.
+
+### 4. FrodoKEM for IKEv2
+* **Presentation**: [FrodoKEM for IKEv2](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-frodokem-for-ikev2-00)
+* **Draft**: `draft-ietf-ipsecme-hybrid-kem-ikev2-frodo`
+* **Discussion**:
+  * Guilin Wang presented updates to version 01, including removing the word "hybrid" from the title and adjusting the draft to support running FrodoKEM standalone (e.g., using reliable transport or when MTU size is not a constraint). FrodoKEM has officially been published as an ISO standard.
+  * Scott Fluhrer pointed out that because the reference ISO document is behind a paywall, it might block the draft's progression to an RFC due to normative reference policies.
+  * Deb Cooley (AD) and Chris Hopps discussed the implications of paywalled references, noting that while difficult, referencing ISO standards is historically possible. Tero Kivinen expressed strong opposition to making normative references to paywalled cryptographic specifications.
+
+### 5. Multi-Authentication in IKEv2
+* **Presentation**: [Multi-Authentication in IKEv2](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-multi-authentication-in-ikev2-00)
+* **Discussion**:
+  * Guilin Wang proposed a flexible multi-authentication mechanism in IKEv2 that allows negotiating combinations of single authentication methods before executing them sequentially.
+  * Scott Fluhrer noted that while the draft details negotiation, it does not specify what actually happens on the wire to perform the multiple authentications (e.g., the format of signatures and certificates).
+  * Valery Smyslov cautioned that making authentication negotiable is a fundamental shift from how IKEv2 announcements currently operate.
+  * Sophie Schmieg raised concerns about potential downgrade attacks when negotiating authentication methods, questioning how a client would safely verify that the peer did not artificially strip out stronger requirements.
+
+### 6. Post-Quantum PKI & Composite Signatures
+* **Presentations**:
+  * [PQ/T Hybrid PKI Authentication in IKEv2](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-pqt-hybrid-pki-authentication-in-ikev2-00) (Presented by Guilin Wang on behalf of Jun Hu)
+  * [Hybrid Post-Quantum and Traditional Authentication for IKEv2](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-hybrid-post-quantum-and-traditional-authentication-for-ikev2-00) (Presented by Tirumaleswar Reddy)
+* **Discussion**:
+  * The first presentation proposed hybrid authentication using composite signatures and composite PKI certificates or related certificates. Tirumaleswar Reddy noted that dual certificates in the draft should not be mixed with composite terminology, as composite certificates mandate keys generated together.
+  * The second presentation focused purely on composite signatures, utilizing existing digital signature authentication methods in IKEv2 without wire format changes.
+  * Tirumaleswar Reddy expressed openness to combining the composite signature work of both drafts but suggested keeping dual certificate work separate. 
+  * Scott Fluhrer agreed that composite signatures and dual certificates are fundamentally different and should remain in separate drafts. Paul Wouters and Valery Smyslov favored keeping the protocol design as simple as possible, preferably aiming for a single solution. Deb Cooley (AD) noted that the LAMPS WG has already defined pure and composite drafts, indicating that further work in LAMPS is unlikely and the IPSECME WG should avoid multiplying options.
+
+### 7. PQ/T Hybrid Composite Key Exchange & Reliable Transport for IKEv2
+* **Presentation**: [PQ/T Hybrid Composite Key Exchange & Reliable Transport for IKEv2](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-pqt-hybrid-composite-key-exchange-reliable-transport-for-ikev2-00)
+* **Draft Context**: `draft-ietf-ipsecme-ikev2-reliable-transport`
+* **Discussion**:
+  * Tirumaleswar Reddy presented performance benchmarks comparing UDP and TCP for hybrid key exchanges. Running exchanges over TCP (composite) avoids UDP fragmentation and reduces handshake latency in lossy networks.
+  * Paul Wouters raised operational concerns, noting that TCP transport for IKEv2 is rarely implemented on most devices and is frequently blocked by middleboxes on the open Internet.
+  * Tero Kivinen pointed out that the performance differences between UDP and TCP in the benchmark are heavily influenced by the retransmission strategy of the specific IKEv2 implementation (StrongSwan) rather than being purely a transport layer characteristic.
+
+### 8. PQC IKEv2 Authentication Analysis
+* **Presentation**: [PQC IKEv2 Authentication Analysis](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-pqc-ikev2-authentication-analysis-00) (Presented by Valery Smyslov on behalf of Yuri)
+* **Discussion**:
+  * Valery Smyslov presented an analysis of KEM-based (implicit) authentication in IKEv2, which relies on long-term public keys in certificates. While KEM-based authentication decreases CPU cycles and bytes on the wire compared to post-quantum signatures like MLDSA, it requires an extra intermediate exchange to maintain identity protection.
+  * Hannes Tschofenig questioned the practical need for such a redesign, noting that implementations can optimize resource usage across multiple dimensions (RAM, heap, power) without needing to rewrite the core protocol.
+  * Scott Fluhrer expressed concerns over the scalability of KEM-based authentication if public keys are not pre-configured, drawing parallels to IKEv1's RSA pre-encrypted nonces which were ultimately abandoned.
+
+### 9. MLS for IPsec Group Key Management
+* **Presentation**: [MLS for IPsec Group Key Management](https://datatracker.ietf.org/meeting/126/materials/slides-126-ipsecme-mls-for-ipsec-group-key-management-00) (Co-presented by Valery Smyslov and Konrad)
+* **Discussion**:
+  * The presenters introduced a proposal to use Message Layer Security (MLS) to manage keys within group IKEv2 (gIKEv2). Under this model, the Group Controller/Key Server (GCKS) acts as the MLS Delivery Service, but does not generate or have access to data protection keys, thereby delegating active key generation to Group Members.
+  * Daniel Migault requested clarification on how decentralized policy enforcement is handled in MLS compared to centralized gIKEv2. Konrad explained that MLS handles key agreement, while policy enforcement remains with the server.
+  * Sean Turner and Jonathan Hoyland supported the work, emphasizing that gIKEv2 is poorly deployed and MLS offers a modern, highly secure, and actively developed alternative.
+  * Hannes Tschofenig raised concerns that group key management remains a highly niche use case. He argued that introducing MLS adds unnecessary complexity, whereas the working group should focus on making group key management simpler to encourage deployment.
+
+---
+
+## Decisions and Action Items
+
+* **Administration**:
+  * **Action**: Tero Kivinen to start the pending Working Group adoption call immediately following the meeting.
+  * **Action**: Deb Cooley (AD) to investigate the procedural options and constraints for normatively referencing paywalled ISO documents (relevant to `draft-ietf-ipsecme-hybrid-kem-ikev2-frodo`).
+
+---
+
+## Next Steps
+
+* **SHA-3 Customization Strings**: Authors of `draft-ietf-ipsecme-sha3` and `draft-ietf-ipsecme-ikev2-prf-plus` will drive mailing list discussions to resolve whether customization strings should be mandated universally or per-algorithm.
+* **Composite Signatures / PKI**: Authors of the two hybrid authentication drafts will collaborate on potential convergence, focusing on composite signatures while keeping dual certificate concerns separated for future study.
+* **MLS for IPsec**: Discussions regarding the integration of MLS with gIKEv2 will continue on the mailing list to gather feedback and explore practical use cases.
