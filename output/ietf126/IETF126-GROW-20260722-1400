@@ -1,0 +1,171 @@
+# [GROW](../wg/grow.html)
+
+## Summary
+
+The Global Routing Operations (GROW) Working Group met at IETF 126 in Vienna, Austria. The session was chaired by Job Snijders and Paolo Lucente. The working group reviewed the status of active documents, discussed an initiative to introduce a "gatekeeping" process for new BGP Monitoring Protocol (BMP) extensions, and discussed updates across BMP extensions, RPKI validation monitoring, routing security operations, and BGP communities.
+
+Since the last meeting, the working group published **RFC 9972** ("Advanced BGP monitoring protocol statistic types") and advanced the Near Real-Time Mirroring (NRTM) protocol to replicate IRR databases to the RFC Editor queue.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and Chair Updates
+* **Presenter**: Job Snijders & Paolo Lucente
+* **Slides**: [GROW Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-grow-chair-slides-01)
+* **BMP Extension Gatekeeping Proposal**: 
+  The chairs introduced a proposal to perform gatekeeping during document adoption for BMP-related drafts due to the rapid growth of the protocol. Moving forward, authors of proposed BMP drafts will be asked to fill out a brief checklist/interview form. This step is intended to ensure that new proposals do not duplicate existing frameworks and are well-aligned with the core protocol design. The proposal received strong support from the room.
+
+---
+
+### 2. BMP Path Marking, YANG Model, and ADJ-RIB Filtering
+* **Presenter**: Camilo Cardona
+* **Slides**: 
+  * [BMP path marking](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-bmp-path-marking-00) for [draft-ietf-grow-bmp-path-marking-tlv](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-path-marking-tlv)
+  * [BMP yang model](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-bmp-yang-model-00) for [draft-ietf-grow-bmp-yang](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-yang)
+  * [ADJ-RIB_inout filtering](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-adj-rib-inout-filtering-00) for [draft-ietf-grow-bmp-adj-ribs-filtered](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-adj-ribs-filtered)
+
+* **Path Status TLV (`draft-ietf-grow-bmp-path-marking-tlv`)**:
+  * An implementation has been completed by Huawei on their NE series routers and Swisscom (led by Thomas Graf), utilizing pmacct and Wireshark for validation.
+  * Statistics that previously resided in another draft have been moved here to keep the data context-appropriate.
+  * While the draft is stable, it cannot progress to Working Group Last Call (WGLC) until [draft-ietf-grow-bmp-tlv](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-tlv) (BMP v4) is finalized.
+
+* **BMP YANG Model (`draft-ietf-grow-bmp-yang`)**:
+  * The draft was updated to address comments from the YANG doctor. Arcus provided an implementation of this model, excluding TCP-AO.
+  * *Open Issue*: Handing the dependency on TCP-AO (`draft-ietf-grow-bmp-tcp-ao`). Jeffrey Haas suggested utilizing optional YANG features or deviation statements to prevent the document from stalling. Thomas Graf noted that a YANG `if-feature` statement is the correct approach for TCP-AO rather than a deviation. Job Snijders suggested removing TCP-AO as a hard dependency if it continues to hold up progression.
+
+* **Adj-RIB-In and Adj-RIB-Out Filtering (`draft-ietf-grow-bmp-adj-ribs-filtered`)**:
+  * Proposes adding a "filtered flag" to Adj-RIB-In and Adj-RIB-Out messages, mirroring the existing Loc-RIB capability.
+  * Camilo Cardona requested a Working Group Last Call.
+
+---
+
+### 3. BMP Version 4: Extended TLV Support
+* **Presenter**: Paolo Lucente
+* **Slides**: [BMP v4: Extended TLV Support for BGP Monitoring Protocol](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-bmp-v4-extended-tlv-support-for-bgp-monitoring-protocol-01) for [draft-ietf-grow-bmp-tlv](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-tlv)
+
+* **Discussion**:
+  * Recent updates merged the sequence numbers and timestamps (SNTS) work, making those TLVs universally applicable across all BMP messages.
+  * Narasimha Prasad suggested making the rigid peer header more flexible by transitioning its static fields into TLVs. Luuk Hendriks agreed, suggesting that static headers in peer up and peer down messages should also be converted to TLVs.
+  * Thomas Graf argued that because [draft-ietf-grow-bmp-tlv](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-tlv) has been in progress for seven years and has existing implementations, the group should wrap up BMP v4 as-is. He proposed forming a design team to address major architectural revisions (like flexible headers) in a future "BMP v5" specification. Jeffrey Haas and Paolo Lucente expressed strong support for wrapping up v4 and shifting radical design changes to a new v5 effort.
+
+---
+
+### 4. BMP Scaling and Logging Updates
+* **Presenter**: Narasimha Prasad
+* **Slides**: [Draft Updates - Use-cases, Multi Peer, Rmon Aggr, Common updates, Gen & Rel (Prasad)](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-draft-updates-use-cases-multi-peer-rmon-aggr-common-updates-gen-rel-prasad-00) for [draft-ietf-grow-bmp-rel](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-rel)
+
+* **Discussion**:
+  * Recapped operator use cases showing high route and session scale on route reflectors (e.g., Netflix) and edge routers (e.g., FastNetMon), motivating the need for BMP optimizations.
+  * **Multi-Peer Header**: The framework has been expanded to support peer down, route mirroring, and statistics. Luuk Hendriks raised that eBGP peer up messages are highly distinct, which may require separate streams or specific operational considerations.
+  * **Aggregated Route Monitoring**: Updated to support TLV-based encoding (BMP v4) alongside the older v3 formats.
+  * **Common Updates**: The authors plan to merge the individual "common updates" draft into the "aggregated route monitoring" draft to create a single scaling optimization draft.
+  * **Generic Event Notification & REL**: Prasad proposed merging the individual "generic event notification" draft with the working group document [draft-ietf-grow-bmp-rel](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-rel) to form a unified event logging framework. Nanning supported coordinating these efforts. Maria Matejka asked if the drafts are stable enough to implement in BIRD; Prasad recommended early review.
+
+---
+
+### 5. Route Server Next Hop Translation
+* **Presenter**: Maria Matejka
+* **Slides**: [Route Server Next Hop Translation](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-route-server-next-hop-translation-00)
+
+* **Discussion**:
+  * Proposes a translation mechanism to allow gradual migration to IPv6-only route servers (using RFC 8950 next hops) without breaking legacy IPv4-only peers.
+  * Reviewed physical and virtual proxying options, detailing their scaling and complexity issues. The authors propose an "Edge Mini Proxy" mechanism integrated with EVPN ARP/ND suppression.
+  * The authors removed the request for Class E IPv4 allocations from the draft as it was not essential. Maria Matejka requested WG adoption. Tobias Fiebig supported adoption as a practical way to phase out IPv4 at Internet Exchange Points (IXPs).
+  * Job Snijders and Jeffrey Haas discussed whether GROW is the right home. Jeffrey Haas confirmed GROW is appropriate if the scope is restricted strictly to route servers (referencing RFC 7948 as precedent).
+
+---
+
+### 6. YANG Data Model for BGP Communities
+* **Presenter**: Martin Pels (remote)
+* **Slides**: [draft-ietf-grow-yang-bgp-communities-10](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-draft-ietf-grow-yang-bgp-communities-10-00) for [draft-ietf-grow-yang-bgp-communities](https://datatracker.ietf.org/id/draft-ietf-grow-yang-bgp-communities)
+
+* **Discussion**:
+  * The YANG model has been restructured to allow augmentation of other modules (e.g., `ietf-bgp`).
+  * Introduced an RPKI-based discovery mechanism called Community Definition Reference (CDR). Early IANA code points are registered, and Job Snijders built a proof-of-concept in `rpki-client`.
+  * Luuk Hendriks asked how the CDRs are retrieved by collectors. Job Snijders explained that RPKI clients will validate the CDR objects and export them as JSON for ingestion by external monitoring tools (e.g., `pmacct` or `Rotonda`), bypassing RTR for now.
+  * Maria Matejka suggested minor improvements, such as support for one-bit flags and mapping tables to save memory.
+
+---
+
+### 7. Hackathon Results: PCAP-NG for BMP Storage
+* **Presenter**: Luuk Hendriks
+* **Slides**: [Hackathon results: Storing BMP messages in MRT Format](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-hackathon-results-storing-bmp-messages-in-mrt-format-01)
+
+* **Discussion**:
+  * Luuk Hendriks and Colin Petrie attempted to store BMP Snapshots into MRT format during the IETF 126 Hackathon.
+  * They encountered structural limitations with MRT (specifically the Year 2038 timestamp overflow issue). Instead of extending MRT, they shifted focus to storing raw BMP messages in **PCAP-NG** format using a custom Data Link Type.
+  * This allows capturing raw BMP feeds directly into PCAP-NG files, which are natively supported by Wireshark for decoding, filtering, and analysis.
+  * *Next Steps*: The authors plan to pursue PCAP-NG over MRT and will update the "BMP snapshot/offline" draft to reflect this decision.
+
+---
+
+### 8. Monitoring RPKI-Related Processes on Routers Using BMP
+* **Presenter**: Shuang
+* **Slides**: [Requirements for Monitoring RPKI-Related Processes on Routers Using BMP](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-requirements-for-monitoring-rpki-related-processes-on-routers-using-bmp-00)
+
+* **Discussion**:
+  * The draft proposes monitoring validation data, policies, and impacts on routers.
+  * The author reduced the proposed message types from five to three by combining source and policy reporting into an "RPKI config" message and utilizing existing ROV state reporting mechanisms.
+  * The draft explicitly delineates the boundary between YANG streaming telemetry (device/session level troubleshooting) and BMP (routing validation and active dataset contexts).
+  * Maria Matejka commented that tracking speculative policy actions after the best-path selection is computationally expensive and difficult to implement, suggesting a reduction in scope. Nanning suggested aligning this with the overall routing event reporting frameworks.
+
+---
+
+### 9. BGP Operations and Security Update
+* **Presenter**: Tobias Fiebig
+* **Slides**: [Current Options for Securing Global Routing et al.](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-current-options-for-securing-global-routing-et-al-00) for [draft-ietf-grow-bgpopsecupd](https://datatracker.ietf.org/id/draft-ietf-grow-bgpopsecupd), [draft-ietf-grow-routing-ops-sec-inform](https://datatracker.ietf.org/id/draft-ietf-grow-routing-ops-sec-inform), and [draft-ietf-grow-routing-ops-terms](https://datatracker.ietf.org/id/draft-ietf-grow-routing-ops-terms)
+
+* **Discussion**:
+  * The BGP Security update ([draft-ietf-grow-bgpopsecupd](https://datatracker.ietf.org/id/draft-ietf-grow-bgpopsecupd)) passed WG Last Call but is waiting for shepherd write-up. The chairs plan to submit it alongside the other two documents to ensure consistent IESG review.
+  * The security options document ([draft-ietf-grow-routing-ops-sec-inform](https://datatracker.ietf.org/id/draft-ietf-grow-routing-ops-sec-inform)) is making progress, and Jeffrey Haas has joined as a co-author. Tobias Fiebig requested additional reviews for this lengthy document.
+  * Alexander Azimov flagged a potential issue in the informational draft concerning how BGP "origin" modification is described, recommending coordination with contributors working on BGP attribute validation.
+
+---
+
+### 10. Logging More Routing Events in BMP
+* **Presenter**: Nanning
+* **Slides**: [Log More Routing Events in the BGP Monitoring Protocol](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-log-more-routing-events-in-the-bgp-monitoring-protocol-00)
+
+* **Discussion**:
+  * Focuses on reporting BGP FlowSpec and SR Policy events.
+  * Removed the UTF-8 text strings from log actions (addressing earlier feedback from Jeffrey Haas) to simplify parsing. Added operational considerations and mitigation strategies for high-frequency routing changes (such as next-hop instability).
+  * Paolo Lucente recommended changing the title, as the draft is highly specialized to Segment Routing and FlowSpec rather than general BGP routing events.
+
+---
+
+### 11. BMP Extension for Configuration Monitoring TLV
+* **Presenter**: China Unicom Representative
+* **Slides**: [BMP Extension for Configuration Monitoring TLV](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-bmp-extension-for-configuration-monitoring-tlv-00)
+
+* **Discussion**:
+  * Proposes two new TLVs (Configuration Message TLV and Timestamp TLV) to correlate BGP events with configuration changes.
+  * Narasimha Prasad suggested integrating this with the existing REL ([draft-ietf-grow-bmp-rel](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-rel)) or generic event notification drafts instead of creating a standalone framework.
+  * Paolo Lucente pointed out that a timestamp TLV is already defined in the core BMP v4 ([draft-ietf-grow-bmp-tlv](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-tlv)), so the authors should clarify if they intend to extend that instead of redefining it.
+
+---
+
+### 12. PAVA: BGP AS_PATH Validation v2
+* **Presenter**: Maxime
+* **Slides**: [PAVA: BGP AS_PATH Validation v2](https://datatracker.ietf.org/meeting/126/materials/slides-126-grow-pava-bgp-as-path-validation-v2-00)
+
+* **Discussion**:
+  * Proposes a DNSSEC-secured, out-of-band AS path validation mechanism that verifies 3-AS overlapping segments to identify path forgeries. PAVA runs asynchronously off the routers and is intended to complement ASPA.
+  * Jeffrey Haas compared the concept to DNS Blackhole Lists (DNSBL) historically used in email, noting operational challenges, but acknowledged that DNSSEC deployment has matured. He recommended checking how DANE handles comparable service mapping.
+  * Nanning asked if PAVA requires online DNS queries for every update. Maxime noted that caching (both DNS and validation results) would be utilized to prevent excessive lookup overhead.
+
+---
+
+## Decisions and Action Items
+
+* **ADJ-RIB-In/Out Filtering**: The chairs will issue a Working Group Last Call for [draft-ietf-grow-bmp-adj-ribs-filtered](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-adj-ribs-filtered).
+* **BMP v4 Scope**: The working group agreed to keep [draft-ietf-grow-bmp-tlv](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-tlv) stable and wrap it up for publication. Major modifications (such as transitioning static peer headers into TLVs) will be deferred to a future "BMP v5" design team.
+* **BMP Scaling & Event Merges**: The authors of the individual BMP scaling and notification drafts will proceed with merging the common updates draft into the aggregated route monitoring draft, and coordinate on a single event reporting framework with [draft-ietf-grow-bmp-rel](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-rel).
+
+---
+
+## Next Steps
+
+* **YANG Model**: Resolving the TCP-AO dependency in [draft-ietf-grow-bmp-yang](https://datatracker.ietf.org/id/draft-ietf-grow-bmp-yang) by leveraging an optional `if-feature` and preparing the draft for final shepherd/YANG doctor reviews.
+* **Offline BMP Storage**: Authors of the BMP offline/snapshot draft will update their document to prioritize PCAP-NG storage over MRT.
+* **BGP Ops/Sec Documents**: Encourage broader working group review of [draft-ietf-grow-routing-ops-sec-inform](https://datatracker.ietf.org/id/draft-ietf-grow-routing-ops-sec-inform) and [draft-ietf-grow-routing-ops-terms](https://datatracker.ietf.org/id/draft-ietf-grow-routing-ops-terms) so they can progress alongside [draft-ietf-grow-bgpopsecupd](https://datatracker.ietf.org/id/draft-ietf-grow-bgpopsecupd).
