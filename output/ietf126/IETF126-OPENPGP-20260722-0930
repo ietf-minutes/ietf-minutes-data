@@ -1,0 +1,115 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+The OpenPGP Working Group met at IETF 126. The session was chaired by Stephen Farrell and Daniel Gillmor (DKG). The chairs welcomed Chris, the new Area Director. 
+
+The meeting was highly packed, covering updates on active working group drafts and several individual proposals. Due to time constraints, the chairs announced plans to schedule an interim meeting in September to address the remaining agenda items. Significant progress was shown for several drafts, with multiple implementations demonstrating interoperability, leading to planned Working Group Last Calls.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and Agenda Bashing
+* **Presenter**: Stephen Farrell
+* **Slides**: [Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-chair-slides-00)
+* Stephen Farrell noted that because the agenda was overpacked for a one-hour session, some topics might be deferred to a virtual interim meeting in September.
+
+---
+
+### 2. Module Lattice + NIST and Brainpool Curves Composites in OpenPGP
+* **Presenter**: Stefan Ubbink
+* **Slides**: [Module Lattice + NIST and Brainpool Curves Composites in OpenPGP (draft-ietf-openpgp-nist-bp-comp)](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-module-lattice-nist-and-brainpool-curves-composites-in-openpgp-draft-ietf-openpgp-nist-bp-comp-00)
+* **Relevant Draft**: `draft-ietf-openpgp-nist-bp-comp`
+* Stefan Ubbink provided an update on PQ/C composites (ML-KEM and ML-DSA) combined with NIST and Brainpool curves. 
+* Two independent and interoperable implementations have been successfully developed: one in `rnp` (experimental flag) and one in `sequoia-pgp`.
+* The draft is technically stable and straightfowardly adds PQ/C with NIST/Brainpool curve code points to RFC 9980.
+* Stefan Ubbink requested a Working Group Last Call (WGLC).
+
+---
+
+### 3. Persistent Symmetric Keys
+* **Presenter**: Daniel Huigens
+* **Slides**: [Persistent Symmetric Keys](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-persistent-symmetric-keys-00)
+* **Relevant Draft**: `draft-ietf-openpgp-persistent-symmetric-keys`
+* Daniel Huigens presented the status of the draft, noting three implementations exist (OpenPGP.js, GoCrypto, and rpgp), with two being completely independent. They fully interoperate.
+* The only remaining minor issue is automated testing in SOP (Stateless OpenPGP), which lacks a specified mechanism for passing passwords for encrypted keys. Implementations currently use a temporary workaround. 
+* Daniel Huigens requested WGLC as the draft is stable with no remaining open cryptographic questions.
+
+---
+
+### 4. OpenPGP HTTP Keyserver Protocol (HKP)
+* **Presenter**: Andrew Gallagher
+* **Slides**: [HKP](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-hkp-01)
+* **Relevant Draft**: `draft-ietf-openpgp-hkp`
+* Andrew Gallagher described the HKP legacy and v2 APIs. The v2 API is RESTful and designed to return JSON.
+* **Open Technical Issues**:
+  * **JSON Formalization**: The draft lacks formal JSON schemas. Andrew Gallagher asked for feedback on using JSON Schema versus JSON-LD (structured mail).
+  * **DKIM Authentication Proof**: To verify email ownership non-interactively and prevent key submission spam/backscatter, the draft proposes an inverted "prove-then-submit" flow using self-addressed emails signed by the provider's DKIM key. 
+  * Daniel Gillmor raised concerns regarding DKIM key expiration and deniability practices. Andrew Gallagher clarified that the proof is transient, only verified during key submission, and not stored long-term.
+  * **Well-known Paths**: Discussed whether HKP v2 should mandate well-known paths, as the HTTP WG generally discourages hardcoded paths, while legacy HKP v1 relied on them.
+  * **SRV Records**: Discussed conflicting service names currently used in the wild for key discovery over SRV records (`_hkp._tcp` vs `_pgpkey-http._tcp`).
+
+---
+
+### 5. OpenPGP Key Replacement
+* **Presenter**: Andrew Gallagher
+* **Slides**: [Key Replacement](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-key-replacement-00)
+* **Relevant Draft**: `draft-ietf-openpgp-replacementkey`
+* The wire format has been stable for nearly a year and includes examples and test vectors.
+* Two library-level implementations (GoCrypto by Andrew Gallagher and rpgp by Heiko Schäfer) successfully interoperate by manually parsing each other's replacement key artifacts.
+* Automated interoperability testing is currently blocked pending the definition of an API extension for key replacement within SOP.
+
+---
+
+### 6. Externally Stored Secret Keys
+* **Presenter**: Heiko Schäfer
+* **Slides**: [Externally stored secret keys](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-externally-stored-secret-keys-draft-dkg-openpgp-external-secrets-02)
+* **Relevant Draft**: `draft-dkg-openpgp-external-secrets-02`
+* Heiko Schäfer introduced a proposal to handle secret keys stored on external hardware (e.g., smartcards, HSMs) in an interoperable way.
+* The draft proposes a formal S2K usage code point meaning "the secret key is elsewhere" alongside an optional location hint, replacing experimental code points used by GnuPG.
+* Krishna expressed strong interest in implementing the draft, citing the importance of HSMs and external key storage for their use cases.
+* Daniel Gillmor spoke in favor of adopting the draft to officially allocate a code point.
+
+---
+
+### 7. Autocrypt v2 Certificates
+* **Presenter**: Daniel Gillmor
+* **Slides**: [Autocrypt v2 Certificates](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-autocrypt-v2-certificates-02)
+* Daniel Gillmor presented an OpenPGP profile designed to provide reliable message deletion (forward secrecy) using existing v6 and PQ/C standards.
+* The certificate utilizes an Ed25519 primary key and combines a fallback PQ/C subkey with a temporal, ratcheting subkey. 
+* By ratcheting the subkey based on time (instead of per-message), multiple mail user agents (MUAs) can share the same key material without requiring complex cryptographic state synchronization, provided their clocks are synchronized.
+* **Ecosystem Challenges**:
+  * **Subkey Selection**: Standard OpenPGP clients must only encrypt to the rotating subkey to maintain the reliable deletion property; falling back to the permanent subkey forfeits it.
+  * **Certificate Growth**: Expired encryption subkeys should be discarded during certificate refresh to prevent certificate stores from growing indefinitely.
+
+---
+
+### 8. GREASE (Generate Random Extensions And Sustain Extensibility)
+* **Presenter**: Andrew Gallagher
+* **Slides**: [GREASE](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-grease-00)
+* Andrew Gallagher proposed reserving 8 single-octet code points across OpenPGP registries to inject "grease" values (fake artifacts) into production environments (primarily HKP v2) to test forward compatibility.
+* The draft also proposes expanding private experimental ranges to 16 code points to align with nibble boundaries.
+* Daniel Gillmor suggested expanding GREASE to cover bit flag registries (e.g., key usage flags). Stefan Ubbink supported the GREASE proposal in the chat.
+
+---
+
+### 9. Hole-Free Validity
+* **Presenter**: Andrew Gallagher
+* **Slides**: [Hole-Free Validity](https://datatracker.ietf.org/meeting/126/materials/slides-126-openpgp-hole-free-validity-00)
+* Andrew Gallagher discussed how some OpenPGP implementations overload the "signature creation time" as a "not valid before" constraint for keys, creating an implicit requirement to preserve all historical self-signatures to prove historical validity.
+* The draft proposes a simplified "hole-free" interpretation where only the latest self-signature needs to be retained.
+* Daniel Huigens clarified that in OpenPGP.js, self-signatures determine signature validity rather than overall key validity. Heiko Schäfer and Daniel Gillmor discussed the trade-offs in complexity, noting that keeping historical signatures allows for evolving properties (like subkey usage flags) over time, though it introduces significant storage and parsing overhead.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-openpgp-nist-bp-comp`**: The chairs will launch a Working Group Last Call (WGLC).
+* **`draft-ietf-openpgp-persistent-symmetric-keys`**: The chairs will launch a Working Group Last Call (WGLC).
+* **`draft-dkg-openpgp-external-secrets-02`**: The chairs will issue a call for adoption on the mailing list.
+* **HKP and SOP integration**: Andrew Gallagher and Daniel Huigens will take discussions regarding JSON schema choices and SOP API changes for key replacement and persistent symmetric keys back to the mailing list and respective GitHub repositories.
+
+---
+
+## Next Steps
+* The chairs will schedule a virtual interim meeting in September to continue technical discussions on HKP, Key Replacement, GREASE, Hole-Free Validity, and other deferred topics.

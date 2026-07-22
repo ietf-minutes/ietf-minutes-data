@@ -1,0 +1,68 @@
+# [WEBBOTAUTH](../wg/webbotauth.html)
+
+## Summary
+
+The WEBBOTAUTH Working Group met at IETF 126 in Vienna. Co-Chairs Raffat and David Schinazi presided. The session focused on the two parallel paths established at the April interim meeting for web bot authentication:
+1. **Identifying Bot Authentication**: Cryptographically identifying bots.
+2. **Anonymous Bot Authentication**: Demonstrating bot properties without revealing specific identity.
+
+The group also discussed crawler best practices as an informational/operational item.
+
+---
+
+## Key Discussion Points
+
+### 1. HTTP Message Signatures for Automated Traffic
+Thibault Meunier presented the individual draft on this topic.
+* **Slides**: [HTTP Message Signatures for automated traffic](https://datatracker.ietf.org/meeting/126/materials/slides-126-webbotauth-http-message-signatures-for-automated-traffic-00)
+* **Overview**: The proposal leverages RFC 9421 (HTTP Message Signatures) to establish bot trust continuity over time. It operates in two modes using the same wire format: an **opaque mode** (using a key ID/pseudonym as an anchor) and a **domain binding mode** (anchored on WebPKI/TLS well-known directories). The latest revision removes the inline data URI key option.
+* **Discussion**:
+  * **Key Discovery and Rotation**: Eric Rescorla pointed out that both opaque and domain-bound modes ultimately require fetching keys from a URI over TLS. He suggested that using the URI itself as the identifier would preserve key rotation while maintaining pseudonymity. Justin Richer agreed that key discovery and signature verification should be clearly layered, noting that HTTP Message Signatures intentionally excluded fetchable key discovery due to differing trust semantics.
+  * **Signature Construction**: Justin Richer flagged that signing a signature value is a known cryptographic risk and offered to help the authors align the application of HTTP signatures with best practices.
+  * **General client identity**: Dick Hardt supported the direction but suggested aligning this with a general-purpose HTTP client identification mechanism in the HTTP working group (HTTPBIS) rather than keeping it strictly specific to bots.
+  * **Voluntariness and Access Risks**: Eric Nygren, Richard Barnes, and Alissa Cooper raised concerns that while the system is designed to be voluntary, in practice it may become a de facto requirement to access web content, potentially leading to a discriminatory web or balkanization. Marwan Fayed countered that without such a standard, operators will continue to block unrecognized traffic anyway, making a standardized path necessary to preserve open access.
+
+---
+
+### 2. Anonymous Bot Authentication
+Eric Rescorla presented the anonymous authentication path, which relies heavily on the emerging "MOLE" (Modulated Oblivious Logarithmic Evaluation) architecture.
+* **Slides**: [Anonymous Bot Authentication](https://datatracker.ietf.org/meeting/126/materials/slides-126-webbotauth-anonymous-bot-authentication-01)
+* **Overview**: Under this model, third-party "anchors" vouch for bots and issue "endorsements." When interacting with a site's "moderator," the bot trades the endorsement for a "credential." The credential carries a token budget used to rate-limit or penalize abusive bots while keeping their specific identities unlinkable and private.
+* **Discussion**:
+  * **Anchor Incentives and Centralization**: Pablo González and Ted Hardie raised concerns about the centralization of power in anchors and whether enough distinct entities would have the incentive to act as anchors. Jonathan Hoyland noted that if sites only trust large anchors (e.g., Google or OpenAI), small bots will lose the ability to remain anonymous. Samuel Schlesinger suggested that the site moderators, rather than the anchors, should bear the primary burden of rate-limiting and reputation management.
+  * **Concurrency**: Pablo González questioned how concurrency is handled, given that updating credentials takes time. Eric Rescorla suggested a multi-tier approach, such as using a session cookie for subsequent requests to avoid constant cryptographic updates.
+  * **Information Leakage**: Daniel Kahn Gillmor and Martin Thomson discussed whether relying parties could distinguish between humans and bots based on anchor subsets, noting that if too many attributes are disclosed, it creates fingerprinting vectors that undermine anonymity.
+  * **Durable Identifiers vs. Endorsements**: Dick Hardt argued that site-specific, random durable identifiers are simpler and more effective for building reputation based directly on behavior, rather than relying on complex third-party anchor endorsements.
+
+---
+
+### 3. Crawler Best Practices
+Gary Illyes presented on documenting the de facto operational conventions of web crawlers.
+* **Slides**: [Crawler Best Practices](https://datatracker.ietf.org/meeting/126/materials/slides-126-webbotauth-crawler-best-practices-00)
+* **Overview**: The document outlines baseline requirements for bot hygiene, including compliance with robots.txt (RFC 9309), rate control, backoff signals, identity transparency, and IP address distribution.
+* **Discussion**:
+  * **WG Scope**: Co-chair David Schinazi noted that while this is technically outside the current WEBBOTAUTH charter, it could be discussed or eventually adopted if the charter is adjusted. Justin Richer strongly supported adoption, comparing it to the workload identity practices document in the WIMSE WG (`draft-ietf-wimse-workload-identity-practices-05`).
+  * **Adversarial Application**: Eric Rescorla cautioned that such a BCP could be used as a "club" by sites to enforce behavior that is adversarial to legitimate scraping efforts (e.g., consumer protection bots). Mark Nottingham suggested focusing strictly on areas of solid consensus to avoid contentious recommendations.
+  * **Charter Fit**: AD Mike Bishop pointed out that the current charter already includes a milestone for BCP and/or informational documents describing operational considerations, meaning the work is likely close enough to proceed. Mirja Kühlewind advised a formal recharter to avoid IETF Last Call issues.
+
+---
+
+## Decisions and Action Items
+
+### Polls
+The chairs ran a single poll regarding the identifying approach ("HTTP Message Signatures for automated traffic") to gauge group consensus on the starting direction:
+
+* **Question**: *Do we think this is the right general direction / starting point?*
+* **Results**: **Yes: 22**, **No: 6**, **No Opinion: 5** (Total participants: 75)
+
+### Actions
+* **HTTP Message Signatures Draft**: The authors (Thibault Meunier et al.) will continue refining the draft to address key discovery, key rotation semantics, and cryptographic feedback regarding signature structures before seeking formal adoption.
+* **Anonymous Draft / MOLE Integration**: The anonymous bot draft will remain in an exploratory stage, tracking the progress of the MOLE/MOUE drafts. Interested participants were encouraged to join the Moll mailing list.
+* **Crawler Best Practices**: Discussions on the crawler best practices document (`draft-farzdusa-webbot-datacollection` was also noted in chat by Farzaneh as relevant) will continue on the mailing list. The chairs and AD will coordinate on whether a minor recharter is required to adopt it.
+
+---
+
+## Next Steps
+* Detailed review of the signature mechanics in the identifying draft by Justin Richer and other security experts.
+* Continued collaboration with the MOLE design team to refine the anonymous bot authentication flow.
+* The chairs will evaluate organizing an interim virtual meeting before IETF 127 in November (San Francisco) to maintain momentum.
