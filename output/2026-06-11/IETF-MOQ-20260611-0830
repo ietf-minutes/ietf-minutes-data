@@ -1,0 +1,78 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held a hybrid interim meeting to discuss and resolve core transport issues in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/). The primary focus of the meeting was to burn down outstanding technical issues with the goal of reaching a Working Group Last Call (WGLC) in the near future. Key topics of discussion included object range filters, the redesign of the joining mechanism (PR 1642), and stream flow control issues. 
+
+---
+
+## Key Discussion Points
+
+### 1. Hybrid Meeting Logistics & Agenda
+* **Presenter:** Alan Frindell
+* **Slides:** [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-chair-slides-00)
+* **Discussion:** Alan Frindell welcomed participants to the hybrid interim and outlined Meetecho guidelines for both local and remote attendees. Alan proposed a schedule for upcoming virtual interim sessions to be held on Mondays at 16:30 UTC.
+
+---
+
+### 2. Object Range Filters (PR 1518)
+* **Presenter:** Mo Zanaty
+* **Slides:** [Object Range Filters](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-object-range-filters-00)
+* **Discussion:** 
+  * Mo Zanaty recapped the motivation for object range filters (e.g., keyframe scrubbing, base layer extraction, specific media encodings). 
+  * **Set Concept:** The "set" concept allows relays to aggregate disjoint filters from downstream subscribers and query upstream using combined sets. This prevents relays from having to open multiple independent upstream subscriptions.
+  * **Property Filters on Published Messages:** Mo Zanaty noted that property filters can filter both track and object properties. If applied in `SUBSCRIBE_TRACKS`, a property filter can filter out the published track message itself. Ian Swett raised questions about how this interacts with overwritten object properties. Mo Zanaty confirmed that if a track property fails a filter, no subsequent objects for that track are sent. The group agreed this behavior is acceptable.
+  * **Object ID Filter Removal:** Mo Zanaty proposed removing the Object ID filter to simplify the design, arguing that Keyframe scrubbing on Object 0 is not 100% reliable for all video codecs. Magnus Westerlund strongly objected, stating Object 0 keyframe scrubbing is standard in [draft-ietf-moq-msf](https://datatracker.ietf.org/doc/draft-ietf-moq-msf/). Will Law and Cullen Jennings supported keeping it.
+  * **Location Filters:** Mo Zanaty proposed re-introducing location filters (previously in PR 1401) to replace the complex enum of subscription filters. Magnus Westerlund, Will Law, and Victor Vasiliev supported re-adding it because it aligns naturally with MOQ's object model. Alan Frindell raised questions regarding how to handle group endings when a filter terminates mid-group.
+
+---
+
+### 3. PR 1642 and Joining FETCH Redesign
+* **Presenter:** Ian Swett
+* **Slides:** [PR 1642](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-pr-1642-02)
+* **Discussion:**
+  * Ian Swett presented survey results on the existing Joining FETCH design. While some implementations successfully used it, the majority expressed dissatisfaction and wanted to remove it if a better alternative existed.
+  * **Current Group Delivery:** PR 1642 proposes delivering objects from the current group via subscribe streams (subgroups and datagrams) rather than splitting them between FETCH and SUBSCRIBE. 
+    * Cullen Jennings raised concerns about congestion control and priority. He argued that bursting backfill data (e.g., the historical portion of the current group) at line rate creates "fake congestion" on QUIC, delaying the actual live edge. 
+    * Mo Zanaty agreed, noting that delivering multiple subgroups simultaneously over subscribe can lead to out-of-order object delivery at the player, forcing playout delays.
+    * Magnus Westerlund highlighted buffering bursts on unstable Wi-Fi networks.
+  * **Filled FETCH Decoupling:** PR 1642 introduces "filled FETCH" streams initiated via subscribe or request updates to fetch historical groups, while live data flows on standard subscribe streams. 
+    * In the Meetecho chat, Asad Saeed questioned how this model handles VOD pipelining without stalling. Will Law explained that typical VOD players can utilize client buffers to implement a "sawtooth" request update behavior.
+    * Gwendal Simon, Victor Vasiliev, Mo Zanaty, and Mike English supported the decoupled "filled FETCH" concept, noting that it cleans up the state machine by removing the complex "joining location" rules.
+    * Ian Swett acknowledged that some spelling and parameters (e.g., shared vs. unique parameters between fetch and subscribe portions) need to be refined.
+
+---
+
+### 4. MOQT Flow Control & Blocked Streams
+* **Presenter:** Alan Frindell / Ian Swett
+* **Slides:** [MOQT Issues London](https://datatracker.ietf.org/meeting/interim-2026-moq-08/materials/slides-interim-2026-moq-08-sessa-moqt-issues-london-04)
+* **Discussion:**
+  * **Stream Flow Control Blocked on Requests:** The group discussed how to handle cases where a relay or client runs out of QUIC stream credit to send requests (e.g., subscriptions, fetches). 
+    * Because relays cannot typically open new bidirectional sessions upstream due to NAT and firewalls, they cannot simply bypass stream credit exhaustion.
+    * The group discussed whether relays should queue these blocked requests or reject them. 
+  * **PUBLISH_BLOCKED Message:** The editors proposed introducing a mechanism for publishers to signal when they cannot publish a track due to stream credit limits on namespace subscriptions.
+    * Cullen Jennings suggested renaming the message to `PUBLISH_BLOCKED` and decoupling it from strict flow-control terminology to also cover cases where a publisher intentionally decides not to publish a track (e.g., to prioritize other higher-priority tracks).
+
+---
+
+## Decisions and Action Items
+
+### Object Range Filters
+* **Decision:** Retain the Object ID filter in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) to support keyframe scrubbing use cases.
+* **Action Item:** Mo Zanaty to create a separate PR to re-introduce location filters (simplifying the subscription filters enum) based on the feedback received.
+
+### Joining FETCH Redesign (PR 1642)
+* **Decision:** The general consensus is to move forward with the direction of PR 1642, deprecating Joining FETCH in favor of decoupled subscribe and "filled FETCH" mechanisms.
+* **Action Item:** Working group participants to digest the "current group delivery" mechanics offline and discuss implementation-specific issues (such as prioritization and subgroup filtering) before final integration.
+
+### MOQT Issues
+* **Decision:** For requests blocked by stream flow control, the protocol will return a `REQUEST_ERROR` to the client rather than forcing relays to maintain complex retry queues. Alan Frindell and Ian Swett will coordinate the PR.
+* **Decision:** Rename the stream blocked message to `PUBLISH_BLOCKED` to allow publishers to signal an inability or unwillingness to publish a track. Ian Swett to draft the PR.
+
+---
+
+## Next Steps
+
+* The chairs will confirm the proposed virtual interim dates on the mailing list.
+* The editors will focus on updating [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) based on the PR 1642 and PR 1518 consensus.
+* Design team discussions on Denial-of-Service considerations ([draft-ietf-moq-secure-objects](https://datatracker.ietf.org/doc/draft-ietf-moq-secure-objects/) and relay protection) will continue.
