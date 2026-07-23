@@ -1,0 +1,87 @@
+# [IRTFOPEN](../wg/irtfopen.html)
+
+## Summary
+
+The IRTF Open (IRTFOPEN) session at IETF 126 was chaired by Dirk Kutscher. The session featured administrative updates, the formal promotion of two research groups, and presentations from the recipients of the Applied Networking Research Prize (ANRP): Rumaisa Habib and Diwen Xue. The session concluded with an update and discussion on the "Networking for AI" side meeting held earlier that week.
+
+---
+
+## Key Discussion Points
+
+### 1. IRTF Chair Updates
+Dirk Kutscher presented the [Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-irtfopen-chair-slides-00) and provided several community updates:
+*   **Research Group Status:** The `sustain` (Sustainability) and `space` (Space Networking) proposed research groups have been officially promoted to regular IRTF research groups.
+*   **Outreach and Workshops:** 14 out of 16 research groups met during IETF 126. The Applied Networking Research Workshop (ANRW), co-chaired by Thomas Schmidt and Suraj Krishnan, was held successfully on Monday of the meeting week. Additionally, a second workshop on Networking for AI is scheduled for CoNEXT in December 2024.
+*   **Diversity Travel Grants:** Four newcomers attended IETF 126 via IRTF diversity travel grants. The call for applications for IETF 128 in Kuala Lumpur will open in late November.
+*   **ANRP Awards:** The ANRP (supported by ISOC, Comcast, and NBCUniversal) recognized Rumaisa Habib and Diwen Xue for their outstanding applied networking research.
+
+---
+
+### 2. Formalizing Dependence of Web Infrastructure
+Rumaisa Habib presented [Formalizing Dependence of Web Infrastructure](https://datatracker.ietf.org/meeting/126/materials/slides-126-irtfopen-rumaisa-habib-formalizing-dependence-of-web-infrastructure-01), exploring the centralization and regionalization of the core layers that make websites reachable and trusted: hosting, DNS, and Certificate Authorities (CAs).
+
+*   **Key Concepts & Metrics:**
+    *   *Centralization:* The concentration of web services on a few providers. The work leverages **Earth Mover's Distance (EMD)** to measure how far a country's provider distribution deviates from a fully uniform baseline.
+    *   *Regionalization (Geopolitical Dependency):* Measured using *endemicity* (how regionalized a provider's usage is vs. global giants like Cloudflare) and *insularity* (the fraction of a nation's sites served by domestic providers).
+*   **Key Findings:**
+    *   **Hosting:** Centralization is highly non-uniform globally. Thailand is the most hosting-centralized country (60% of sites rely on Cloudflare), while Iran is the least. Austria is highly decentralized, ranking 140th out of 150.
+    *   **Regional Providers:** Countries with lower centralization scores tend to rely heavily on regional providers (e.g., in Bulgaria, Lithuania, and Iran) rather than global hyperscalers.
+    *   **Geopolitical Alignment:** Cross-border infrastructure dependencies often mirror historical, colonial, or linguistic ties (e.g., Uzbekistan depending on Russian providers; Afghanistan relying on Iranian hosting due to Farsi language overlap).
+    *   **Certificate Authorities (CAs):** CA distribution is extremely consolidated, with only 7 CAs accounting for 98% of the analyzed web. This creates extreme foreign dependency for most countries. Following the invasion of Ukraine and DigiCert's exit, Russian web properties became heavily dependent on Let's Encrypt.
+
+#### Discussion & Comments:
+*   **Generalizability:** Brian Trammell asked how the framework generalizes to other layers. Rumaisa Habib clarified that the EMD metric is highly general and can be applied to any distribution, using weights calibrated for traffic volume if needed.
+*   **Topology Concerns:** Marwan Fayed suggested extending the work to include Autonomous System (AS) topology and path-level upstream dependencies. 
+*   **CA Concentration Risks:** Eliot Lear remarked that the 7-player CA concentration is concerning, particularly regarding Let's Encrypt. He noted that geopolitical sanctions restricting access to CAs could trigger widespread trust failures.
+*   **Inexorability of Centralization:** Marwan Fayed noted that historically, no human utility infrastructure has scaled successfully without points of concentration, suggesting the focus should shift to managing and safeguarding centralization. Ignacio Castro asked how the community can mitigate this; Rumaisa Habib responded that standardizing measurement metrics within the IETF/IRTF is a crucial first step.
+*   **Local Caches vs. Hosting:** Sam asked how Cloudflare's local data center deployments inside countries were treated. Rumaisa Habib noted that the paper addresses this using IP geolocation.
+*   **Layer Correlation:** Jonathan Hoyland asked if there was a way to combine dependency scores across layers. Rumaisa Habib advised against it, stating that hosting and CA ecosystems are fundamentally different, and a combined score would obscure critical nuances (such as Austria being decentralized in hosting but highly centralized in CAs).
+*   **Additional Context (from Chat):** Dave Plonka noted that "Cloudflarization" helps transition legacy IPv4 sites to IPv6 globally. Junxiao Shi pointed out that DDoS mitigation is a primary driver forcing operators to migrate to CDNs like Cloudflare, but urged hosting providers to enable native IPv6. Gautam Akiwate highlighted that the choice of hosting provider often causally dictates the choice of DNS and CA (e.g., Cloudflare's default CA integration).
+
+---
+
+### 3. Fingerprinting Deep Packet Inspection Devices by Their Ambiguities
+Diwen Xue presented [Fingerprinting Deep Packet Inspection Devices by Their Ambiguities](https://datatracker.ietf.org/meeting/126/materials/slides-126-irtfopen-diwen-xue-fingerprinting-deep-packet-inspection-devices-by-their-ambiguities-01), presenting a method to detect and differentiate on-path Deep Packet Inspection (DPI) devices.
+
+*   **The Identification Problem:** DPI devices are increasingly generic. Explicit, self-identifying block pages have decreased by 85% since 2020, replaced by generic TCP resets (accounting for 95% of block actions). Vendors also intentionally obscure their identities to avoid controversy.
+*   **The dMAP Approach:** Because DPI devices are invisible on-path intermediaries, dMAP uses a binary side-channel (observing the presence or absence of censorship/throttling) triggered by varying protocol "ambiguities." 
+*   **Exploiting Ambiguities:**
+    *   *IP Fragmentation Limits:* During the 2021 throttling of Twitter in Russia, the national firewall was found to have a unique IP fragmentation limit of exactly 45 fragments. Sending 46 fragments bypassed the throttling. This quirk was uniform across all Russian ISPs, revealing a centralized national firewall deployment.
+    *   *TCP Option Handling (PAWS):* Differential fuzzing of open-source DPI engines (Zeek, Suricata, Snort, NDPI) showed significant differences in how they process out-of-order sequence numbers or invalid TCP timestamps. For example, Snort was found to implement the exact opposite of the RFC-required PAWS behavior.
+*   **Results & Limitations:** dMAP successfully clusters firewalls by vendor and deployment region. However, probabilistic or unreliable triggering in countries like China, Turkey, and Cuba introduces noise. This is mitigated by repeated measurements and prioritizing "fail-open" states.
+
+#### Discussion & Comments:
+*   **DPI Utility on Encrypted Traffic:** An unnamed participant asked what value DPI products bring to operators if payloads are encrypted. Diwen Xue explained that operators still rely heavily on unencrypted metadata, such as the Server Name Indication (SNI) field, to trigger filtering or throttling.
+*   **Throttling Mechanisms:** Stuart Cheshire asked how the physical mechanism of throttling is executed, noting that packets cannot be physically "slowed down" over the wire. Diwen Xue clarified that the devices use a token bucket filter; once the traffic limit is reached, all subsequent packets within that time window (e.g., one second) are discarded.
+*   **IPv6 Interference:** An unnamed participant shared an anecdote of a FortiGate product causing non-deterministic interference with IPv6 traffic. 
+*   **Packet Fragmentation (from Chat):** Eliot Lear noted that sending 45 fragments over a 1500-byte MTU yields tiny 33-byte fragments, highlighting how unusual this evasion technique is.
+
+---
+
+### 4. Side Meeting Update: Networking for AI
+Dirk Kutscher provided a summary of the "Networking for AI" side meeting held earlier during the IETF 126 week.
+
+*   **Context:** While the IETF is targeting short-term engineering work (such as agent gateways and portals), there is a strong appetite for longer-term research in the IRTF on both "network systems for AI" (infrastructure) and "AI for networking."
+*   **Potential Scope & Topics:**
+    *   Improving infrastructure for AI training, inference, and distributed workloads (e.g., utilizing packet spraying, receiver-driven transport protocols, and KV-cache centric routing like the Mooncake architecture).
+    *   Analyzing Mixture-of-Experts (MoE) architectures and their network footprints.
+    *   Security, trust boundaries, and scalable federated communication for an "Internet of Agents."
+*   **Proposed Activities:** Creating open-access experimental facilities, simulators, standardized datasets, and driving active research rather than just hosting informational presentations.
+
+#### Discussion & Comments:
+*   **Federation and Trust:** Eliot Lear noted that the "Internet of Agents" concept introduces major research challenges regarding federated trust and scalability. 
+*   **Document Progression:** Speaking as the Independent Submissions Editor (ISE), Eliot Lear mentioned that he has received several AI-related drafts (e.g., on shared context or secure transport). He emphasized that the ISE is not the appropriate starting point for this work and strongly supported creating a dedicated IRTF research group to provide these drafts with a structured home.
+
+---
+
+## Decisions and Action Items
+
+*   **Research Group Promotions:** The proposed research groups `sustain` (Sustainability) and `space` (Space Networking) have officially been promoted to active, regular IRTF research groups.
+
+---
+
+## Next Steps
+
+*   **Networking for AI Workshop:** The second IRTF-associated workshop on Networking for AI will take place at the CoNEXT conference in December 2024.
+*   **Kuala Lumpur Travel Grants:** The application cycle for diversity travel grants for IETF 128 (Kuala Lumpur) is scheduled to open in late November 2024.
+*   **AI Group Scoping:** The IRTF will continue to refine the scope and gauge community interest for a potential new research group focused on Networking for AI.
