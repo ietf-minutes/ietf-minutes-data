@@ -1,0 +1,90 @@
+# [ACME](../wg/acme.html)
+
+## Summary
+
+The ACME Working Group met at IETF 126 to discuss the status of active working group documents, review progress on adopted specifications, and evaluate new proposals. Key highlights included progress on working group last calls (WGLCs) for active drafts, technical updates to persistent DNS validation, and adoption/informational discussions on public key challenges (`pk-01`), Merkle Tree Certificates, quantum-ready transition profiles, account recovery mechanism designs, and SM2 dual certificate issuance.
+
+---
+
+## Key Discussion Points
+
+### 1. Document Status and Chairs' Update
+*   **Presentations**: [ACME Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-acme-acme-chair-slides-00) presented by Yoav Nir and Aaron Pratt.
+*   **Active Drafts**:
+    *   *ACME integrations* is currently in the RFC Editor Queue (part of Cluster 484 with Anima BRSKI). Michael Richardson and Esko Dijk noted in the chat that the IESG telechat for `rfc8366bis` is scheduled for August 6, 2026, which is expected to resolve the long-standing cluster block.
+    *   *ACME device attestation* (`draft-ietf-acme-device-attest-00` or equivalent) has been updated by Corey Bonnell to address IESG discusses. The update specifies changes to RFC 8555 normative behavior in a specific edge case. Working group members were encouraged to review the proposed updates.
+
+### 2. Status of Adopted Drafts
+
+#### JWTClaimConstraints Profile of ACME Authority Token
+*   **Draft**: `draft-ietf-acme-authority-token-jwtclaimcon`
+*   **Discussion**: Chris Wendt reported that the draft is in Working Group Last Call (WGLC), but has lacked reviews. Russ Housley provided a thorough review. Chairs Aaron Pratt and Yoav Nir noted that the draft needs further verification—specifically at least one additional review from a STIR expert and one from an ACME expert—to conclude the last call.
+
+#### ACME DNS Labeled With ACME Account ID Challenge
+*   **Draft**: `draft-ietf-acme-dns-account-label`
+*   **Discussion**: Amir Omidi reported that the technical mechanism has been stable for several years, has 3-4 interoperable CA implementations, and is incorporated into the CA/B Forum Baseline Requirements. The draft is in WGLC, and the authors are awaiting the chairs to make a formal consensus call.
+
+#### ACME Challenge for Persistent DNS TXT Record Validation
+*   **Draft**: `draft-ietf-acme-dns-persist`
+*   **Presentations**: [ACME Persistent DNS Challenge](https://datatracker.ietf.org/meeting/126/materials/slides-126-acme-acme-persistent-dns-challenge-01) presented by Shiloh Heurich.
+*   **Discussion**: Shiloh Heurich presented the latest security mechanism designed to thwart ACME proxy/substitution attacks. The authors selected a client-computed privacy-preserving hash URI binding scheme that operates offline and enforces non-transferability. 
+*   **Key Rollover**: Support for key rollover remains under active discussion. Aaron Gable expressed a preference against requiring CAs to support rollover, citing issues if prior account keys are compromised. Henry Birge-Lee suggested that CAs would only need to store at most one historical key hash per validated domain per ACME account. Tim Hollebeek recommended collaborating with the CA/B Forum to ensure policy alignment and to prevent divergence.
+
+#### ACME Profiles Extension
+*   **Draft**: `draft-ietf-acme-profiles`
+*   **Discussion**: Aaron Gable announced that the final open item from IETF 125 was resolved. An updated version (v02) will be published shortly to restrict the draft to a single profile per order, after which it will proceed to WGLC.
+
+#### ACME Remote Attestation Identifier and Challenge Type
+*   **Draft**: `draft-ietf-acme-rats`
+*   **Presentations**: [acme-rats presentation](https://datatracker.ietf.org/meeting/126/materials/slides-126-acme-ietf-126-acme-rats-presentation-00) presented by Peter Liu.
+*   **Discussion**: Peter Liu presented successful implementation efforts, including adding an attestation challenge type to a fork of the Go-based ACME client ("Lego") and implementing a corresponding test server. Key discussion items included:
+    *   Explicitly specifying ACME server behavior when clients do not respond to requested claims hints.
+    *   Clarifying authorization-to-challenge mapping (suggesting a 1-to-1 mapping where the RATS challenge is a complement to HTTP-01 or DNS-01 in separate authorizations).
+    *   Defining mandatory-to-implement (MTI) algorithms for JSON Web Keys (JWK) used to encrypt raw evidence.
+
+---
+
+### 3. New Business
+
+#### ACME Extension for Public Key Challenges (pk-01)
+*   **Presentations**: [ACME Extension for Public Key Challenges (pk-01)](https://datatracker.ietf.org/meeting/126/materials/slides-126-acme-acme-extension-for-public-key-challenges-00) presented by the authors.
+*   **Discussion**: This proposal defines a proof-of-possession validation flow bypassing PKCS#10 CSRs to enable certificate issuance for Key Encapsulation Mechanism (KEM) keys that cannot produce standard signatures. Aaron Gable voiced support for "Option 3" (representing proof of possession as a standalone authorization within the order). General interest in KEM-based authentication and KEM certificates was noted in the room and chat by Russ Housley, Jan Klaußner, Antonios Chariton, and John Gray.
+*   **Poll**: 
+    *   *Should we start another Call for Adoption for the pk-01 draft?* — yes: 19, no: 1, no_opinion: 8 (total: 51)
+
+#### Merkle Tree Certificates / PLANTS
+*   **Draft**: `draft-ietf-plants-merkle-tree-certs`
+*   **Presentations**: [ACME and MTC / PLANTS](https://datatracker.ietf.org/meeting/126/materials/slides-126-acme-acme-and-plants-00) presented by David Benjamin.
+*   **Discussion**: David Benjamin discussed Section 9 of the PLANTS draft, which details how ACME orders can return both an immediate standalone certificate and a delayed landmark-relative certificate. To prevent standard clients from failing when delayed certificates are not yet ready, the draft introduces a new "optional-semantic" link relation, paired with HTTP `202 Accepted` and `Retry-After` headers. Yoav Nir and Aaron Gable recommended keeping the ACME-specific text inside the PLANTS draft to avoid multi-document cluster blocking, with occasional cross-pollination to the ACME mailing list.
+
+#### Quantum-Ready Profiles for ACME
+*   **Presentations**: [Quantum-Ready Profiles for ACME](https://datatracker.ietf.org/meeting/126/materials/slides-126-acme-quantum-ready-profiles-for-acme-00) presented by Aritra Sen.
+*   **Discussion**: The draft attempts to outline transition profiles to support PQC and hybrid cryptography for TLS and JWS in ACME. Aaron Gable suggested simplifying the draft down to a single paragraph that relaxes the RFC 8555 mandate for `ES256`, leaving algorithm negotiation and profiles entirely to the TLS and Jose working groups. AD Deb Cooley agreed that keeping the draft lightweight and referencing TLS/Jose registries would simplify maintenance.
+
+#### Account Recovery / Authorization Revocation (No Slides)
+*   **Discussion**: Aaron Gable introduced an open discussion on how an ACME account holder who has lost their private key can re-verify their domains and invalidate (revoke) old authorizations held by a previous (possibly compromised) account. 
+    *   *Approach 1*: Implement a specialized ACME endpoint/flow to explicitly revoke authorizations for a domain.
+    *   *Approach 2*: Rely on CAA account binding (RFC 8657) to restrict issuance to the active account.
+    *   Tim Hollebeek and Bob Beck raised concerns that Approach 1 could introduce a denial-of-service vector ("revocation wars") where an attacker and a legitimate owner repeatedly revoke each other's credentials. They noted that CAA-based binding is a more elegant, defense-in-depth alternative.
+
+#### SM2 Dual Certificates on ACME
+*   **Presentations**: [SM2 Dual Certificates on ACME: From Bootstrap Issuance to STAR-Based Renewal](https://datatracker.ietf.org/meeting/126/materials/slides-126-acme-sm2-dual-certificates-on-acme-from-bootstrap-issuance-to-star-based-renewal-00) presented by Julien Devigne.
+*   **Discussion**: Julien Devigne introduced two newly submitted informational drafts targeting SM2 dual certificates (which couple a signing certificate with a separate encryption certificate managed by a Key Management Center). The proposal utilizes the Short-Term Automatic Renewal (STAR) extension combined with Asynchronous Remote Key Generation (ARKG) to automate frequent renewals of the encryption key. Because the drafts were submitted very close to the meeting, in-depth discussion was deferred to the mailing list.
+
+---
+
+## Decisions and Action Items
+
+*   **`draft-ietf-acme-authority-token-jwtclaimcon`**: Keep WGLC open. STIR and ACME working group members are requested to provide reviews.
+*   **`draft-ietf-acme-dns-account-label`**: Chairs to execute a consensus call to conclude the WGLC.
+*   **`draft-ietf-acme-profiles`**: Aaron Gable to publish v02 incorporating the single profile agreement, followed by chairs initiating WGLC.
+*   **`pk-01` Draft**: Chairs to initiate a formal Call for Adoption on the mailing list based on the positive room poll.
+
+---
+
+## Next Steps
+
+*   **`draft-ietf-acme-dns-persist`**: Authors (Shiloh Heurich, Henry Birge-Lee, Michael Slaughter) to publish version 02 containing updated privacy-preserving hash binding and address key-rollover rules on the list/GitHub.
+*   **PLANTS Draft**: Keep ACME updated on any changes made to Section 9 of `draft-ietf-plants-merkle-tree-certs`.
+*   **Quantum-Ready ACME**: Aritra Sen to reformulate the draft to focus specifically on relaxing the `ES256` MTI requirement in RFC 8555, delegating specific algorithm profiles to the JOSE and TLS WGs.
+*   **SM2 Dual Certificates**: Working group members to review the newly submitted SM2 drafts on the list ahead of potential discussions at future interims or meetings.

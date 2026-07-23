@@ -1,0 +1,103 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ working group met at IETF 126 to continue drafting and refining the Media over QUIC protocol suite. The session focused primarily on burning down issues and pull requests (PRs) related to the core transport specification, **draft-ietf-moq-transport**. 
+
+Key topics included:
+*   **Sender-Side Track Switching (SSTS)**: Renamed from Dynamic Track Selection (DTS), incorporating modular algorithms and discussing draft integration.
+*   **Location Filters**: Simplifying and unifying syntax for specifying start and end positions.
+*   **Transport-Layer Issue Resolutions**: Addressing subscription notifications, parameter propagation in PUBLISH, track alias reuse, flow control, and version/extension negotiation.
+*   **Live Agent Performance and Feedback**: Examining experimental data and requirements for application- and transport-layer feedback in low-latency live media agent interactions.
+
+---
+
+## Key Discussion Points
+
+### 1. Sender-Side Track Switching (SSTS)
+Will Law presented the update on [Sender-Side Track Switching](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-sender-side-track-switching-00), formerly known as Dynamic Track Selection (DTS). 
+*   **Design Changes**: The design has been split into a core framework and individual, extensible algorithms. This avoids ossification and allows custom switching behaviors. Algorithm 0 has been defined as a baseline, simple implementation.
+*   **DDoS Protection**: Per-session limits were removed because they are easily bypassed (e.g., by opening multiple sessions). Instead, relays must protect themselves internally by monitoring resource usage (such as the ratio of incoming to outgoing data) and terminating abusive sessions/subscriptions.
+*   **Draft Integration vs. Separate Draft**: A procedural discussion took place regarding how to publish this work. 
+    *   Ian Swett expressed concern over editors having to unilaterally decide whether to merge a large PR into the base transport draft.
+    *   Colin Perkins proposed a hybrid approach: merge the structural modifications (such as how SSTS integrates into the transport layer) into **draft-ietf-moq-transport**, but extract specific algorithms (like Algorithm 0) into a separate document.
+    *   Magnus Westerlund noted there was previous consensus to adopt the functionality, but not specifically on how to package it.
+    *   **Decision**: The working group will delay a formal consensus call on the PR to allow further discussion of packaging options during an upcoming virtual interim.
+
+### 2. Location Filters
+Mo Zanati presented [Location Filter](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-location-filter-01) (PR 1809), which aims to unify location ranges in the base transport protocol.
+*   **Proposed Simplification**: The PR eliminates the filter type enum entirely. Instead, locations are defined simply by optional start and end coordinates:
+    *   Omitting the end object implies all objects in that group.
+    *   Omitting the end group and object implies an open-ended subscription.
+    *   Omitting the start object represents a relative start group (e.g., starting at the current or previous group).
+    *   Setting length to zero removes the active filter.
+*   **Integration with Fill Fetch**: This syntax will also replace the enums currently proposed in the fill fetch PR (PR 1673), ensuring that live subscribe, fetch, and fill operations share a consistent spelling for location ranges.
+*   **Discussion**: Alan Frindell and Suhas Nandakumar supported the clean, lego-like structure of the new syntax, noting that it resolves prior ambiguities. Victor Vasiliev agreed that unifying the three ways of specifying ranges is highly beneficial.
+*   **Decision**: The working group agreed to merge PR 1809 into **draft-ietf-moq-transport**.
+
+### 3. MOQT Transport Issues and PRs
+Ian Swett and Alan Frindell led a walk-through of active issues and PRs for **draft-ietf-moq-transport**:
+
+*   **Publisher Subscription Updates (PR 1803 / "Subscription State Update")**:
+    *   Discussion on how a publisher can unilaterally notify a subscriber of state changes (e.g., track switches or falling out of a top-N filter).
+    *   Ian Swett proposed an unacknowledged "Subscription State Update" message on the bidirectional control stream.
+    *   Colin Perkins cautioned against control-plane amplification if a publisher sends millions of updates simultaneously. Mo Zanati noted that unacknowledged messages are ideal for preventing message storms.
+    *   Martin Duke suggested that this mechanism could be expanded to simplify the "publish done" state machine.
+    *   **Decision**: The PR will be updated to rename the message to "Subscription Notify" (or similar), with explicit constraints on when it can be sent (primarily in response to subscriber-initiated conditions). Martin Duke will contribute text to explore simplifying the "publish done" mechanism.
+
+*   **Parameters in PUBLISH**:
+    *   Discussion on whether to echo all subscription parameters (e.g., priority, filters) back in the PUBLISH message.
+    *   Martin Duke requested a comprehensive table in the draft detailing which parameters are allowed in which messages. Alan Frindell noted an issue already exists for this. Suhas Nandakumar pointed out that security parameters like authorization tokens should not be echoed.
+    *   **Decision**: Ian Swett will write a PR allowing appropriate subscription parameters (excluding security tokens) in PUBLISH and will draft the parameter summary table.
+
+*   **Track Alias Reuse**:
+    *   Discussed whether track aliases can be reused for different tracks once a prior subscription ends.
+    *   Alan Frindell favored allowing it to save byte overhead ("handing them the foot gun is just fine"). Colin Perkins recommended adding cautionary text so reviewers understand the race conditions.
+    *   **Decision**: Keep the status quo (allow reuse) but add cautionary text in the draft warning about the associated hazards.
+
+*   **Resource Consumption / Flow Control (Issue 869)**:
+    *   Discussed subscription-level flow control to prevent individual subscriptions from starving others.
+    *   Victor Vasiliev argued against flow control at this level, suggesting application priorities should handle bandwidth starvation. Mo Zanati suggested that if flow control is added, it should only apply to stream limits, not data limits.
+    *   **Decision**: Move subscription-level flow control out of the base transport draft and develop it in a separate extension draft.
+
+*   **Updates on PUBLISH_OK**:
+    *   Currently, the protocol allows updating state variables (like location filters or priority) inside a PUBLISH_OK response.
+    *   **Decision**: Merge the proposal to disallow state updates in PUBLISH_OK. If a state update is needed, the sender must transmit an immediate REQUEST_UPDATE message instead.
+
+*   **Which Token Caused the Error?**:
+    *   If a request contains multiple authorization tokens and fails, the client does not know which token triggered the error.
+    *   Colin Perkins and Gwendal argued that clients need to know which token failed (especially during migrations from v1 to v2 tokens) to avoid infinite retry loops. Martin Duke and Alan Frindell debated whether this should be solved via integer indexes or punted.
+    *   **Decision**: Punt the issue to the Authorization Design Team.
+
+*   **Structured MoQ Query Space**:
+    *   Discussed whether to restrict MoQ URL query strings to standard `key=value` syntax. Colin Perkins and Mike Bishop favored constraining the space to improve extensibility, provided it remains convertible to HTTPS.
+    *   **Decision**: Revisit the issue on GitHub for further specification.
+
+*   **Versions and Extensions**:
+    *   Discussed the draft text requiring new MoQ versions to specify compatible extensions, and new extensions to specify compatible MoQ versions.
+    *   John and Ian Swett noted that requiring future MoQ versions to explicitly list all past compatible extensions is too restrictive. Mo Zanati suggested focusing on "setup options" since those are the actual objects registered with IANA.
+    *   **Decision**: Loosen the requirement for new MoQ versions to list compatible extensions, but retain the requirement for extensions to list compatible MoQ versions. Update the text to focus on setup options.
+
+### 4. MoQ Performance and Feedback Requirements for Live Media and Agent Interaction
+Yanmei presented [MoQ Performance and Feedback Requirements for Live Media and Agent Interaction](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-moq-performance-and-feedback-requirements-for-live-media-and-agent-interaction-02), sharing Alibaba's experimental results using MoQ for low-latency omnimodal AI agent interactions.
+*   **Performance vs. WebRTC**: MoQ demonstrated faster session setup (utilizing 0-RTT), better Quality of Service (QoS) via multi-stream prioritization, and improved Time to First Frame (TTFT) compared to WebRTC.
+*   **Feedback Requirements**: To optimize congestion control and media delivery, the application requires transport-layer feedback (e.g., object completion time, missed deadlines, receiver throughput) and QoE feedback (e.g., playout stalls, rebuffering).
+*   **Relay Support**: Proposed a two-tier feedback system: "last-mile" feedback consumed by local relays (L1), and "original" feedback forwarded to the media publisher. Relays can aggregate feedback over short periods (e.g., 5 seconds) to prevent feedback storms back to the origin.
+*   **Discussion**: Jordi Cenzano asked about the scale of the experiment, which Yanmei confirmed was between 100,000 and 1,000,000 connections. Mo Zanati suggested aligning this feedback aggregation with the top-tracks filter work to optimize upstream fan-in.
+
+---
+
+## Decisions and Action Items
+
+| Action Item | Assignee | Status |
+| :--- | :--- | :--- |
+| Hold a virtual interim to discuss packaging options for SSTS (base draft integration vs. separate extension draft). | WG Chairs / Will Law | **Pending** |
+| Merge PR 1809 (unifying Location Filters) into `draft-ietf-moq-transport`. | Transport Editors | **Ready to Merge** |
+| Update the Subscription State Update PR: rename the message to "Subscription Notify", add safety constraints, and investigate "publish done" simplifications. | Ian Swett / Martin Duke | **In Progress** |
+| Draft a PR to allow relevant subscription parameters in PUBLISH and create a parameter summary table. | Ian Swett | **In Progress** |
+| Add cautionary text to `draft-ietf-moq-transport` regarding the risks of track alias reuse. | Transport Editors | **In Progress** |
+| Move subscription-level flow control to an extension draft. | Transport Editors | **In Progress** |
+| Merge PR to disallow state updates in PUBLISH_OK (requiring REQUEST_UPDATE instead). | Transport Editors | **Ready to Merge** |
+| Resolve the token-specific error assignment. | Auth Design Team | **Assigned** |
+| Revise the text on version and extension compatibility to focus on setup options and remove strict backwards-compatibility listing requirements. | Transport Editors | **In Progress** |
+| Update the MoQ feedback draft with the mechanism discussed for relay aggregation and WebTransport compatibility. | Yanmei | **In Progress** |
