@@ -1,0 +1,113 @@
+# [RTGWG](../wg/rtgwg.html)
+
+## Summary
+The Routing Area Working Group (RTGWG) met at IETF 120 in Vienna. The session covered working group status updates, active draft progressions, and multiple technical presentations. Key topics of discussion included SRv6 egress protection mechanisms, unicast VRRP, PFC PAUSE frame transparent forwarding in WANs, elastic bandwidth-aware routing, and network considerations for AI clusters (such as GSE architecture, enhanced ECMP, and Distributed Inference Networks). The working group also discussed LEO satellite network routing based on geographic addressing.
+
+---
+
+## Key Discussion Points
+
+### 1. WG Status and Administration
+*   **Presenter:** **Jeff Tantsura**
+*   **Slides:** [01-rtgwg-status](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-01-rtgwg-status-01)
+*   **Discussion:**
+    *   No new RFCs have been published since the last IETF meeting.
+    *   Two drafts have been submitted for publication: the RFP draft update and the multi-segment SD-WAN draft.
+    *   `draft-ietf-rtgwg-bgp-pic`: Received reviews; a new version is expected.
+    *   VRRP BFD drafts (`draft-ietf-rtgwg-vrrp-bfd-p2p` and `draft-ietf-rtgwg-vrrp-p2mp-bfd`): Authors are preparing these for Working Group Last Call (WGLC).
+    *   `draft-ietf-rtgwg-qos-model`: Authors need to address pending comments. The clean-state protocol encoding portion was split into a separate draft progressing in the LSR WG, while the routing portion remains in RTGWG and is close to WGLC.
+    *   `draft-ietf-rtgwg-dst-src-routing-revive`: This draft has been revived.
+
+### 2. SRv6 Egress Protection in Multi-Homed Scenarios
+*   **Presenter:** Unnamed Presenter (co-authored by **Weiqiang Cheng**)
+*   **Slides:** [02-RTGWG-SRv6 Egress Protection in Multi-homed Scenario](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-02-rtgwg-srv6-egress-protection-in-multi-homed-scenario-00)
+*   **Discussion:**
+    *   The presenter introduced a fast-failover solution for multi-homed egress that operates without control plane extensions. It relies on a new B-flag in the Segment Routing Header (SRH) and a new Penultimate Segment Decapsulation (PSD) flavor.
+    *   **Weiqiang Cheng** asked about the performance benefits compared to the current toolset. The presenter explained that failover switching occurs faster (~100ms benefit) because it happens at the penultimate/middle node rather than the ingress.
+    *   **Sasha Vainshtein** raised concerns regarding how an ingress PE knows whether intermediate/penultimate nodes support these new behaviors and flags. The presenter clarified that the switch occurs at the penultimate node, which can detect failure via multi-hop BFD.
+    *   **AC Lindem** questioned how this compares to the mirror SID solution in `draft-ietf-rtgwg-srv6-egress-protection` which targets the same failure scenario. The presenter noted that this solution is purely data-plane driven and requires no state in middle routers.
+    *   **Gyan Mishra** and **Jim Guichard** pointed out that because this draft proposes new flags in the SRH, the changes must be coordinated with and approved by the 6man Working Group. **Yingzhen Li** and **Weiqiang Cheng** agreed that the SRH flag modifications must be routed through 6man.
+    *   **Yingzhen Li** commented that both multi-homing egress protection drafts have limitations and suggested the authors provide a detailed comparison in their drafts.
+
+### 3. SRv6 Path Egress Protection
+*   **Presenter:** **Huaimo Chen**
+*   **Slides:** [03-srv6-egress-protection](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-03-srv6-egress-protection-00)
+*   **Document:** `draft-ietf-rtgwg-srv6-egress-protection`
+*   **Discussion:**
+    *   The presenter gave an update on the progress of `draft-ietf-rtgwg-srv6-egress-protection`, which uses a mirror SID approach to protect both the egress node and the egress link.
+    *   To resolve cross-working group reviews, the IGP encoding details were split into a separate companion draft in the LSR WG (`draft-ietf-rtgwg-srv6-egress-protection` maintains the primary mechanism, while the LSR draft handles encoding).
+    *   The presenter compared this mechanism to the previous presentation (Slide 2), noting that the other draft is a pure data-plane solution protecting only the egress node, whereas the mirror SID solution protects both the node and the link. The two approaches are considered complementary.
+
+### 4. Unicast VRRP
+*   **Presenter:** **Aditya**
+*   **Slides:** [04-Unicast_VRRP](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-03-unicast-vrrp-01)
+*   **Discussion:**
+    *   The presenter introduced a proposal to support unicast VRRP for environments (such as cloud overlays, virtualized networks, and L2-constrained networks) where multicast is not supported.
+    *   **AC Lindem** asked if this represents a point-to-multipoint (P2MP) model since layer 2 multicast and broadcast are unsupported. **Aditya** agreed to review the P2MP characteristics and noted that some customers still prefer unicast configurations even on physical LANs that support multicast.
+
+### 5. PFC PAUSE Frame Forwarded Transparently in Wide Area Networks
+*   **Presenter:** **Xiao Min**
+*   **Slides:** [05-PFC PAUSE Frame Forwarded Transparently in Wide Area Networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-pfc-pause-frame-forwarded-transparently-in-wide-area-networks-00)
+*   **Discussion:**
+    *   The presenter proposed encapsulating and transparently forwarding PFC PAUSE frames across WAN tunnels (e.g., SRv6, SR-MPLS) to prevent packet loss in AI computing networks.
+    *   **David Lamparter** and **Jeff Tantsura** raised severe concerns about buffer sizes. **Jeff Tantsura** calculated that at 400 Gbps, headroom requires approximately 50 KB of buffer per microsecond of delay. For a 1000-kilometer WAN, this equates to gigabytes of buffer, making the solution highly impractical and difficult to configure without precise latency measurements.
+    *   **Sasha Vainshtein** and **Jeff Tantsura** noted that manipulating MAC addresses of PAUSE frames would conflict with link-layer security mechanisms such as MACsec.
+    *   **Joel Halpern** commented that dynamically adjusting the pause frame duration based on WAN latency introduces high complexity.
+    *   The author agreed to address these technical issues on the mailing list.
+
+### 6. Elastic Bandwidth-Aware Routing (EBR)
+*   **Presenter:** **Ka Zhang**
+*   **Slides:** [06-elastic-bandwidth-routing](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-06-elastic-bandwidth-routing-00)
+*   **Discussion:**
+    *   The presenter introduced EBR, a framework that integrates IGP with Segment Routing to route around link congestion dynamically using real-time bandwidth and utilization advertisements.
+    *   **Andrew Stone** raised concerns about the timing and scalability of flooding utilization state in "seconds," noting that frequent flooding has severe downstream impacts on BGP-LS.
+    *   **Sasha Vainshtein** argued that local offloading decisions could cause secondary congestion elsewhere in the network. He stated that requiring every router to advertise utilization frequently is not scalable and suggested this work belongs in the LSR WG due to its impact on IGP traffic engineering parameters. Co-author **Weiqiang Cheng** clarified that the solution is designed for long-lived congestion, not microbursts, and has been successfully deployed by China Mobile.
+    *   **Tony Li** pointed out in the chat that "LSA/LSP flooding of bandwidth has been a solved problem since 1998" and asked the authors to compare EBR to Tactical Traffic Engineering (TTE). A co-author replied that EBR is distinct because it factors in end-to-end network bandwidth utilization.
+    *   **Yingzhen Li** requested that the authors bring real-world deployment data to a future meeting to aid the WG's understanding.
+
+### 7. GSE Architecture for AIDC
+*   **Presenter:** **Yuying Chi**
+*   **Slides:** [07-GSE Architecture for AIDC](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-07-gse-architecture-for-aidc-00)
+*   **Discussion:**
+    *   The presenter outlined Global Scheduling Ethernet (GSE), a credit-based, packet-spraying network architecture designed to minimize congestion and eliminate incast in AI data centers.
+    *   **Jeff Tantsura** commented that credit-based networking (akin to InfiniBand) introduces well-known issues such as credit loops. He advised the authors to explicitly document in the draft how GSE handles credit loops and relates to centralized controller systems.
+
+### 8. Enhanced ECMP for AI Cluster
+*   **Presenter:** **Weiqiang Cheng**
+*   **Slides:** [08-Enhanced ECMP for AI Cluster](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-08-enhanced-ecmp-for-ai-cluster-00)
+*   **Discussion:**
+    *   The presenter proposed ingress and egress interface grouping techniques to optimize ECMP load balancing for elephant flows in AI clusters.
+    *   **Jeff Tantsura** questioned the need for new standardization in RTGWG, stating that existing BGP community structures (such as Site of Origin) can already encode the necessary identifiers.
+    *   **Tony Li** asked how the solution mitigates active congestion, noting that load balancing alone represents only "half the solution."
+    *   **Yingzhen Li** asked about out-of-order packet delivery. **Weiqiang Cheng** clarified that because grouping is flow-based, it preserves packet ordering.
+    *   **Yingzhen Li** and **Jeff Tantsura** advised the presenter that any proposed BGP community or protocol extensions must be presented and standardized in the IDR Working Group, not RTGWG.
+
+### 9. Distributed Inference Network (DIN) Use Cases and Requirements
+*   **Presenter:** Unnamed Presenter (China Mobile)
+*   **Slides:** [09-DIN Problem Statement Use Cases and Requirements](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-09-din-problem-statement-use-cases-and-requirements-00)
+*   **Discussion:**
+    *   The presenter provided an update on the DIN problem statement, adding sections on security challenges (model extraction/data leakage), AI agent interaction, and AAA requirements.
+    *   **Tony Li** questioned whether there was an actual routing problem described in the draft.
+    *   **Jeff Tantsura** explained that the chairs allowed this introductory "00" presentation to gauge community interest.
+    *   **Yingzhen Li** stated that if the draft does not receive active discussion on the mailing list, it will not be granted further presentation slots in RTGWG.
+
+### 10. Geographic Based Dynamic Routing in LEO Satellite Networks
+*   **Presenter:** Unnamed Presenter (China Mobile)
+*   **Slides:** [10-Geographic Based Dynamic Routing in LEO Satellite Networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-10-geographic-based-dynamic-routing-in-leo-satellite-networks-01)
+*   **Discussion:**
+    *   The presenter proposed a Geographic Routing (GR) mechanism using hierarchical, time-variant addresses mapped to coordinates. This approach aims to reduce the volume of routing tables and flooding overhead in highly dynamic LEO satellite topologies.
+    *   **Tony Li** noted that a similar LISP-based satellite routing proposal (`draft-farinacci-lisp-satellite-network`) exists and asked the presenter to compare the two. The presenter agreed to follow up on the mailing list.
+    *   **Maxime Pierrot** commented that rather than inventing new routing protocols, the industry should focus on adapting existing protocols to benefit from mature software ecosystems. He also noted that shifting trust and routing logic to the User Terminal (UT) may introduce issues in 5G non-terrestrial networks.
+
+---
+
+## Decisions and Action Items
+*   **Action Item:** The authors of the SRv6 Egress Protection draft ([02-RTGWG-SRv6 Egress Protection...](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-02-rtgwg-srv6-egress-protection-in-multi-homed-scenario-00)) must coordinate with the **6man Working Group** regarding the allocation and definition of the new SRH B-flag.
+*   **Action Item:** The authors of the Enhanced ECMP draft ([08-Enhanced ECMP...](https://datatracker.ietf.org/meeting/126/materials/slides-126-rtgwg-08-enhanced-ecmp-for-ai-cluster-00)) must present their proposed BGP community extensions to the **IDR Working Group**.
+
+---
+
+## Next Steps
+*   **`draft-ietf-rtgwg-srv6-egress-protection`:** Move companion IGP encoding draft to the LSR WG for adoption, and prepare the core mechanism draft for WGLC in RTGWG.
+*   **`draft-ietf-rtgwg-vrrp-bfd-p2p` & `draft-ietf-rtgwg-vrrp-p2mp-bfd`:** Authors to continue preparation for WGLC.
+*   **`draft-ietf-rtgwg-qos-model`:** Authors to address outstanding comments.

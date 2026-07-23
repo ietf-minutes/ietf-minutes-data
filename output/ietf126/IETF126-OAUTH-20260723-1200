@@ -1,0 +1,117 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group met to discuss the status of active working group documents, review security best practices, evaluate client metadata and SPIFFE-based client authentication, and explore agent authorization use cases and gaps. Key milestones include the transition of browser-based application guidance to the RFC Editor queue and growing implementation interest in cross-domain identity assertion. The session concluded with a panel on AI agent authentication, focusing on human-in-the-loop (HITL) patterns, non-deterministic API interactions, and credential governance, with plans to schedule an interim meeting to continue the agent authorization work.
+
+---
+
+## Key Discussion Points
+
+### Chairs Update
+* **Presentation**: [Chairs Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-chairs-update-00) (Presented by Rifaat Shekh-Yusef and Hannes Tschofenig)
+* **Document Status**:
+  * [draft-ietf-oauth-first-party-apps](https://datatracker.ietf.org/doc/draft-ietf-oauth-first-party-apps/): Working Group Last Call (WGLC) is complete; awaiting the shepherd write-up (expected post-Vienna).
+  * [draft-ietf-oauth-transaction-tokens](https://datatracker.ietf.org/doc/draft-ietf-oauth-transaction-tokens/): A third WGLC will start after Vienna.
+  * [draft-ietf-oauth-v2-1](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1/): Seeking reviewers. Nick Doty and Yaron Sheffer volunteered.
+  * *Browser-Based Apps*: Aaron Parecki reported that the browser-based applications draft is in the RFC Editor queue with its RFC number assigned, and feedback is currently being processed.
+* **Prioritization of Presentation Requests**: Due to an exceptionally high volume of presentation requests, the chairs emphasized that future slots will be heavily prioritized based on active mailing list discussions, proof of multi-party interest, and commitment to implement and deploy.
+
+---
+
+### Identity Assertion JWT Authorization Grant
+* **Presentation**: [Identity Assertion JWT Authorization Grant](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-sessa-identity-assertion-jwt-authorization-grant-00) (Presented by Aaron Parecki)
+* **Technical Details**:
+  * [draft-ietf-oauth-identity-assertion-authz-grant](https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/) profiles the token exchange and JWT authorization grant specifications to extend Single Sign-On (SSO) into API access (Cross-App Access or XAA).
+  * Recent updates clarify cross-app access terminology, confirm applicability to non-enterprise use cases, and introduce a new metadata parameter for discovery.
+  * To support SAML-based SSO environments, a JSON representation of SAML assertion values (including `NameID`) has been added to the Identity Assertion JWT (IDJAG) to facilitate user mapping at the Resource Server (RS) without out-of-band configurations.
+* **Discussion**:
+  * **Authorization Details**: Yaron Sheffer noted that clients require additional metadata to understand the structure of remote authorization details at the Resource Authorization Server (AS) for proper governance.
+  * **Document Clarity**: Justin Richer requested clearer sequence diagrams and textual explanations detailing the order of the token exchange step (first) and the JWT authorization grant step (second).
+  * **Just-In-Time (JIT) Provisioning**: This was identified as a major deployment pain point (Issue 83). Maxwell Gerber stated that failing to pass equivalent claims during the grant exchange will break JIT user creation. Paul Carlton suggested that granular error codes are needed to differentiate setup failures from invalid token assertions.
+  * **Key Binding**: Aaron Parecki introduced two complementary drafts (`draft-mcguinness-oauth-token-exchange-cnf` and `draft-parecki-oauth-jwt-dpop-grant`) to address end-to-end key binding (e.g., using DPoP) from SSO to the final access token. Pieter Kasselman noted that clear terminology defining "whose keys" are bound in multi-party flows is critical.
+
+---
+
+### Client ID Metadata Document
+* **Presentation**: [Client ID Metadata Document](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-sessa-client-id-metadata-document-00) (Presented by Aaron Parecki)
+* **Technical Details**:
+  * [draft-ietf-oauth-client-id-metadata-document](https://datatracker.ietf.org/doc/draft-ietf-oauth-client-id-metadata-document/) defines a mechanism for clients to publish metadata at a URL, which then serves as the Client ID.
+  * Editorial updates split the metadata definition from the fetching rules, and moved localhost/development-specific exceptions (such as relaxing SSRF checks) to a non-normative appendix.
+* **Discussion**:
+  * **Mix-Up Attacks & ISS Parameter**: To counter mix-up attacks where clients talk to arbitrary servers, the draft proposes copying the OAuth 2.1 requirement for the AS to return the `iss` parameter. Emelia Smith noted that requiring a `.json` file extension in the client metadata URL implicitly prevents certain mix-up vectors.
+  * **Dynamic Metadata Variation**: The AS may need to serve different metadata versions depending on which AS fetches the document (e.g., indicating support for different client auth methods). 
+    * To facilitate this, Aaron Parecki proposed the AS identify itself (using its issuer URL) during the fetch.
+    * Justin Richer, Emelia Smith, and Arndt Schwenkler objected to doing this via a query string parameter (as it mutates the Client ID URL) and recommended using an HTTP header (e.g., a custom header or referrer) instead.
+    * Vittorio Bertocci cautioned against over-complicating the spec for interoperability edge cases and suggested utilizing existing OpenID Connect/Federation metadata features instead.
+  * **Issue Triage**: Emelia Smith requested community assistance with GitHub issue triage due to bandwidth constraints. Vanshaj Singhania volunteered to assist.
+
+---
+
+### Updates to OAuth 2.0 Security Best Current Practice
+* **Presentation**: [Updates to OAuth 2.0 Security Best Current Practice](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-sessa-updates-to-oauth-20-security-best-current-practice-00) (Presented by Pedram Hosseini)
+* **Technical Details**:
+  * [draft-ietf-oauth-security-topics-update](https://datatracker.ietf.org/doc/draft-ietf-oauth-security-topics-update/) details four core attacks: audience injection, cross-toolkit/account takeover, cross-user session fixation (particularly affecting Back-end-for-Front-end patterns), and brokered OAuth deployment attacks.
+  * The brokered OAuth attack occurs when a broker mediates between downstream clients and upstream ASs; because upstream consent is bound to the broker's client ID, malicious downstream clients may inherit unauthorized access.
+* **Discussion**:
+  * Hannes Tschofenig, Emelia Smith, Justin Richer, and Arndt Schwenkler debated whether the "broker pattern" belongs in the security BCP or should be detailed in a standalone deployment architecture document. The broker acts as an AS to downstream clients but as a client to upstream servers, introducing multi-layered role complexities.
+  * The authors plan to discuss splitting the broker pattern into a separate draft on the mailing list.
+
+---
+
+### OAuth SPIFFE Client Authentication
+* **Presentation**: [OAuth SPIFFE Client Authentication](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-sessa-oauth-spiffe-client-authentication-00) (Presented by Arndt Schwenkler)
+* **Technical Details**:
+  * [draft-ietf-oauth-spiffe-client-auth](https://datatracker.ietf.org/doc/draft-ietf-oauth-spiffe-client-auth/) profiles existing client authentication specifications for workloads identified by SPIFFE IDs.
+  * SPIFFE IDs represent infrastructure-level entities (e.g., containing regions, clusters, and instances), whereas OAuth client IDs traditionally represent service-level classes. This causes validation issues in RFC 7521 and [draft-ietf-oauth-attestation-based-client-auth](https://datatracker.ietf.org/doc/draft-ietf-oauth-attestation-based-client-auth/), which enforce strict equality matching between the client ID and the assertion subject.
+  * The draft proposes relaxing this restriction to allow a SPIFFE-structured subject to map to a recognized client ID class.
+* **Discussion**:
+  * Hannes Tschofenig warned that loosening matching rules to allow fuzzy or subpart matching could introduce authorization vulnerabilities.
+  * Aaron Parecki and Christian supported the distinction between "client instance" and "client class" as a recurring requirement across workload and agent scenarios.
+  * Giuseppe De Marco noted that the attestation-based client auth working group has encountered the exact same issue and is considering introducing a distinct `client_instance_id` parameter to avoid solving it globally in OAuth.
+  * Fredrik expressed concern that allowing arbitrary mapping of client IDs within SPIFFE could force normative changes in base specs that relax security rules for non-SPIFFE deployments.
+  * Pamela Dingle noted a privacy concern: publishing granular SPIFFE ID mapping structures in Client Metadata could leak internal infrastructure topology and scaling metrics to external platforms.
+
+---
+
+### OAuth Transaction Authorization Challenge
+* **Presentation**: [OAuth Transaction Authorization Challenge](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-sessa-oauth-transaction-authorization-challenge-00) (Presented by Yaroslav Dobryakov)
+* **Technical Details**:
+  * This individual draft proposes a step-up authorization mechanism designed for AI agent scenarios requiring a "human-in-the-loop" (HITL) approval.
+  * When an agent requests a high-risk operation (such as deleting a database) using an existing valid access token, the Resource Server (RS) challenges the transaction by returning a signed JWT. This challenge contains a transaction identifier (`TXN`), a human-readable reason, and an actor claim.
+  * The agent relays the challenge to the client, which forwards it to the AS. The AS triggers a user consent flow (or external manager approval) and mints a new transaction-specific access token containing the bound `TXN` claim.
+* **Discussion**:
+  * A participant questioned why the transaction challenge must originate from the RS rather than the agent pre-emptively requesting consent. Yaroslav explained that the RS is best positioned to evaluate transactional risk and execute step-up policies dynamically, whereas pre-emptive consent requires agents to predict authorization needs precisely.
+
+---
+
+### Agentic Use Cases and Gaps Panel
+* **Presentations**:
+  1. [Self Driving Software](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-self-driving-software-00) (Presented by Dick Hardt)
+  2. [Agentic Use Cases and Gaps Informed by Experience with KYAPay Technologies](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-agentic-use-cases-and-gaps-informed-by-experience-with-kyapay-technologies-00) (Presented by Mike Jones)
+  3. [Agent Authorization use cases and gap analysis](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-agent-authorization-use-cases-and-gap-analysis-00) (Presented by Mailing Huang)
+* **Key Use Cases and Gaps Identified**:
+  * **Context-Driven Governance**: Dick Hardt argued that agents operate non-deterministically, meaning appropriate access is highly context-dependent. He introduced "EAuth" (Eighth) as an alternative architecture designed to separate mission execution agents from independent policy governance agents.
+  * **Agent Commerce and Identity**: Mike Jones presented "Know Your Agent" (KYA) requirements, stressing the need to bypass "are you human" tests for authorized agents and convey details about the authorizing human or organization. This work proposes new claims to represent updated authentication methods (AMR) and identity proofing methods.
+  * **Dynamic Scopes & Delegation**: Mailing Huang analyzed gaps in Rich Authorization Requests (RAR is static by design), DPoP (assumes fixed key pairs, complicating sub-agent creation), and Client ID Metadata. Key requirements include dynamic scope expression, multi-hop delegation, and task-level revocation.
+* **Panel Discussion**:
+  * Dapeng Liu asked how e-commerce platforms verify the trustworthiness of a user-delegated agent token. Mike Jones responded that trust is established via signatures from designated token issuers.
+  * Yaron Sheffer highlighted the risk of agent hallucinations (e.g., booking an expensive first-class flight instead of coach) and advocated for HITL validation at the API call level, guaranteeing that the actual tool call is verified by a human.
+  * Peter noted that security incident response workflows require cross-domain orchestration, suggesting that batch authorization models are needed to prevent "consent fatigue" in human-in-the-loop systems.
+  * Hannes Tschofenig observed that the proposed requirements span a wide spectrum ("a wish list to Santa Claus") and noted the lack of immediate overlap between the proposals, indicating a need for structured coordination.
+
+---
+
+## Decisions and Action Items
+* **Triaging Volunteer**: Vanshaj Singhania volunteered to assist Emelia Smith and Aaron Parecki in triaging the GitHub issue tracker for [draft-ietf-oauth-client-id-metadata-document](https://datatracker.ietf.org/doc/draft-ietf-oauth-client-id-metadata-document/).
+* **Review Volunteers**: Nick Doty and Yaron Sheffer volunteered to review [draft-ietf-oauth-v2-1](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1/).
+
+---
+
+## Next Steps
+* **WGLC Schedules**:
+  * The chairs will progress [draft-ietf-oauth-first-party-apps](https://datatracker.ietf.org/doc/draft-ietf-oauth-first-party-apps/) to the AD once the shepherd write-up is finalized.
+  * [draft-ietf-oauth-transaction-tokens](https://datatracker.ietf.org/doc/draft-ietf-oauth-transaction-tokens/) will enter a third WGLC post-Vienna.
+* **Security BCP Updates**: The authors of [draft-ietf-oauth-security-topics-update](https://datatracker.ietf.org/doc/draft-ietf-oauth-security-topics-update/) will discuss separating the "brokered OAuth" setting into its own deployment-oriented draft on the mailing list.
+* **SPIFFE Client Authentication**: [draft-ietf-oauth-spiffe-client-auth](https://datatracker.ietf.org/doc/draft-ietf-oauth-spiffe-client-auth/) will remain on hold until its normative dependency in the WIMSE working group (workload identity token) completes WGLC.
+* **Agent Authorization Coordination**: Due to the breadth of the use cases and overlapping proposals, the chairs plan to schedule a dedicated OAUTH interim meeting focusing on AI agent authentication, authorization, and HITL patterns.
