@@ -1,0 +1,122 @@
+# [ATP](../wg/atp.html)
+
+## Summary
+
+The Authenticated Transfer Protocol (ATP) Working Group held its first session at IETF 126. The session focused on establishing working group milestones, review of core repository and synchronization drafts, and identifying critical protocol design issues. Major topics of discussion included:
+* Resolving compliance issues with RFC 3986 URI syntax in the `at://` URI scheme.
+* Proposed cryptographic transitions, notably deprecating the `secp256k1` curve and planning for Post-Quantum Cryptography (PQC) signature algorithms like ML-DSA.
+* Performance optimizations including Media over QUIC (MoQ) transports for the Firehose, signaling Merkle Search Tree (MST) stream-ordering in CAR files, and enabling floating-point numbers in the protocol's JSON-CBOR data model.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome, Milestones, and Document Status
+**Presenters**: Shuping Peng, Mallory Knodel  
+**Slides**: [Chairs' Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-atp-chairs-slides-06)
+
+* **Milestone Planning**: Shuping Peng proposed prioritizing the repository and synchronization milestones first, followed by identifier resolution, and then the URI scheme. An additional milestone for an informational operational considerations document was proposed.
+* **Milestone Flexibility**: Justin Richer noted that milestone dates are historically hard to predict and deliverables happen when they are ready. Roman Danyliw (AD) agreed but emphasized that dates are a necessary management tool and would be required eventually. Emelia Smith noted a strict technical dependency: repository and synchronization depend on first defining the URI and identifier schemes.
+* **Architecture Document**: Ben Goering inquired about the status of the architecture document. Brian Newbold clarified that the architecture document (`draft-newbold-at-architecture`) was originally drafted to support the BoF process. While not currently in the charter, he was open to maintaining it as an informational document. 
+* **Tooling & Datatracker Tags**: Justin Richer, Emelia Smith, and Mallory Knodel discussed the workflow for tracking individual drafts before formal adoption, agreeing that authors should update their metadata with the `atp` group tag to automate tracking on the datatracker.
+
+---
+
+### 2. Current Document Status
+**Presenter**: Brian Newbold  
+**Slides**: [Current Document Status](https://datatracker.ietf.org/meeting/126/materials/slides-126-atp-current-document-status-00)
+
+* **Baseline Specifications**: The repository and synchronization drafts are designed to reflect the protocol as currently deployed in the active network, after which proposed changes can be tracked as a delta.
+* **Cryptographic Agility**: The current draft embeds specific cryptographic choices. Discussion centered on whether curve definitions and signature schemes should move to the operational considerations draft or to a dedicated document. Ted Hardie recommended separating cryptographic agility and parameters into their own RFC to ease future protocol updates.
+* **HTTP Endpoints & Namespaces**: The protocol uses domain-based namespaces (e.g., `com.atproto.*`). Brian raised the question of how to handle registry governance (e.g., IANA). Phillip Hallam-Baker recommended moving endpoints to `.well-known` URIs and utilizing SRV records. Ted Hardie advised against changing current namespace paths until a non-backward compatible change necessitates a migration.
+* **Privacy Considerations**: Ted Hardie and Emelia Smith advised against merging security and privacy sections, recommending a dedicated privacy considerations section per document, or consolidating them in an overall architecture document.
+* **Draft Consolidation**: Brian Newbold proposed merging the repository and synchronization drafts into a single document due to tight, circular references. No objections were raised.
+
+---
+
+### 3. Possible Changes for IETF Version
+**Presenter**: Daniel Holmgren  
+**Slides**: [Possible changes for IETF version](https://datatracker.ietf.org/meeting/126/materials/slides-126-atp-possible-changes-for-ietf-version-01)
+
+* **Migration Impact**: Daniel classified the difficulty of making backward-incompatible changes. Modifying the repository commit object or synchronization wire protocol is feasible, whereas changing the data model or URI format is highly disruptive due to billions of existing records.
+* **Commit Object Updates**: Proposed changes include adding a `$type` field to commit objects, incrementing the version to 4, deprecating the obsolete `pre` field, and renaming the `did` field to a generic identifier such as `repo` or `acct`.
+* **Cryptographic Algorithmic Upgrades**:
+  * **secp256k1 Deprecation**: Supported originally for Bitcoin hardware-wallet compatibility, `secp256k1` has signature malleability issues and requires low-S mitigation. Eric Rescorla, Orie Steele, and Phillip Hallam-Baker supported deprecating it.
+  * **Edwards 25519 (Ed25519)**: Despite developer interest and WebCrypto support, speakers questioned if adding another pre-quantum algorithm was worth the migration overhead.
+  * **Post-Quantum Cryptography**: Eric Rescorla and Orie Steele argued that the WG should skip intermediate pre-quantum migrations and focus directly on transitioning to ML-DSA. Eric Rescorla and David Schinazi stressed that because ATP lacks inline negotiation (firehose updates are pushed unidirectionally), the WG must define explicit dual-signature transition and migration rules akin to DNSSEC.
+* **Synchronization Protocol Improvements**: 
+  * **Framing**: Reworking the WebSocket subprotocol to send a single CBOR object rather than two concatenated CBOR objects.
+  * **Cursors**: Adding an informational "cursor" message when a client connects to assist low-throughput hosts, and exploring time-based cursors to allow clients to seamlessly failover between distinct relay providers without message loss.
+  * **Versioning**: Supporting historical record versioning by appending content identifiers (CIDs) to the AT URI scheme.
+
+---
+
+### 4. The AT URI Challenge
+**Presenter**: Brian Newbold  
+**Slides**: [The AT URI Challenge](https://datatracker.ietf.org/meeting/126/materials/slides-126-atp-the-at-uri-challenge-01)
+
+* **The Problem**: The existing `at://` scheme places a decentralized identifier (DID) containing colons (e.g., `at://did:plc:123/path`) in the authority component of the URI. Under RFC 3986, colons in the authority segment are strictly reserved for port delimiters. This syntax violation causes standard HTML validators, web browsers, and parsing libraries to reject or misparse AT URIs.
+* **Syntax Options**:
+  * **Triple Slash (`at:///did:plc:...`)**: Places the DID in the path, utilizing an empty authority. Marcus Sabadello noted this matches valid patterns used by schemes like `file:///` and preserves outer scheme control over the path.
+  * **Opaque Scheme (`at:did:plc:...`)**: Removes the double slash. Ted Hardie strongly advocated for this approach, explaining that `//` is only semantically required for relative resolution. Phillip Hallam-Baker, Orie Steele, and David Schinazi supported this.
+  * **Percent-Encoding**: Encoding colons is highly unpopular among developers due to double-escaping issues.
+  * **No Slashes (`at:did`) vs DID URL**: Marcus Sabadello warned that dropping slashes altogether causes conflicts with W3C DID URL dereferencing rules where paths are processed in a DID-method-specific manner.
+* **URI Generic Syntax Rules**: Ted Hardie and David Schinazi strongly cautioned against attempting to modify the generic URI syntax in RFC 3986, citing past failures (e.g., IPv6 Scope ID negotiations) and noting that URI syntax modification falls outside of the ATP charter.
+
+---
+
+### 5. atmoq: atproto over media over quic
+**Presenter**: Eli Mallon  
+**Slides**: [atmoq: atproto over media over quic](https://datatracker.ietf.org/meeting/126/materials/slides-126-atp-atmoq-atproto-over-media-over-quic-00)
+
+* **MoQ as Firehose Transport**: Streaming AT Proto firehose events over WebSockets is limited by single-stream TCP throughput constraints. Moving to Media over QUIC (MoQ) allows the protocol to scale to gigabit and terabit ranges by leveraging UDP, congestion control, multi-stream multiplexing, and out-of-order delivery.
+* **Commodity Caching**: Using MoQ enables the use of standard, commodity CDN/MoQ relays (e.g., Cloudflare, Akamai) to distribute the firehose, eliminating the need to write and scale custom fan-out infrastructure (such as Rainbow).
+* **Protocol Mapping**: 
+  * Firehose events map to MoQ objects/frames.
+  * Individual repository accounts map to MoQ tracks, allowing clients to subscribe only to specific users of interest.
+  * Monotonic cursors are bundled into MoQ group IDs for optimal caching boundaries.
+* **Lack of Content Negotiation**: Unidirectional MoQ broadcast precludes two-way content negotiation. The WG must agree on a single canonical format (e.g., strict DAG-CBOR/Drizzle) for public firehoses.
+* **Relay Conformance**: Eli presented a conformance test suite analyzing five current relay implementations. The testing revealed major inconsistencies in how relays validate, filter, or reject invalid or un-ordered CBOR payloads. He advocated for a standardized, strict enforcement of DAG-CBOR syntax while remaining permissive of unknown application schemas. Emelia Smith suggested importing these test results to file issues against the synchronization draft.
+
+---
+
+### 6. AT Repository Archive Block Ordering Problem
+**Presenter**: Phil Feigl (Bumblefudge)  
+**Slides**: [AT repository archive block ordering problem](https://datatracker.ietf.org/meeting/126/materials/slides-126-atp-at-repository-archive-block-ordering-problem-00)
+
+* **Stream Parsing vs. Buffering**: The repository draft recommends preorder (depth-first) traversal block ordering for CAR archives to allow streaming parsers to discard processed blocks immediately, minimizing memory use on resource-constrained systems. However, the spec also dictates that parsers "must tolerate" arbitrary block orderings.
+* **The Duplicate Block Leak**: In a content-addressed Merkle Search Tree (MST), duplicate record values share the same hash/CID. In a preorder traversal, a duplicate record must be serialized multiple times. If an archive is unordered, the duplicate might only be serialized once. Because a streaming parser cannot predict if an active block will be referenced again later, it is forced to buffer every seen block in memory.
+* **Proposed Signaling Solutions**: Phil argued that stream parsing cannot be performed safely without an explicit signal indicating that an archive is guaranteed to be stream-ordered. He proposed several potential signals:
+  1. Mandate that all repository CAR archives must be preorder stream-ordered.
+  2. Reserve a flag inside the unused slot of the CAR header roots array.
+  3. Include a metadata flag inside the first block (the commit object).
+  4. Signal it at the transport layer (e.g., a media type parameter).
+* **Implementation Reality**: Brian Newbold noted that the Go implementation optimistically assumes preorder serialization but caches on-the-fly when an expected block is missing. Phil countered that this optimistic parsing fails safely only if duplicate records are strictly duplicated inside the CAR stream; otherwise, parsers will crash when encountering a reference to a discarded block.
+
+---
+
+### 7. Floats (Bumblefudge)
+**Presenter**: Dietrich Ayala  
+**Slides**: [Floats (Bumblefudge)](https://datatrudge.org/meeting/126/materials/slides-126-atp-floats-bumblefudge-00)
+
+* **The Geo/Scientific Use Case**: The current AT Proto JSON data model profile prohibits floating-point numbers, forcing application developers to store coordinates or scientific measurements as strings (e.g., latitude/longitude string conversion).
+* **CBOR/JSON Translation Discrepancies**: While the JSON profile forbids floats, the underlying CBOR profile natively supports IEEE 754 float64 double-precision floats. Dietrich (presenting research on behalf of Volker Mische) argued that because 19 major programming languages naturally parse decimals as native floating-point types, ATP should natively support floats within its JSON profile.
+* **Ensuring Determinism**: To preserve cryptographic signatures, translation between JSON and CBOR must be strictly deterministic and bi-directional. The proposed mapping specifies that any JSON number containing a decimal point or an exponent (e.g., `1.0` or `1e5`) must be encoded to a 64-bit CBOR float. When decoding CBOR floats back to JSON, they must always append a `.0` decimal suffix if they are whole numbers.
+* **Parsing Complexity**: Brian Newbold and Daniel Holmgren expressed concern that relying on decimal points or scientific notation string parsing to infer types makes the protocol fragile, as standard JSON parsers may normalize `1.0` to `1` before ATP can parse it. Daniel suggested placing the canonicalization logic entirely in the CBOR encoder to prevent requiring custom JSON parsers.
+
+---
+
+## Decisions and Action Items
+
+* **Decision**: Update and reorder the working group milestones to prioritize Repository and Synchronization first, followed by Identifier Resolution, the URI Scheme, and finally the Operational Considerations document.
+* **Decision**: Merge the separate Repository and Synchronization specifications into a single Internet-Draft to simplify cross-references and streamline the adoption process.
+* **Decision**: Retain existing draft filenames, but update their frontmatter metadata to include the `atp` working group tag so they automatically populate on the IETF Datatracker.
+
+---
+
+## Next Steps
+
+* **Action Item (Brian Newbold, Daniel Holmgren)**: Produce a newly merged draft combining the repository and synchronization specifications, incorporating feedback on deprecating the `pre` commit field.
+* **Action Item (Brian Newbold)**: Draft an Internet-Draft addressing the AT URI syntax issue, document the proposed `at:did` opaque URI transition, and submit it to the IETF URI Review list for feedback.
+* **Action Item (Eli Mallon)**: Utilize the relay conformance test suite results to open issues against the merged sync specification on GitHub.
+* **Action Item (Volker Mische, Dietrich Ayala)**: Refine the CBOR-JSON float deterministic mapping rules and publish them to the ATP mailing list for security and canonicalization review.
