@@ -1,0 +1,102 @@
+# [COSE](../wg/cose.html)
+
+## Summary
+
+The COSE Working Group met to discuss the status of active group documents, cryptographic algorithm registrations (including AES-CMAC, split signing, post-quantum KEMs, Turbo-Kangaroo-KMAC, and Ascon), certificate revocation management (C509 CRL/OCSP), and coordination with the Area Director (AD) on HPKE algorithm alignment.
+
+## Key Discussion Points
+
+### Working Group Document Status
+* **C509 Certificate & Test Vectors**: The CBOR-encoded X.509 certificate draft has been submitted to the IESG. The test vectors draft, [draft-ietf-cose-c509-test-vectors](https://datatracker.ietf.org/doc/draft-ietf-cose-c509-test-vectors/), successfully completed Working Group Last Call (WGLC). The chairs will confirm this on the mailing list.
+* **SPHINCS+**: [draft-ietf-cose-sphincs-plus](https://datatracker.ietf.org/doc/draft-ietf-cose-sphincs-plus/) has a completed shepherd write-up and will be sent to the AD after addressing minor nits.
+* **Falcon**: No updates on [draft-ietf-cose-falcon](https://datatracker.ietf.org/doc/draft-ietf-cose-falcon/) as it waits for the CFRG specification to advance.
+* **HPKE PQ & PQ/T**: [draft-ietf-cose-hpke-pq-pqt](https://datatracker.ietf.org/doc/draft-ietf-cose-hpke-pq-pqt/) has been adopted as a working group document.
+
+---
+
+### AES-CMAC for COSE
+Brian Sipos presented on [draft-ietf-cose-cmac](https://datatracker.ietf.org/doc/draft-ietf-cose-cmac/) using the slide deck ["AES-CMAC for COSE"](https://datatracker.ietf.org/meeting/126/materials/slides-126-cose-aes-cmac-for-cose-00).
+
+* **Document Status**: The draft is adopted. The repository needs to be transferred to the working group organization.
+* **Technical Updates**: Added key overuse limits in Section 3.1 based on security considerations. 
+* **Open Issues**:
+  * Typos in the IANA section.
+  * Adding simple examples to assist with validation.
+  * Issue #12: Deciding on the reference for the CMAC analysis. Mike Jones suggested prioritizing a stable NIST URL over a GitHub Pages link.
+  * Discussion on whether to request short 1-byte code points (below 24) or 2-byte code points (above 24) for the algorithm registrations. Carsten Bormann suggested more aggressive early allocation under RFC 7120. Mike Jones recommended requesting two-byte range allocations.
+
+---
+
+### Split Signing Algorithms for COSE
+Emil Lundberg presented on [draft-ietf-cose-split-signing-algs](https://datatracker.ietf.org/doc/draft-ietf-cose-split-signing-algs/) using the slide deck ["Split Signing Algorithms for COSE (PPTX)"](https://datatracker.ietf.org/meeting/126/materials/slides-126-cose-split-signing-algorithms-for-cose-pptx-00).
+
+* **Document Status**: The draft is adopted. The current version (-01) includes cleanup of bibliography, typos, and CDDL.
+* **Decoupling from AKRG**: AKRG references have been removed to allow the split-signing draft to advance independently. Examples have been replaced with EdDSA and ML-DSA. 
+* **Technical Updates**: Added context input parameters for Ed25519ph and Ed448ph under a new `COSE_Sign_args` member.
+* **Feedback Discussion**:
+  * **Pre-hashing vs. Split Signing**: In response to concerns raised by Ilari Liusvaara that applications should use pre-hashing or hash envelopes rather than split signing, Emil noted that split signing is necessary for backward compatibility in existing protocols where developers do not have freedom of choice.
+  * **Self-Containment**: Regarding concerns that `COSE_Sign_args` is not self-contained (lacks the message to be signed), Emil and Mike Jones agreed that adding the message to the structure would cause optionality and redundant data copying, creating a barrier to interoperability.
+* **Implementations**: Implementation of both roles (digester and signer) exists for ECDSA on P-256 (specifically via ECDSA P-256 AKRG). The digester is implemented in W3C Web Wallet and the signer in YubiKey 5.8.
+* **Reviewers**: Hannes Tschofenig and John Bradley volunteered to review the draft.
+
+---
+
+### Standalone Post-Quantum KEMs (PQ-KEMs) for COSE
+Tirumaleswar Reddy presented on the adoption of standalone PQ-KEMs for COSE using the slide deck ["Post-Quantum Key Encapsulation Mechanisms (PQ-KEMs) for COSE"](https://datatracker.ietf.org/meeting/126/materials/slides-126-cose-post-quantum-key-encapsulation-mechanisms-pq-kems-for-cose-00).
+
+* **Context & Use Case**: The draft had previously stagnated because the group decided to focus on HPKE. However, the LAKE working group cannot use HPKE because EDHOC relies on direct key agreement/key wrap and needs to extract a shared secret rather than using integrated encryption.
+* **Technical Details**: Supports ML-KEM parameters (three variants) and direct key agreement/key wrap. Uses the `ek` parameter for KEM ciphertext and a KDF to establish CCA2 properties.
+* **Discussion**: Laurent Toutain (LAKE co-chair) supported the work, noting that LAKE requires post-quantum capability and that COSE is the appropriate place for this specification.
+* **Adoption**: The room showed support for adoption. The chairs will issue a formal call for adoption on the mailing list.
+
+---
+
+### Turbo Kangaroo KMAC
+Carsten Bormann presented on Keccak-based algorithms using the slide deck ["cose-turbo-kanga-kmac"](https://datatracker.ietf.org/meeting/126/materials/slides-126-cose-cose-turbo-kanga-kmac-00).
+
+* **Summary**: Standardizes Keccak-based MAC algorithms in COSE and updates existing IRTF registrations (RFC 9861, e.g., TurboSHAKE) to "recommended: yes".
+* **Proposed Algorithms**: TurboSHAKE (128 and 256), KMAC, and Kangaroo12 (highly parallelizable).
+* **Discussion**: Christian Amsüss noted in the chat that no dedicated hardware is needed for these algorithms, as they run fast on RISC-V with bitmanip extensions.
+* **Reviewers**: Emil Lundberg, Alex, Hannes Tschofenig, Tirumaleswar Reddy, and Chris Lemons volunteered to review.
+
+---
+
+### Ascon-AEAD128 and Ascon-Hash256 for COSE
+Dmitrii Kucheriavyi presented on integrating Ascon into COSE using the slide deck ["Ascon-AEAD128 and Ascon-Hash256 for COSE"](https://datatracker.ietf.org/meeting/126/materials/slides-126-cose-ascon-aead128-and-ascon-hash256-for-cose-00).
+
+* **Context**: Ascon was standardized by NIST in August 2023. It is designed for constrained IoT systems, using a single permutation function for both AEAD and hashing to reduce memory and silicon footprint.
+* **Proposed Modes**: Ascon-AEAD128 with a 16-byte tag, as well as truncated 8-byte and 4-byte tags for highly constrained networks. It also proposes Ascon-Hash256 integrated via HMAC and HKDF.
+* **Hackathon Work**: The authors integrated Ascon into C-based COSE libraries and tested it on acoustic underwater modems using OSCORE over CoAP.
+* **Discussion**:
+  * Hannes Tschofenig noted that software implementations of Ascon may perform slower than AES when hardware acceleration for AES is present, though this will change as chip manufacturers adopt Ascon.
+  * Tirumaleswar Reddy and Dmitrii discussed hardware efficiency, with Dmitrii noting that Ascon uses roughly 30% of the silicon space required by AES.
+* **Reviewers**: Christian Amsüss, Hannes Tschofenig, and Tirumaleswar Reddy volunteered to review.
+
+---
+
+### CBOR-Encoded Certificate Revocation (C509 CRL & OCSP)
+Rikard Höglund presented on CBOR-encoded certificate revocation using the slide deck ["CBOR Encoded Certificate Revocation slides draft"](https://datatracker.ietf.org/meeting/126/materials/slides-126-cose-cbor-encoded-certificate-revocation-slides-draft-00).
+
+* **Motivation**: Compact C509 certificates are sub-optimal if revocation data (CRLs and OCSP) remains DER-encoded. This draft defines compact C509 CRLs and C509 OCSP requests/responses.
+* **Optimizations**:
+  * Uses constant-size revocation records in CRLs to allow binary search instead of sequential scanning.
+  * Groups repeated issuer identifiers to avoid duplication.
+  * Truncates OCSP request/response fields and uses serial number hashes to enhance privacy against passive observers.
+* **Size Reductions**: Shows an 18%-50% size reduction for CRLs and a 40%-70% reduction for OCSP.
+* **Discussion**:
+  * Hannes Tschofenig questioned the practical deployment of CRLs/OCSP in constrained IoT, noting most implementations use out-of-band device management or might favor newer approaches like status lists.
+  * Göran Selander supported the work, noting that C509 is being deployed in industrial environments and connected cars (e.g., at NIO by main author Lijun Liao) where native CRL and OCSP support is desired.
+  * Ivaylo Petrov noted that revocation fits as a logical continuation of C509 but will double-check the working group charter.
+
+---
+
+### Open Mic & AD Coordination
+* **Composite Claims**: Chris Lemons urged volunteers to review and provide feedback on the composite claims draft, noting that it is a normative dependency for the Media over QUIC (MoQ) authorization model.
+* **COSE/JOSE HPKE Alignment**: Roman Danyliw (AD) asked how much alignment is desired between COSE and JOSE HPKE. JOSE HPKE was held up due to the removal of two ChaChaPoly key establishment algorithms (as JOSE has no registered ChaChaPoly content-encryption algorithm). Mike Jones and Hannes Tschofenig clarified that COSE already has registered ChaChaPoly content encryption, meaning the restriction does not apply to COSE, and the COSE HPKE draft does not need to change. Roman Danyliw confirmed he will proceed to advance the COSE HPKE draft.
+
+## Decisions and Action Items
+
+* **`draft-ietf-cose-cmac`**: Brian Sipos and Mike Jones to coordinate the transfer of the GitHub repository to the IETF WG space. The reference to the Ericsson CMAC analysis will be updated to point to the stable NIST URL.
+* **`draft-ietf-cose-c509-test-vectors`**: Chairs to officially conclude the WGLC on the mailing list.
+* **PQ-KEMs Adoption**: Chairs to initiate a WG adoption call for the PQ-KEMs draft on the mailing list.
+* **Certificate Revocation Charter Check**: Chairs to verify if the certificate revocation work is fully within the current WG charter.

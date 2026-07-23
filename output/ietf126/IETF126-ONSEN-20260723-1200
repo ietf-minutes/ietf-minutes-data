@@ -1,0 +1,121 @@
+# [ONSEN](../wg/onsen.html)
+
+## Summary
+
+The ONSEN Working Group met to discuss strategies for making IETF service and network abstractions easier to implement, deploy, and maintain. The session was chaired by Ian Farrer and Med Boucadair (participating remotely). The chairs opened the session by outlining the history and goals of ONSEN, highlighting that while hundreds of YANG models have been defined over the years, operational adoption remains lower than expected. The group's primary focus is to identify the root causes of these deployment gaps, align existing model foundations, and improve interoperability across service and network abstraction layers.
+
+The meeting agenda covered the core working group problem statement, proposals for extensible service architectures, updates to network YANG models, extensions for L3VPN service delivery, mapping YANG schemas to TM Forum (TMF) APIs, applicability of attachment circuits for dynamic policies, and abstractions for telco-cloud environments.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome & Introduction
+* **Presentation**: [01) Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-onsen-126-chair-slides-01)
+* **Discussion**: Ian Farrer provided an overview of the "estate" inherited by ONSEN, which includes L2/L3 service models (L2SM, L3SM), network models (L2NM, L3NM), common VPN models, and the attachment circuits (AC) architecture. The objective is to evaluate why these models have not scaled well in operational environments and address fundamental issues rather than just adding more parameters.
+
+---
+
+### 2. ONSEN Problem Statement
+* **Presentation**: [02) ONSEN Problem Statement](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-onsen-problem-statement-draft-kbf-onsen-problem-statement-00-01)
+* **Presenter**: Samir Varghese (on behalf of the co-authors of `draft-kbf-onsen-problem-statement`)
+* **Discussion**: The draft documents eight core operational and technical problems:
+  * **Problem 1: Fragmented Operational Life Cycles**: Operational workflows (instantiation, monitoring, modification, decommissioning) are handled inconsistently across protocols and vendors.
+    * *Mahesh Jethanandani* agreed that this problem is in scope.
+    * *Joe Clarke* raised concerns about the viability of mapping heterogeneous APIs and questioned whether there are committed workers to prioritize this.
+    * *Chris Bowers* and *Ian Farrer* suggested focusing on architectural guidance and open-source references rather than trying to define authoritative mappings.
+    * *Wim Henderickx* noted that the issue contains two distinct aspects: the need for explicit lifecycle attributes within models and the actual mapping mechanics.
+  * **Problem 2: Inconsistent Models at the Same Abstraction Layer**: (L2SM, L3SM, and Network Slice Service Models evolving independently).
+    * *Robert Wilton* and *Mahesh Jethanandani* noted via the session chat that Problem 2 is clearly in scope and well-defined.
+  * **Problem 3: Misalignment Between Abstraction Layers**: Lack of clear mappings between service and network models.
+    * *Italo Busi* and *Benoît Claise* pointed out that some misalignment is inherent to separate abstraction layers. A strict 1:1 mapping should not be the goal; the models serve different purposes.
+    * *Richard* suggested distinguishing between public APIs that services program and private underlay behaviors.
+    * *Dhruv Dhody* noted in the chat that while service-to-network mapping itself was considered out of scope during chartering, addressing misalignment and consistency is in scope.
+  * **Problem 4: Limited Observability and Feedback within LXNM and LXSM**: Existing abstractions are configuration-oriented, lacking standardized support for alarms, state reporting, or lifecycle feedback.
+  * **Problem 5: OSS/BSS Interface and API Interoperability**: The gap between YANG-based models and northbound interfaces like TMF 640/641.
+    * *Mahesh Jethanandani* questioned the phrase "APIs from similar YANG models differing in service semantics."
+    * *Italo Busi* regarded this as a controller implementation challenge (e.g., supporting multiple NBIs).
+    * *Dan Voyer* commented that conflict often arises between OSS teams wanting TMF down to the physical layer and network teams wanting YANG up to the portal, emphasizing that knowing where to draw boundaries is critical.
+    * *Nils Warnke* recalled that operators at a previous side meeting strongly identified this as a key issue and hoped the WG would address it.
+  * **Problem 6: Lack of Architectural Guidance**: No document explains how LXSM, LXNM, and AC models work together as an entire system.
+    * *Med Boucadair* asked how this reconciles with ACTN architectures. *Italo Busi* replied that ACTN maps cleanly to `RFC8309` and `RFC8969` (noting that the transcript's mention of `RFC8696` was corrected to `RFC8969` by Reshad Rahman in the chat).
+    * *Joe Clarke* suggested using operator-driven wikis to document integration experiences rather than relying solely on RFCs.
+  * **Problem 7: Limited Support of Dynamic Lifecycle Management**: Current YANG models target static configurations, lacking support for ephemeral changes, dynamic bandwidth adjustments, or temporary service suspensions.
+    * *Robert Wilton* and *Chris Bowers* questioned whether this is a data store or operational issue that should be redirected to the NETMOD or NETCONF working groups.
+    * *Dan Voyer* cautioned against mixing commercial functions (such as suspending a service for non-payment) with network service models.
+  * **Problem 8: Lack of Templates for Common Lifecycle Patterns**:
+    * *Mahesh Jethanandani* pointed to ongoing template configuration work in NETMOD.
+    * *Dhruv Dhody* asked if this refers to templates inside YANG models or a broader context. *Chris Bowers* clarified it refers to templates designed within specific models.
+  * **Open Mic / Additional Problems**:
+    * *Chun Feng (Fengchao Fu)* suggested considering quantum security (post-quantum cryptography) in service models. *Chris Bowers* cautioned against over-complicating customer-facing models with parameters the customer does not need to control.
+    * *Wim Henderickx* highlighted the challenge of referencing secrets (e.g., keys/passwords) securely through orchestration flows, suggesting it might be a NETMOD problem. *James Cumming* requested that an issue be opened on the `yang-next` GitHub repository.
+    * *Daniele Ceccarelli* proposed working on a generic, non-TEAS-specific capability to map service layers to the underlay infrastructure.
+
+---
+
+### 3. An Extensible Architecture for Service Modeling
+* **Presentation**: [03) An Extensible Architecture for Service Modeling](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-an-extensible-architecture-for-service-modeling-01)
+* **Presenter**: Chris Bowers
+* **Discussion**: Chris Bowers identified that more than one-third of the L2SM and L3SM models consist of identical, duplicated YANG trees. This duplication prevents users from expressing cross-model relationships (e.g., ensuring an L2VPN and an L3VPN do not share the same physical bearer). He proposed a core, technology-agnostic service model containing basic site and network access definitions, which can then be augmented with technology-specific parameters.
+  * *Oscar de Dios* supported looking at service and network models in tandem, noting that `ietf-vpn-common` was designed with similar goals.
+  * *Italo Busi* asked if "technology agnostic" includes optical layers. Chris Bowers confirmed it should be as abstracted as possible. Italo Busi warned against trying to merge service and network models, suggesting instead the use of common reusable groupings.
+  * *Robert Wilton* advised conducting an initial impact investigation before making hard commitments, given that changes to these foundational models could break existing implementations.
+  * *Kent Watsen* noted that if common groupings are defined, they can easily be templatized using ongoing NETMOD template work.
+
+---
+
+### 4. Update of Service and Network YANG Data Models
+* **Presentation**: [04) An Update of Service and Network YANG Data Models](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-an-update-of-service-and-network-yang-data-models-00)
+* **Presenter**: Oscar de Dios
+* **Discussion**: This work compiles concrete implementation requirements for the network model layer (the layer below customer service). Proposed enhancements include additions for BFD, billing, ACLs, SRv6, and multicast. It also addresses the definition of operational status (distinguishing between "configuration deployment success" and "active network failures").
+  * *Joe Clarke* encouraged the authors to move fast on these concrete updates, as operators need them immediately, even if broader architectural questions take longer to resolve.
+  * *Ian Farrer* clarified that the draft currently serves to compile requirements and includes some code.
+  * *Italo Busi* inquired if the SRv6 extensions map to specific SR policies. Oscar de Dios clarified it is simpler—it indicates whether a node needs to operate with SRv6. Italo Busi also asked if multi-controller environments are considered; Oscar de Dios noted the current scope is limited to a single administrative domain.
+
+---
+
+### 5. Extensions to the YANG Data Model for L3VPN Service Delivery
+* **Presentation**: [05) Extensions to the YANG Data Model for L3VPN Service Delivery](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-extensions-to-the-yang-data-model-for-l3vpn-service-delivery-00)
+* **Presenter**: Chun Feng (Fengchao Fu)
+* **Discussion**: The presentation focused on extending the L3SM (`RFC8299`) to support dynamic bandwidth adjustments (such as off-peak scheduling for data-intensive transmissions) and emerging technologies (SRv6, post-quantum encryption, network slicing, and performance monitoring).
+  * *Ian Farrer* asked if the authors had aligned their work with the TEAS network slicing YANG model and `RFC9417` (Service Architecture for Intent-Based Networks).
+  * *Chun Feng* agreed to review `RFC9417`, but noted that combining network slicing service models (NSSM) and L3SM is operationally difficult due to differing naming conventions and service logics.
+
+---
+
+### 6. Mapping YANG Schemas and Instance Data to TM Forum Data Models and APIs
+* **Presentation**: [06) Mapping YANG Schemas and Instance Data to TM Forum Data Models and APIs](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-mapping-yang-schemas-and-instance-data-to-tm-forum-data-models-and-apis-00)
+* **Presenter**: Chris Bowers
+* **Discussion**: Chris Bowers presented a model-to-model translation mechanism between YANG and TMF data models (such as TMF 640/641). This allows orchestrators to expose standard TMF APIs northward without manual mapping development. The draft is already implemented in an open-source orchestrator ("Satovy").
+  * *Wim Henderickx* argued that mapping the entire YANG schema is highly complex due to validation rules. He suggested that TM Forum could instead native-reference YANG schemas within TMF Open APIs to utilize existing YANG tooling.
+  * *Daniele Ceccarelli* asked where this translation layer should reside. Chris Bowers explained that the uppermost controller or orchestrator supporting YANG would run this mapping to present TMF interfaces northbound.
+  * *Dhruv Dhody* and *Ian Farrer* discussed sending an early liaison to TM Forum to notify them of ONSEN's charter and initiate collaborative reviews.
+
+---
+
+### 7. Applying Attachment Circuit and PE2PE YANG Data Model to Dynamic Policies Use Case
+* **Presentation**: [07) Applying Attachment Circuit and PE2PE YANG Data Model to dynamic policies Use Case](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-onsen-ac-pe2pe-ucmp-applicability-ietf126-00)
+* **Presenter**: Linda Dunbar
+* **Discussion**: Linda Dunbar presented an edge data center use case hosting AI training/inference workloads that require highly predictable, scheduled, high-bandwidth, and low-latency network paths. The presentation demonstrated how to combine existing IETF models (AC, L2NM, L3NM, SR, QoS) to fulfill these needs. Identified gaps include the lack of standardized parameters for scheduled activation/deactivation, automatic policy rollback upon expiration, and standardized cloud-to-network-controller APIs. No verbal questions were raised.
+
+---
+
+### 8. Abstractions for Telco-Cloud Scenarios
+* **Presentation**: [08) Abstractions for Telco-Cloud Scenarios](https://datatracker.ietf.org/meeting/126/materials/slides-126-onsen-abstractions-for-telco-cloud-scenarios-00)
+* **Presenter**: Luis Miguel Contreras
+* **Discussion**: The draft proposes an abstraction function to coordinate distributed compute/storage resources and network resources. This allows a cloud service orchestrator to optimize workload placement while accounting for network constraints, capacity, and latency without overexposing physical topologies.
+  * *Chris Bowers* asked whether this is planned as a operational state (config false) model or if it will support write/request interactions. Luis Miguel Contreras responded that he foresees transactional interactions across all phases (provisioning, assurance, and decommissioning).
+  * *Italo Busi* asked about the relationship with Computing-Aware Traffic Steering (CATS). Luis Miguel Contreras clarified that CATS steers traffic to existing instances, whereas this work addresses the overarching lifecycle (creating, scaling, and destroying those instances).
+  * *Ian Farrer* asked if a new data center service model is required. Luis Miguel Contreras replied that it is not strictly necessary, as the focus is on WAN connectivity between data center gateways.
+  * *Roberto Manzotti* noted that similar coordination work for optical networks is happening in CCAMP (noted as CCAMP/SICAM), and recommended adopting a unified packet and optical view.
+  * *Cancan Huang* suggested via remote mic and chat that resource costs and compute-electricity coordination should be added to the abstraction dimensions.
+
+---
+
+## Decisions and Action Items
+
+* **Decision**: Merge the distinct ONSEN problem statement drafts into a single comprehensive document (`draft-kbf-onsen-problem-statement`) to serve as the unified problem statement for the working group.
+
+* **Action Item**: *Alex Huang Feng* to open a tracking issue on the `netmod-wg/yang-next` GitHub repository to address referencing secret/obfuscated data in YANG configurations (as raised by *Wim Henderickx*).
+* **Action Item**: *Chun Feng* to review `RFC9417` and the TEAS network slicing YANG models to align the proposed L3VPN extensions.
+* **Action Item**: The working group and chairs to prepare an initial liaison statement to TM Forum, informing them of the ONSEN charter and seeking feedback on the YANG-to-TMF mapping drafts.
