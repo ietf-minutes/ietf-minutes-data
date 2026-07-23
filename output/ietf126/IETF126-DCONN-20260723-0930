@@ -1,0 +1,65 @@
+# [DCONN](../wg/dconn.html)
+
+## Summary
+
+The DCONN Working Group met at IETF 126 to discuss the progress of its two core specifications. This meeting marked the first time both co-chairs (Hans Erik and Peter) were present in person. 
+
+The Working Group recently transitioned from the Applications and Real-Time (ART) area to the Operations and Management (OPS) area under Area Director Mahesh Jethandani. The primary technical focus of the session was discussing the recent split of the monolithic specification into two separate documents:
+*   `draft-ietf-dconn-domainconnect` (the core protocol specification)
+*   `draft-ietf-dconn-domainconnect-async` (the asynchronous flow extension)
+
+A detailed review of open GitHub issues, including protocol extensibility, parameter namespacing, and IANA registration complexities, was conducted for both drafts.
+
+## Key Discussion Points
+
+### Working Group Administration and Area Transition
+*   The chairs presented the [Chairs slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-dconn-chairs-slides-00).
+*   The group has officially transitioned to the OPS area. Hans Erik noted that this change was made for organizational alignment and should not impact the day-to-day operations of the working group.
+*   Peter volunteered to act as the primary note-taker for the session.
+
+---
+
+### Core Protocol: `draft-ietf-dconn-domainconnect`
+Paweł Kowalik presented the status and open issues of the core specification using the slide deck [IETF-126-domain-connect](https://datatracker.ietf.org/meeting/126/materials/slides-126-dconn-ietf-126-domain-connect-00).
+
+#### Recent Changes in v02 and v03:
+*   All asynchronous flow elements have been successfully moved to the asynchronous draft.
+*   **Record Types & Extensibility:** Explicit definitions were added for fully specified, computed (e.g., SPF), and generic record types. Guidance has been included to synchronize Domain Connect mnemonics with the IANA DNS Resource Records registry.
+*   **Deprecated Elements:** Browser-directing elements and "phishing" keywords have been removed and reserved. Clarifications on handling identical resource records during conflict detection (treated as non-conflicting) were added.
+*   **Security Considerations:** New text has been added highlighting risks associated with security codes, underscored hostnames, and the host parameter.
+
+#### Open Technical Issues:
+*   **Template Metadata Extensibility:** To allow future extensibility, Paweł Kowalik proposed creating an IANA registry for template metadata with a "must ignore unknown" rule, complemented by a `must_understand` property (similar to JSON Web Tokens) to flag critical fields. A private namespace prefix and a static default version field were also proposed.
+*   **Parameter Conflicts:** To prevent conflicts between user-defined template variables and future protocol parameters, the group discussed reserving a `dc.` prefix for official protocol parameters and a separate prefix for private extensions. Existing parameters will be grandfathered without a prefix.
+*   **Locality and Internationalization:** The proposal to make the settings endpoint geography-aware was discarded, as routing based on domain name and user-agent `Accept-Language` headers is already sufficient. For internationalization, the working group favored keeping static names (like `provider_name` and `service_name`) unlocalized within a single template, allowing operators to deploy localized templates if needed.
+*   **Handover UX (Different Setup vs. DNS Admin):** Peter and Paweł Kowalik discussed whether the protocol should support scenarios where the person setting up a service is different from the DNS administrator. They agreed this is a User Experience (UX) issue best resolved by service and DNS providers rather than something requiring protocol-level changes.
+*   **HTTP Methods (GET vs. POST/QUERY):** Responding to concerns about long URL payloads, Paweł Kowalik noted that no implementations have reported issues with URL length. Keeping the flow on HTTP GET allows for easier redirects. John Levine suggested that the new HTTP `QUERY` method might be a suitable alternative in the future, but the current consensus is to proceed with GET.
+
+#### Protocol Scope (Chat Discussion):
+*   Zaid AlBanna asked in the chat whether "DNS provider" includes registrars and registries. Paweł Kowalik responded that they often are, but from a protocol perspective, they do not have to be.
+*   Zaid AlBanna also asked if there is overlap between RPP, EPP, RDAP, and DCONN. Paweł Kowalik responded that the relationship is only one-way.
+
+#### IANA Considerations Review:
+*   An IANA Representative flagged that the current IANA Considerations section is overly complex and contains unworkable requirements (e.g., specific mailing list waiting periods and subjects). The representative also noted a missing statement regarding whether the media type payload is executable. Paweł Kowalik agreed to work directly with IANA to simplify the section.
+
+---
+
+### Asynchronous Flow: `draft-ietf-dconn-domainconnect-async`
+Paweł Kowalik also presented the status of the asynchronous extension using the [IETF-126-domain-connect](https://datatracker.ietf.org/meeting/126/materials/slides-126-dconn-ietf-126-domain-connect-00) slides.
+
+#### Open Technical Issues:
+*   **Parameter Precedence:** The group discussed how to resolve potential discrepancies when parameters are supplied in both the URL query string and the JSON POST body. Peter proposed that instead of setting a strict override precedence, the server should return an error if there is any inconsistency between overlapping parameters. Paweł Kowalik agreed to update the draft with this consistency requirement.
+*   **Automated Deployment Pipelines (SecDir Review):** The Security Directorate review suggested accommodating certificate-based (mTLS) client authentication for automated pipelines. The group agreed that since automated updates must still operate within the constraints of defined templates, this use case is best left out of scope for the current draft.
+
+## Decisions and Action Items
+
+*   **Decision:** Do not add HTTP POST support for the synchronous/core flow; retain HTTP GET to ensure redirect capability.
+*   **Decision:** Close the issues regarding locality, HTTP link sets, and handover UX without adding protocol-level mechanisms.
+*   **Decision (Async Draft):** Require parameter consistency between the POST body and query strings in the asynchronous flow; conflicting parameters must trigger an error.
+*   **Action Item:** Paweł Kowalik to work with the IANA Representative to simplify the IANA Considerations section of `draft-ietf-dconn-domainconnect` and resolve the missing media type executable statement.
+
+## Next Steps
+
+*   **Milestones:** The milestone for the core draft (`draft-ietf-dconn-domainconnect`) remains the end of 2024, with the asynchronous draft (`draft-ietf-dconn-domainconnect-async`) targeted for March 2025.
+*   **WGLC Readiness:** Once the discussed GitHub issues and IANA feedback are integrated into the core draft, it should be ready for Working Group Last Call (WGLC).
+*   **Submission Strategy:** Murray Kucherawy noted in the chat that because `draft-ietf-dconn-domainconnect-async` contains a normative reference to the core draft, both documents should eventually be sent to the IESG together, as the core draft would be held in the RFC Editor queue otherwise.

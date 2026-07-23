@@ -1,0 +1,118 @@
+# [NMOP](../wg/nmop.html)
+
+## Summary
+
+The NMOP Working Group met for a one-hour session to discuss network management operations, recent network incidents, and the applicability of artificial intelligence (AI) and machine learning (ML) frameworks to network management. 
+
+Key topics included:
+* An operational analysis of a recent BGP routing loop incident at Swisscom and how generative AI was used to parse the telemetry data.
+* A coordination status update on the upcoming AIOps side meeting and proposed Wiki guidelines for AI/ML work within the IETF.
+* Several presentations on AI-assisted network management agents, northbound task interfaces, knowledge graphs, and automated protocol testing.
+
+---
+
+## Key Discussion Points
+
+### 1. Administration and Agenda Bash
+**Presenters:** Benoît Claise, Rachid Medbouhi  
+**Slides:** [Chairs slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-nmop-sessa-1-chairs-slides-05)
+
+* **WG Scope & Experiments:** Benoît Claise opened the session by outlining the scope of NMOP, which focuses on operational deployment issues of existing network management technologies. He emphasized that NMOP’s strength lies in concrete, time-bounded experiments (such as the network anomaly framework defined in `draft-ietf-nmop-network-anomaly-architecture`).
+* **Adoption Criteria:** The chairs expressed caution regarding "working group shopping" (introducing drafts that failed to gain traction elsewhere without clean integration) and emphasized that new work must demonstrate active commitment, implementation at hackathons, and fit the working group’s DNA.
+* **Agent Observability:** Ying Zhen raised a question about whether "agent observability and intervention control" (discussed in a Wednesday side meeting) fits within the NMOP charter. Benoît Claise noted that suitability is evaluated against the slide criteria and would be discussed further in the context of the AIOps side meeting.
+
+---
+
+### 2. Swisscom Network Incident & Generative AI Analysis
+**Presenter:** Thomas Graf  
+
+Thomas Graf shared an operational analysis of a BGP routing loop incident that occurred at Swisscom on July 2, 2024, and demonstrated how large language models (LLMs) can be combined with structured network semantics to analyze telemetry.
+
+* **Incident Details:** An early morning configuration change introducing additional VRF peerings on an Inter-AS Option A peering led to a BGP routing loop across 42 L3VPNs. This resulted in excessive BGP route withdrawals and high CPU utilization on BGP processes across four main network platforms.
+* **Telemetry & Semantics Correlation:** The anomaly was detected in real-time by a system leveraging concepts from:
+  * `draft-ietf-nmop-network-anomaly-architecture` (architecture framework)
+  * `draft-ietf-nmop-network-anomaly-semantics` (symptom ontology and metadata annotations)
+  * `draft-ietf-nmop-network-anomaly-lifecycle` (refinement of the detection process)
+  * `draft-ietf-nmop-yang-message-broker-integration` & `draft-ietf-nmop-yang-message-broker-message-key` (for high-efficiency telemetry delivery)
+  * `draft-ietf-nmop-message-broker-telemetry-message` (converting BMP to YANG)
+* **Generative AI Experimentation:** Swisscom connected their time-series telemetry database to a Qwen 3.5 LLM agent. Using prompt engineering, the LLM successfully identified the looped prefixes, fluctuating Site of Origin (SOO) attributes, and affected VPNs. It also proved capable of connecting BGP instabilities to CPU utilization anomalies.
+* **Discussion & Chat Highlights:**
+  * **Root Cause & Prevention:** Pierre Francois noted that CE behavior can be unpredictable and suggested avoiding AS_Path rewrites where possible, letting customers use `allowas-in`. Thomas Graf agreed and suggested utilizing "digital twins" to verify configuration changes before deployment.
+  * **LLM Capabilities:** Joe Clarke shared that frontier models like Claude Sonnet/Opus show solid mid-tier engineering capabilities, but open-weight models often hallucinate BGP operational concepts without deep context.
+  * **YANG Semantics vs. Format:** Thomas Graf asked if closer alignment between JSON Schema (via the new IETF JSON Schema WG) and YANG Schema would improve LLM agent performance. Joe Clarke and Pierre Francois responded that format is secondary to content; the key is defining meaningful descriptions in YANG data nodes that can map cleanly into schema parameters.
+  * **Testing:** Dan Voyer asked if a benchmark exists to validate agent configurations.
+
+---
+
+### 3. AIOps Side Meeting & Wiki Guidelines
+**Presenter:** Mahesh Jethanandani (AD)  
+**Slides:** [AIOps Side Meeting](https://datatracker.ietf.org/meeting/126/materials/slides-126-nmop-aiops-side-meeting-04)
+
+Mahesh Jethanandani detailed the logistical setup and goals for the upcoming community side meeting on AIOps.
+
+* **The Problem:** Many AI/ML management drafts have been presented across different WGs (working group shopping) without a single home.
+* **Wiki Guidance:** The AD has established Wiki guidelines outlining in-scope categories. Out-of-scope items include standalone AI/ML algorithm specifications, standalone gap analyses, and external framework alignments (which should be handled via liaisons).
+* **Next Steps:** If the community desires standardizing these elements, they can either (1) propose a new WG with a specific charter directly to the IESG, or (2) request a formal BoF. Mahesh urged participants to focus on defining a clear problem statement and charter text.
+
+---
+
+### 4. AI-Based Network Management Agent (NMA) & Interfaces
+**Presenter:** Xing Zhao  
+
+X Xing Zhao presented updates to the NMA drafts, detailing architectural terminology and proposed interfaces.
+
+* **Terminology Update:** An NMA is defined as a network management entity translating user intents or preset goals into closed-loop management tasks, characterized by semi-autonomous or autonomous processing.
+* **Interface Taxonomy:** The architecture defines four interface types:
+  1. `A2U` (Agent-to-User: non-agent upper systems)
+  2. `A2A` (Agent-to-Agent)
+  3. `A2C` (Agent-to-Controller)
+  4. `A2N` (Agent-to-Network Device)
+* **A2U YANG Data Model:** Xing Zhao introduced a new individual draft defining the A2U interface, providing capability discovery, intent submission, and status checks. The model supports natural language and structured intents while reusing existing models like `draft-ietf-nmop-network-incident-yang`. A RESTCONF-based prototype was validated at the IETF Hackathon.
+* **Discussion:**
+  * Joe Clarke expressed skepticism that agent developers would want to embed RESTCONF, calling it too heavyweight for what these agents do. He suggested that while YANG is useful for description, RESTCONF might be too restrictive.
+  * Diego Lopez questioned the strict distinction between "users" and "other agents/controllers" in the northbound interface. Xing Zhao clarified that this is a pragmatic separation to allow operators to integrate existing non-agent OSS systems immediately without waiting for complex Agent-to-Agent protocol standards.
+  * Bo Wu asked whether the A2U interface belongs in NMOP or the proposed new AIOps WG. Mahesh Jethanandani deferred this to the side meeting discussions.
+
+---
+
+### 5. Northbound Task Interface Problem Statement
+**Presenter:** Bo Wu  
+
+Bo Wu outlined the operational gaps in how upper-layer systems interact with AI-driven NMAs.
+
+* **Gaps Identified:** Traditional Fault Management (FM) systems use slow, step-by-step queries to diagnose issues. An NMA simplifies this by taking a single intent goal and producing structured feedback.
+* **Use Cases:** Bo Wu presented two operational scenarios: L3VPN performance issues and cross-domain hardware faults (e.g., base station to access router). Gaps remain in formalizing task inputs/outputs, authorizing automated remediations, and capability discovery.
+
+---
+
+### 6. AI-Assisted Network Protocol Testing
+**Presenter:** Yunzhe Liu  
+
+Yunzhe Liu proposed a framework to automate specification-driven protocol testing using AI.
+
+* **Framework Stages:** The framework proposes six stages: protocol representation, scope scoping, test case generation, artifact generation, execution, and refinement.
+* **Feedback:** The chairs and participants (including Boris Khasanov in Meetecho) pointed out that protocol testing is outside the charter of NMOP and suggested that the draft is better suited for the Benchmarking Methodology Working Group (BMWG) or the Research Group RASPRG.
+
+---
+
+### 7. Gateway for Network Knowledge Graph & Operational Requirements
+**Presenter:** Mingxi Wu  
+
+Mingxi Wu delivered two presentations on knowledge graph interaction and data constraints.
+
+* **Knowledge Graph Gateway:** Interacting with network knowledge graphs currently requires specialized query knowledge (Cypher or SPARQL). The draft proposes a three-layer gateway architecture to translate natural language intents into low-level graph queries.
+* **Data Constraints for Agents:** Feeding raw, high-volume telemetry to AI agents incurs high token costs, bandwidth issues, and reasoning errors. The draft suggests shifting telemetry from "data for humans" to compact "state of evidence" artifacts containing payloads, context, and accountability metrics. This approach achieved high compression ratios during local testing.
+
+---
+
+## Decisions and Action Items
+
+* **Out of Scope Work:** The chairs determined that the AI-assisted network protocol testing framework presented by Yunzhe Liu is out of scope for NMOP. The authors are directed to present this work in BMWG or RASPRG.
+* **AIOps Coordination:** No immediate adoption decisions were made for the presented AI/NMA drafts. The disposition of these drafts is deferred to the outcomes of the AIOps Side Meeting.
+
+---
+
+## Next Steps
+
+1. **AIOps Side Meeting:** Mahesh Jethanandani will lead the community side meeting to discuss whether to charter a new Working Group or request a BoF for AI/ML network management topics.
+2. **Experimental Boundaries:** For drafts remaining in NMOP (such as the A2U interface proposal by Xing Zhao), the chairs and AD will evaluate if they can be framed as self-contained operational experiments, separating standard YANG model definitions from experimental validation.

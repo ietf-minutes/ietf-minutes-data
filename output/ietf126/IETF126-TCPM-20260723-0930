@@ -1,0 +1,110 @@
+# [TCPM](../wg/tcpm.html)
+
+## Summary
+
+The TCPM Working Group met at IETF 126. The session covered working group status updates, two active working group documents (`draft-ietf-tcpm-ack-rate-request` and `draft-ietf-tcpm-tcp-ao-algs`), and two individual proposals (TCP Extended Options and TCP Packet Trimming). Key updates included the publication of Accurate ECN as an RFC and the ongoing Working Group Last Call (WGLC) for `draft-ietf-tcpm-tcp-ghost-acks`. The group discussed implementation progress, security considerations for cryptographic algorithms, and options for extending the TCP option space.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status
+*Presented by Michael Scharf*
+* **Slides**: [chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-tcpm-chair-slides-00)
+* **Status Updates**:
+  * Accurate ECN has been published as an RFC.
+  * `draft-ietf-tcpm-tcp-ghost-acks` is currently in Working Group Last Call (WGLC). It is implemented in Linux and BSD, and used in production.
+  * The chairs plan to call for adoption/progression of Generalized ECN now that Accurate ECN is finalized.
+  * `draft-ietf-tcpm-rst-diagnostic-payload` has undergone payload format changes since the last meeting and appears stable.
+  * TCP EDO milestones have been shifted to March 2027 due to limited implementation experience.
+
+---
+
+### 2. TCP ACK Rate Request (TARR) Option
+*Presented by Carlos Gomez*
+* **Draft**: `draft-ietf-tcpm-ack-rate-request`
+* **Slides**: [tarr](https://datatracker.ietf.org/meeting/126/materials/slides-126-tcpm-tarr-01)
+* **Discussion**:
+  * Carlos Gomez presented revision 12, which introduces an implementation status section (Section 9) and a contributors section.
+  * Two implementations were highlighted:
+    1. **Linux Kernel**: An implementation for kernel version 7.0.0-rc2 covering the core sections (3 and 4) developed by Nasir Rohan. No issues were found during development.
+    2. **Lightweight IP (lwIP)**: An implementation for constrained devices with ~10 KB RAM developed by Ahmed Al Jabri (supervised by Jon Crowcroft), along with ns-3 simulation code.
+  * Carlos Gomez asked the chairs and working group to consider initiating a Working Group Last Call (WGLC).
+  * **Q&A**:
+    * Michael Scharf asked if interoperability testing had been conducted between the Linux and lwIP implementations. Carlos Gomez replied that they have not yet run interoperability tests, but it is feasible.
+    * Yoshifumi Nishida asked about performance testing. Carlos Gomez noted that they performed basic functional testing in Linux (confirming the expected number of ACKs for $r = 1, 3, 5$), but have not yet run a comprehensive performance evaluation.
+    * In the chat, Vishal Rathod raised a question regarding how lwIP can efficiently operate with CoAP over TCP and if there was any validation. Carlos Gomez responded that lwIP is currently a basic fork supporting TARR and that they have not tested CoAP on top of it yet, though it remains an interesting area for future work.
+
+---
+
+### 3. Additional Cryptographic Algorithms for TCP-AO
+*Presented by Ron Bonica*
+* **Draft**: `draft-ietf-tcpm-tcp-ao-algs`
+* **Slides**: [Additional Cryptographic Algorithms for TCP-AO](https://datatracker.ietf.org/meeting/126/materials/slides-126-tcpm-additional-cryptographic-algorithms-for-tcp-ao-00)
+* **Discussion**:
+  * NIST requires transitioning away from SHA-1 by the end of 2030, necessitating stronger algorithms for TCP-AO.
+  * To stay within the 20-byte option limit for TCP-AO, the draft proposes HMAC-SHA-256-128 and KMAC-SHA-256-128 (truncating SHA-256 to 128 bits). Test vectors have been added, but the specific output values are currently TBD.
+  * A Security Directorate (SecDir) review revealed a disagreement between reviewers (Eric Biggers and Brian Weiss) regarding the choice of the Key Derivation Function (KDF) (e.g., HKDF-SHA-256 vs. an alternative).
+  * The authors are seeking a second independent implementation to validate the test vectors.
+  * **Q&A**:
+    * Richard Scheffenegger suggested looking for a second implementer in the routing area (where TCP-AO is actively deployed) rather than relying solely on TCPM.
+    * Lars Eggert supported the incremental approach of standardizing simpler, truncated algorithms first to address the 2030 deadline before tackling more complex option space extensions.
+    * Michael Scharf queried how the draft addresses the "master key" term, noting that security reviewers have raised concerns about low-entropy ASCII passwords being treated as high-entropy master keys.
+    * Ron Bonica acknowledged that traditional KDFs in TCP-AO do not protect against weak master keys. HKDF-SHA-256 would provide key expansion to mitigate this, but security reviewers remain divided. If a KDF that does not protect against weak master keys is chosen, the security implications must be clearly documented in the Security Considerations section.
+
+---
+
+### 4. TCP Extended Options
+*Presented by Ron Bonica*
+* **Slides**: [TCP Extended Options](https://datatracker.ietf.org/meeting/126/materials/slides-126-tcpm-tcp-extended-options-01)
+* **Discussion**:
+  * This individual proposal introduces "Seg-U", an upgraded TCP segment format where the Data Offset field in the TCP header is set to `0` (previously an invalid value). This allows the option space to expand up to 1016 bytes, enabling untruncated 256-bit MACs for TCP-AO.
+  * Seg-U is incompatible with legacy TCP (Seg-O). Legacy TCP stacks are expected to silently discard Seg-U.
+  * To ensure backwards compatibility, the proposal suggests a "dual three-way handshake" (similar to Happy Eyeballs) using two parallel SYN segments sent on different source ports.
+  * **Q&A**:
+    * Richard Scheffenegger expressed concern that some hardware-offloaded TCP stacks do not properly validate the Data Offset field and may crash when receiving a segment with an offset of 0, rather than discarding it. He emphasized the need for testing against less common or proprietary TCP stacks.
+    * Gorry Fairhurst questioned how connection-tracking middleboxes would handle parallel SYNs. If a middlebox classifies the invalid Seg-U packet as an error, it might drop the state for the entire connection. Ron Bonica noted that the two SYNs utilize different source ports to maintain separate states, but agreed that middlebox testing is required.
+    * Lars Eggert pointed out that there are now two proposals for extending the TCP option space (EDO and this draft). He indicated that the working group should avoid pursuing two competing mechanisms. He also noted that the current IPR disclosure on the draft only covers Standards Track publication and must be updated to cover Experimental status.
+    * Magnus Westerlund questioned the fundamental security requirement for an untruncated 256-bit tag, arguing that a 128-bit truncated tag already provides sufficient security against online brute-force forgery attacks, which are bounded by network bandwidth.
+    * Michael Scharf (speaking as an individual) noted that the "Happy Eyeballs" style dual-handshake mechanism runs on top of TCP and should not be tightly coupled with the core TCP specification; it should be moved to an annex or a separate document.
+    * Tony Lee reported that HPE lawyers are currently updating the IPR disclosure to cover Experimental status. He also argued that holding up protocol design for non-compliant TCP stacks that crash on invalid header fields is not a viable path.
+    * Allison Mankin warned that the DNS over TCP community would be highly sensitive to the port consumption overhead of a dual-handshake mechanism, supporting the suggestion to separate the dual-handshake logic from the protocol specification.
+    * Lars Eggert asked why different source ports were chosen over different sequence numbers. Ron Bonica clarified that different source ports keep the connection state entirely separate, protecting against middlebox confusion.
+    * Gorry Fairhurst recommended choosing a more specific title than "TCP Extended Options" to clearly differentiate it from TCP EDO.
+    * Michael Scharf suggested that both EDO and this proposal could potentially progress as Experimental to see which one gains deployment traction. Lars Eggert countered that EDO currently has little momentum, and the working group should focus its energy on a single solution. Yoshifumi Nishida noted that without experimental data, it is difficult for the chairs to select one over the other at this stage.
+
+---
+
+### 5. TCP Packet Trimming
+*Presented by Flavius Mazillo*
+* **Draft**: Individual draft (no exact active WG draft name in context)
+* **Slides**: [TCP Packet Trimming](https://datatracker.ietf.org/meeting/126/materials/slides-126-tcpm-tcp-packet-trimming-slides-126-tcpm-packet-trimming-00)
+* **Discussion**:
+  * Flavius Mazillo introduced a mechanism to utilize packet trimming features available in modern data center switches (e.g., Arista, Broadcom, NVIDIA, Juniper).
+  * When a switch experiences congestion, instead of dropping a packet, it trims the payload, updates the DSCP field to indicate "trimmed", and forwards the IP/TCP headers.
+  * The proposed TCP extension negotiates trimming capability during the three-way handshake using a "Trimming Permitted" option. When a trimmed packet is received, the host sends a "Trimming NACK" option to trigger immediate fast retransmission, bypass heuristics-based loss recovery, and signal congestion.
+  * The TCP checksum remains invalid on trimmed packets because switches do not recalculate it after payload removal. However, the sequence number and connection tuple remain intact.
+  * **Q&A**:
+    * Richard Scheffenegger cautioned against relying on external configuration for the "trimable" and "trimmed" DSCP values. He suggested utilizing in-band signaling to negotiate or advertise these values on a per-flow basis to prevent misconfigurations.
+    * Lars Eggert expressed interest in the concept but noted that managing DSCP mappings is operationally difficult. He also highlighted the security risk of trimmed packets leaking out of controlled data center domains into the wider Internet and suggested further investigation into how arbitrary networks react to trimmed packets.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-tcpm-tcp-ao-algs`**:
+  * **Action Item**: Ron Bonica to work with the Security Directorate reviewers (Eric Biggers and Brian Weiss) to resolve the disagreement regarding the HMAC KDF selection.
+  * **Action Item**: The authors and the WG are looking for a second independent implementation of the new algorithms to validate the test vectors.
+
+* **TCP Extended Options (Individual Proposal)**:
+  * **Action Item**: Tony Lee and Ron Bonica to ensure the IPR disclosure is updated by legal counsel to cover Experimental status.
+  * **Action Item**: Ron Bonica to consider renaming the draft to clearly distinguish it from EDO, and to decouple the "dual three-way handshake" mechanism from the core protocol spec (potentially moving it to an appendix or separate draft).
+
+---
+
+## Next Steps
+
+* **`draft-ietf-tcpm-tcp-ghost-acks`**: Working Group members are urged to review the document and provide feedback during the ongoing WGLC.
+* **`draft-ietf-tcpm-ack-rate-request`**: The chairs will evaluate the readiness of the document for WGLC on the mailing list.
+* **TCP Extended Options / TCP EDO**: The working group will continue discussions on the mailing list regarding how to proceed with extending the TCP option space, evaluating EDO vs. the Seg-U proposal.
+* **TCP Packet Trimming**: The authors will refine the proposal based on feedback regarding in-band DSCP negotiation and out-of-domain leakage, and continue the discussion on the mailing list.

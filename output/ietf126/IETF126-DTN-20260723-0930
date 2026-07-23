@@ -1,0 +1,85 @@
+# [DTN](../wg/dtn.html)
+
+## Summary
+
+The Delay-Tolerant Networking (DTN) Working Group held its second session at IETF 126. Co-chairs **Edward Birrane** and **Rick Taylor** opened the session, outlining an agenda focused on DTN Management Architecture (DTNMA) YANG modules, updates on active working group drafts, and security-related proposals (including the Secure Bundle Asset Manifest and Message Layer Security (MLS) for key establishment). 
+
+---
+
+## Key Discussion Points
+
+### 1. DTNMA YANG Modeling for ADM
+**Per Majon** presented updates on the YANG modeling work for the Application Management Model (AMM) and Application Data Model (ADM), focusing on updates within [draft-ietf-dtn-amm](https://datatracker.ietf.org/draft-ietf-dtn-amm/) and [draft-ietf-dtn-adm-yang](https://datatracker.ietf.org/draft-ietf-dtn-adm-yang/).
+
+*   **Native YANG Type Adoption:** The modeling now utilizes native YANG statements and types wherever possible, reducing the reliance on custom extensions originally defined in the AMM.
+*   **Tooling Integration:** A new extension (`amm:amm`) has been introduced to signal to parser tooling that it is processing an AMM YANG module.
+*   **IEEE Float Limitations:** Standard YANG does not natively support IEEE float types (Real32 and Real64). These types must still be defined as custom extensions in normative text (a topic recently discussed in the NETMOD working group for "YANG Next").
+*   **Collection and Map Types:** **Per Majon** presented alternatives for modeling these complex types:
+    *   *Option A (YANG-Native):* Provides declarative validation directly through standard tooling.
+    *   *Option B (AnyData/Extension):* Defers data validation to the application runtime, bypassing standard tooling validation.
+    *   *Feedback:* **Rick Taylor** and **Edward Birrane** strongly preferred the YANG-native approach to ensure type safety.
+*   **YANG Union Types:** **Don Fettig** raised a concern regarding the use of native YANG `union` types, noting that YANG validates unions by using the first matching type, which can lead to unintended type coercion. **Per Majon** acknowledged that this could affect coercion and requires further attention.
+*   **Externally Derived Data (EDD):** Discussion occurred regarding whether EDD should be represented as `config false` (operational-only data). **Edward Birrane** clarified that while EDD represents sampled runtime data that is not writable within the model, it is not strictly equivalent to standard configuration states.
+*   **Alternative Management Protocols:** **Javier** shared that his team is implementing DTN management using CoreConf (and CoreConf M2M) over CBOR for satellite communications. He suggested this as a lightweight alternative to NETCONF/RESTCONF. **Rick Taylor** and **Per Majon** invited him to share these findings on the DTN mailing list.
+
+---
+
+### 2. Status Updates on Working Group Drafts
+**Brian Sipos** presented status updates on several active working group drafts using the slide deck [Sipos individual drafts](https://datatracker.ietf.org/meeting/126/materials/slides-126-dtn-sessa-sipos-individual-drafts-00).
+
+#### [draft-ietf-dtn-bpsec-cose](https://datatracker.ietf.org/draft-ietf-dtn-bpsec-cose/) (BPSec COSE Context)
+*   **Recent Updates (v16):** Added Key Derivation Function (KDF) context (Section 2.5.2) to resolve missing bindings, expanded examples, and consolidated security considerations.
+*   **Post-Quantum Algorithms:** The draft now explains how to configure and use the recently approved COSE algorithm for ML-DSA (Module-Lattice-Based Digital Signature Algorithm).
+*   **Implementation Status:** Symmetric key mechanisms have completed interoperability testing. A NASA-funded BPSec security library containing this context is scheduled for release, with interoperability testing commencing shortly.
+
+#### [draft-ietf-dtn-eid-pattern](https://datatracker.ietf.org/draft-ietf-dtn-eid-pattern/) (BP Endpoint ID Patterns)
+*   **Status:** The draft is stable, complete, and has several independent implementations. Recent updates added concrete minimum implementation limits to guarantee consistent parsing behavior across compliant processors.
+*   **WGLC Readiness:** **Rick Taylor** confirmed their implementation is functional and supported transitioning the document to Working Group Last Call (WGLC). No objections were raised in the room.
+
+#### [draft-ietf-dtn-udpcl](https://datatracker.ietf.org/draft-ietf-dtn-udpcl/) (UDP CL Protocol Version 2)
+*   **Status:** The protocol is stable. Recent revisions cleaned up terminology, clarified middlebox/firewall/NAT compatibility, and consolidated congestion control choices.
+*   **Early Allocations:** The draft has pending requests for IPv4 and IPv6 multicast addresses. **Tommy Jensen** (AD) confirmed he is investigating the criteria to facilitate early allocation for the working group.
+*   **WGLC Strategy:** While the draft is stable, **Rick Taylor** advised holding the WGLC briefly to allow current active implementations to mature and identify any lingering operational issues.
+
+#### [draft-ietf-dtn-bp-sand](https://datatracker.ietf.org/draft-ietf-dtn-bp-sand/) (BPSec Secure Advertisement and Neighborhood Discovery)
+*   **Message Structure:** The encoding was simplified. Critical discovery metadata has been moved to the very top of the CBOR byte-string structure, allowing nodes to quickly parse or skip advertisements.
+*   **Routing Advertisements:** Discussion occurred on whether routing willingness/advertisements belong in the core SAND specification. **Rick Taylor** cautioned that routing mechanisms fall outside the DTN working group's primary area and suggested deferring them to keep the core specification lightweight.
+*   **Implementation Status:** The d3tn team is beginning trial implementations of the updated specification.
+
+---
+
+### 3. Secure Bundle Asset Manifest (SPAM / SBAM)
+**Susan Tan** presented a proposal for end-to-end cryptographic integrity of source-added security operations to detect modifications by intermediate nodes.
+
+*   **Mechanism:** SPAM uses two mechanisms: reporting on intermediate node processing (drops/additions) and auditing source-created key information at the destination.
+*   **Integration:** In the chat, **Bhagya Wimalasiri** clarified that SBAM blocks combine the manifest block and BPSec security block types to construct a single logical block.
+*   **Document Status:** Revisions incorporated feedback from **Edward Birrane**, making the audit and report blocks critical and adding IANA considerations for key identifiers. The authors requested Working Group adoption.
+
+---
+
+### 4. Key Establishment in Space (MLS for BPSec)
+**Susan Tan** presented a proposal to use Message Layer Security (MLS) as a continuous, asynchronous key agreement protocol for space networks.
+
+*   **Benefits:** Unlike TLS (used in QUIC handshakes), MLS is highly compatible with post-quantum algorithms because it amortizes signature overhead over long-lasting sessions. It supports unidirectional, asynchronous key updates and provides both forward secrecy and post-compromise security (PCS).
+*   **Group Topology & Commits:** The presentation analyzed logical group management strategies for space missions:
+    1.  *Leader-only commits:* A single coordinator manages group membership. Low client overhead but subordinates lose PCS.
+    2.  *Subordinate-proposed, leader-commit:* Subordinates propose membership changes, but the leader executes them. Restores PCS but adds synchronization overhead.
+    3.  *Subordinate commits:* Fully decentralized. High overhead, making it less suitable for constrained links.
+*   **BoF and WG Coordination:** A Birds of a Feather (BoF) session on this topic is active. In the chat, **Erik Kline** (AD) and **Rick Taylor** agreed that the DTN working group should progress MLS for BPSec regardless of the BoF’s outcome.
+
+---
+
+## Decisions and Action Items
+
+*   **`draft-ietf-dtn-eid-pattern`:** The chairs will initiate a Working Group Last Call (WGLC) on the mailing list.
+*   **Early Multicast Allocation (`draft-ietf-dtn-udpcl`):** AD **Tommy Jensen** and the chairs will coordinate to resolve the outstanding IPv4/IPv6 multicast address early allocation.
+*   **SAND Multicast Endpoints (`draft-ietf-dtn-bp-sand`):** The chairs will contact the authors of the IMC/IAC specifications to resolve the pending multi-point messaging endpoint definitions.
+*   **CoreConf Integration:** **Javier** to post his team's findings on using CoreConf and CoreConf M2M for space networks to the DTN mailing list.
+*   **Future Session Requests:** Due to a highly congested agenda, the chairs will request two 2-hour slots for the next meeting (IETF 127 in San Francisco).
+
+---
+
+## Next Steps
+
+*   **SPAM Draft:** The chairs will issue a call for Working Group adoption on the mailing list.
+*   **YANG Validation:** The DTNMA design team will coordinate with NETMOD/YANG experts regarding native support for IEEE float types and potential type coercion workarounds for `union` types.
