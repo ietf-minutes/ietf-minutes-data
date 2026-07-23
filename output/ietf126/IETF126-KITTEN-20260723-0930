@@ -1,0 +1,57 @@
+# [KITTEN](../wg/kitten.html)
+
+## Summary
+
+The KITTEN Working Group met at IETF 126 to discuss the status of active SASL drafts, resolve outstanding feedback on `draft-ietf-kitten-sasl-ht`, and review two new proposals for Kerberos PKINIT regarding cryptographic deprecation and post-quantum cryptography (PQC) support.
+
+## Key Discussion Points
+
+### WG Document Status
+Alexey Melnikov presented the status of the active working group documents using the [Chairs' slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-kitten-chairs-slides-00):
+
+*   **`draft-ietf-kitten-password-storage`**: Currently in Working Group Last Call (WGLC) until the end of July. Members were urged to review and provide feedback, particularly regarding consistency with iteration counters in SCRAM-related documents.
+*   **`draft-ietf-kitten-scram-2fa`**: This draft was recently refreshed after expiring.
+*   **SCRAM KDF Document**: This newly adopted document allows SCRAM cryptographic parts to be replaceable. An open design question remains whether this will be defined as an update to SCRAM or if it will introduce new SASL mechanism names.
+*   **SASL Remember Me**: Currently expired. The working group is seeking a co-editor to help move this quick re-authentication mechanism forward.
+
+---
+
+### `draft-ietf-kitten-sasl-ht` (Hashed Token SASL Mechanism)
+The WGLC for `draft-ietf-kitten-sasl-ht` has concluded. While the document broke backward compatibility by renaming mechanism names from `HT` to `HT-*` (meaning there are currently no active implementations), there is strong interest in implementing it. 
+
+Simon Josefsson provided a detailed review, and the following resolutions were discussed:
+*   **HMAC over Transcript**: The draft missed covering the full transcript. This will be corrected in the next revision.
+*   **Authorization ID**: The text regarding authorization ID was unclear or missing. While there are proposed directions, this still requires more discussion.
+*   **TLS 1.3 Hashed Extension**: The current text is specific to TLS 1.2. It will be updated to reference TLS 1.3 appropriately.
+*   **Arbitrary Key-Value Pairs**: The permission of arbitrary key-value pairs was deemed too broad. Editors agreed to tighten the language, aligning it with extensibility patterns in other SASL mechanisms.
+*   **Channel Binding Advertisement**: Debate continues over where channel binding recommendation policies should reside (within the base specification or left as protocol-specific).
+
+---
+
+### PKINIT Cryptographic Deprecations and PQC Support
+A representative from Red Hat presented updates on two Kerberos-related proposals using the slide deck [PKINIT cryptographic deprecations and PQC support](https://datatracker.ietf.org/meeting/126/materials/slides-126-kitten-ietf-126-pkinit-cryptographic-deprecations-and-pqc-support-00).
+
+#### 1. Cryptographic Deprecations in PKINIT
+The first proposal aims to formally deprecate outdated and weak algorithms in PKINIT:
+*   **DH Transport**: Vulnerable to type attacks; already removed from MIT Kerberos and disabled by default in Heimdal and Windows Active Directory (via Credential Guard).
+*   **MODP Group 2**: A weak parameter already blocked in Fedora, RHEL, and Windows.
+*   **Octet String to KDF**: Deprecating the SHA-1-based KDF in favor of the SHA-2-based KDFs defined in RFC 8636, which provide better integrity protection.
+*   **PHX Checksum**: Transitioning the initial request checksum (KDC-REQ-BODY) from SHA-1 to SHA-2. This is already implemented in Microsoft, MIT Kerberos, and Heimdal.
+
+#### 2. Post-Quantum Cryptography (PQC) Support in PKINIT
+The second proposal introduces post-quantum key encapsulation mechanism (KEM) support to protect PKINIT against "harvest now, decrypt later" attacks:
+*   **Design**: Incorporates a KEM path (`campaft`) based on a previous recommendation by Nico Williams. To improve security, the KDF identifier has been moved to the signed portion of the response.
+*   **Transport & Size**: Post-quantum keys and signatures are significantly larger, necessitating a transition from UDP to TCP. 
+*   **Agility & Performance**: To avoid "guess and retry" round-trips, the proposal extends the element advertising PKINIT support in the initial client request so the client knows the KDC's supported parameter groups immediately.
+*   **Downgrade Protection**: Because KDC error messages are unsigned, downgrade protection will be enforced via client-side policies (e.g., requiring PQC throughout the exchange if a PQC certificate is used).
+*   **Implementation**: A prototype exists in MIT Kerberos, and a Wireshark parser was successfully created during the IETF 126 Hackathon.
+*   **Open Issues**: The draft has not yet been reviewed for anonymous PKINIT mode. Additionally, the advertised parameter list in initial errors is currently too large (over 2KB) because it includes literal MODP values; using identifiers instead of raw values is under consideration.
+
+## Decisions and Action Items
+
+*   **`draft-ietf-kitten-sasl-ht`**: Editors will produce a new revision addressing the feedback from Simon Josefsson (specifically HMAC transcript coverage, TLS 1.3 references, and key-value pair scope).
+*   **`draft-ietf-kitten-password-storage`**: Chair Alexey Melnikov to perform a review in his individual capacity. WG members are requested to review and verify consistency with the new SCRAM KDF drafts before the WGLC closes.
+
+## Next Steps
+
+*   **Adoption Calls**: The chairs (Alexey Melnikov and Ben) will coordinate with the AD and the community regarding the adoption of the two PKINIT proposals (Cryptographic Deprecations and PQC Support). Adoption calls are expected to be initiated on the mailing list in late August or September to accommodate the summer holidays.
