@@ -1,0 +1,131 @@
+# [BESS](../wg/bess.html)
+
+## Summary
+The BESS (BGP Enabled Services) Working Group met at IETF 126. The session was chaired by Matthew Bocci and Jeffrey Zhang, with Mankamana Prasad Mishra serving as secretary. The meeting covered the status of various working group drafts, followed by presentations and technical discussions on EVPN optimized ingress replication, first-hop security, unknown MAC routes, per-flow designated forwarder (DF) election, multicast router state synchronization, auto-discovery (EAD) multipath, dual MPLS/SRv6 service advertisements, SRv6 deployment migration, experimental route types, and interconnecting domains with IBGP.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status Update
+* **Presenters**: Matthew Bocci and Jeffrey Zhang
+* **Slides**: [WG Status Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-wg-status-update-02)
+* **Discussion**:
+  * **Passed WGLC with Issues**:
+    * `draft-ietf-bess-evpn-bfd`: Passed consensus but failed the implementation poll. Co-author Prasad Miriyala agreed to transition the document to Experimental status. An experiment must be defined in the draft.
+    * `draft-ietf-bess-evpn-mvpn-seamless-interop`: Waiting for write-up. Mankamana Prasad Mishra is waiting for the updated draft version to complete it.
+    * **EVPN control plane for Geneve**: Failed the implementation poll. It will be moved to Experimental status. Authors (led by Sami Boutros) need to define the experimental parameters.
+    * `draft-ietf-bess-ebgp-dmz`: Working Group Last Call. Susan Hares and Ketan Talaulikar confirmed that the individual who raised IPR concerns during IDR has verbally cleared it, and the confirmation has been forwarded to the BESS mailing list. Jeff Haas is shepherding.
+  * **Ongoing WG Drafts**:
+    * `draft-ietf-bess-bgp-multicast`: Waiting for `draft-ietf-bess-bgp-multicast-controller`. Jeffrey Zhang noted that Susan Hares is helping address comments on tunnel encapsulation attribute templates.
+    * `draft-ietf-bess-mup-safi`: BGP directorate review underway. Keyur Patel noted multiple implementations exist. Ketan Talaulikar reminded the working group that directorate reviews are meant for the entire working group to discuss, not just the authors.
+    * `draft-ietf-bess-evpn-ac-aware-bundling`: Authors need to resolve pending comments offline.
+    * **EVPN L2 Gateway Protocols**: Failed WGLC due to low response/review on the mailing list, despite declared implementations. Sasha Vainshtein confirmed deployment exists. The chairs will reissue the WGLC.
+    * `draft-ietf-bess-evpn-dpath`: BGP directorate review returned "not ready" comments, which must be addressed by authors.
+    * `draft-ietf-bess-rfc7432bis`: Jeffrey Zhang is preparing text for Jorge Rabadan to resolve outstanding comments.
+    * `draft-ietf-bess-evpn-modes-interop`: The chairs proposed merging this into the `draft-ietf-bess-rfc7432bis` document. Jorge Rabadan opposed the merge, noting that the modes draft covers Layer 3 features (under RFC 9135 and RFC 9136) which do not belong in `draft-ietf-bess-rfc7432bis`. Himanshu Shah requested that `draft-ietf-bess-rfc7432bis` include a delta/summary section of changes compared to RFC 7432 (Jorge Rabadan suggested an appendix).
+
+### 2. Extended Procedures for EVPN Optimized Ingress Replication
+* **Presenter**: Wen Lin
+* **Slides**: [draft-ietf-bess-extended-evpn-optimized-ir](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-draft-ietf-bess-extended-evpn-optimized-ir-00)
+* **Draft**: `draft-ietf-bess-extended-evpn-optimized-ir`
+* **Discussion**:
+  * Wen Lin recapped the draft's goals: introducing multi-homing procedures for NVO networks (VXLAN, MPLS over NVO) utilizing split-horizon rules (local bias or ESI label filtering). 
+  * The solution simplifies hardware lookup requirements by preventing the assisted replication (AR) replicator from forwarding traffic back to the originator's multi-homed peer. This is signaled using an AR Replicator Flag.
+  * Sasha Vainshtein asked whether these procedures apply to an SRv6 underlay. Wen Lin confirmed they can be extended. Jorge Rabadan noted that they are working on a proposal specifically for SRv6 and will publish it shortly.
+  * Himanshu Shah inquired why point-to-multipoint LSPs are not preferred over AR; however, it was noted that AR is already an RFC-defined mechanism.
+
+### 3. EVPN First Hop Security
+* **Presenter**: Krishna Swamy
+* **Slides**: [EVPN First Hop Security](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-evpn-first-hop-security-00)
+* **Draft**: `draft-ietf-bess-evpn-first-hop-security`
+* **Discussion**:
+  * Krishna Swamy presented updates to the draft, which addresses issues with DHCP snooping, ND/ARP inspection, and host mobility when hosts are multi-homed.
+  * The draft defines a new DHCP sync route carrying the binding state, lease times, and MAC/IP information. 
+  * Jakob Heitz noted that they are currently working on DHCPv6 prefix delegation and suggested exploring a unified sync route to avoid proliferating too many route types. Krishna Swamy agreed to collaborate.
+
+### 4. Applications and Procedures for the Unknown MAC Route in EVPN
+* **Presenter**: Krishna Swamy
+* **Slides**: [Applications and Procedures for the Unknown MAC Route in EVPN](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-applications-and-procedures-for-the-unknown-mac-route-in-evpn-00)
+* **Draft**: `draft-ietf-bess-evpn-umr-mobility`
+* **Discussion**:
+  * The draft clarifies MAC mobility procedures in DCI scenarios and defines symmetric IRB interactions, updating RFC 9014.
+  * Krishna Swamy requested that the chairs initiate a WGLC, noting that the document is well-supported by multiple vendors.
+
+### 5. Per-Flow EVPN Designated Forwarder Election
+* **Presenter**: Krishna Swamy
+* **Slides**: [Per-Flow EVPN Designated Forwarder Election](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-per-flow-evpn-designated-forwarder-election-01)
+* **Draft**: `draft-ietf-bess-evpn-per-mcast-flow-df-election`
+* **Discussion**:
+  * The draft addresses flow-based load balancing within a single VLAN for multi-homed PEs. Existing DF algorithms only balance across VLANs or multicast groups.
+  * The proposed algorithm uses hashing over the flow and a modulo operation based on active PEs to determine the DF, avoiding any state maintenance in the control/forwarding plane.
+  * Version 02 was posted with clarified motivations and failure scenario examples. Krishna Swamy requested a WGLC.
+
+### 6. Multicast Router State Synchronization in EVPN Networks
+* **Presenter**: Jorge Rabadan
+* **Slides**: [IETF126_BESS_draft-jot-evpn-mcast-router-sync-00](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-ietf126-bess-draft-jot-evpn-mcast-router-sync-00-00)
+* **Draft**: `draft-jot-evpn-mcast-router-sync` (Individual Draft)
+* **Discussion**:
+  * Jorge Rabadan presented a solution to synchronize state for multi-homed multicast routers (querier or PIM neighbors), which is currently not solved in EVPN multi-homing.
+  * The draft proposes a new "Multicast Router Discovery" (MRD) route type and a PIM Hello Options sub-TLV inside the Tunnel Encapsulation Attribute.
+  * Mankamana Prasad Mishra recommended identifying the bare minimum PIM information that needs synchronization to avoid excessive BGP complexity.
+  * Prasad Miriyala questioned the need to synchronize Gen ID, as it changes on process restarts. Jorge Rabadan replied that syncing Gen ID is critical to prevent redundant PIM packet generation during PE switchovers.
+
+### 7. Multipath for EVPN Ethernet Auto-Discovery Routes
+* **Presenter**: Chisheng Li
+* **Slides**: [Multipath for EVPN Ethernet Auto-Discovery Routes](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-multipath-for-evpn-ethernet-auto-discovery-routes-00)
+* **Discussion**:
+  * Chisheng Li explained that when multiple PEs on an Ethernet Segment advertise Type 1 EAD routes with the same RD, BGP path selection suppresses all but one, leading to failure in aliasing (degrading ECMP to single-active), failure in mass withdrawal (blackholing traffic), and split-horizon loops.
+  * The draft mandates that BGP speakers and Route Reflectors advertise, reflect, and install all valid EAD routes (with non-zero ESIs) without requiring ADD-PATH negotiation.
+  * Sasha Vainshtein argued that this issue does not exist if networks follow standard RFC 7432 rules, which mandate unique Type 1 RDs based on the PE's IP address. Jeffrey Zhang agreed that unique RD per VRF is already a requirement but agreed to move the discussion to the list.
+
+### 8. Dual MPLS and SRv6 Service Advertisement
+* **Presenter**: Himanshu Shah
+* **Slides**: [Dual MPLS and SRv6 Service Advertisement - Himanshu Shah](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-dual-mpls-and-srv6-service-advertisement-himanshu-shah-02)
+* **Discussion**:
+  * Himanshu Shah presented a proposal to ease migration from MPLS to SRv6. Currently, RFC 9252 requires dual BGP sessions to advertise MPLS and SRv6 services separately.
+  * The proposal introduces a BGP capability exchange to preserve the MPLS service label in the BGP prefix SID, reducing control-plane overhead by consolidating dual-plane advertisement into a single session.
+  * Jorge Rabadan argued that RFC 9252 is clear and that disabling transposition to achieve this increases BGP overhead. Jakob Heitz agreed that the proposal eliminates BGP update packing and complicates next-hop v4/v6 migration.
+  * Sasha Vainshtein raised compatibility issues regarding overlay features (e.g., assisted ingress replication in SRv6 vs. P2MP MLDP in MPLS) when advertised in a single route.
+
+### 9. SRv6 Deployment / Migration Procedures
+* **Presenter**: Jakob Heitz
+* **Slides**: [draft-ietf-srv6ops-srv6-deployment_slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-draft-ietf-srv6ops-srv6-deployment-slides-00)
+* **Draft**: `draft-ietf-srv6ops-srv6-deployment` (SRv6OPS Working Group)
+* **Discussion**:
+  * Jakob Heitz presented on behalf of the authors, describing the seamless, live migration of networks from MPLS to SRv6.
+  * The procedure utilizes dual BGP sessions (v4 and v6) with different local preferences to shift data-plane paths at a per-prefix/per-VPN granularity without packet loss.
+  * Jorge Rabadan requested including the clear example presented in the slides into the draft and referencing existing BESS service gateway drafts. Jakob Heitz agreed.
+
+### 10. Reservation of EVPN Route Types for Experimental Use
+* **Presenter**: Jeff Tantsura
+* **Slides**: [Reservation of EVPN Route Types for Experimental Use](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-reservation-of-evpn-route-types-for-experimental-use-00)
+* **Discussion**:
+  * Jeff Tantsura proposed allocating a block of 32 EVPN route types for experimental use (under RFC 8126 rules) to allow rapid prototyping and prevent vendor squatting.
+  * Jorge Rabadan and Keyur Patel raised concerns regarding non-upgraded Route Reflectors, which might reject or fail to validate these route types. Jorge suggested establishing minimum length/key rules (as done with vendor-specific types).
+  * Jeff Haas warned about the security risks of experimental routes leaking out and colliding, recommending explicit capability negotiation and versioning. Ketan Talaulikar clarified that the range is strictly for experimentation and not for production deployment.
+
+### 11. Interconnecting Domains with IBGP
+* **Presenter**: Moshiko Nayman (Remote)
+* **Slides**: [Interconnecting Domains with IBGP](https://datatracker.ietf.org/meeting/126/materials/slides-126-bess-interconnecting-domains-with-ibgp-00)
+* **Discussion**:
+  * Moshiko Nayman presented a method to split large-scale service provider networks into smaller, isolated domains using Domain Border Routers (DBRs) while retaining a single, flat AS number.
+  * The framework reuses Inter-AS VPN options (A, B, and C) but runs over IBGP with next-hop-self. It is currently deployed in live networks.
+  * Keyur Patel asked about loop-prevention topologies. Moshiko answered that loop prevention is managed via a single cluster ID per domain.
+  * Jeff Haas noted that the BGP forwarding reflector mechanism is being standardized in IDR (`draft-ietf-idr-bgp-fwd-rr`), meaning the remaining use-case guidance belongs in BESS. 
+  * Gunter Van de Velde agreed, stating BESS is the appropriate home for VPN deployment and architectural guidance. Ketan Talaulikar requested the chairs schedule an expedited BESS adoption call.
+
+---
+
+## Decisions and Action Items
+* **`draft-ietf-bess-evpn-bfd`**: Authors will update the draft to transition it to Experimental status and define the experiment.
+* **`draft-ietf-bess-ebgp-dmz`**: Once the BESS list formally receives the written IPR clearance (forwarded by Ketan Talaulikar), Jeff Haas will proceed with shepherding.
+* **`draft-ietf-bess-evpn-modes-interop` & `draft-ietf-bess-rfc7432bis`**: No merge will take place. However, authors of `draft-ietf-bess-rfc7432bis` will consider adding a "changes from RFC 7432" appendix.
+
+---
+
+## Next Steps
+* The chairs will reissue a Working Group Last Call for the **EVPN L2 Gateway Protocols** draft.
+* The authors of `draft-ietf-bess-extended-evpn-optimized-ir` will follow up with the shepherd to proceed with WGLC.
+* The authors of `draft-ietf-bess-evpn-first-hop-security`, `draft-ietf-bess-evpn-umr-mobility`, and `draft-ietf-bess-evpn-per-mcast-flow-df-election` will formally email the chairs to request WGLC.
+* The chairs will initiate discussions on adopting the **Interconnecting Domains with IBGP** draft in BESS, in coordination with the IDR working group.

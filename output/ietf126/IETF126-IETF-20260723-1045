@@ -1,0 +1,65 @@
+# [IETF](../wg/ietf.html)
+
+## Summary
+Bill Mulligan (community builder for Cilium and ebpf.io, and chair of the eBPF Foundation governing board) presented on the state, evolution, and future of eBPF. The presentation covered the core mechanics of eBPF (safety, performance, and memory sharing), its application in cloud-native container environments, and its growing importance in runtime and AI security. Mulligan introduced upcoming community and kernel features, including Cisco's "LiveProtect" vulnerability mitigation, `sched_ext` custom scheduling, NetKit, BPF tokens, and BPF arenas. The session concluded with a Q&A session discussing comparisons to WebAssembly, the state of Rust bindings (Aya), and resolving hook conflicts.
+
+## Key Discussion Points
+
+### What is eBPF?
+* **The Kernel-User Space Paradox**: The Linux kernel has complete system visibility but is slow to innovate (5-year deployment cycle). User space offers high programmability but lacks direct system-resource visibility. Traditional kernel modules are unsafe and unstable, as evidenced by the 2024 CrowdStrike global IT outage.
+* **Programmable Kernel**: eBPF functions like "JavaScript for the kernel," allowing users to safely and efficiently run custom bytecode at specific kernel event hooks (e.g., system calls, network inputs, kprobes).
+* **Core Pillars**:
+  * **Safety**: Guided by the eBPF verifier, which guarantees that programs run to completion without crashing the system or accessing out-of-bounds memory.
+  * **Performance**: Verified programs are Just-In-Time (JIT) compiled to run as fast as native kernel code.
+  * **Memory Management**: High-performance sharing of state and data across the user-kernel boundary.
+* **Pervasiveness**: eBPF is highly mature (over 12 years old) and is already deployed globally on billions of devices, including every Android phone for network statistics collection.
+
+### Cloud Native & Kubernetes
+* Containers run on a shared kernel. eBPF (e.g., via the Cilium project) observes and instruments container operations (networking, security, etc.) directly from the kernel without modifying application code or configurations.
+
+### Security & Automated Patching
+* **Vulnerability Growth**: Kernel security reports are increasing exponentially. Linus Torvalds recently updated the security policy: because reports cannot be processed quickly enough under embargo, they are treated as standard bugs, assuming that if one researcher has found a bug, others have too.
+* **Rapid Mitigation**: Cloudflare demonstrated patching 100% of its production servers against the `coop_fail` vulnerability within two days of public disclosure (April 29 to May 1) using eBPF.
+* **Cisco LiveProtect**: A stop-gap security approach using eBPF to deploy atomic "shields" to mitigate vulnerabilities in real-time without reboots.
+* **Automation Oversight**: 
+  * *Shane Kerr* commented in the chat: "Deploying hastily written patches fully automated? You will certainly not regret deploying patches without oversight."
+  * *Junxiao Shi* added: "We know what happens after fully automated deployment of hastily generated data: 2024 CrowdStrike-related IT outages."
+
+### AI & eBPF
+* **AI Patch Reviews**: eBPF was the first Linux kernel subsystem to adopt AI for patch reviews to reduce maintainer workload.
+* **Verifier Loop**: Developers often struggle to pass the verifier. AI models can now process verbose verifier logs, write matching code, test it against the verifier, and auto-generate compliant patches.
+* **Sandboxing**: Based on academic research by Roblox, eBPF is being used to sandbox AI models, using Linux primitives to scope what autonomous agents can execute.
+
+### Technical & Community Roadmap
+* **Custom Schedulers (`sched_ext`)**: Allows developers to bypass the Completely Fair Scheduler (CFS) to write custom, workload-specific schedulers (e.g., optimized for gaming vs. web throughput).
+* **NetKit**: A newly developed eBPF mechanism that eliminates container virtualization overhead, bringing container network throughput and latency to bare-metal speeds.
+* **BPF Tokens**: Enables granular scoping of eBPF permissions away from broad privileges like `CAP_SYS_ADMIN` or `CAP_BPF` to exact required capabilities.
+* **Program Signing**: Integrates eBPF into the trusted compute platform, preventing attackers from injecting malicious eBPF programs.
+* **BPF Arenas**: Enables zero-copy memory pages shared directly between user space and eBPF programs.
+* **Real-World Impact**: 
+  * **Meta**: Runs over 180 BPF programs across 50% of its servers. Saved an entire data center's worth of server capacity through a single-character profiling modification.
+  * **Seznam**: Switched its production load balancer from IPVS to Cilium's Layer 4 XDP-based load balancer, achieving twice the throughput with 36 times less CPU usage.
+
+---
+
+## Q&A Session
+
+* **WebAssembly (Wasm) vs. eBPF**:
+  * *Jinsha* asked why the kernel chose eBPF over WebAssembly, noting that having a unified bytecode technology would simplify learning.
+  * *Bill Mulligan* clarified that eBPF and Wasm target different areas. eBPF runs safely in the kernel (hooking into kprobes/uprobes), whereas Wasm is designed for user space. They are complementary; for example, CNCF's Inspector Gadget uses Wasm modules to package and distribute eBPF programs.
+
+* **Rust Bindings (Aya)**:
+  * *Julius* noted that when writing XDP programs in Rust, the bindings (via Aya) felt immature compared to C.
+  * *Bill Mulligan* acknowledged that C has the best support because the kernel is written in C. Go has the second-best support because major products (Cilium, Tetragon) are Go-based. Rust bindings are newer but highly active. Google and Alexei Starovoitov are heavily invested in Rust for BPF because the Rust type system can catch errors before they ever hit the verifier.
+
+* **Hook Conflicts**:
+  * *Paul* asked how conflicts and race conditions are handled when multiple independent tools try to hook into the same eBPF execution point.
+  * *Bill Mulligan* advised that currently, the best practice is to avoid running two tools that perform the same task. The eBPF ecosystem is still working to standardize program ordering, which remains a complex, unresolved issue—particularly when trying to determine if third-party hooks run before or after Cilium's networking data path.
+
+---
+
+## Decisions and Action Items
+* No formal working group decisions were made during this presentation.
+
+## Next Steps
+* The Moderator highlighted that there is an active IETF BPF working group standardizing the eBPF language. Participants interested in evolving the language specification are encouraged to contribute to the IETF BPF mailing list.

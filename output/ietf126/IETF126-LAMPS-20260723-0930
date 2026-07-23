@@ -1,0 +1,138 @@
+# [LAMPS](../wg/lamps.html)
+
+## Summary
+
+The LAMPS (Limited Additional Mechanisms for PKIX and SMIME) Working Group met at IETF 126 to discuss active working group drafts, potential new adoptions, and updates to cryptographic standards. The agenda covered updates to attestation freshness, certificate discovery, S/MIME Version 4.0 handling, one-signature certificates, parameterized SIGNED types, composite signatures, and FrodoKEM integrations. Due to constraints, the meeting proceeded at a brisk pace, leaving several topics to be further detailed on the mailing list.
+
+---
+
+## Key Discussion Points
+
+### 1. Chair Introduction
+* **Presenter:** Russ Housley
+* **Slides:** [Chair Introduction](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-chair-introduction-00)
+* **Discussion:**
+  * Russ reviewed the Note Well and reminded on-site participants to use the sign-in tool to ensure adequate room scaling for future sessions.
+  * Recent publications and documents currently in the RFC Editor queue were reviewed. It was noted in chat that RATS CMW was published as RFC 9999 and another related specification was published as RFC 10007.
+
+### 2. Attestation Freshness
+* **Presenter:** Hannes Tschofenig
+* **Slides:** [Attestation Freshness](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-attestation-freshness-00)
+* **Draft:** [draft-ietf-lamps-attestation-freshness](https://datatracker.ietf.org/news/64628/) (referred to as `draft-ietf-lamps-attestation-freshness`)
+* **Discussion:**
+  * Hannes presented the structural updates in version -08, which now provides a single architecture with harmonized encoding across EST, CMC, and CMP. 
+  * The focus remains on nonce-based freshness on the client-to-relying-party leg, leaving the verifier interactions in-scope for the RATS WG. 
+  * Extensibility has been built in to handle varying nonce lengths and convey optional attestation metadata (e.g., TPM keys and signature algorithms).
+  * Multiple attesters have been simplified to a single-nonce model leveraging composite attestation models currently being defined in the RATS WG.
+  * **Q&A:**
+    * Mike Ounsworth raised privacy questions regarding reverse proxy logging of attestation evidence and whether the extensibility mechanism could be used to pass encryption certificates down in the nonce request or response. Hannes confirmed it is possible via the response.
+    * An unnamed participant asked about handling multiple TEEs with different verifiers requiring different nonces. Hannes noted that separate exchanges would be required, as keeping composite nonces in one transaction is highly complex.
+    * Discussion occurred regarding the distinction between claims freshness and nonce freshness. Hannes clarified that the document does not mandate how the attestation technology guarantees claims freshness, only that the nonce is fresh.
+
+### 3. Certificate Discovery
+* **Presenter:** John Gray
+* **Slides:** [Certificate Discovery](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-certificate-discovery-00)
+* **Draft:** [draft-ietf-lamps-certdiscovery](https://datatracker.ietf.org/news/64628/) (referred to as `draft-ietf-lamps-certdiscovery`)
+* **Discussion:**
+  * John reported that the author groups from this draft and the chameleon draft have merged, resulting in six authors.
+  * The certificate hash was removed from version -02 since RFC 9763 already defines binding properties, simplifying edge-case processing.
+  * The team is working through 12 open issues raised during reviews, notably by Daan Van de Woestijne.
+  * Russ Housley cautioned that having more than five authors can introduce friction in the IESG approval process and advised addressing this before submission.
+
+### 4. One Signature Certificates
+* **Presenter:** Stefan Santesson
+* **Slides:** [One Signature Certs](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-one-signature-certs-02)
+* **Draft:** [draft-ietf-lamps-one-signature-certs](https://datatracker.ietf.org/news/64628/) (referred to as `draft-ietf-lamps-one-signature-certs`)
+* **Discussion:**
+  * Stefan described the profile designed for ephemeral signing keys where a key is generated, a certificate is issued for a single signature, and the key is then deleted.
+  * Updates in the latest version change "must never expire/revoke" to recommendations, acknowledging that legacy infrastructure may still require pointers to revocation/expiration fields even if they are practically useless.
+  * The binding type identifier is being transitioned from a UTF-8 string to an ASN.1 Object Identifier (OID) to align with standard PKIX practices.
+  * **Q&A:**
+    * Sophie Schmieg questioned why an ephemeral key pair and signature are needed at all instead of simply registering a document hash. Stefan and Russ explained that this profile is designed so that existing signature verification engines can validate the output exactly as they do standard PKIX signatures without modifications. Stefan agreed to clarify this design rationale in the document.
+
+### 5. S/MIME Version 4.0 Certificate Handling / Message Specifications
+* **Presenter:** Sean Turner
+* **Slides:** [S/MIMEbis (Certificates and Message Specifications)](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-smimebis-certificates-and-message-specifications-00)
+* **Draft:** [draft-ietf-lamps-rfc8550bis](https://datatracker.ietf.org/news/64628/) (referred to as `draft-ietf-lamps-rfc8550bis`)
+* **Discussion:**
+  * Sean announced that the working group adoption process was completed and the newly birthed WG draft would be published shortly. The source format has been successfully migrated from XML to Markdown.
+  * **Falco Attack Mitigation:** Two options were presented:
+    * *Option 1:* Require specific signed attributes (like message-digest and signing-time) to be present and mandate that verifiers enforce this.
+    * *Option 2:* Transition from using `ID data` to the newer `MIME data` content type.
+    * Participants (including Daniel Gillmor and Russ Housley) noted that transitioning to `MIME data` (Option 2) represents a substantial backwards-compatibility hurdle. The room coalesced around a two-phase strategy: requiring generators to use signed attributes first, while allowing verifiers flexibility for legacy signatures.
+  * **Cryptographic Changes:** 
+    * Dropping `EnvelopedData` in favor of AES-GCM (which cannot be done with traditional `EnvelopedData`).
+    * Deprecating old RSA encryption.
+    * Upgrading the ASN.1 modules from 1988 syntax to modern standards.
+  * **Mandatory-to-Implement (MTI) Algorithms:** Sean suggested delaying the selection of PQ and hybrid MTI algorithms until later in the document life cycle to allow industry consensus to form first. Mike Ounsworth agreed that writing rigid MTI text often ends up being a nominal exercise that doesn't replace vendor interoperability testing. AD Deb Cooley reminded the group that because S/MIME is not a real-time negotiated protocol, knowing what the recipient supports is vital, making the eventual definition of MTIs necessary.
+
+### 6. FN-DSA Certificates & CMS
+* **Presenter:** Sean Turner
+* **Drafts:** `draft-ietf-lamps-fn-dsa-certificates` and `draft-ietf-lamps-cms-fn-dsa`
+* **Discussion:**
+  * Sean noted that these documents are completely gated by the release of the final FIPS specification for FN-DSA by NIST. No active development or agenda time will be spent on these drafts until that specification is published.
+
+### 7. EST Renewal Info
+* **Draft:** `draft-ietf-lamps-est-renewal-info`
+* **Discussion:**
+  * No slides were presented. The authors are actively working through received comments and intend to publish an updated draft prior to the next meeting.
+
+### 8. CMS FrodoKEM
+* **Presenter:** Yulin
+* **Slides:** [lamps-cms-frodokem](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-lamps-cms-frodokem-00)
+* **Discussion:**
+  * The draft remains parked waiting on formal CFRG recommendations for FrodoKEM usage. A reference to the newly published ISO standard was added as informative text.
+  * Sean Turner noted in chat that the CFRG FrodoKEM draft recently added the capability to store the private key as a seed. He proposed that the LAMPS draft should be updated to address this design choice early to avoid implementation misalignment.
+
+### 9. Updated Parameterized SIGNED ASN.1 Type for X.509 (PKIX)
+* **Presenter:** Sean Turner
+* **Slides:** [Updated Parameterized SIGNED ASN.1 Type for X.509 (PKIX)](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-updated-parameterized-signed-asn1-type-for-x509-pkix-00)
+* **Discussion:**
+  * Sean explained a bug in the parameterized `SIGNED` type defined in RFC 5912. The `containing` clause in the signature `BIT STRING` can point to an absent value (such as optional parameters in certain signature algorithms, including composite/ML-DSA types). Decoders compiled against these modules can fail or crash when encountering objects where this type is absent.
+  * The proposed fix is to issue a simple draft introducing a new ASN.1 module that strips out these problematic constraints for DSA, ECDSA, and others.
+  * An alternative approach by Mike StJohns proposes changing the constraint to refer to the "to-be-signed" data accompanied by explanatory prose.
+  * Real-world compilers have already tripped on this during composite ML-DSA experiments, validating the need for a fix.
+
+### 10. Composite Public Key Context (PKC)
+* **Presenter:** John Gray
+* **Slides:** [Composite Public Key Context (PKC)](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-composite-public-key-context-pkc-00)
+* **Discussion:**
+  * John presented a mechanism to prevent key reuse and cross-key forgery attacks in composite public keys. By defining an application-specific context parameter equal to the hash of the composite public key, verifiers can cryptographically guarantee that the component keys have not been mixed or substituted.
+  * This is intended as an informational specification.
+
+### 11. Composite FNDSA and LMS
+* **Presenter:** John Gray
+* **Slides:** [Composite FNDSA and LMS](https://datatracker.ietf.org/meeting/126/materials/slides-126-lamps-composite-fndsa-and-lms-00)
+* **Discussion:**
+  * John introduced a proposal to combine FN-DSA and LMS into a PQ-PQ composite signature. This aims to leverage the benefits of stateful hash-based signatures (LMS) and lattice signatures (FN-DSA). 
+  * The combined signature size is 30% to 40% smaller than ML-DSA. The draft proposes three standard parameter sets.
+  * **Q&A:**
+    * Scott asked why SHAKE was chosen over SHA-2. John responded that it was selected to match the underlying LMS parameters and reduce the overall cryptographic library footprint.
+    * Viktor raised concerns about private key serialization (single seed vs. independent seeds), pointing out parallels to the HPKE discussions. John noted that the LMS private key format is not fully specified and would likely require a separate document.
+    * Flo Driscoll, Alicja Kario, and Sophie Schmieg spoke strongly against the proposal. They cited the lack of a clear use case, the substantial complexity of state management in LMS, long key generation times for FN-DSA, and the inability to use seeds for FN-DSA.
+    * Jean-Pierre Fiszman (co-author) argued that there are niche industrial and IoT customers using LMS who want a non-state-reliant backup algorithm like FN-DSA to safeguard against state-loss vulnerability.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-lamps-one-signature-certs`**:
+  * **Decision:** The binding type will be changed from a UTF-8 string to an ASN.1 OID.
+  * **Action Item:** Stefan Santesson to update the draft, generate new certificate examples, and prepare the document for Working Group Last Call (WGLC).
+* **`draft-ietf-lamps-rfc8550bis`**:
+  * **Decision:** The draft was successfully adopted by the working group.
+  * **Action Item:** Sean Turner to coordinate the transition to Markdown and submit the initial working-group-approved version.
+* **FrodoKEM in CMS**:
+  * **Action Item:** Sean Turner to send an email to the list proposing updates to address private key seed formats to align with CFRG developments.
+* **Updated Parameterized SIGNED ASN.1 Type for X.509**:
+  * **Action Item:** Chairs to issue a call for adoption on the mailing list.
+* **Composite Public Key Context (PKC)**:
+  * **Action Item:** Chairs to issue a call for adoption on the mailing list.
+
+---
+
+## Next Steps
+
+* **`draft-ietf-lamps-certdiscovery`**: The authors need to consolidate feedback from reviews (including comments from Daan Van de Woestijne), resolve the remaining 12 open issues, add example use cases, and subsequently request a WGLC.
+* **`draft-ietf-lamps-est-renewal-info`**: The authors will publish an updated version addressing outstanding comments before the next IETF meeting.
+* **Composite FNDSA and LMS**: Discussion regarding the utility, security properties, and potential adoption of this PQ-PQ combination will continue on the mailing list due to strong mixed feedback during the session.

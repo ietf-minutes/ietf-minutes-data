@@ -1,0 +1,93 @@
+# [FANN](../wg/fann.html)
+
+## Summary
+
+The first session of the Fast Network Notifications (FANN) Working Group focused on aligning the group with its charter, reviewing its first milestone, and discussing several use cases, requirements, and gap analyses. The primary goal of the session was to lay the groundwork for adopting the initial problem statement, requirements, and gap analysis document (originally adopted in the RTGWG).
+
+Key topics discussed included:
+* Administrative and charter overviews.
+* Fast network notifications problem statement and gaps (focusing on AI/ML workloads).
+* ISP interconnection scenarios and control plane vs. data plane reaction times.
+* Data Center Interconnect (DCI) congestion notifications (Fast CNP and IP Pause).
+* Flow control collaboration across Data Center Networks (DCNs) and Wide Area Networks (WANs).
+* Stability guarantees in per-packet load balancing (packet spraying) networks.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome & Introduction
+* **Presenter**: Carlos Bernardos (Co-chair)
+* **Slide Deck**: [Chairs' introduction](https://datatracker.ietf.org/meeting/126/materials/slides-126-fann-chairs-introduction-00)
+* **Discussion**: 
+  * Carlos introduced the working group's charter, deliverables, and upcoming milestones. 
+  * The priority deployment scenarios are Data Centers (DC) and Data Center Interconnects (DCI).
+  * The group's immediate milestone (August) is to adopt the problem statement, requirements, and gap analysis document. This document will serve as an informational foundation and will not be published as an RFC.
+  * Solution work will only begin after the working group last call on the requirements and framework documents.
+
+### 2. Problem Statement, Requirements, and Gap Analysis
+* **Presenter**: Jie Dong
+* **Slide Deck**: [Fast Network Notifications: problem statement, requirements and gap analysis](https://datatracker.ietf.org/meeting/126/materials/slides-126-fann-fast-network-notification-problem-statement-00)
+* **Discussion**:
+  * Jie Dong explained that AI/ML training clusters require ultra-low latency and high throughput. Standard mechanisms like BFD are too slow (taking tens of milliseconds), and fast reroute (FRR) is not aware of path quality, potentially causing backup path congestion.
+  * Four major gaps were identified: slow dissemination, coarse-grained signaling, limited visibility, and high overhead/scalability issues.
+  * In the chat, Jeffrey Haas noted that BFD's limitation is more about implementation scaling choices than protocol capabilities (which support microsecond timers).
+  * Wim Hendrickx (Nokia) raised concerns about security/authentication when routers send direct notifications and suggested aligning with back-to-sender (BTS) work in IEEE/UEC.
+  * Jeff Tantsura (NVIDIA) cautioned against nested recovery layers (similar to SDH over ATM over IP) and emphasized understanding application-layer feedback loops (e.g., RDMA queue pairs).
+  * In the chat, Joel Halpern raised concerns regarding PFC explicit lifetimes relative to WAN propagation latency, noting that trigger thresholds and damping will be critical.
+  * Carolina Caeiro asked about the definition of "fine-grained network status." Jie Dong and Mike McBride clarified that it refers to quantifiable metrics such as link utilization, queue length, and level of congestion.
+
+#### Session Polls:
+* **Poll 1**: *Have you read or reviewed this document (or the one adopted in the RTGWG)?*
+  * Yes: 30 | No: 7 | No Opinion: 0 (Total: 73)
+* **Poll 2**: *Do you think this document forms a good basis for adoption?*
+  * Yes: 29 | No: 0 | No Opinion: 0 (Total: 74)
+
+### 3. Reflections on Interconnection Scenarios
+* **Presenter**: Luis Contreras
+* **Slide Deck**: [Reflections on interconnection scenarios](https://datatracker.ietf.org/meeting/126/materials/slides-126-fann-reflections-on-interconnection-scenarios-00)
+* **Discussion**:
+  * Focuses on the ISP angle of interconnecting high-capacity links (moving to 400G/800G/1.6T). Unexpected traffic changes or link failures require rapid first-response mitigation to prevent cascading issues across domains.
+  * Examples included triggering BGP graceful shutdown (RFC 8336) or applying local dynamic policies.
+  * Jeffrey Haas commented that any control plane mechanism (like BGP) operates on a second-level timescale and is too slow for "fast" reactions (microsecond/millisecond range). Control planes are the wrong place for this class of mitigation.
+  * Jie Dong asked whether this applies within a single domain or across administrative boundaries. Luis replied that starting with intra-domain reactions to external interconnection triggers is the logical first step to avoid multi-domain trust issues.
+  * Jeff Tantsura noted that this use case should drive flexible encoding (such as TLVs) and considerations of stateful vs. stateless notification behaviors.
+
+### 4. Problems and Gap Analysis for DCI Congestion Notification
+* **Presenter**: Xiaomi
+* **Slide Deck**: [Problems and gap analysis for DCI congestion notification](https://datatracker.ietf.org/meeting/126/materials/slides-126-fann-fast-cnp-and-ip-pause-00)
+* **Discussion**:
+  * Discussed RoCEv2 Congestion Notification Packets (CNPs) and Priority-based Flow Control (PFC). 
+  * In long-haul DCI, sending ECN-marked packets to the receiver to trigger a CNP introduces a round-trip time delay. A direct "Fast CNP" from the switch to the sender avoids this, but requires switches (like spine switches or DC gateways) to maintain a stateful mapping of Source Queue Pairs (QP) and Destination QPs.
+  * Houyu (Futurewei) asked if end-host notification falls under the FANN charter, noting that Fast CNP impacts end-to-end RoCEv2 behavior and that long-haul DCI latencies complicate standard ECN. Xiaomi confirmed that notifying end-hosts is within charter and crucial for operators.
+  * Jeff Tantsura pointed out that under IBTA specifications, switches do not need to maintain stateful mappings for QP translation; they parse the packet and reverse the fields.
+
+### 5. Flow Control Collaboration Across DCNs and WAN
+* **Presenter**: Jun Xinha
+* **Slide Deck**: [Use cases and Requirement for Flow Control Collaboration Across DCNs and WAN](https://datatracker.ietf.org/meeting/126/materials/slides-126-fann-use-cases-and-requirement-for-flow-control-collaboration-across-dcns-and-wan-00)
+* **Discussion**:
+  * Outlined use cases for interworking PFC in the DC with Fine-Grained Flow Control (FGFC) in the WAN to support geographically distributed AI training.
+  * Presented a buffer requirement formula for WAN edge nodes based on RTT, detection time, and peak information rate (PIR).
+  * Takumi (NTT) raised a concern that the formula implies massive, expensive hardware buffer requirements (gigabytes of output buffer) if scaling to hundreds of tenants over 500 km. Jun Xinha agreed to discuss the scaling limits offline.
+
+### 6. Stability Guarantees in Per-Packet Load Balancing Networks
+* **Presenter**: Faye
+* **Slide Deck**: [Ability requirements for stability guarantees in per-packet load balancing networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-fann-ability-requirements-for-stability-guarantees-in-per-packet-load-balancing-networks-00)
+* **Discussion**:
+  * Packet spraying (spraying packets of a single flow across multiple paths) improves load balancing but breaks assumptions about out-of-order delivery.
+  * Under packet spraying, out-of-order arrival is normal, meaning receivers cannot easily identify packet loss without waiting for a timeout.
+  * Requirements include: inband anomaly detection (locating loss without replaying packets), fast fault notification, and explicit packet loss signals directly to the source NIC to improve retransmission efficiency.
+  * There was no Q&A due to time constraints.
+
+---
+
+## Decisions and Action Items
+
+* **Working Group Adoption**: The chairs will issue a formal working group adoption call on the mailing list for the problem statement, requirements, and gap analysis document (originally developed in the RTGWG and submitted as an individual draft in FANN).
+
+---
+
+## Next Steps
+
+* Move detailed technical discussions regarding stateful vs. stateless notification mechanisms, RoCEv2/IBTA specifications, and WAN buffer scaling limits to the FANN mailing list.
+* Upon successful adoption of the problem statement, the working group will shift focus toward defining the FANN framework baseline document ahead of the November meeting.
