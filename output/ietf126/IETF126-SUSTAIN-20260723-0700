@@ -1,0 +1,100 @@
+# [SUSTAIN](../wg/sustain.html)
+
+## Summary
+
+The SUSTAIN (Sustainability at the Internet) Research Group met at IETF 126. This session marked its transition from a proposed research group to an officially approved IRTF Research Group. The meeting featured presentations on carbon-aware DNS server selection, flow-level network carbon footprint measurements, dynamic frequency scaling for network switches, environmental dimensions beyond carbon, and a proposed "sustainability" well-known URI. The session concluded with a comprehensive report from the pre-IETF Passau workshop, which investigated the intersection of the Internet and the electricity grid.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and RG Status Update
+* **Presenters**: Michael Welzl, Eve Schooler, Ali Rezaki
+* **Slide Deck**: [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-chair-slides-01)
+* **Details**: The co-chairs announced that the Internet Architecture Board (IAB) officially approved the transition of SUSTAIN from a proposed research group to a full IRTF Research Group. 
+* **Group Librarian**: Hesham El Bakoury was introduced in a new role as the group "Librarian" to help curate and maintain reading lists on the sustainability wiki.
+
+### 2. Leveraging DNS for Carbon Aware Server Selection
+* **Presenter**: Mirsha Chakiri
+* **Slide Deck**: [Leveraging DNS for Carbon Aware Server Selection](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-leveraging-dns-for-carbon-aware-server-selection-01)
+* **Details**: Investigated using DNS geographical load balancing to reduce the carbon footprint of services. The research measured 40 different domains across 255 globally distributed vantage points, using IP geolocation and marginal carbon intensity data (via WattTime API).
+* **Strategies Evaluated**:
+  * *Single Resolver Greenest*: Yielded modest carbon savings (up to 17%) with negligible RTT impact (less than 0.1 ms).
+  * *Multi-Resolver Greenest*: Aggregated IP addresses across multiple resolvers, yielding higher carbon savings but increasing selection amplification (up to 9x workload on greener IPs) and showing minimal RTT impact (1-2 ms).
+  * *Global Greenest* (Theoretical Upper Bound): Allowed unconstrained selection globally, leading to high carbon savings (95% average) but unacceptable RTT increases (100-200 ms) and extreme selection amplification (27x workload concentration).
+* **Discussion**:
+  * Michael Welzl and Renzo Navas noted in the chat that the original PDF uploaded to the datatracker had display issues, which was resolved during the meeting by uploading an updated PDF.
+  * Next steps include evaluating Carbon-Aware DNS using realistic query logs, analyzing routing path effects, and introducing adaptive TTLs based on carbon intensity variation.
+
+### 3. From Measurement to Emissions: Assessing the Carbon Footprint of Traffic Flows
+* **Presenter**: Sou San
+* **Slide Deck**: [From Measurement to Emissions: Assessing the Carbon Footprint of Traffic Flows](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-from-measurement-to-emissions-assessing-the-carbon-footprint-of-traffic-flows-00)
+* **Details**: Presented research mapping router and switch traffic statistics to power consumption without requiring specialized power distribution units (PDUs). A linear regression power model was developed experimentally, exhibiting a determination score of >96% across varied packet sizes and traffic traces.
+* **Key Distinctions**:
+  * *Consequential Emissions*: Emissions from dynamic power consumed specifically by processing the packets of a flow.
+  * *Attributional Emissions*: Allocating the router's baseline idle power (which can be up to 80% of total consumption) across active flows. The choice of allocation policy (e.g., equal split, bit-rate proportional) can shift the calculated emissions by orders of magnitude, highlighting the urgent need for standardized carbon accounting at the flow level.
+* **Discussion**:
+  * Dave Oran asked about the impact of asymmetric routing on flow measurements. Sou San clarified that the experimental setup used a snake configuration (utilizing all ports simultaneously) and did not separate forward and reverse paths.
+  * Jukka Manner noted that because idle power is so high, the physical routing path of a packet dominates the overall footprint, making traffic volume variations microscopically small in comparison.
+  * Marwan Fayed suggested looking into privacy-preserving measurement frameworks or zero-knowledge proof logging to allow networks to share commercially sensitive routing and power metrics safely.
+  * Luis Contreras asked if modular routers (as opposed to the monolithic models used in the study) were considered, as line-card variations introduce further routing variables. Sou San replied that modular components can be integrated into the idle power allocation model.
+  * Tony Lee remarked that static power accounts for ~80% of chip power consumption, meaning optimization efforts should focus heavily on optimizing that 80% baseline.
+  * Marisol Palmero noted that operating temperature is another critical variable for idle power and encouraged Sou San to provide feedback to the GREEN working group on the green controller model.
+
+### 4. NetFridgeS: Enabling Dynamic Frequency Scaling on Network Switches through Carbon-Aware Routing
+* **Presenter**: Dhrupun
+* **Slide Deck**: [NetFridgeS: Enabling Dynamic Frequency Scaling on Network Switches through Carbon-Aware Routing](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-netfridges-enabling-dynamic-frequency-scaling-on-network-switches-through-carbon-aware-routing-00)
+* **Details**: Switches run at maximum frequency 24/7 to prevent packet loss under unpredictable traffic spikes, resulting in poor power proportionality. NetFridgeS leverages carbon-aware routing controllers (such as Kate) to obtain traffic predictions at 15-to-60-minute intervals. 
+* **Mechanism & Evaluation**: By inserting "freezing pipelines" with inner and outer buffers, NetFridgeS safely queues incoming packets during frequency-switching events (~7 ms delay) to ensure zero packet loss. Hardware testing on NetFPGA showed up to 78% pipeline power reduction under minimal throughput, with a minimal memory overhead of less than 1%.
+* **Discussion**: 
+  * Eve Schooler asked whether NetFridgeS requires a carbon-aware routing controller to work, or if other load prediction methods could be used. Dhrupun explained that inside data centers, workloads (e.g., machine learning training) are highly predictable and could utilize NetFridgeS without external routing assistance.
+
+### 5. Draft Beyond Carbon
+* **Presenter**: Mallory Knodel
+* **Slide Deck**: [Draft Beyond Carbon](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-draft-beyond-carbon-00)
+* **Details**: Presented an overview of the "Beyond Carbon" draft (`draft-knodel-eimpact-beyond-carbon`), which surveys environmental dimensions of internet infrastructure beyond energy and carbon emissions. These include water usage in data centers, land use (terrestrial, maritime, and orbital), spectrum depletion, mineral extraction, and e-waste.
+* **Discussion**:
+  * Michael Welzl suggested that to be suitable for adoption within the SUSTAIN Research Group, the draft should explicitly formulate concrete research questions (such as investigating peak load pacing to extend hardware lifecycles and reduce e-waste) rather than acting solely as a summary of knowledge (SoK).
+  * Ali Rezaki highlighted the overlap with ongoing circularity and terminology work in ITU-T Study Group 5, agreeing that the draft should focus on actionable research questions going forward.
+  * Laura Soares highlighted the critical, often-overlooked environmental impacts occurring in the Global South (such as water pollution and depletion around data centers built in water-stressed regions of Brazil with lax regulations) and suggested adding these considerations to the draft. Mallory Knodel strongly welcomed Global South citations and contributions.
+  * *Chat Log Contributions*: David Oran questioned how to capture the differential resource effects of choosing the internet over physical alternatives (such as travel). Paloma de Oliveira noted that the draft serves as a critical socio-ecological framework to inform technological development proactively, rather than analyzing damage after the fact.
+
+### 6. The 'sustainability' Well-Known URI - draft-besleaga-sustainability-wellknown
+* **Presenter**: Andre Besleaga
+* **Slide Deck**: [The 'sustainability' Well-Known URI - draft-besleaga-sustainability-wellknown](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-the-sustainability-well-known-uri-draft-besleaga-sustainability-wellknown-00)
+* **Details**: Outlined a proposal for a well-known URI (`/.well-known/sustainability`) hosting a machine-readable JSON schema. It provides a standardized location for organizations to publish ESG metrics, CSRD reports, and device-level carbon/energy statistics.
+* **Discussion**:
+  * Michael Welzl noted that because this is an engineering specification rather than a research document, it falls outside the research scope of SUSTAIN. He suggested the Independent Submission Stream or an active working group as more appropriate paths.
+  * Jukka Manner questioned the real-world incentives for websites to implement this, how the complex data model would be populated, and how it would function for modern web pages pulling objects from hundreds of dynamically allocated CDNs. Andre replied that upcoming EU regulations (such as CSRD) will mandate reporting, and the URI is designed to aggregate high-level organizational and origin statistics rather than tracking dynamic sub-objects.
+  * Jan Lindblad and Luis Contreras recommended presenting the draft to the GREEN Working Group, suggesting that translating the JSON schema into a Yang model would make it more compatible with standard IETF management frameworks. Andre agreed to explore this direction.
+
+### 7. Report from Passau Workshop
+* **Presenters**: Eve Schooler, Michael Welzl, Ali Rezaki, Marisol Palmero, Dirk Kutscher
+* **Slide Decks**: 
+  * [Report from Passau workshop - part 1](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-report-from-passau-workshop-part-1-01)
+  * [Report from Passau workshop - part 2 (Dirk Kutscher)](https://datatracker.ietf.org/meeting/126/materials/slides-126-sustain-report-from-passau-workshop-part-2-dirk-kutscher-00)
+* **Details**: Reported on the joint workshop, "The Internet Meets the Electricity Grid," held in Passau, Germany. The workshop convened 32 experts across networking, energy informatics, power grid engineering, and sociology to discuss the "internetification" of the power grid (using communication and battery storage to make the grid dynamic) and the "gridification" of the Internet (integrating grid signals into routing).
+* **Key Themes & Research Areas**:
+  * Developing a conceptual foundation for how the Internet architecture should evolve when energy becomes a first-class, constrained resource.
+  * Exploring what the grid community can learn from packet-routing principles (e.g., energy routing, edge intelligence, statistical multiplexing, and federation).
+  * Marisol Palmero suggested exploring collaborative liaisons or joint programs with IEEE to bridge the standards gap between grid operators (IEEE) and the network layer (IETF).
+* **Discussion**:
+  * Dave Oran raised a crucial safety concern: the physical electricity grid has a strict, deterministic separation between its control plane and its protection plane (to prevent catastrophic fires and deaths). Merging these planes through Internet-based protocols introduces critical safety risks that require rigorous, interdisciplinary research.
+  * Andre Besleaga noted that his past engineering work on balancing electric vehicle charging grids over the Internet could serve as useful reference material for this research area.
+
+---
+
+## Decisions and Action Items
+
+* **RG Status**: The SUSTAIN Research Group is officially approved by the IRTF (moving from "proposed" status).
+* **Librarian Appointment**: Hesham El Bakoury is designated as the official RG Librarian.
+* **Beyond Carbon Draft (`draft-knodel-eimpact-beyond-carbon`)**: Authors will update the draft to incorporate concrete research directions and questions to align with the research mandate of the SUSTAIN RG. Laura Soares will contribute Global South perspective citations.
+* **Well-Known URI Draft (`draft-besleaga-sustainability-wellknown`)**: Determined to be an engineering standard rather than a research document. The author will pivot the draft toward the Independent Submission Stream or the GREEN Working Group, and investigate Yang modeling.
+
+---
+
+## Next Steps
+
+* **Passau Workshop Report**: The workshop organizers will compile and publish a formal workshop report.
+* **Passau Workshop Slides**: The chairs will upload the workshop presentation slides to the SUSTAIN website/wiki.
+* **Mailing List Discussions**: Technical discussions on carbon-aware DNS, flow-level metrics, and the environmental impacts beyond carbon will continue on the SUSTAIN mailing list.
