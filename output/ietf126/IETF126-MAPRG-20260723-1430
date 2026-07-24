@@ -1,0 +1,126 @@
+# [MAPRG](../wg/maprg.html)
+
+## Summary
+
+The Measurement and Analysis for Protocols Research Group (MAPRG) met at IETF 126. The session was chaired by Dave Plonka and Mirja Kühlewind. It featured ten rapid-fire technical presentations spanning decentralized telemetry, OAuth migrations, crawler traffic dynamics, browser telemetry, routing anomalies, post-quantum cryptography (PQC) deployment, satellite network performance, encrypted DNS protocols, BGP exposures, and BGP routing data quality. 
+
+No formal consensus polls were conducted during this session.
+
+---
+
+## Key Discussion Points
+
+### 1. Introduction and Administrative Updates
+**Speakers:** Dave Plonka and Mirja Kühlewind
+*   **Slides:** [Intro - Mirja/Dave](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-intro-mirjadave-04)
+*   The chairs presented the IRTF boilerplate, Intellectual Property Rights (IPR) guidelines, and privacy policies. 
+*   **Lightning Update:** On behalf of Tom Vaughn (Common Crawl), the chairs shared a quick slide showing a slight uptick in global IPv6 adoption over the preceding months. 
+
+### 2. Towards a Common Measurement Framework for Large-Scale libp2p Deployments Using CBOR-Based Verifiable Telemetry
+**Speaker:** Johanna Moran (with Manu Gupta)
+*   **Slides:** [Towards a Common Measurement Framework for Large-Scale libp2p Deployments using CBOR-based Verifiable Telemetry _Johanna Moran_Manu Gupta](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-maprg-towards-a-common-measurement-framework-for-large-scale-libp2p-deployments-using-cbor-based-verifiable-telemetry--johanna-m-01)
+*   **Technical Details:** The speaker highlighted a fragmentation paradox in decentralized P2P networks: while many projects share the same network substrate (libp2p), they build highly fragmented, inconsistent, and volatile observability stacks. To address this, the authors proposed a common measurement architecture using "Verifiable Telemetry Objects" (VTOs) encoded in deterministic canonical CBOR. This provides integrity protection, stable hashing, and digital signatures, making telemetry data portable and verifiable across heterogeneous agent networks.
+*   **Discussion:** Mirja Kühlewind encouraged the presenters to return to MAPRG in the future to share deployment results. Manu Gupta shared contact information for collaboration (`manu@libp2p.io` and `johanna@libp2p.io`).
+
+### 3. Measuring OAuth in MCP: Migration from DCR to CIMD
+**Speaker:** Paul Carlton
+*   **Slides:** [Measuring OAuth in MCP: Migration from DCR to CIMD](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-measuring-oauth-in-mcp-migration-from-dcr-to-cimd-00)
+*   **Technical Details:** The Model Context Protocol (MCP) requires connecting clients and servers without pre-registration. The initial recommendation (March 2025) was to use Dynamic Client Registration (DCR), but this caused client IDs to become stale and purged on Authorization Servers (AS), resulting in invalid client errors during token refreshes. In November 2025, the recommendation was updated to Client ID Metadata Documents (CIMD), where the client ID is a URL that the AS fetches dynamically.
+*   **Results:** CIMD adoption reached 14.7% of connector authorizations within 30 days. Failed refresh attempts dropped from 0.2% (with DCR) to 0.002% (with CIMD), a 100-fold reliability improvement.
+
+### 4. Feeding the Crawlers: An Experiment in Deliberate Bot Attraction
+**Speaker:** Dan Silva
+*   **Slides:** [Feeding the Crawlers - An Experiment in Deliberate Bot Attraction](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-feeding-the-crawlers-an-experiment-in-deliberate-bot-attraction-00)
+*   **Technical Details:** The presenter built a highly textual, realistic-looking fake business website ("American Corporation for Public Well-being") to study AI and search crawler behaviors without rate-limiting. Over 5 months, the site served over 1 billion requests (peaking at 1,500 requests/sec, or 1.5 Gbps uncompressed).
+*   **Key Findings:** 
+    *   Alibaba's "Quan" bot was the most aggressive, accounting for ~30% of total traffic. It sent bursty traffic, did not perform exponential backoff during server downtime, and actively spoofed user agents and referrers (posing as a generic browser with Google referrers).
+    *   Enabling subdomains amplified traffic significantly, as many crawlers treated subdomains as entirely distinct sites with independent rate limits.
+*   **Discussion:**
+    *   Dave Plonka inquired about the challenges of fingerprinting bots that spoof user agents. Dan Silva replied that they correlate behavior using IP address ownership (ASNs) and looking for inconsistent headers like hardcoded Google referrers.
+    *   Robert Story asked if the project code is open source and if rate limiting was tested. Dan Silva noted the repository was temporarily taken down to prevent crawlers from detecting the trap, but it would be restored. No rate limiting was applied during this run.
+    *   Tim Chown asked about the relative load of AI bots compared to traditional search crawlers. Dan Silva noted that traditional search crawlers like Google represented a tiny fraction of the traffic (5 million out of 1 billion requests).
+
+### 5. A Browser's Perspective: Surprises and Insights from Firefox Networking Telemetry
+**Speakers:** Oscar and Max
+*   **Slides:** [(Updated) A Browser's Perspective: Surprises and Insights from Firefox Networking Telemetry](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-updated-a-browsers-perspective-surprises-and-insights-from-firefox-networking-telemetry-01)
+*   **Technical Details:** The speakers presented key performance and deployment metrics sourced from the public Firefox GLAM telemetry database:
+    *   *OS/Hardware:* About a third of users remain on Windows 10, and 6% run older versions. 11% operate on 4GB of RAM or less, and 7% still run 32-bit Firefox. On Android, 60% of traffic is over Wi-Fi, and 30% is over cellular.
+    *   *Protocols:* Only 20% of global page loads occur over IPv6 (measured using Happy Eyeballs v1). HTTPS adoption is at 89%. Encrypted Client Hello (ECH) adoption remains under 1%. HTTP/3 accounts for 17% of page loads, with HTTP/2 remaining dominant.
+    *   *QUIC and Transport:* Median QUIC RTT is surprisingly low at ~25ms on the Firefox Nightly channel. Only 6.5% of connections grow their congestion window enough to not be application-limited, and only 5% of those exit slow start.
+    *   *ECN:* Approximately 60% of paths preserve the ECT(0) bit, while 40% strip it, and 2% blackhole the packets. On the receive path, 4% of connections have ECT(0) set by the server, and 0.75% of those receive a Congestion Experienced (CE) mark.
+*   **Discussion:** 
+    *   Robert Kisteleki asked whether the 20% IPv6 metric represented page loads or bytes. Max clarified it measures page-load requests, but the data can be filtered geographically in the telemetry tools.
+    *   Lars Eggert noted via chat that in Mozilla's measurements, DNS over HTTPS (DoH) actually resolves faster than Do53 at the 75th percentile.
+
+### 6. TTL Jumps
+**Speaker:** Johannes Zirngibl
+*   **Slides:** [TTL Jumps Zirngibl](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-ttl-jumps-zirngibl-01)
+*   **Technical Details:** The speaker presented an accepted IMC paper investigating an IP routing anomaly where TTL values are rewritten to a higher value (such as 255) mid-path. This hides the true path of the packet, making it appear in traceroutes as though there is a direct link between two distant endpoints, hiding transit networks like Arelion, AT&T, and Orange.
+*   **Key Findings:**
+    *   A controlled Ripe Atlas active measurement campaign to a target in Germany showed that 365 out of 11,000 IPv4 and 5,700 IPv6 traceroutes experienced TTL rewrites across 63 different ASes.
+    *   To scale the study, the authors analyzed ICMP destination unreachable messages in historical Ripe Atlas data (which quote the received packet's TTL). Out of 2 million daily traces, 23,000 showed TTL jumps, clustering around target TTL values of 64, 128, and 255.
+    *   The anomaly is not new and has been present on the Internet since at least 2018, currently affecting about 1% of Ripe Atlas traceroutes. The likely cause is router bugs or misconfigured multi-label MPLS popping, where outer TTLs are overwritten during label removal.
+*   **Discussion:**
+    *   Duane Wessels asked via chat if they observed TTL rewrites in protocols other than UDP. Johannes Zirngibl confirmed that the anomalies were also seen in TCP traceroutes and ICMP echo messages.
+    *   Lars Eggert asked if random bit flips could explain the data. Johannes Zirngibl responded that bit flips are highly unlikely given the specific clustering of values and the number of bits that would need to be flipped sequentially.
+    *   Robert Kisteleki offered to help the authors access Ripe Atlas datasets dating back to 2010 to extend the historical perspective of the study.
+    *   Benjamin Schwartz noted that a lack of TTL decrementing could theoretically lead to infinite routing loops. Johannes Zirngibl agreed but emphasized that TTLs remain highly critical for loop mitigation.
+
+### 7. Measuring Deployment Characteristics of Post-Quantum TLS Authentication Mechanisms
+**Speaker:** Nalini Elkins
+*   **Slides:** [Measuring Deployment Characteristics of Post-Quantum TLS Authentication Mechanisms](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-measuring-deployment-characteristics-of-post-quantum-tls-authentication-mechanisms-00)
+*   **Technical Details:** This study measured the real-world deployment of post-quantum cryptography (PQC) hybrid mechanisms within enterprises (horizontally across banking, and vertically within healthcare in the US, India, and Latin America). While big tech providers report high hybrid ML-KEM adoption (~69%), enterprise adoption is very low.
+*   **Performance Metrics:** Transitioning to ML-DSA-44 will dramatically increase signature and key sizes, doubling the certificate processing portion of the TLS handshake from 25% to 50% (adding ~150-200ms). The presenter noted that instead of adopting complex Merkle Tree Certificates (MTC), enterprises could likely offset this performance penalty simply by optimizing or trimming intermediate certificate chains.
+*   **Discussion:** Nalini Elkins noted they plan to host test sites to help enterprises run sandbox performance testing on hybrid PQC algorithms.
+
+### 8. Understanding DNS Performance over the Starlink Network
+**Speaker:** Robert Richter
+*   **Slides:** [Understanding DNS Performance over the Starlink Network](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-understanding-dns-performance-over-the-starlink-network-00)
+*   **Technical Details:** The speaker presented a study analyzing DNS latency over Starlink, utilizing 100+ Ripe Atlas probes situated on Starlink connections alongside a dedicated hardware dish at their university. Unsubscribed Starlink users default to a local resolver (`34.145.127.1`) that only resolves `starlink.com` and `spacex.com`, while paying users can choose between SpaceX default DNS and public DNS resolvers.
+*   **Key Findings:** 
+    *   European users experience excellent Starlink DNS latency (20-30ms over UDP). However, latencies are significantly worse in North America, South America, and Micronesia.
+    *   Using Starlink's CGNAT boundary (`100.64.0.0/10`) to segment routing, the authors isolated the "satellite/ground segment" latency from the "terrestrial transit segment." They discovered that the performance bottleneck is primarily a terrestrial routing issue—Starlink's ground stations and POPs are often poorly peered with public DNS anycast networks in less-connected continents, adding major latency overhead.
+*   **Discussion:**
+    *   Lorenzo Colitti asked why IPv6 was not measured. Robert Richter explained that while Starlink provides native IPv6, the CGNAT-based traceroute segmenting methodology cannot be applied to IPv6. 
+    *   Benjamin Schwartz and Lorenzo Colitti observed that the high latencies on anycast resolvers (such as Google, Quad9, or Cloudflare) suggest Starlink needs better terrestrial BGP peering close to their ground stations.
+
+### 9. The Future of DNS Privacy: A Comparison of DNS over QUIC and DNS over HTTP/3
+**Speaker:** Newton
+*   **Slides:** [The Future of DNS Privacy: A Comparison of DNS over QUIC and DNS over HTTP/3](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-the-future-of-dns-privacy-a-comparison-of-dns-over-quic-and-dns-over-http3-01)
+*   **Technical Details:** The study compared DNS over QUIC (DoQ) and DNS over HTTP/3 (DoH3) performance and its impact on web page load times (PLT), using scanning data across thousands of resolvers and simulating real page loads.
+*   **Key Findings:**
+    *   DoQ implementations showed higher maturity, with 94% session resumption support and significantly lower median latency than DoH3 (which suffered from high failure rates, largely due to AdGuard resolver bugs).
+    *   Encrypted DNS has a negligible impact on overall page load times (affecting PLT by <1%, or 2-16ms) because browser parallelism successfully hides DNS resolution latencies.
+    *   Multi-protocol resolvers (supporting Do53, DoQ, and DoH3) consistently outperformed single-protocol resolvers.
+*   **Discussion:**
+    *   Lars Eggert expressed concern over the methodology of scanning the entire public IPv4 space to discover DoQ/DoH3 servers. This captures thousands of small, misconfigured, or unstable resolvers that real clients would never use, inflating median latencies and failure rates. He also questioned the conclusion of DoQ maturity, noting that no major public recursive DNS providers currently deploy DoQ for users.
+    *   Lorenzo Colitti agreed, suggesting the authors restrict their analysis to well-known, high-performance public resolvers (like Cloudflare, Google, Quad9) close to users.
+    *   Erik Nygren asked if the scans had distinguished recursive resolvers from authoritative servers. He noted that many public DoQ endpoints are authoritative servers, which have fundamentally different performance characteristics.
+
+### 10. Detecting and Characterizing Exposed BGP Routers
+**Speaker:** Shyam
+*   **Slides:** [Detecting and Characterizing Exposed BGP Routers](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-detecting-and-characterizing-exposed-bgp-routers-02)
+*   **Technical Details:** This paper analyzed how many BGP routers publicly expose TCP port 179 to the Internet, violating RFC 7454 recommendations. The researchers built a custom tool (`scan179`) to scan the public IPv4 space, establish a TCP handshake, and send a valid BGP OPEN message.
+*   **Key Findings:**
+    *   The scan found 141,000 exposed BGP-responding IP addresses, which mapped to 20,400 unique routers across 4,200 ASes.
+    *   16,000 routers were classified as internal (using private or reserved ASNs), and 1,127 were classified as border routers. Some border routers were highly critical, peering with up to 21 external ASes.
+    *   Only 14% of responders returned expected, secure TCP resets. 86% allowed the TCP connection to complete, and 5% went so far as to respond with a BGP OPEN message, exposing internal configuration details (BGP Router ID, ASN, etc.).
+*   **Discussion:** The speaker noted that many operators leave port 179 exposed because they assume sending a BGP NOTIFICATION message is sufficient, or because their routing hardware lacks the capability to filter peer IPs prior to TCP handshakes.
+
+### 11. Noisy Routers: Investigating the Make-Up of Route Collector Data
+**Speaker:** Ebrima
+*   **Slides:** [Noisy Routers: Investigating the Make-Up of Route Collector Data](https://datatracker.ietf.org/meeting/126/materials/slides-126-maprg-noisy-routers-investigating-the-make-up-of-route-collector-data-01)
+*   **Technical Details:** The study analyzed "routing noise" (defined as duplicate BGP announcements with identical path attributes sent within one minute) in RouteViews collectors over a ten-year period (spanning 2.6 trillion updates).
+*   **Key Findings:**
+    *   The volume of updates is extremely skewed: the top 5 collectors generate over 50% of RouteViews data. Just 5% of collector peers (averaging 16 peers/day) generate over 50% of all routing updates.
+    *   This noise is highly unpredictable—individual peers cycle rapidly between being silent and extremely noisy.
+    *   The study showed that this noise is not caused by actual route flapping at the origin AS, but rather by misconfigured or buggy peer routers that continuously dump their entire routing table to collectors. This behavior inflates MRT archive sizes without providing any new routing information.
+*   **Discussion:** Dave Plonka highlighted that RouteViews data is mirrored on the Open Science Data Federation (OSDF) for researchers looking for streaming or high-throughput access.
+
+---
+
+## Next Steps
+
+*   **PQC Handshake Testing:** Nalini Elkins and collaborators will set up test websites to allow enterprise network administrators to measure handshake overheads with various PQC signature algorithm combinations.
+*   **Encrypted DNS Resolution Methodology:** The authors of the DNS Privacy study (Newton et al.) will refine their analysis to differentiate recursive from authoritative resolvers and focus on production-grade resolvers.
+*   **Starlink Peering/Transit Studies:** The satellite routing community will continue investigating terrestrial egress bottlenecks to help optimize anycast resolver placement near satellite ground stations.
