@@ -1,0 +1,107 @@
+# [TLS](../wg/tls.html)
+
+## Summary
+
+The TLS Working Group met at IETF 126 to discuss several active initiatives, including password-authenticated key exchange (PAKE) mechanisms, hybrid post-quantum and traditional (PQ + T) signature schemes, XOF-based key schedules, and empirical measurements of Encrypted Client Hello (ECH) deployments. The group held key discussions on whether to pursue dual certificates or composite signatures for PQ+T hybrid authentication, resulting in a clear preference to focus work on composite signatures.
+
+---
+
+## Key Discussion Points
+
+### 1. PAKE Extension for TLS 1.3
+Christopher Wood presented an update on [draft-ietf-tls-pake](https://datatracker.ietf.org/doc/draft-ietf-tls-pake/) (*A Password Authenticated Key Exchange Extension for TLS 1.3*). 
+* **Presentation**: [A Password Authenticated Key Exchange Extension for TLS 1.3](https://datatracker.ietf.org/meeting/126/materials/slides-126-tls-a-password-authenticated-key-exchange-extension-for-tls-13-00)
+* **Summary**: Christopher Wood explained how the extension negotiates a PAKE within the TLS 1.3 handshake, combining it with the TLS shared secret. He highlighted the Finished message's role in key confirmation, guidance on external PAKE negotiation via the PSK importer draft, and symbolic security analysis performed using ProVerif.
+* **Discussion**:
+  * Eric Rescorla sought clarification on whether the Finished message provides key confirmation. Christopher Wood and Scott Fluhrer confirmed that it does.
+  * Scott Fluhrer noted that Opaque PAKE integration operates differently from the framework in the draft and argued that it should be kept out of scope or treated in a separate document. 
+  * Victor Dukhovni raised questions regarding resumption tickets and potential security or negotiation implications when resuming after a PAKE negotiation.
+  * Mohit Sahni asked about feature combinations (e.g., PAKE combined with certificate-based authentication or ECH) and noted that computational analysis would be needed to verify dropping the key confirmation step. 
+  * Sean Turner (Chair) noted that he is preparing to coordinate with the formal analysis team (FAT) to begin evaluating the draft.
+
+---
+
+### 2. Framing PQ + T Signatures for TLS
+Sean Turner introduced the discussion on post-quantum and traditional (PQ + T) hybrid signature schemes.
+* **Presentation**: [Framing PQ + T Signatures for TLS](https://datatracker.ietf.org/meeting/126/materials/slides-126-tls-framing-pq-t-signatures-for-tls-00)
+* **Summary**: Sean Turner framed the discussion as an architectural decision regarding the approach to hybrid signatures, emphasizing that the focus was not on specific algorithms but rather on the mechanism of integration.
+
+#### A. Dual Certificates in TLS 1.3
+Rifaat Shekh-Yusef and Hannes Tschofenig presented the dual-certificates approach.
+* **Presentation**: [Dual Certs in TLS 1.3](https://datatracker.ietf.org/meeting/126/materials/slides-126-tls-sessb-dual-certs-in-tls-13-01)
+* **Summary**: The presenters outlined how dual certificates utilize two distinct PKI hierarchies (traditional and PQC) and supply two certificate chains within the TLS handshake. This approach attempts to minimize PKI complexity by avoiding hybrid certificates but binds the signatures at the TLS level during the certificate verification phase.
+* **Discussion**:
+  * David Benjamin noted that this approach does not resolve the transition/migration issues discussed in the Security Area Advisory Group (SAAG) because it still requires updating the TLS server.
+  * Jonathan Hoyland and Mohit Sahni questioned how the two keys are cryptographically bound, asking why the output of the first signature is not fed into the input of the second. Tiru Reddy explained that they rely on the overall handshake transcript containing both certificate chains to achieve weak non-separability, citing analysis from the PQ working group.
+  * Andrei Popov and Bob Beck questioned how backwards compatibility would work, asking how a server upgraded to dual certificates would handle non-upgraded clients. Tiru Reddy responded that the server would fall back to traditional certificates based on client capability negotiation.
+  * Eric Rescorla pointed out that the proposed design introduces unusual semantics to TLS signature scheme negotiation, where certain advertised signature schemes would be restricted to the CertificateVerify message and could not be used to sign certificates.
+  * Victor Dukhovni remarked that the dual-certificate proposal essentially represents a workaround for "hybrids with CAs that don't do hybrids."
+
+#### B. Composite Signatures (Use of Composite ML-DSA in TLS 1.3)
+Tiru Reddy presented the composite signature approach.
+* **Presentation**: [Use of Composite ML-DSA in TLS 1.3](https://datatracker.ietf.org/meeting/126/materials/slides-126-tls-sessb-use-of-composite-ml-dsa-in-tls-13-00)
+* **Summary**: Tiru Reddy described composite signatures as an approach where traditional and PQC public keys and signatures are handled as a single, atomic, opaque object at the TLS layer. This method is being standardized in the LAMPS working group and requires virtually no changes to the TLS protocol itself, as it relies on existing TLS 1.3 extensions and treats the composite keys as standard signature algorithms.
+* **Discussion**:
+  * Nicola Tuveri shared positive deployment feedback, reporting that his team successfully deployed composite ML-DSA in both web and mutual-TLS IoT scenarios, noting that treating the algorithm as opaque significantly simplified the implementation.
+  * Eric Rescorla, Rich Salz, and Dennis Jackson questioned the overall utility of hybrid signatures, suggesting that simple algorithm transitions may be preferable. However, they noted that if the working group chooses to support a hybrid signature mechanism for "hedging," the composite approach has a significantly lower protocol and API complexity cost.
+  * Andrei Popov expressed strong support for the composite approach because it avoids changing TLS APIs. John Gray and Christopher Wood also supported the composite approach for hedging, especially in non-web or raw-public-key environments.
+
+---
+
+### 3. XOF-Based Key Schedules for TLS 1.3
+Nick Sullivan presented a proposal to introduce Extendable-Output Function (XOF) based key schedules into TLS 1.3.
+* **Presentation**: [XOF-based key schedules for TLS 1.3](https://datatracker.ietf.org/meeting/126/materials/slides-126-tls-sessb-xof-based-key-schedules-for-tls-13-00)
+* **Summary**: The proposal replaces SHA-2/HKDF components in the TLS 1.3 key schedule with Keccak-based primitives (such as KMAC and SHAKE). Using doubly-extended cryptographic keyed deck functions, the key schedule can be optimized from 156 permutation calls down to 39, offering significant performance improvements for devices utilizing post-quantum algorithms (which already rely heavily on Keccak).
+* **Discussion**:
+  * Mohit Sahni asked whether the analysis required for this work was cryptographic or symbolic. Nick Sullivan indicated that any analysis is welcome, though the current model aligns closely with standard NIST TLS 1.3 proofs.
+  * Quynh Dang (Nist) expressed support for the concept, stating that NIST would evaluate the security of the design once finalized and look for ways to approve it if it meets security requirements.
+  * John Preuß Mattsson strongly supported the work, noting that a SHA-3-based family option is highly desirable given the PQC migration.
+  * Eric Rescorla and Nick Sullivan discussed the negotiation mechanics. Eric Rescorla argued that instead of negotiating the key schedule profile via a new TLS extension, it would be architecturally cleaner to define new cipher suites that natively map to SHA-3/Keccak transcript hashes and key schedules.
+
+---
+
+### 4. Encrypted Client Hello (ECH) Active Measurements
+Jonas presented research on active measurements of Encrypted Client Hello (ECH) deployments.
+* **Presentation**: [Encrypted Client Hello (ECH) - An active measurement perspective](https://datatracker.ietf.org/meeting/126/materials/slides-126-tls-encrypted-client-hello-ech-an-active-measurement-perspective-01)
+* **Summary**: Jonas outlined empirical research tracking ECH deployment, observing over 4 million ECH-supporting domains. While Cloudflare remains the largest operator, the researchers discovered a large, functional ECH deployment by Meta that does not publish ECH configurations in public DNS, instead utilizing a retry-based mechanism. The study also characterized configuration rotation, grace periods, and a minor latency increase associated with ECH handshakes.
+* **Discussion**:
+  * Kyle Nekritz confirmed Meta's active and widespread deployment of ECH within their primary application, noting that it is highly performant.
+
+---
+
+## Decisions and Action Items
+
+### Session Polls
+
+The chairs conducted several polls to determine the path forward on PQ + T hybrid signatures:
+
+1. **Do we have enough information to take a decision on the way forward for PQ + T Signatures for TLS?**
+   * **Result**: yes: 67, no: 10, no_opinion: 1 (total: 146)
+
+2. **Should the WG work on PQ + T Signatures for TLS?**
+   * **Result**: yes: 53, no: 20, no_opinion: 12 (total: 148)
+
+3. **Should the WG only work on one: -pqt-dual-certs or -composite-ml-dsa?**
+   * **Result**: yes: 55, no: 11, no_opinion: 14 (total: 149)
+
+4. **Should the WG work only on: -pqt-dual-certs?**
+   * **Result**: yes: 8, no: 51, no_opinion: 12 (total: 148)
+
+5. **Should the WG work only on: -composite-ml-dsa?**
+   * **Result**: yes: 53, no: 8, no_opinion: 17 (total: 149)
+
+6. **Can we allocate code points and move?**
+   * **Result**: yes: 11, no: 7, no_opinion: 3 (total: 151)
+
+7. **Can we allocate code points and not adopt the draft?**
+   * **Result**: yes: 31, no: 23, no_opinion: 8 (total: 151)
+
+### Key Decisions
+* **PQ + T Signatures Strategy**: The working group demonstrated a clear preference to work on only one hybrid signature design, specifically selecting the composite signature approach (`-composite-ml-dsa`) over the dual-certificates approach (`-pqt-dual-certs`).
+
+---
+
+## Next Steps
+
+* **Hybrid Signatures**: The chairs will take the preference for adopting `-composite-ml-dsa` and rejecting `-pqt-dual-certs` to the mailing list to confirm working group consensus.
+* **PAKE Draft**: The chairs will coordinate with the formal analysis team (FAT) to initiate the review of `draft-ietf-tls-pake`.
