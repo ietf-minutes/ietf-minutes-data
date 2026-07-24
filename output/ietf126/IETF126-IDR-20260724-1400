@@ -1,0 +1,74 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR Working Group met at IETF 126 to discuss advancements in BGP capabilities, focusing heavily on BGP Flow Specification Version 2 (FSv2), monitoring frameworks, and routing policies. Susan Hares and Jeffrey Haas chaired the session. Key presentations covered the core FSv2 specification for basic IP filtering, along with specific filtering extensions (bitwise filters, QUIC headers, Class IDs, and iFit capabilities) and redirect actions. Additional discussions addressed Source Address Validation (SAV) rule advertisement via BGP Link-State (BGP-LS), and a notable debate occurred regarding BGP Unreachable Prefix Announcements (UPA).
+
+---
+
+## Key Discussion Points
+
+### BGP Flow Specification Version 2 - for Basic IP
+Susan Hares and Jeffrey Haas presented updates on [1-0. IDR Chairs Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-0-idr-chairs-slides-00) and the primary design goals of `draft-ietf-idr-fsv2-ip-basic`.
+
+*   **Design and Features:** FSv2 introduces user-defined rule ordering, structured filter families, and frame-ordered components. Actions are carried via BGP Extended Communities, which transit the network cleanly.
+*   **Fate-Sharing (Dependencies):** A non-zero dependency ID can bind multiple filters together. If a device lacks hardware support for a component (e.g., DSCP), the entire dependent set of filters is ignored to prevent unintended traffic blackholing.
+*   **Component Numbering:** Filters are initially spaced out by 10 to allow additions. Future proofing may expand this to spacing of 100.
+*   **Backward Compatibility:** Carrie (Chunghwa) asked if FSv2 filters could be backward compatible with FSv1. Susan Hares clarified that they are not backward compatible due to modified PDU layouts and numbering schemas, though core filtering functionalities remain consistent.
+
+### BGP Flowspec Monitoring Roadmap
+Yuzha presented a framework and roadmap targeting the operational gap between Flowspec control plane propagation and effective data plane enforcement.
+*   **Proposed Framework:** A multi-plane framework (intent, control, data) relying on five information categories: route lifecycle, event routing, status telemetry (via BMP), traffic outcomes (via IPFIX), and operational state.
+*   **Discussion:** Jeffrey Haas relayed Robert Raszuk's chat comment asserting that BGP is a "spray and pray" protocol and telemetry information is better suited for controllers rather than BGP. Jeffrey Haas (speaking as co-author) agreed that BGP should not carry all monitoring metrics; the design intends to use BMP and IPFIX for feedback. Susan Hares suggested considering BGP-LS for complete coverage.
+
+### SAV Rule Information using BGP-LS
+A representative from China Unicom shared updates to the BGP-LS SAV rule distribution draft.
+*   **Updates in -05:** Clarified local node scope, aligned SAV mode TLVs with the general SAV capability specification, and detailed operational constraints for incremental updates.
+*   **Discussion:** Jeffrey Haas noted that large-scale BGP-LS distribution presents scaling challenges and advised looking into LSVR (Link-State Vector Routing) scaling mechanisms as a reference.
+
+### Bitwise IP Filters for BGP Flowspec v2
+Nick Gao presented bitwise IP filters designed for symmetric traffic steering in multi-vendor edge environments.
+*   **Mechanism:** Targets the least significant bits of subscriber addresses. It matches source addresses at the subscriber-facing ingress and destination addresses at the Internet-facing egress. 
+*   **Encoding:** Implements a logical OR across pattern-mask pairs. To ensure deterministic sorting and evaluation, don't-care bits must be set to zero on transfer and receipt.
+*   **Discussion:** Jeffrey Haas noted that bitwise filters are more specific than standard prefix fields, which dictates their sorting priority.
+
+### iFit Capabilities & Actions in BGP Flowspec
+An iFit presenter discussed combining Inline Flow Information Telemetry (iFit) attributes with Flowspec actions to automate ACL generation and packet sampling.
+*   **Discussion:** Susan Hares highlighted the capability of this joint attribute-action model but warned that potential interactions with other marking actions (such as DSCP) require careful definition in the draft.
+
+### BGP Flowspec Extension for QUIC
+Carrie (Chunghwa) proposed extensions to filter QUIC traffic based on unprotected header fields (such as Destination/Source Connection IDs and Header Flags).
+*   **Discussion:** Joel Halpern questioned the feasibility of matching QUIC Connection IDs in BGP Flowspec, noting they are random, dynamic values negotiated strictly between endpoints and not reported to external controllers. Carrie noted that they must be reported to the controller for the filter to work. Haibo (Bob) from Huawei raised concerns regarding variable-length Connection IDs in hardware chips. Jeffrey Haas observed that this highlight's the need for FSv2 to elegantly navigate varying levels of hardware sophistication.
+
+### BGP Flowspec Redirect Load Balancing Group
+Haibo (Bob) from Huawei proposed a redirect and load-balancing community group to split Flowspec traffic dynamically across multiple next hops or SR Policies.
+*   **Features:** Introduced Control Flags (T, D, F) to handle unreachable tunnels or IP route fallbacks without losing traffic.
+*   **Discussion:** Jeffrey Haas expressed interest in this redirect mechanism and invited the authors to contribute to the general discussion on handling conflicting redirect actions.
+
+### Class ID Filter for BGP Flow Specification
+Jimmy presented a Class ID filter designed to prevent TCAM rule explosion on PE routers by logically grouping prefixes under a local 2-octet identifier.
+*   **Discussion:** Susan Hares clarified that the Class ID is a logical binding policy concept rather than a field written into transit packets. Jeffrey Haas requested that the authors post a technical comparison between this proposal and existing Flowspec path redirect features to the mailing list.
+
+### Chat Discussion: BGP Unreachable Prefix Announcement (UPA) v2
+An active chat-based debate arose regarding [2-2. BGP Unreachable Prefix Announcement (UPA) v2](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-upav2-00).
+*   **Mechanisms & Concerns:** Robert Raszuk and Srihari Sangli questioned the use of `MP_REACH_NLRI` to advertise unreachability. Jeffrey Haas clarified that while using `MP_UNREACH` to inject state violates BGP procedures, using `MP_REACH` to signal unreachability in the same AFI/SAFI risks "attribute escape." If a transit router strips the signaling community, the route is treated as normal reachability, creating security and routing loop risks.
+*   **Alternatives:** Robert Raszuk suggested utilizing a separate SAFI or resurrecting his aggregator withdraw concept (`draft-raszuk-aggr-withdraw-00.txt`). Jeffrey Haas suggested Robert update and post his draft to the list.
+
+### Chat Discussion: Flex-Algo & BGP YANG
+*   Thomas Graf requested that configuration options and reason codes for path marking be aligned with `draft-ietf-idr-bgp-model`, which was discussed during [1-3. BGP YANG Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-3-bgp-yang-update-00).
+*   Keyur Patel, Jeffrey Haas, and Jie Dong discussed representing Flex-Algo IDs within BGP-LS, noting that for SRv6, different locators can be advertised as standard IPv6 prefixes mapped to specific Flex-Algos.
+
+---
+
+## Decisions and Action Items
+
+*   **Action Item:** Robert Raszuk to refresh and submit `draft-raszuk-aggr-withdraw-00.txt` to the mailing list as an alternative solution to the UPA v2 problem space.
+*   **Action Item:** The authors of the Class ID Filter draft to post a comparison to the IDR mailing list contrasting their proposal with existing Flowspec path redirect mechanisms.
+*   **Action Item:** IDR Chairs to coordinate with the authors of individual Flowspec extension drafts to begin alignment and conversion to the FSv2 (`draft-ietf-idr-fsv2-ip-basic`) framework.
+
+---
+
+## Next Steps
+
+*   The Working Group will target August to begin adoption polls for individual Flowspec v2 extension drafts.
+*   The chairs will monitor coordination progress across the FSv2 documents; an interim meeting may be scheduled if tight synchronization on numbering or feature interactions is required.

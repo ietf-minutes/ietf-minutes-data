@@ -1,0 +1,67 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+The MOQ Working Group met at IETF 126 to discuss updates to its core streaming and transport specifications, review the latest interoperability testing results, and evaluate proposals for synchronized playback, real-time conferencing architectures, and selective track filtering. Key discussions focused on updating track serialization and configuration parameters, aligning interop testing goals, and refining the Top N track filtering design for inclusion in the base transport protocol.
+
+---
+
+## Key Discussion Points
+
+### 1. MSF & CMSF Updates
+Will Law presented updates on `draft-ietf-moq-msf` and `draft-ietf-moq-cmsf` based on the [MSF & CMSF](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-msf-cmsf-02) presentation.
+
+*   **Delta Update Mechanism:** A newly merged PR allows dynamic track field updates via an override mechanism, avoiding the need to delete and recreate tracks.
+*   **Initialization Data Properties:** Discussions occurred around carrying initialization data via track properties or object properties. 
+    *   Moe Zanaty noted that `draft-ietf-moq-loc` already registers track and object properties for binary configuration data.
+    *   Cullen Jennings and Rohan Mahy argued against using the "application-specific" (private use) range for standardized elements, suggesting they be moved to the standardized registry instead.
+    *   Suhas Nandakumar suggested dividing the space appropriately between track and object properties.
+*   **Dissimilar Group Length Switching:** Discussion on a PR allowing clients to switch across tracks with differing group lengths. Gwendal Simon noted that group ID alignment and `switch-from` parameters must be clearly mapped to ensure smooth transitions.
+*   **Replacing Catalog with Null Track Name:** A proposal to use the null/empty track name to represent the default catalog, simplifying URL paths.
+    *   Suhas Nandakumar and Moe Zanaty discussed the potential ambiguity when doing prefix matching with empty names, noting that a delimiter (like `dash dash`) might still be needed to prevent ambiguities.
+*   **Subgroup Zero Constraint (PR 169):** A proposal requiring all MSF objects to be mapped to subgroup zero was discussed. Moe Zanaty and Gwendal Simon expressed concern that this restriction would inhibit future temporal scalability designs.
+
+### 2. MoQ Interop Report
+Mike English presented the [MoQ Interop Report](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-sessc-moq-interop-report-00), highlighting findings from the automated interop runner and manual wiki reports.
+
+*   **Interoperability Status:** Progress was made on several draft-18 implementations, though some regressions were noted compared to draft-16, mainly due to the complexity of transitioning to bidirectional streams.
+*   **Test Integration:** Alan Frindell (via chat/relay) emphasized the need to integrate data-plane test suites (such as verifying `PUBLISH_DONE` propagation and prefix matching) into the automated runner.
+*   **Testing Roadmap:** To address current gaps, Alan Frindell and Mike English proposed a virtual interop day targeting draft-18 in early September, with the goal of moving implementations to draft-20 for the Seattle meeting.
+*   **Interop Levels:** Jordi Cenzano proposed defining distinct "interop levels" (e.g., basic control messages vs. full media synchronization) to help categorize implementation capabilities.
+
+### 3. Tempo: Synchronized Playout
+Suhas Nandakumar presented [tempo](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-tempo-00), a proposal for synchronized media playout across disparate clients (e.g., for live sports, multi-room audio, and emergency alerts).
+
+*   **Protocol Metrics:** The design relies on three metadata properties: capture timestamp, playout delay, and hop time (updated by relays).
+*   **Architecture & Feedback Loop:** The draft describes a system where clients send playback status back to a central synchronization server, which instructs the publisher to adjust playout delays.
+    *   Will Law and Ali C. Begen raised scalability concerns regarding feedback loops back to the publisher for large-scale events. They suggested relying on local client adjustments (speeding up or slowing down playback) and cumulatively summing hop times instead.
+    *   Cullen Jennings suggested that statistical feedback could be gathered efficiently using a Top N track filter.
+
+### 4. Mocha: Video Conferencing over MoQ
+Cullen Jennings presented [mocha](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-mocha-00), showing how MoQ transport can support decentralized, multi-party video conferencing and chat without dedicated Selective Forwarding Units (SFUs) or application-layer media servers.
+
+*   **Design & Specifications:** The architecture coordinates namespaces, catalogs, and encryption keys using MLS-based end-to-end security via `draft-ietf-moq-secure-objects` and Common Access Tokens (`draft-ietf-moq-c4m`).
+*   **Relay Optimization:** The system shifts active speaker selection and track switching logic onto the MoQ relays using the Top N track filtering mechanism, optimizing bandwidth without needing specialized media processing.
+
+### 5. Top N Tracks Filter
+Moe Zanaty presented the [Top N Tracks Filter](https://datatracker.ietf.org/meeting/126/materials/slides-126-moq-top-n-tracks-filter-00), focusing on the design proposed in PR 1518.
+
+*   **Use Cases:** Essential for conferencing (active speaker selection), security camera grids, esports, and managing high-volume feedback tracks.
+*   **Bandwidth Benefits:** Relays propagate Top N filters upstream, ensuring pruning occurs close to the publishers and significantly reducing relay-to-relay traffic.
+*   **Simplified Design:** Recent updates restricted the maximum selected tracks to 255 (allowing 1-byte encoding) and simplified the relay state machine. Relays evaluate publisher-provided object metrics to dynamically select and forward active tracks.
+*   **Status:** Magnus Westerlund noted there is working group consensus to work on this feature. The discussion centered on whether to merge it into the base transport draft (`draft-ietf-moq-transport`) or publish it as an extension. Will Law and Rohan Mahy supported making it a core feature.
+
+---
+
+## Decisions and Action Items
+
+*   **MSF & CMSF Properties:** Will Law and Moe Zanaty to collaborate on moving track and object configuration properties out of the private application space and registering them as standard codepoints.
+*   **Private Use Terminology:** Working group to update the terminology in `draft-ietf-moq-transport` to clarify that "application-specific use" is intended for private use.
+*   **Subgroup Zero Mapping:** Will Law to follow up on PR 169 to address concerns regarding the restriction of MSF mapping exclusively to subgroup zero.
+*   **Virtual Interop Day:** Mike English has the authority to schedule a virtual interop day for draft-18, targeted for early September.
+
+---
+
+## Next Steps
+
+*   **Top N Tracks Filter:** Moe Zanaty to create a clean, dedicated PR containing only the Top N tracks filter (separating it from other range filters). 
+*   **Mailing List Call:** Once the clean PR is available, the chairs will initiate a consensus call on the mailing list to determine if the Top N filter is ready to be merged directly into `draft-ietf-moq-transport`.
