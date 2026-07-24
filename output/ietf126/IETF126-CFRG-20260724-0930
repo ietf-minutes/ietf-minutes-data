@@ -1,0 +1,97 @@
+# [CFRG](../wg/cfrg.html)
+
+## Summary
+
+The Crypto Forum Research Group (CFRG) met during IETF 126. The session was chaired by Stanislav Smyshlyaev. The meeting consisted of four technical presentations and associated discussions covering:
+*   Chameleon encodings for ML-KEM (`draft-ietf-cfrg-kemeleon-encodings`)
+*   BBS Signatures and extensions (`draft-ietf-cfrg-bbs-signatures` and `draft-ietf-cfrg-blind-signatures`)
+*   Schnorr-type proofs of possession for ECDSA device binding
+*   Pairing-Friendly Curves (`draft-ietf-cfrg-pairing-friendly-curves`)
+
+---
+
+## Key Discussion Points
+
+### 1. Kemeleon Encodings
+*   **Speaker:** Felix Günther
+*   **Slide Deck:** [Kemeleon Encodings](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-kemeleon-encodings-00)
+*   **Discussion:**
+    *   **Background:** Chameleon encodings turn ML-KEM public keys and ciphertexts into random-looking byte strings to prevent wire-format distinguishability (useful for censorship resistance, metadata hiding, and PAKEs).
+    *   **Updates in Version 02:** 
+        *   The main encoding (previously "non-rejecting") is in Section 4. It represents an $n$-bit integer in $n + t$ bits, yielding a statistical distance of at most $2^{-t}$ from uniform.
+        *   The parameter $t$ is now fixed to $76$ (statistical distance $2^{-76}$) to ensure byte alignment and eliminate tunable parameters. This results in public keys with the same size as regular ML-KEM keys.
+        *   The rejection variant (Section 5.1) has been updated for byte alignment and bit-clearing in the top byte. This variant yields smaller outputs at the cost of a reduced success rate.
+        *   A deterministic variant (Section 5.2) derives randomness deterministically from the shared secret.
+    *   **Feedback Requested:** 
+        1.  Should the statistical distance be fixed ($t = 76$) or remains a tunable parameter?
+        2.  Is there a preferred mechanism for specifying randomness generation to aid implementation comparison?
+    *   **Q&A and Comments:**
+        *   **Chris Wood:** Raised a mailing list exchange regarding parallelized password guessing attacks. He suggested that a tunable parameter with reasonable guidance might be appropriate, particularly because other consuming protocols within CFRG could make reasonable assumptions.
+        *   **Felix Günther:** Agreed to follow up on the exact mechanics of parallelized password guessing.
+        *   **Scott Fluhrer:** Noted that the required statistical distance depends on the distinguisher. If the only distinguisher requires observing $2^{76}$ squared outputs, then $2^{-76}$ is an overkill. If there is a different distinguisher where one can be certain with probability $2^{-76}$, then $2^{-76}$ is appropriate.
+
+---
+
+### 2. BBS Signatures & Extensions
+*   **Speakers:** Vasilis Kalos, Emil Lundberg, and Anja Lehmann
+*   **Slide Deck:** [BBS](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-bbs-00)
+*   **Discussion:**
+    *   **BBS Core Draft (`draft-ietf-cfrg-bbs-signatures`):** 
+        *   Vasilis Kalos noted the core draft is stable and has resolved the first round of Crypto Panel reviews.
+        *   Two active pull requests address implementer feedback regarding the difficulty of writing straight-line implementations of the core without implementing all extensions. These PRs restructure operations and introduce an object notation to separate redundant validity checks.
+    *   **Pseudonyms & Blind Signatures (`draft-ietf-cfrg-blind-signatures`):**
+        *   Vasilis Kalos described two flavors of pseudonyms: pseudonymous identity (constant within a context, unlinkable across contexts) and rate-limiting pseudonyms. 
+        *   The editors are considering merging the pseudonyms draft into the blind signatures draft to create a unified "BBS Extensions" document.
+    *   **Native Device Binding:**
+        *   Emil Lundberg presented a method for "native" device binding on hardware-bound keys using the DBAC (Device Bound Anonymous Credentials) model. 
+        *   Instead of directly signing a challenge (which is impossible on hardware signers without leaking the private key due to the BBS structure), the prover demonstrates a blinding relationship within the BBS proof and separately proves possession of the blinded public key.
+        *   This requires splitting the blind issuance commitment and proof generation into distinct initialization, proof, and finalization/assembly phases. Emil queried whether the group wants to support multiple device binding keys and if they should survey existing Schnorr/BLS implementations for compatibility.
+    *   **Committed Disclosures:**
+        *   Anja Lehmann explained the "committed disclosures" extension to BlindBBS. To avoid monolithic zero-knowledge proof specifications for every combination of use cases (e.g., pseudonyms, range proofs, device binding), they propose a modular framework.
+        *   In this framework, the core BBS module outputs attributes and a Pedersen commitment along with an equality proof. Other extension modules (e.g., pseudonyms or ECDSA device binding) plug in and run their proofs directly on these committed inputs. This model is already aligned with the European Digital Identity (EUDI) Wallet TS 14.
+
+---
+
+### 3. Schnorr-Type Proofs of Possession for ECDSA Device Binding
+*   **Speakers:** Anja Lehmann and Shay Gueron
+*   **Slide Deck:** [Schnorr-Type Proofs of Possession](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-schnorr-type-proofs-of-possession-00)
+*   **Discussion:**
+    *   **Motivation:** For high-security digital wallets (like the EUDI Wallet), credentials must be bound to hardware-secured keys (non-transferability). Most current smartphones only support ECDSA inside their secure elements.
+    *   **Challenge:** To maintain user anonymity, the device's public key must not be revealed. Instead, the user must present a zero-knowledge proof of possession of the private key corresponding to a committed ECDSA public key.
+    *   **Technical Details (Shay Gueron):** 
+        *   The standard ECDSA verification equation is rearranged so that the hash evaluation does not need to be proven in zero-knowledge. The ephemeral value $k$ can be revealed because it is unique per signature.
+        *   To link the BLS-friendly curves used in BBS with the P-256 curve of the secure element, a "Tom Curve" (T256) is used to commit to the coordinates of the P-256 point.
+        *   A commitment transfer proof is executed to show that the BLS commitment and the T256 commitment open to the same public key.
+        *   The proof utilizes optimized point addition and scalar multiplication proofs (based on the CaDLs and CLZ papers), which achieve a 25-30% reduction in proof size and verification time.
+    *   **Next Steps:** The authors called for assistance on serialization, data formats, integration with existing BBS standards, and specifying the complete non-interactive protocol via Fiat-Shamir.
+
+---
+
+### 4. Pairing-Friendly Curves
+*   **Speaker:** Yumi Sakemi
+*   **Slide Deck:** [Pairing-Friendly Curves](https://datatracker.ietf.org/meeting/126/materials/slides-126-cfrg-pairing-friendly-curves-00)
+*   **Discussion:**
+    *   **Updates in Version 13 of `draft-ietf-cfrg-pairing-friendly-curves`:**
+        *   Nine issues and ten PRs were closed.
+        *   **Curve Set:** Suggestions to replace proposed curves with BN446, BLS24509, or BLS48575 were evaluated against the draft’s selection policy (detailed in Issue 87). With evaluation assistance from Diego F. Aranha, the curve set remains unchanged.
+        *   **192-bit Security:** No 192-bit security curve was added as none met the selection criteria and there was no interest expressed on the mailing list.
+        *   **Point Serialization:** Added point serialization procedures to the normative part of the draft to resolve discrepancies between BBS, COSE, and BLS signature serialization formats.
+    *   **Q&A and Comments:**
+        *   **Emil Lundberg:** Thanked the authors for incorporating the pairing implementation guidance. He noted some minor editorial issues in the serialization/deserialization procedures but stated they are straightforward to fix without needing deep discussion.
+        *   **Stanislav Smyshlyaev (Chair):** Stated that the chairs will proceed with sending the draft for a second Crypto Panel review, focusing on the updated normative serialization parts (Section 5 and Appendices B and D).
+
+---
+
+## Decisions and Action Items
+
+*   **`draft-ietf-cfrg-pairing-friendly-curves`:** The chairs will initiate a second Crypto Panel review of the draft, specifically targeting the updated point serialization sections.
+
+---
+
+## Next Steps
+
+*   **Kemeleon Encodings:** Editors and contributors will continue list discussions to determine if statistical distance should be fixed or tunable, and to select a concrete randomness generation mechanism.
+*   **BBS Core:** Merge current PRs simplifying straight-line core implementations and determine if a follow-up Crypto Panel review is required.
+*   **BBS Extensions & Pseudonyms:** The editors will discuss merging the pseudonyms draft with the blind signatures draft into a single "BBS Extensions" document.
+*   **ECDSA Proof of Possession:** The authors will collaborate with the working group on serialization, Fiat-Shamir non-interactive conversion, and alignment with BBS drafts.
+*   **Pairing-Friendly Curves:** Authors aim to address the minor serialization comments raised by Emil Lundberg, close issues #74 and #84 on GitHub, and prepare the document for Research Group Last Call (RGLC) following the Crypto Panel review.

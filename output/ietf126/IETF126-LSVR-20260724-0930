@@ -1,0 +1,99 @@
+# [LSVR](../wg/lsvr.html)
+
+## Summary
+
+The Link State Vector Routing (LSVR) Working Group met at IETF 126. The session began with working group updates, including a co-chair transition where Acee Lindem stepped down and Krishna Kalyaniraju was welcomed as the new co-chair. The group discussed the status of the neighbor discovery work, the liaison with IEEE 802.1, and the status of active drafts. 
+
+Four technical presentations were delivered:
+1. An update on the BGP-LS YANG model (`draft-ietf-lsvr-bgp-ls-yang`).
+2. Proposed extensions for applying BGP-LS Segment Routing over IPv6 (SRv6) to BGP-LS-SPF.
+3. Use cases and requirements for multi-domain and hybrid overlay/underlay BGP-SPF.
+4. Proposed updates to BGP Link-State SPF NLRI selection rules to optimize convergence.
+
+---
+
+## Key Discussion Points
+
+### Working Group Updates & Neighbor Discovery
+* **Co-Chair Update**: Acee Lindem has stepped down from his co-chair position. Jia He and the working group thanked Acee for his extensive contributions. Krishna Kalyaniraju was welcomed as the new co-chair.
+* **Neighbor Discovery Poll**: In April, a poll was conducted regarding neighbor discovery. No responses or interest were received from the working group. 
+* **L3DL & LLDP Discussion**:
+  * Acee Lindem suggested that the group could revisit BGP neighbor discovery via a simplified, scoped effort using LLDP (based on an older draft). He noted some vendors (e.g., Nokia) have already implemented subsets of LLDP discovery. Keyur Patel agreed that a tightly scoped effort for data centers would be valuable.
+  * In the session chat, Maria Matějka noted that multiple implementations exist for BGP discovery that detect the other side simply by checking Router Advertisements.
+  * János Farkas (IEEE 802.1) stated that IEEE 802.1 remains open to contributions and developed LLDPv2 in the past to meet LSVR's requirements. He pointed out that the draft liaison response currently on the list indicates discovery work has stopped, which does not match the active interest expressed in the room.
+  * Ketan Talaulikar recommended sending the current liaison response as-is since it is overdue by more than a year and accurately reflects the historical poll results. If the working group decides to adopt a new LLDP-based discovery proposal, a new liaison can be sent at that time. János Farkas agreed with this path.
+* **Document Status**:
+  * The L3DL document is expired and will be marked as a historic/archived working group document.
+  * Errata 8835 and 8836 have been verified and approved by the AD.
+  * The working group will consider extending the applicability of BGP-SPF to scenarios beyond the data center.
+
+---
+
+### Presentations
+
+#### 1. [01. A YANG Model for BGP-LS, BGP-LS-VPN, and BGP-LS-SPF](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsvr-ietf-126-draft-ietf-lsvr-bgp-ls-yang-04-00)
+* **Presenter**: Aravind Prasad
+* **Draft**: [draft-ietf-lsvr-bgp-ls-yang](https://datatracker.ietf.org/doc/draft-ietf-lsvr-bgp-ls-yang/)
+* **Summary of Updates (v04)**:
+  * Added ~4,000 lines to the model, introducing 54 new TLV identities and 4 validated XML examples.
+  * Added a new OSPF sub-module to remove duplication, supporting shared node, link, and prefix groupings for OSPFv2/v3.
+  * Expanded topology attributes and LSDB sub-modules to support link, prefix, and SRv6 NLRIs and their attributes.
+  * Corrected several bugs (affinity container expressions, node name character limits restricted to 255 per RFC 9552, and AS code description).
+  * Updated draft text, security considerations, and normative references.
+* **Open Issue & Discussion**:
+  * **Issue #9 (RIP Support)**: The authors propose keeping RIP support out of scope for this document to simplify progress.
+  * Ketan Talaulikar recommended cross-posting future incremental updates to the IDR working group since BGP-LS is managed there.
+  * Jia He suggested discussing the RIP scope issue on the mailing list. If there is consensus to keep RIP out of scope, the draft can proceed to Working Group Last Call (WGLC).
+
+#### 2. [02-Applying BGP-LS Segment Routing over IPv6(SRv6) Extensions to BGP-LS-SPF](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsvr-02-applying-bgp-ls-segment-routing-over-ipv6srv6-extensions-to-bgp-ls-spf-01)
+* **Presenter**: Lei Zhang
+* **Summary of Updates**:
+  * Added new co-authors from China Satellite Network and China Mobile.
+  * Addressed comments from Jie Dong and Xiaohu Xu regarding coordination between Maximum SID Depth (MSD) and link-level limits during path computation.
+  * Clarified the handling of multiple locators: if a node has multiple locators, each must be advertised as an individual prefix and SRv6 Locator TLV.
+  * Clarified that the prefix metric TLV is used for the final route computation.
+* **Discussion**:
+  * Acee Lindem questioned how SID information is bound to specific interfaces or neighbors when using a separate NLRI type.
+  * Ketan Talaulikar clarified that node-associated SIDs use the node NLRI, whereas adjacency SIDs (such as End.X) are advertised as link attributes within the link NLRI.
+  * Acee Lindem recommended adding specific details on how these TLVs are utilized during SRv6 data plane programming (referencing OSPF/IS-IS behaviors) rather than relying solely on indirect references to BGP-LS encodings. Lei Zhang agreed to incorporate this in the next version.
+
+#### 3. [03. Use Cases and Requirements for Multi-Domain and Hybrid Overlay/Underlay BGP-SPF](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsvr-03-use-cases-and-requirements-for-multi-domain-and-hybrid-overlayunderlay-bgp-spf-00)
+* **Presenter**: Yisong Liu
+* **Summary**:
+  * Discussed applying BGP-SPF beyond single-domain, fully trusted data center underlays.
+  * **Scenario A (Single Overlay Domain)**: Focuses on overlay links where the state is not directly observable. Requires active performance measurement (latency, loss, bandwidth) to calculate paths.
+  * **Scenario B (Interconnecting Multiple Domains)**: Focuses on scalability. Flat BGP-SPF domains do not scale infinitely. Proposes partitioning domains to limit visibility and prevent loops across multi-domain environments (e.g., AWS to Azure).
+  * **Scenario C (Hybrid Overlay/Underlay)**: Combines underlay and overlay networks. Sometimes native underlay paths are sub-optimal (e.g., detouring geographically). Overlay nodes can offer more direct paths.
+* **Discussion**:
+  * Acee Lindem noted that coordinating underlays and overlays requires new protocol mechanisms, especially since overlay paths span multiple underlay links. He suggested injecting external prefixes to control metrics, which was omitted from the initial BGP-SPF version but is highly relevant here.
+  * Jia He queried which scenario has the highest priority. Yisong Liu replied that Scenario A is the logical first step due to its lower complexity, followed by B and C. Jia He pointed out that active measurement relies on other working groups, and the LSVR focus should be on how BGP-SPF itself needs to be extended.
+
+#### 4. [04. Proposed Update to BGP Link-State SPF NLRI Selection Rules](https://datatracker.ietf.org/meeting/126/materials/slides-126-lsvr-04-proposed-update-to-bgp-link-state-spf-nlri-selection-rules-01)
+* **Presenter**: Jia He
+* **Summary**:
+  * RFC 9515 (referred to as RFC 9815 in the transcript) outlines NLRI selection rules, but current rules can cause redundant advertisements and slow down convergence in certain conditions.
+  * **Problem Scenario 1**: Redundant advertisements occur when the same NLRI is received from multiple peers, and BGP ID tie-breaking causes secondary, unnecessary updates.
+  * **Problem Scenario 2**: Parallel links and sessions between the same BGP speakers lead to duplicate advertisements.
+  * **Problem Scenario 3 (Cold Restart)**: When a node restarts, its sequence number resets to 1. Direct peers accept it due to Rule 1 (direct peer preference), but non-direct peers with cached stale NLRIs (e.g., sequence 100) reject it, delaying network-wide convergence.
+  * **Proposed Solutions**:
+    * If an NLRI has the same sequence number as the selected one, do not re-advertise.
+    * For parallel links, prefer the session with the smallest peer address (aligning with RFC 4271).
+    * For cold restarts, remove or make Rule 1 optional. Instead, let stale NLRIs be sent back to the originator to trigger a new update with an incremented sequence number (similar to IGP self-demotion/refresh).
+* **Discussion**:
+  * Acee Lindem agreed that adopting an IGP-like approach (returning stale NLRIs to the originator to force a higher sequence number) is a solid change that handles both cold restarts and withdrawn/modified prefixes.
+  * Acee Lindem asked how suppressing redundant advertisements affects ECMP over parallel links. Jia He clarified that ECMP is calculated during the SPF computation phase and does not rely on BGP-level path selection.
+  * Keyur Patel asked if the cold-start optimization is implementation-specific. Acee Lindem responded that it represents a protocol design adjustment for handling stale NLRIs rather than a pure implementation optimization.
+  * Ketan Talaulikar strongly encouraged the presenters to bring this technical debate to the LSVR mailing list, noting that the list has been quiet.
+
+---
+
+## Decisions and Action Items
+* **Liaison to IEEE 802.1**: The working group will send the pending liaison response reflecting the neighbor discovery poll results. If interest in LLDP-based discovery materializes later, a follow-up liaison will be initiated.
+* **YANG Draft Scope**: The authors of [draft-ietf-lsvr-bgp-ls-yang](https://datatracker.ietf.org/doc/draft-ietf-lsvr-bgp-ls-yang/) will confirm on the mailing list that RIP support is out of scope to clear the path for WGLC.
+
+---
+
+## Next Steps
+* **BGP-LS YANG**: Once the RIP scope is finalized on the mailing list, the chairs will prepare [draft-ietf-lsvr-bgp-ls-yang](https://datatracker.ietf.org/doc/draft-ietf-lsvr-bgp-ls-yang/) for Working Group Last Call. Incremental updates will be cross-posted to the IDR working group.
+* **SRv6 Extensions**: The authors of the SRv6 extensions draft will update the document to address Acee Lindem's feedback on NLRI-to-neighbor bindings and data-plane references.
+* **Multi-Domain & SPF Selection Rules**: Technical discussions on BGP-SPF selection rules (especially regarding cold start behavior) and multi-domain/hybrid use cases will be moved to the LSVR mailing list.

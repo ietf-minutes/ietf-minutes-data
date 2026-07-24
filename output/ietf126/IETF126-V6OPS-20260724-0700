@@ -1,0 +1,176 @@
+# [V6OPS](../wg/v6ops.html)
+
+## Summary
+The V6OPS Working Group met at IETF 126 to discuss active working group drafts, transition strategies, and operational challenges in deploying IPv6-only and dual-stack networks. Key discussions centered on application testing, customer edge (CE) router requirements, optimizing 464XLAT and MAP-T transitions, stub resolver filtering, and improving multicast Router Advertisements (RAs) over wireless networks. High-level enterprise transition case studies were shared, and proposals were made to improve 5G IPv6-only deployments and address IPv6 extension header reachability.
+
+---
+
+## Key Discussion Points
+
+### Working Group Administration and Status Update
+* **Presenter**: Nick Buraglio
+* **Details**: 
+  * `draft-ietf-v6ops-6146bis` has successfully completed Working Group Last Call (WGLC) and is heading to the IESG for publication as an Internet Standard.
+  * WGLC was issued for the NAT64 well-known prefix draft (`draft-ietf-v6ops-nat64-wkp-1918`).
+  * `draft-ietf-v6ops-ipv6-only` has been officially adopted as a working group document.
+  * Contribution is encouraged for Brian Carpenter's open-source IPv6 textbook.
+  * **Interim Meeting Idea**: Jen Linkova suggested hosting a co-located interim meeting with RIPE in May. Tom Hill and Tim Wicinski supported this proposal.
+
+---
+
+### [How to upgrade a SaaS giant to IPv6](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-how-to-upgrade-a-saas-giant-to-ipv6-00)
+* **Presenter**: Philip Thiesel (SAP)
+* **Details**:
+  * Philip outlined SAP's journey toward IPv6 readiness, which was motivated by RFC 1918 exhaustion (managing over 9,000 Kubernetes clusters in the same RFC 1918 space) and the US Federal IPv6-only mandate.
+  * SAP established an internal product standard stating that their entire SaaS portfolio must support IPv6 without functional regressions.
+  * Rather than creating an ambitious standalone timeline, they integrated IPv6 deployment into standard hardware rollovers and infrastructure lifecycle processes.
+  * **Lessons Learned**: Multi-cloud environments pose different IPv6 behaviors, which is a major pain point. Gaps exist in documentation (e.g., Python examples assume IPv4) and language runtimes (e.g., Java still defaults to preferring IPv4).
+
+---
+
+### [01 Jordi Palet - IPv6 Prefix Assignment to End-Sites](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-jordi-palet-ipv6-prefix-assignment-to-end-sites-00)
+* **Presenter**: Jordi Palet Martínez
+* **Draft**: `draft-ietf-v6ops-prefix-to-end-sites`
+* **Details**:
+  * The document aligns closely with RIPE BCOP-690 guidelines for point-to-point links.
+  * Recent changes include adding considerations for PPPoE/IPoE, clarifying prefix persistency versus privacy, relaxing uppercase normative language, and changing the title from "end users" to "end sites".
+  * Jordi noted that the document is nearly ready for WGLC but requires more reviews and inputs from the working group.
+
+---
+
+### [02 Jordi Palet - 464XLAT/MAP-T Optimization](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-jordi-palet-464xlatmap-t-optimization-00)
+* **Presenter**: Jordi Palet Martínez
+* **Draft**: `draft-ietf-v6ops-464xlat-optimization`
+* **Details**:
+  * Addresses double-translation overhead in 464XLAT/MAP-T environments when IPv4-only devices access local dual-stack CDNs or caches.
+  * Jordi proposed focusing on "Approach 1" (DNS-routing based), which utilizes the NAT64 well-known prefix (`draft-ietf-v6ops-nat64-wkp-1918`) with RFC 1918 addresses, avoiding any need to modify the Customer Edge (CE) router.
+  * Jordi suggested splitting the document into an Informational document and a Best Current Practice (BCP) specifically for Approach 1.
+* **Discussion**:
+  * Ondřej Caletka noted that Approach 1 does not strictly require AAAA records for the IPv4-only path and suggested that a provisioning mechanism (Approach 3) is a better long-term strategy. Jordi countered that CE firmware updates are notoriously slow to deploy in the field.
+  * Andriy Yurchenko commented that some CE kernel modules already support static mapping and MAP-T (S46 rules) provisioning.
+  * Jen Linkova questioned whether this had been tested in a live environment, and Éric Vyncke clarified that this architecture utilizes direct connections within the ISP infrastructure.
+
+---
+
+### [03 Jordi Palet - IPv6-only and IPv6-Mostly Terminology Definition](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-jordi-palet-ipv6-only-and-ipv6-mostly-terminology-definition-00)
+* **Presenter**: Jordi Palet Martínez
+* **Draft**: `draft-ietf-v6ops-ipv6-only`
+* **Details**:
+  * The draft has been updated with detailed diagrams and text revisions, including clarifying that APIs are recommended to remain dual-stack for now.
+* **Discussion**:
+  * Ondřej Caletka pointed out that in an "IPv6-mostly" network, both CLAT-enabled and native dual-stack hosts are currently defined as "dual-stack", suggesting a need to distinguish their operating modes.
+  * Tim Chown recommended replacing the word "scope" with "context" to make the terminology clearer to operators transitioning from IPv4.
+
+---
+
+### [04 Philipp - draft-ietf-v6ops-ipv6-app-testing](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-draft-ietf-v6ops-ipv6-app-testing-00)
+* **Presenter**: Philip Thiesel
+* **Draft**: `draft-ietf-v6ops-ipv6-app-testing`
+* **Details**:
+  * Outlines functional testing procedures for validating IPv6-only readiness in applications.
+  * Recent revisions changed "true IPv6-only" to "IPv6-only strict" and added sections on name resolution, partially broken connectivity, and loopback socket behavior.
+* **Discussion**:
+  * Tim Winters asked if performance/throughput measurements should be added. Philip clarified that performance degradation is typically an infrastructure issue, so the draft focuses solely on functional validation. Tim Winters suggested highlighting cases where control and data traffic take different paths.
+  * A NIC.br representative strongly supported the draft as an essential developer educational tool.
+  * Tim Chown suggested dividing the text into setup recommendations for IT testing environments versus application developer code-level validation.
+
+---
+
+### [05 Ondrej Caletka - Filtering address records in stub DNS resolvers](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-filtering-address-records-in-stub-dns-resolvers-00)
+* **Presenter**: Ondřej Caletka
+* **Draft**: `draft-ietf-v6ops-aaaa-filtering`
+* **Details**:
+  * Stub resolvers often skip AAAA queries when they assume they lack IPv6 connectivity. Ondřej argued that if a host has *any* route to an address that could appear in global DNS (including VPN interfaces and ULAs), it should proceed with AAAA queries to avoid breaking IPv6-only VPNs.
+  * The draft proposes algorithms to determine true IPv6 connectivity by examining routing tables and addresses.
+* **Discussion**:
+  * Jen Linkova raised concerns about resolving DNS through one interface while sending traffic through another, noting that multi-homed hosts need a broader Provisioning Domains (PvD) approach to prevent unexpected side effects.
+  * Nick Buraglio confirmed that VPN DNS resolution failures are a widespread, active problem.
+  * A Cloudflare representative requested clarification on which addresses should trigger queries. Ondřej clarified that queries should be made if any global-scope address space (including ULAs, but excluding link-locals) is routable.
+
+---
+
+### [06 Tim Winters - IPv6 CE Router (7084bis)](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-ipv6-ce-router-7084bis-00)
+* **Presenter**: Tim Winters
+* **Draft**: `draft-ietf-v6ops-rfc7084bis`
+* **Details**:
+  * Key updates include:
+    * Obsoleting RFC 9018 to centralize LAN-side prefix delegation text into one document.
+    * Recommending that CE routers "should" generate Unique Local Addresses (ULAs).
+    * Requiring that if DNS proxying is used, the CE router must support IPv6 when forwarding queries.
+    * Adding DOH (DNS over HTTPS) proxy support as a "should" and DOT (DNS over TLS) as a "may".
+    * Modifying M/O DHCPv6 flag handling so that minor connection state flaps do not cause the CE router to dump its active DHCPv6/PD tables.
+    * Incorporating DNS packet size and fragmentation avoidance rules (R5 and R6).
+* **Discussion**:
+  * Stefan Ubbink requested that the DNS proxy IPv6 support statement use a normative capitalized "MUST". Tim Winters agreed.
+  * Tim Chown asked if multicast requirements (MLD proxying) should be expanded due to new media delivery protocols. Tim Winters noted edge multicast remains highly operator-specific and preferred keeping the requirement minimal for now.
+
+---
+
+### [07 xipeng xiao - Enhanced Dual Stack](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-10-xipeng-xiao-enhanced-dual-stack-00)
+* **Presenter**: Shuping Peng (on behalf of XiPeng Xiao)
+* **Details**:
+  * Shuping introduced the Enhanced Dual Stack (EDS) concept to ease enterprise transitions by ensuring that IPv6 problems fall back transparently to IPv4 without disrupting users.
+  * EDS proposes OS-level platform profiles for Happy Eyeballs, modifying `getaddrinfo` and `connect` APIs to track connection statistics, and exposing fallback data to administrators for debugging.
+* **Discussion**:
+  * Philip Thiesel strongly opposed modifying core socket APIs like `getaddrinfo`, stating that OS implementers would not adopt these changes and that lowering connection timeouts is a more realistic operational fix.
+  * Tom Hill expressed concern that EDS reinforces the false narrative that IPv6 is too difficult, adding that enterprise resistance is a management/willpower issue rather than a technical one.
+  * Warren Kumari and Jen Linkova debated the difficulty of enterprise IPv6. Jen argued that routing, VXLAN, and cloud architectures are inherently hard, but enterprises avoid IPv6 simply because their current IPv4 networks still function.
+
+---
+
+### [08_Jen Linkova_UnicastUnsolicitedRAs 02](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-10-jenlinkova-unicastunsolicitedras-01)
+* **Presenter**: Jen Linkova
+* **Details**:
+  * Multicast Router Advertisements (RAs) are frequently dropped over wireless networks. This is especially disruptive during renumbering events when life-time values are being aggressively decremented.
+  * Jen proposed sending unsolicited RAs as unicast (using either L3 unicast to known link-local neighbors or L2 unicast) to increase reliability.
+* **Discussion**:
+  * Andriy Yurchenko noted that sending L3 unicast RAs might trigger Neighbor Uniqueness Detection (NUD) and agreed that L2 unicast of L3 multicast is a cleaner approach.
+  * Ondřej Caletka agreed that sending unicast packets during network renumbering is an acceptable overhead to ensure delivery.
+  * Tim Winters cautioned that home gateways typically decouple the RA generation process from the ND cache, making neighbor-table lookups difficult to implement.
+  * Lorenzo Colitti argued that the best long-term solution is to lobby IEEE 802.11 to mandate L2 unicast conversion for critical multicast control packets (like RAs) at the Access Point.
+
+---
+
+### [09 Gai Le - Observations on the Reachability and Evasion of Packets with IPv6 Extension Headers on the Internet](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-observations-on-the-reachability-and-evasion-of-packets-with-ipv6-extension-headers-on-the-internet-00)
+* **Presenter**: Gai Le (Tsinghua University Representative)
+* **Details**:
+  * Presented a measurement study evaluating how reliably packets containing IPv6 Extension Headers (EHs) traverse the Internet, and whether EHs can be exploited to bypass firewall ACLs.
+  * Results showed high reachability for Destination Options and Fragment Headers, while Hop-by-Hop headers faced high drop rates. High drop rates were heavily correlated with strict government/enterprise firewall policies.
+  * Conversely, the study identified over 5,000 Autonomous Systems (ASes) where firewalls failed to inspect past EHs, allowing TCP/UDP traffic to bypass security filters.
+* **Discussion**:
+  * Éric Vyncke suggested expanding the study's single geographic vantage point to multiple continents for accuracy and comparing the data to RFC 9511. He also cautioned that using SSH/SNMP probes introduces filtering bias.
+  * An unidentified participant noted that the study used small EH sizes, which represents a "best case" scenario; larger headers would likely suffer higher drop rates.
+
+---
+
+### [10 Chenhao Ma - Considerations of IPv6-only Deployment in 5G Mobile Networks](https://datatracker.ietf.org/meeting/126/materials/slides-126-v6ops-considerations-of-ipv6-only-deployment-in-5g-mobile-networks-00)
+* **Presenter**: Chenyi Hou
+* **Details**:
+  * Analyzed operational strategies to bridge 5G mobile deployments with standard IPv6 transition mechanisms.
+  * Chenyi evaluated Protocol Configuration Options (PCO) signaling versus Router Advertisement (RA) based options (such as PREF64) for communicating NAT64 prefixes to User Equipment (UE).
+  * The authors strongly recommend the RA-based approach because it processes IP-layer parameters at the IP layer, ensuring access agnosticism, control plane decoupling, and dynamic prefix updates.
+* **Discussion**:
+  * Jordi Palet Martínez supported adopting the document and suggested forming a liaison with 3GPP to formalize PCO and RA behavior.
+  * Jen Linkova welcomed interest in PREF64 and urged operators to demand RA PREF64 support from their 5G equipment vendors.
+
+---
+
+## Decisions and Action Items
+
+* **Draft Adoption**: `draft-ietf-v6ops-ipv6-only` was adopted as a Working Group document.
+* **Document Status**: `draft-ietf-v6ops-nat64-wkp-1918` is completing its WGLC process.
+* **Working Group Poll**:
+  The working group ran a single poll during the session regarding the application testing draft:
+  * **Question**: *Application testing draft ready for WGLC?*
+  * **Results**: Yes: 7, No: 1, No opinion: 13 (Total: 108 participants registered)
+
+---
+
+## Next Steps
+
+* **`draft-ietf-v6ops-prefix-to-end-sites`**: Authors to gather list feedback and prepare for a potential WGLC.
+* **`draft-ietf-v6ops-464xlat-optimization`**: Jordi Palet Martínez to coordinate with CDN operators regarding private-address NAT64 deployment and determine if the draft should be split.
+* **`draft-ietf-v6ops-ipv6-app-testing`**: Philip Thiesel to incorporate feedback on control/data path separation and prepare the document for WGLC later in the year.
+* **`draft-ietf-v6ops-rfc7084bis`**: Tim Winters to apply editorial fixes (making DNS-over-IPv6 a capitalized "MUST" and clarifying DOH/DOT conditions) before initiating WGLC.
+* **`draft-ietf-v6ops-aaaa-filtering`**: Ondřej Caletka to align terminology and lookback logic with Happy Eyeballs v3 efforts.
+* **Unicast Unsolicited RAs**: Jen Linkova and Tim Winters to coordinate offline on practical gateway limitations and potentially interface with IEEE 802.11 working groups.

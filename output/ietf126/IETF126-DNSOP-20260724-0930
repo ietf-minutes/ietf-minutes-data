@@ -1,0 +1,92 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+The DNSOP Working Group met for its second session at IETF 126. The session began with administrative updates and a review of active working group drafts, noting that several documents are now ready to progress to Working Group Last Call (WGLC). Key updates from the IETF 126 Hackathon were also shared, showcasing progress in post-quantum cryptography (PQC) and DNS delegation extensions. 
+
+The main technical agenda covered discussions on resolver delegation validation strategies (comparing child-centric revalidation with parent-centric approaches), proposed configuration properties to streamline catalog zones deployment, "optimistic DNS" client behaviors utilizing expired cache entries, and a comparative analysis of different local root configuration mechanisms.
+
+---
+
+## Key Discussion Points
+
+### Administration & Working Group Status Updates
+* **Status Slides**: Presented during the introduction using the slide deck [IETF 126 DNS Operations (I)](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-sessa-ietf-126-dns-operations-i-00).
+* **Document Progress**:
+  * The "Structured DNS error" draft has been submitted to the IESG for approval.
+  * `draft-ietf-dnsop-rfc9364bis` (3901bis) is currently in the RFC Editor queue.
+  * The Call for Adoption for `draft-noc-censorship-transparency` will close at the end of the week.
+  * The following active drafts are deemed ready for Working Group Last Call (WGLC):
+    * `draft-ietf-dnsop-ns-revalidation` (slated for another WGLC due to the passage of time).
+    * `draft-ietf-dnsop-domain-verification-techniques` (following its latest revision).
+    * `draft-ietf-dnsop-integration` (presented on Monday, referenced in [DNS Integrations draft-ietf-dnsop-integration](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-dns-integrations-draft-ietf-dnsop-integration-00)).
+    * `draft-ietf-dnsop-dnssec-automation`.
+    * `draft-ietf-dnsop-delegation-mgmt-via-ddns` (referenced in [delegation-mgmt-via-ddns](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-delegation-mgmt-via-ddns-00)).
+  * Other active drafts mentioned during the status updates include `draft-ietf-dnsop-dry-run-dnssec` and `draft-ietf-dnsop-dnssec-keyrestore` (referenced in [DNSSEC Key Restore](https://datatracker.ietf.org/meeting/126/materials/slides-126-dnsop-sessa-dnssec-key-restore-00)).
+
+### IETF 126 Hackathon Updates
+* **Merkle Tree Ladder (MTL) Project**: Andrew presented performance metrics evaluating MTL with the MLDSA post-quantum algorithm, demonstrating that MTL significantly amortizes signature size, signing time, and verification time for PQC DNSSEC.
+* **Other DNS Hackathon Work**: Shumon Huque summarized the outcomes of several other hackathon projects:
+  * `draft-ietf-dnsop-delext`: Shumon Huque implemented a prototype of full delegation extension (Delext) support in an authoritative server, identifying and fixing specifications around downgrade resistance and compact denial of existence. Shane Kerr added Delext support to LDNS, and David Blacka added support to the `dnsjava` library.
+  * *Opportunistic Transport Signaling*: Johan, Sarah, and Leon worked on NSD and Unbound implementations for opportunistic transport and operator-led signaling parameters.
+  * *EDNS Backend Serial Option*: Stefan, Karl, and Willem Toorop implemented a new EDNS option for backend serial zone versions in NSD, with work also beginning in Knot DNS.
+
+### Delegation Revalidation by DNS Resolvers
+* **Presentation**: Shumon Huque presented `draft-ietf-dnsop-ns-revalidation`, which aims to mitigate cache poisoning and redirection attacks by explicitly querying the NS RRset at the child zone apex and preferentially caching it.
+* **Discussion**:
+  * **Petr Špaček** pointed out that while the draft notes long-term deployment of similar concepts, the strict validation mode proposed in the current text has not been thoroughly tested. He recommended testing this specific protocol variant before final publication.
+  * **Benjamin Schwartz** suggested making it clear to readers that this draft and the upcoming parent-centric resolver draft are a complementary pair. He proposed renaming the drafts to "Recommendations for child-centric resolvers" and "Recommendations for parent-centric resolvers," respectively. Shumon Huque noted that the revalidation draft is not strictly child-centric as it utilizes a mix of parent and child data to prevent ghost attacks.
+
+### Parent-Centric Resolver Behavior
+* **Presentation**: Ondřej Surý presented the parent-centric resolver delegation proposal. In contrast to traditional resolver behavior, a parent-centric resolver prioritizes delegation data from the parent zone and never overwrites it with child-side NS records. This simplifies implementation, restores functional sibling glue loops, and mitigates vulnerabilities like Ghost and Phoenix domains.
+* **Discussion**:
+  * **Wes Hardaker** noted that the draft's security considerations section is currently inadequate and suggested incorporating safety concerns detailed in Shumon Huque's revalidation draft.
+  * **Benjamin Schwartz** advised against using the RD (Recursion Desired) bit for parent-centric signaling, warning that it introduces unnecessary protocol complexity.
+  * **Shane Kerr** expressed concern that explicitly querying a parent-centric resolver for NS records would hide the delegation path actually being utilized by the resolver, making debugging difficult.
+  * *Debugging Workarounds*: In the session chat, Shane Kerr, Petr Špaček, and Ralf Weber discussed potential ways to expose cached delegation data for debugging (e.g., using a dedicated QTYPE, a custom EDNS option, or returning cached parent-side NS records in the Authority/Additional sections on RD=0 queries).
+  * **Klaus Darilion** spoke in support of the parent-centric approach, noting that his production resolvers have safely utilized this behavior since 2002 to protect unsigned domains.
+
+### Catalog Zones Properties
+* **Presentation**: Willem Toorop presented a proposal to standardizing new catalog zone properties (based on custom properties utilized in BIND, but removing the `.x` suffix). The goal is to reduce manual pre-provisioning on secondary servers and allow ad-hoc overrides for transfers (including TSIG keys, primaries, and transfers over TLS/QUIC).
+* **Discussion**:
+  * **Peter Thomassen** requested the inclusion of a "serial" property to allow secondary servers to immediately learn the serial number of a member zone from the catalog zone itself, eliminating the need for periodic SOA queries.
+  * **Willem Toorop** agreed that a serial property is highly valuable but suggested it should be handled in a separate, dedicated draft rather than overloading this basic properties draft.
+
+### Optimistic DNS
+* **Presentation**: Gautam Akiwate presented on client-side "optimistic DNS," a stub-resolver mechanism that allows an application to immediately use expired cache entries while concurrently kicking off a refresh query in the background. The mechanism relies on asynchronous DNS updates and Happy Eyeballs to fallback to fresh responses if the expired addresses fail to connect.
+* **Discussion**:
+  * **Petr Špaček** asked if prefetching (which has been in BIND since 2014) solves this latency issue without needing optimistic stub fallbacks. Gautam Akiwate and Sebastian Poreba clarified that resolver-side prefetching only works when names are repeatedly queried, whereas client-side optimistic DNS optimizes first-request latencies on mobile devices and cold starts.
+  * **Marwan Fayed** suggested that when combined with Happy Eyeballs, clients could safely ignore TTLs entirely.
+  * **Sebastian Poreba** supported the draft, noting that Google has successfully used this approach with long clamped TTLs (up to 21 days) in production with no major misrouting issues.
+  * **Mike Blanche** raised concerns regarding server decommissioning, noting that if clients ignore TTLs, draining traffic from older servers becomes operationally difficult.
+  * **Erik Nygren** agreed, stating that allowing clients to bypass TTLs by hours or days without explicit server opt-in (e.g., via a SvcParam) is operationally risky, as a successful TLS handshake does not guarantee a target server is active and intended to receive production traffic.
+
+### Root System and Local Root Considerations
+* **Presentation**: Wes Hardaker presented a comparative analysis of various technologies designed to optimize communication with and secure the root zone (such as QNAME minimization, aggressive NSEC caching, encrypted DNS, serve-stale, DNSSEC, and local root configurations). He pointed out that RFC 8806 does not accurately describe how local root is implemented in production and advocated for its replacement.
+* **Discussion**:
+  * **Paul Hoffman** disagreed that action is required, arguing that RFC 8806 can simply remain as-is or be marked historic, as implementers have already deployed what works best for their software.
+  * **Peter Špaček** agreed with Paul Hoffman, stating that because vendors successfully implement local root behaviors without issues, there is no need for the IETF to prescribe specific optimization pathways. However, he supported standardizing the XFR URL schemas.
+  * **Roy Arends** suggested that the document would benefit from documented operational experiences from large operators who run local root at scale.
+  * **Benjamin Schwartz** expressed architectural concerns regarding the introduction of new URI schemes for local root distribution, noting that it risks fragmenting and complexifying the DNS protocol.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-dnsop-ns-revalidation`**: The chairs will issue a new Working Group Last Call (WGLC) to confirm consensus before progressing the draft to the IESG.
+* **WGLC Roadmaps**: The chairs will initiate WGLCs for:
+  * `draft-ietf-dnsop-domain-verification-techniques`
+  * `draft-ietf-dnsop-integration`
+  * `draft-ietf-dnsop-dnssec-automation`
+  * `draft-ietf-dnsop-delegation-mgmt-via-ddns`
+* **Parent-Centric Resolver Draft**: Ondřej Surý will update the draft to expand the security considerations section and address concerns regarding the RD bit.
+* **Catalog Zones Properties**: A Call for Adoption will be issued for the Catalog Zones Properties proposal.
+
+---
+
+## Next Steps
+
+* **Mailing List Discussions**:
+  * Technical details of parent-centric resolver debugging mechanisms (such as returning parent-side NS records on RD=0 queries).
+  * Operational guardrails and TTL limits for the "Optimistic DNS" client behaviors.
+  * Deciding the appropriate path forward for local root optimizations (RFC 8806bis) versus marking RFC 8806 historic.

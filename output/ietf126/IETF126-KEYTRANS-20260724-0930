@@ -1,0 +1,60 @@
+# [KEYTRANS](../wg/keytrans.html)
+
+## Summary
+
+The KEYTRANS Working Group met at IETF 120 to discuss the status of its core documents, updates to the protocol specification, and insights from recent client implementations. The Architecture document has been submitted to the IESG for publication, with Corey serving as the document shepherd. Brendan McMillion presented significant updates to [draft-ietf-keytrans-protocol](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol), covering wire formats, third-party management, and credentials. Felix Linker presented feedback and findings from a Rust-based client implementation effort, highlighting areas of complexity in the specification's tree structures and calling for a clearer path toward wire-format interoperability.
+
+---
+
+## Key Discussion Points
+
+### 1. WG Status and Document Updates
+*   **Architecture Document**: The Architecture draft has been submitted to the IESG for publication. Co-chair Prachi Wadhawan thanked Deb Cooley for reviewing and Corey for acting as the document shepherd.
+*   **Protocol Document**: Brendan McMillion presented updates on [draft-ietf-keytrans-protocol](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol) based on the [Protocol Document](https://datatracker.ietf.org/meeting/126/materials/slides-126-keytrans-protocol-document-00) slides.
+
+---
+
+### 2. Protocol Document Updates ([draft-ietf-keytrans-protocol])
+
+Brendan McMillion outlined several major areas of work:
+
+*   **Monitoring Wire Formats**: Request and response wire formats have been defined and integrated for contact monitoring, owner state initialization, and owner monitoring.
+*   **Third-Party Management & Version Counters**:
+    *   Under third-party management, the Service Operator (SO) wraps user update requests with its own signature before sending them to the untrusted log manager.
+    *   To prevent a malicious log manager from reordering updates, the SO must assign and sign monotonic version counters. 
+    *   Felix Linker questioned the necessity of forcing the SO to manage version counters, suggesting that the log could manage them while the SO simply tracks the latest key. Brendan replied that signed version numbers are necessary for security (preventing the log from serving old versions as current).
+    *   Daniel Harkins (Proton) noted that Proton faced a similar design choice and chose to store all intermediary changes within an epoch. This allows individual clients to audit and verify that their specific updates were properly recorded, reinforcing the utility of signing multiple atomic updates.
+*   **Credentials (Standard vs. Provisional)**:
+    *   Credentials allow peer-to-peer verification without network access, which is crucial for anonymous use cases and protocols like MLS.
+    *   **Standard Credentials**: Based on a recent "distinguished log entry." They are small, verify quickly, and do not trigger contact monitoring.
+    *   **Provisional Credentials**: Used when a client needs to issue a credential for a key version before it has been incorporated into a distinguished log entry (e.g., during the 24-hour "reasonable monitoring window"). These are larger, slower to verify, and may trigger contact monitoring via a credential update structure.
+    *   Orie Steele questioned the complexity and privacy trade-offs of provisional credentials. Brendan agreed they are a trade-off for latency but noted they are essential for credential-heavy environments like MLS.
+    *   Felix Linker suggested splitting credentials out into a separate document to make the core protocol draft leaner. Orie Steele recommended keeping them in the same document because many deployments will inevitably depend on credentials.
+*   **New Operation (Recent Distinguished Log Entries)**: A new right-to-left depth-first search operation was introduced to allow users to fetch the set of recent distinguished log entries, which are needed to verify credentials, detect forks (via gossiping), and initialize ownership state.
+*   **Automated Code Generation Experiment**: Brendan shared that he used automated code generation tools to implement a server from the specification. The tool generated ~7,000 lines of code, found one substantive specification error, found 10 drafting/typo errors, and produced a wire-compatible server in an hour. Orie Steele expressed support for generating implementations and building test harnesses to foster interoperability.
+
+---
+
+### 3. Client Implementation Feedback
+
+Felix Linker presented feedback based on his Rust client implementation using the [Client Implementation](https://datatracker.ietf.org/meeting/126/materials/slides-126-keytrans-client-implementation-01) slides.
+
+*   **Implementation Status**: The client maintains state, updates views, and performs greatest version searches. It does not yet support monitoring, has a hardcoded cipher suite, and is proven memory-safe.
+*   **Feedback 1: Prefix Proof Complexity**:
+    *   Felix found that constructing prefix trees is difficult because prefix proofs depend heavily on merging data from the binary ladder.
+    *   He suggested simplifying the prefix proof structure by delivering a self-contained list of leaves (with depth, hashes/commitments, and VRF outputs) to allow a simpler depth-first search reconstruction without relying on the binary ladder.
+*   **Feedback 2: Implicit Data Structure Descriptions**:
+    *   Felix noted that structures like the `CombinedTreeProof` are defined implicitly as "transcripts" of an algorithm's execution, rather than being explicitly structured. This requires implementers to trace the algorithm mentally to understand the layout and ordering of elements, which is prone to errors.
+    *   Brendan McMillion clarified that the transcript-style layout was intentional but acknowledged the feedback.
+*   **Feedback 3: Interoperability and Wire Formats**:
+    *   Felix reported that his client was not interoperable with Guy's implementation because Guy used Protobuf while the specification's pseudo-code is written in TLS syntax.
+    *   Felix and Timo strongly urged the WG to specify or recommend a default, concrete serialization format (such as CBOR/CDDL or TLS serialization) to prevent fragmented, non-interoperable implementations.
+    *   Orie Steele cautioned against specifying a new serialization format late in the process, pointing out that similar protocols (like Certificate Transparency) leave the outer serialization to the wrapper and define internal structures as named binary blobs.
+
+---
+
+## Decisions and Action Items
+
+*   **Architecture Document**: Submitted to the IESG for publication.
+*   **Action Item (All)**: Review the updated [draft-ietf-keytrans-protocol](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol) to prepare the document for Working Group Last Call (WGLC).
+*   **Action Item (Authors)**: Address Felix Linker's feedback regarding prefix proof complexity, implicit structure descriptions, and clarifying default wire format expectations.

@@ -1,0 +1,70 @@
+# [EMU](../wg/emu.html)
+
+## Summary
+
+The Extensible Multi-Protocol User Authentication (EMU) Working Group met at IETF 126 to discuss the status of its active drafts, advance the newly adopted Tunnel Extensible Authentication Protocol (TEAP) Version 2, and review several new proposals regarding EAP method security, post-quantum cryptography (PQC) enhancements, and enterprise Wi-Fi offloading. 
+
+Key activities included:
+* An update on active working group documents, including the near-completion of Working Group Last Call (WGLC) for the EAP-AKA' PQC specifications.
+* Discussion on simplifying state machines and consolidating documentation for `draft-ietf-emu-teapv2`.
+* Presentations on new proposals: forward-secure re-authentication in EAP-AKA', a quantum-resistant upgrade to EAP-PSK, and a new EAP method (EAP-WSIM) for mobile offloading on enterprise Wi-Fi.
+
+---
+
+## Key Discussion Points
+
+### Administrivia & Document Status Updates
+The chairs presented the [IETF 126 EMU WG Chairs' Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-emu-ietf-126-emu-wg-chairs-slides-01). Status updates for active drafts were noted as follows:
+* **`draft-ietf-emu-pqc-eap-tls`**: No recent changes.
+* **`draft-ietf-emu-pqc-eapaka`** & **`draft-ietf-emu-hybrid-pqc-eapaka`**: Currently in Working Group Last Call (WGLC). Reviews are being submitted, and the chairs plan to close WGLC soon.
+  * *Chat Discussion on Fragmentation:* Andrew Dolan highlighted a liaison statement and draft regarding `AT_IDENTITY` fragmentation for EAP-AKA' PQC. Aritra Banerjee noted that the fragmentation mechanism defined in `draft-ietf-emu-pqc-eapaka` is generic and can be utilized for any attribute. Heikki Vatiainen and Alan DeKok agreed that a generic solution is preferred. Aritra Banerjee confirmed that the generic fragmentation will be defined in `draft-ietf-emu-pqc-eapaka` and referenced in `draft-ietf-emu-hybrid-pqc-eapaka` to avoid duplication.
+* **`draft-ietf-emu-eap-ppt`**: An update is expected soon from Bart.
+* **`draft-ietf-emu-eap-onboarding`**: Michael Richardson reported no updates; they are waiting for running code.
+* **EAP-EDHOC**: AD Chris Patton noted that an updated version is waiting for him to clear and advance.
+
+### TEAPv2
+Alan DeKok presented [TEAPv2](https://datatracker.ietf.org/meeting/126/materials/slides-126-emu-teapv2-00) based on `draft-ietf-emu-teapv2`. 
+
+* **Problem Statement:** TEAPv1 has highly complex key derivation with virtually no negotiation, leading to poor interoperability. It also fails to cleanly handle the distinction between machine and user credentials (e.g., placing a machine on a quarantined VLAN for updates before a user logs in).
+* **Proposed Changes:** Simplify key derivation, mandate maximum MTUs to fix fragmentation issues, and make all flows mandatory. The group discussed mandating a specific execution order (such as machine authentication first, followed by user authentication) to simplify the state machine.
+* **Implementation & Design:** Elliot Lear reported that he has implemented much of the X.509 machinery and TLS 1.3 support for TEAPv2 in host AP and `wpa_supplicant`. 
+* **EAP Type Code:** The draft authors raised the question of whether TEAPv2 should utilize a new EAP type code. Alan DeKok and Elliot Lear noted that a new type code would prevent state machine issues caused by guessing protocol versions implicitly.
+* **Consolidation:** Peter Yee and Alan DeKok agreed that while the initial draft serves as a diff from TEAPv1, once the base functionality and interoperability are established, the document should pull in the relevant parts of the original TEAP RFC to become a standalone, unitary specification.
+
+### Forward Secure Reauthentication in EAP-AKA’
+Michael Richardson / Guanjun presented [Forward Secure Reauthentication in EAP-AKA’](https://datatracker.ietf.org/meeting/126/materials/slides-126-emu-forward-secure-reauthentication-in-eap-aka-00).
+
+* **Problem Statement:** RFC 9678 introduced ephemeral Diffie-Hellman to provide forward security for full EAP-AKA' authentication. However, the keys used to protect fast re-authentication (`k_encr` and `k_aut`) are derived from the master key (`MK`), which depends on long-term secrets. If long-term secrets are compromised, an attacker can decrypt the re-authentication ID and link user sessions, violating forward security.
+* **Proposed Changes:** Derive updated transit keys (`k_encr_prime` and `k_aut_prime`) from the forward-secure ephemeral Diffie-Hellman keys. A new attribute/notice (`support_TEK_SFS`) is introduced to negotiate capability support between the peer and the server for backward compatibility.
+* **Discussion:** Joseph Salowey asked if this proposal requires back-end servers to maintain additional state. Michael Richardson / Guanjun clarified that the peer must persist the updated keys across sessions for the duration of the re-authentication lifetime, while server-side behavior remains largely identical, only requiring support for the new attributes.
+
+### Quantum Resistant EAP-PSK (EAP-PSK-256)
+Michael Le Clerc and Emmanuel Conesa presented [20260716-eap_psk_256-ietf_v2 with minor change (Add NIST reference slide 7 ; EAP-PSK title duplication modification slide 6)](https://datatracker.ietf.org/meeting/126/materials/slides-126-emu-20260716-eap-psk-256-ietf-v2-with-minor-change-add-nist-reference-slide-7-eap-psk-title-duplication-modification-slide-6-00).
+
+* **Context:** EAP-PSK is utilized in smart metering and highly constrained IoT devices (such as G3-PLC hybrid networks). As IEEE 802.15.4 has adopted AES-256, EAP-PSK (which relies on AES-128) must be upgraded.
+* **Proposed Changes:** Double the key sizes to 256 bits (for both the PSK and derived keys). Replace the non-standard AES modified counter mode with the NIST SP 800-108 double-pipeline feedback mode for key derivation. Use AES-CMAC-256 for MAC generation and AES-256-EAX for the protected channel. Additionally, make the authentication key derivation context-based by incorporating the peer Network Access Identifier (NAI) and utilize nonces from both the peer and the server.
+* **Discussion:**
+  * **Quantum Threat Urgency:** Matt (UK NCSC) and a Nokia Representative questioned whether AES-128 is genuinely threatened by Grover's algorithm in the near term, citing NIST guidance that AES-128 remains secure for decades. 
+  * **Regulatory Drivers:** Michael Le Clerc and Emmanuel Conesa responded that European regulations (such as ANSSI and ENISA) mandate moving to 192-bit or 256-bit keys, and they prefer to proactively secure systems rather than waiting for a practical quantum threat to materialize.
+  * **Constraint Considerations:** Emmanuel Conesa emphasized that smart meters are highly CPU-constrained and cannot easily support asymmetric PQC algorithms, making symmetric upgrades like EAP-PSK-256 crucial.
+  * Heikki Vatiainen noted in the chat that `wpa_supplicant` supports EAP-PSK (RFC 4764) and suggested contributing patches there for interoperability testing.
+
+### EAP-WSIM
+Praveen presented [EAP-WSIM](https://datatracker.ietf.org/meeting/126/materials/slides-126-emu-eap-wsim-00).
+
+* **Problem Statement:** Mobile Network Operator (MNO) devices offloading to untrusted enterprise Wi-Fi often experience poor voice quality (VoWiFi) during Access Point (AP) roaming transitions. 
+* **Proposed Changes:** Introduce EAP-WSIM to authenticate MNO devices at Layer 2 within the enterprise Wi-Fi network without requiring device-side software changes. This enables the pushing of pre-shared Pairwise Master Keys (PMK-R1) to APs to support 802.11r fast transitions.
+* **Discussion:** Mark Grayson (Cisco) questioned the need for a new EAP method, pointing out that existing federated Wi-Fi architectures (such as OpenRoaming and UK Fed Wi-Fi) already support standard EAP-AKA over third-party enterprise networks. Praveen countered that those models typically target public Wi-Fi, and many operators remain hesitant to directly interface their authentication infrastructure with untrusted enterprise RADIUS servers.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* **Fragmentation in EAP-AKA' PQC:** The working group agreed that instead of duplicating fragmentation logic, the generic fragmentation mechanism will be defined solely in `draft-ietf-emu-pqc-eapaka` and referenced by `draft-ietf-emu-hybrid-pqc-eapaka`.
+
+### Action Items
+* **Chairs:** Close the Working Group Last Call (WGLC) for `draft-ietf-emu-pqc-eapaka` and `draft-ietf-emu-hybrid-pqc-eapaka` in the coming week.
+* **Area Director (Chris Patton):** Progress and clear the EAP-EDHOC draft for publication.
+* **Alan DeKok:** Post a proposal to the mailing list regarding adding a requirement to the RADIUS security document to prevent supplicants from spamming RADIUS servers during authentication failures.
+* **Praveen:** Take the discussion and feedback on EAP-WSIM to the working group mailing list.
