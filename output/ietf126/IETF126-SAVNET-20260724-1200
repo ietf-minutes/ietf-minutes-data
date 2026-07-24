@@ -1,0 +1,112 @@
+# [SAVNET](../wg/savnet.html)
+
+## Summary
+
+The SAVNET Working Group met at IETF 126. The session was chaired by Joel Halpern (with Ron Bonica co-chairing). The meeting covered updates on active working group drafts and several new proposals focusing on both intra-domain and inter-domain source address validation (SAV) mechanisms, routing security coordination, Internet Exchange Point (IXP) deployments, and SAV monitoring requirements.
+
+## Key Discussion Points
+
+### 1. Administration and Introduction
+* **Slide Deck**: [Savnet Chair's Introductory Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-savnet-chairs-introductory-slides-00)
+* Joel Halpern opened the meeting, presented the Note Well, provided meeting tips, and reviewed the agenda. No changes were made to the agenda.
+
+---
+
+### 2. Updates on PI-SAV for CC
+* **Presenter**: Min Chi Huang
+* **Slide Deck**: [Updates on PI-SAV for CC](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-updates-on-pi-sav-for-cc-01)
+* **Discussion**:
+  * Min Chi Huang presented updates on Provider Interface SAV for Customer Cones (PI-SAV for CC). The proposal introduces two options: Standalone Custom Cone (SSCC) and Standalone Plus Custom Cone (SPCC) to mitigate source address spoofing.
+  * The presenter addressed feedback from previous sessions regarding similarities with BAR-SAV on Provider Interfaces, traffic engineering (TE)-induced false positives, and simulation requests. 
+  * A new metric called "independence degree" was introduced to help operators assess which solution fits their topology.
+  * **Q&A**: Kotikalapudi Sriram asked about the percentage of prefix reduction in the SAV table compared to the full routing table (1.3 million prefixes). Min Chi Huang noted that this depends on the size of the customer cone and the chosen approach, adding that evaluations show SPCC performs better than SSCC in terms of independence degree.
+
+---
+
+### 3. Update on the BAR-SAV Draft
+* **Presenter**: Kotikalapudi Sriram
+* **Slide Deck**: [Update on the BAR-SAV Draft](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-update-on-the-bar-sav-draft-01)
+* **Relevant Draft**: [draft-ietf-sidrops-bar-sav](https://datatracker.ietf.org/draft-ietf-sidrops-bar-sav/)
+* **Discussion**:
+  * Kotikalapudi Sriram presented updates to the BAR-SAV draft, focusing on its intra-domain component, security considerations, and the use of ROA/ASPA-derived deny lists for prefix filtering.
+  * In the intra-domain component, local configuration information takes precedence over ROAs for the origin AS.
+  * Routing security mechanisms (such as ROV, ASPA, and OTC) help secure BAR-SAV by filtering route leaks and hijacks, thereby minimizing improper permits in the SAV table.
+  * **Q&A**:
+    * Lan Cheng noted that the intra-domain component of BAR-SAV aligns with his intra-domain SAV draft and suggested combining forces. He also pointed out that ROAs contain AS numbers rather than customer identifiers, meaning operators still need out-of-band customer coordination to map prefixes correctly.
+    * Lan Cheng questioned the value of an additional deny list for prefix filtering if ASes can already detect leaks/hijacks using ASPA and ROAs. He suggested discussing this aspect in the GROW working group. Sriram agreed that while GROW is a valid venue, prefix filtering directly benefits SAV by ensuring the RIB remains clean.
+    * Antoine Fressancourt sought clarification on why local configuration takes precedence over ROAs when a customer announces an aggregate prefix (e.g., /23) but chooses not to announce its more-specifics. Sriram explained that the configuration agreement between the customer and operator controls which prefixes are actively routed vs. which are only permitted for SAV.
+    * Min Chi Huang raised concerns regarding the overhead of running routing security validations and potential impacts on incremental deployment. Sriram clarified that BAR-SAV does not perform ROV/ASPA verification itself; it relies on the routing engine to clean the RIB.
+    * *Chat Log Context*: Igor Lubashev noted in the chat that in intra-domain scenarios, the customer might not connect via BGP at all (e.g., renting servers in a provider's datacenter), meaning the provider announces the IPs on their behalf. Sriram also clarified in chat that more-specific prefixes are included in ROAs in case the prefix user wishes to withdraw the less-specific prefix in the future.
+
+---
+
+### 4. Using SOAs to Bootstrap Inter-AS Source Address Protection Services
+* **Presenter**: Presenter (remote)
+* **Slide Deck**: [Using SOAs to Bootstrap Inter-AS Source Address Protection Services](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-using-soas-to-bootstrap-inter-as-source-address-protection-services-01)
+* **Discussion**:
+  * The presenter proposed using Service Obligation Associations (SOAs) within the RPKI system to bootstrap bilateral source address protection. 
+  * Under this model, stable profile information (such as roles, endpoints, and public keys) is published in the RPKI, while highly dynamic predecessor states are synchronized privately over a secure TLS channel. This avoids overloading the global RPKI system with transient states.
+  * **Q&A**: 
+    * Antoine Fressancourt expressed concern over the proliferation of new security records (TOA, SODA, SOA), noting it may make routing security incomprehensible for simpler networks already struggling to deploy ROAs and ASPAs.
+    * Nangong asked if SOA records are dynamic. The presenter replied that the bootstrap information in the SOA is designed to be highly stable.
+
+---
+
+### 5. Updates on Inter-domain Source Address Validation Based on AS Relationships (RB-SAV)
+* **Presenter**: Presenter
+* **Slide Deck**: [Updates on Inter-domain Source Address Validation based on AS relationships](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-updates-on-inter-domain-source-address-validation-based-on-as-relationships-00)
+* **Discussion**:
+  * The presenter outlined updates to Relationship-Based SAV (RB-SAV) since IETF 123.
+  * Section 6 was updated to include SAV handling in Internet Exchange Point (IXP) environments.
+  * Details were added regarding the data structure and operations of the AS-IP Prefix Mapping Server (AIMS), which manages ASN-to-IP prefix mappings. The presenter noted that AIMS can leverage RPKI ROAs to build these mappings locally.
+
+---
+
+### 6. Source Prefix Advertisement (SPA) for Inter-domain SAVNET
+* **Presenter**: Nangong
+* **Slide Deck**: [Source Prefix Advertisement (SPA) for Inter-domain SAVNET](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-source-prefix-advertisement-spa-for-inter-domain-savnet-01)
+* **Discussion**:
+  * Nangong presented a mechanism where a source AS advertises its locally known customer cone and prefix set directly to validating ASes using SPA messages. This leverages the observation that the source AS has the most accurate view of its own prefix authorization.
+  * To minimize payload, SPA messages only advertise diffs compared to BGP updates.
+  * **Q&A**:
+    * Antoine Fressancourt asked about authorization and how to prevent malicious downstream ISPs from advertising fake SPA records. Joel Halpern agreed, pointing out that as proposed, there is no authentication mechanism for SPA, and restricting propagation to single hops is insufficient. The issue was deferred to the mailing list.
+    * Li Bin Liu asked if SPA excludes other existing data sources like ROA or TOA. Nangong responded that these sources will be taken into account when generating SPA messages.
+
+---
+
+### 7. Update on Intra-domain Source Address Validation Architecture
+* **Presenter**: Lan Cheng
+* **Slide Deck**: [Update on Intra-domain Source Address Validation Architecture](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-update-on-intra-domain-source-address-validation-architecture-00)
+* **Relevant Drafts**: [draft-ietf-savnet-intra-domain-architecture](https://datatracker.ietf.org/draft-ietf-savnet-intra-domain-architecture/), [draft-ietf-savnet-inter-domain-problem-statement](https://datatracker.ietf.org/draft-ietf-savnet-inter-domain-problem-statement/), [draft-ietf-savnet-general-sav-capabilities](https://datatracker.ietf.org/draft-ietf-savnet-general-sav-capabilities/)
+* **Discussion**:
+  * Lan Cheng shared architectural updates to align the document with the intra-domain problem statement and terminology.
+  * The architecture defines three core components: Information Sources (routing and SAV-specific), the SAV Agent (logical function generating rules, which can reside on a router or a controller), and Data Plane Enforcement.
+  * It highlights "SAV-specific information" (e.g., interface-to-entity bindings and authorized non-advertised prefixes) to solve asymmetric routing and hidden prefix challenges.
+  * Data plane enforcement recommendations suggest using "monitor-only" or logging policies before enforcing strict packet dropping, referencing [draft-ietf-savnet-general-sav-capabilities](https://datatracker.ietf.org/draft-ietf-savnet-general-sav-capabilities/).
+  * **Q&A**:
+    * Kotikalapudi Sriram asked why there would be "hidden prefixes" in an intra-domain environment where the customer is directly connected. Lan Cheng explained that "hidden prefix" refers to a configuration agreement where a customer is authorized to source traffic from a prefix but does not advertise it in routing. Sriram suggested this is simply standard static configuration.
+    * Min Chi Huang recommended categorizing different multi-homing and asymmetric routing scenarios in the architecture to guide developers.
+
+---
+
+### 8. Information Requirements for Monitoring Source Address Validation Enforcement
+* **Presenter**: Lan Cheng
+* **Slide Deck**: [Information Requirements for Monitoring Source Address Validation Enforcement](https://datatracker.ietf.org/meeting/126/materials/slides-126-savnet-information-requirements-for-monitoring-source-address-validation-enforcement-00)
+* **Discussion**:
+  * Lan Cheng introduced an initial draft defining the monitoring requirements for SAV. It classifies monitoring into three perspectives:
+    1. **Traffic Validation and Handling**: Distinguishes between validation results (pass/fail) and operational actions taken (block, permit, rate-limit, redirect).
+    2. **SAV Rule Generation and State**: Tracks rule contents, size, information sources, and freshness.
+    3. **SAV Configuration Profile**: Monitors SAV enablement status across interfaces and historical configuration changes.
+  * The presenter requested feedback from the community regarding additional metrics and whether existing telemetry/monitoring protocols can support these requirements.
+
+---
+
+## Decisions and Action Items
+* **Consolidation of Intra-domain SAV Ideas**: Kotikalapudi Sriram and Lan Cheng agreed to collaborate offline to align and potentially integrate the intra-domain SAV concepts in [draft-ietf-sidrops-bar-sav](https://datatracker.ietf.org/draft-ietf-sidrops-bar-sav/) and [draft-ietf-savnet-intra-domain-architecture](https://datatracker.ietf.org/draft-ietf-savnet-intra-domain-architecture/).
+* **Mailing List Redirection**: 
+  * Detailed discussion on the precedence of local configuration over ROAs in BAR-SAV was deferred to the mailing list.
+  * Security and authentication concerns regarding Source Prefix Advertisements (SPA) were deferred to the mailing list.
+
+## Next Steps
+* Continued discussion on the mailing list regarding the newly presented monitoring and SOA draft proposals.
+* Refinement of the active working group drafts in preparation for IETF 127 in San Francisco.

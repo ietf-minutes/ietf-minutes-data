@@ -1,0 +1,105 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group met during IETF 126 on Friday. The session covered updates on active working group documents, presentations on multiple individual drafts (covering HTTP Message Signatures, Rich Authorization Request (RAR) Metadata, out-of-band client challenges, deferred token responses, envelope proof-of-possession, and SD-JWT delegation), an analysis of authorization policy languages in OAuth/AI environments, and a proposal to organize the working group's high volume of drafts using a clustering framework.
+
+---
+
+## Key Discussion Points
+
+### Chairs Update
+* **Presenters**: Rifaat Shekh-Yusef, Hannes Tschofenig
+* **Slides**: [Chairs Update](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-chairs-update-00)
+* **Details**: The chairs presented the Note Well, gave tips on meeting participation, and outlined the Friday agenda, highlighting the focus on individual drafts, policy languages, and draft clustering.
+
+---
+
+### Attestation-Based Client Authentication
+* **Presenter**: Daniel Fett
+* **Drafts**: `draft-ietf-oauth-attestation-based-client-auth`, `draft-ietf-oauth-spiffe-client-auth`, `draft-ietf-oauth-client-id-metadata-document`
+* **Details**: Daniel Fett presented updates on `draft-ietf-oauth-attestation-based-client-auth` and addressed three profiling issues raised by the SPIFFE client auth team (`draft-ietf-oauth-spiffe-client-auth`):
+  1. *Subject (`sub`) claim semantic*: The current draft equates the subject to the client ID. The group debated if this should be relaxed. Justin Richer noted that a client ID is a value used by the Authorization Server (AS) to recognize the software and does not require strict string-comparison equality. Arndt Schwenkschuster favored keeping the current language to align with RFC 7521, RFC 7522, and RFC 7523.
+  2. *Workload Identity Key Rotation*: Workload tokens rotate frequently. Binding refresh tokens to the client instance key (`cnf` claim) can prevent seamless rotation. Joseph Heenan suggested a key-rotation mechanism where the old key signs the new key to avoid needing a persistent client instance ID.
+  3. *JWT Type (`typ` claim)*: The draft currently fixes the JWT type. Arndt Schwenkschuster argued that other workload platforms (such as Kubernetes) will issue their own attested credentials and the working group should allow other key-bound types. Philip noted that changing the `typ` should also require changing the client authentication method name to preserve interoperability.
+  * *RFC 7521 compatibility*: Daniel Fett suggested not referencing RFC 7521 to avoid confusion between HTTP body and header usage. Arndt Schwenkschuster recommended including a reference to explain why RFC 7521 is not being used.
+
+---
+
+### HTTP Message Signatures for OAuth PoP
+* **Presenter**: Justin Richer (with Aaron Parecki)
+* **Slides**: [HTTP Message Signatures for OAuth PoP](https://datatracker.ietf.org/meeting/126/materials/slides-126-oauth-http-message-signatures-for-oauth-pop-02)
+* **Details**: Justin Richer presented a general mechanism for applying HTTP Message Signatures (RFC 9421) to OAuth access tokens as a Proof-of-Possession (PoP) mechanism. Unlike DPoP, which relies on Jose, this is a detached signature system that handles HTTP's message-shuffling behavior. Key introduction can occur at registration time or dynamically at runtime.
+* **Discussion**: Kathleen Moriarty expressed concern regarding potential scope creep. Justin Richer clarified that the draft's scope is strictly confined to applying signatures to OAuth access tokens and their immediate parameters. Philip recommended carrying the raw public key directly in the HTTP signature rather than double-encoding the JWK in base64.
+
+---
+
+### RAR Metadata and Error Remediation
+* **Presenter**: Yaron Sheffer
+* **Details**: Yaron Sheffer presented a draft addressing how clients discover Rich Authorization Request (RAR) schemas and how a resource server (RS) can reject a request with an "insufficient authorization" error while providing a structured, remediable payload (base64-encoded JSON) detailing the exact RAR objects needed. The draft also proposes a GNAP-inspired authorization reference (such as a hash or UUID) so that clients do not have to parse complex domain-specific RAR semantics.
+* **Discussion**: Nick Watson supported the error remediation mechanism but expressed mild skepticism about the practical utility of authorization references due to the hierarchical nature of RAR. Arndt Schwenkschuster agreed on the problem space but suggested resolving overlaps with other similar drafts. Justin Richer strongly supported the pass-by-value and pass-by-reference design, noting that the AS is responsible for resolving the reference's validity.
+* **Poll 1**: Should the WG adopt the RAR Metadata and Error Remediation draft as a starting point?
+  * **Result**: yes: 28, no: 4, no_opinion: 12 (total: 92)
+
+---
+
+### OAuth Client Challenge Protocol (Out-of-Band Approval)
+* **Presenter**: Tobias (presented by Judith)
+* **Details**: Tobias presented a mechanism for "out-of-band" approval where a client needs to escalate privileges (step up authorization) when the resource owner is no longer present (such as in autonomous agentic scenarios). If challenged with an `insufficient_client_authorization` error, the client presents a pre-obtained proof artifact to the token endpoint to receive a higher-privileged token.
+* **Discussion**: Aaron Parecki noted that this behavior is already fully supported in vanilla OAuth (RFC 6749) by issuing a broadly-scoped refresh token and letting the client request down-scoped access tokens as needed. Yaron Zehavi suggested that stepping up client authentication could instead be handled using resource server metadata (RFC 9728) to direct clients to distinct AS endpoints with differing client authentication policies. Pam Dingle queried how the scopes of the different tokens in the diagram were distinguished.
+
+---
+
+### Deferred Token Response (DTR)
+* **Presenter**: Max Gerber
+* **Details**: Max Gerber presented a draft proposing an asynchronous token grant mechanism. It enables the AS to defer a grant decision (e.g., for high-risk transactions requiring manual auditing, physical passport verification, or multi-party approvals). The client opts in by sending `completion_mode=deferred` to the token endpoint; if deferred, the AS returns an `authorization_pending` error and a `deferral_code`, which the client uses to poll the token endpoint.
+* **Discussion**: Yaron Sheffer, Paul Carleton, and Arndt Schwenkschuster spoke in favor of the draft, noting real-world use cases in banking, identity verification, and workload provisioning. Nick Watson suggested returning a deferral URL alongside the error to avoid requiring explicit client opt-in. Justin Richer recommended aligning the polling mechanism with prior asynchronous protocols such as CEBA, GNAP, and UMA. George Fletcher stressed the importance of ensuring the deferral code can be sender-constrained to the client instance.
+* **Poll 2**: Should the WG adopt the Deferred Token Response as a WG document?
+  * **Result**: yes: 35, no: 1, no_opinion: 1 (total: 91)
+
+---
+
+### Envelope Proof of Position (EPoP)
+* **Presenter**: Ashwin Abhakar
+* **Details**: Ashwin Abhakar presented an "envelope" proof-of-possession approach designed for non-HTTP bound resource servers, service meshes, and zero-trust architectures. EPoP nests the access token inside an outer proof token. To prevent replay attacks on non-HTTP channels, it utilizes client-generated nonces (`c-nonce`) containing timestamps and key metadata.
+* **Discussion**: Daniel Fett argued that extending OAuth to non-HTTP environments is outside the scope of the OAuth Working Group. Justin Richer agreed, stating that OAuth is fundamentally an HTTP-based protocol, and recommended that the authors bring this work to the WIMSE working group. Hannes Tschofenig also suggested aligning this work with the service-to-service communication efforts in WIMSE.
+
+---
+
+### SD-JWT Delegation
+* **Presenter**: Gareth Oliver
+* **Details**: Gareth Oliver presented an extension to Selective Disclosure JWTs (SD-JWTs) to support delegation chains (e.g., delegating payment authority to an autonomous agent, or power-of-attorney). The holder's Key Binding JWT (KB-JWT) is transformed into a new SD-JWT that carries its own disclosures, constraints, and confirmation claims for the delegate holder. This process can be chained indefinitely.
+* **Discussion**: Anton asked about the nature of the disclosures added during delegation. Gareth Oliver explained they represent new delegation policies or runtime constraints. Frederic and Christian Bormann supported the draft, pointing to strong industry demand for delegation. Nai questioned whether the verifier needs to obtain and trust public keys for every entity in the chain; Gareth Oliver clarified that the trust anchor remains solely with the initial issuer, as each key is progressively endorsed down the chain.
+
+---
+
+### Policy Language in OAuth (AI and Agentic Authorization)
+* **Presenter**: Yaroslav (AWS)
+* **Details**: Yaroslav presented a joint analysis (with Jeff Lombardo) evaluating the feasibility of putting policy languages (such as Rego) directly into OAuth tokens or requests (as proposed in recent individual drafts). The authors analyzed the problem across five pillars: transaction goals, schemas, envelopes, signaling, and async confirmation. They concluded that shipping policy code inside tokens introduces severe security risks (such as policy provisioning and default-allow bugs). Instead, they advocated using native OAuth mechanisms—specifically Rich Authorization Requests (RAR), metadata schema discovery, error remediation, and deferred token responses.
+* **Discussion**: Arndt Schwenkschuster clarified the distinction between deferring authorization decisions versus encoding the results. George Fletcher suggested that user-defined constraints (e.g., limiting a transaction to a specific geographic area) can resemble policy statements and must be carefully evaluated.
+* **Poll 3**: Are you interested in discussing this in an interim?
+  * **Result**: yes: 26, no: 0, no_opinion: 1 (total: 87)
+
+---
+
+### Clustering of OAuth Work
+* **Presenters**: George Fletcher, Aaron Parecki
+* **Details**: With over 70 active individual drafts in the OAuth Working Group, the presenters proposed a framework to organize the work into nine functional "clusters" (e.g., Client Identity, Token Security, User-to-AS, etc.). This system would require authors to self-categorize their drafts, allowing the chairs to better group topics for interim meetings and identify overlapping drafts for potential consolidation.
+* **Discussion**: Deb Cooley (Responsible Area Director) strongly endorsed the proposal and recommended documenting the categories on the WG Wiki. She noted that she has resisted pressure to charter a separate working group for "agentic AI" authentication, arguing that agentic use cases should be mapped directly into the existing OAuth and WIMSE frameworks. Aaron Parecki agreed, stating that drafts should be evaluated by their technical mechanics rather than their association with "AI". Pam Dingle recommended exposing these classifications to specification consumers to help navigate the large library of OAuth documents.
+
+---
+
+## Decisions and Action Items
+
+* **Decision**: The working group agreed to adopt the RAR Metadata and Error Remediation draft as a starting point.
+* **Decision**: The working group agreed to adopt the Deferred Token Response as a WG document.
+* **Action Item**: Chairs to confirm the adoption of the RAR Metadata and Error Remediation draft and the Deferred Token Response on the mailing list.
+* **Action Item**: Chairs to schedule an interim meeting to discuss Agentic OAuth, Policy Languages, and Asynchronous/Deferred mechanisms.
+* **Action Item**: George Fletcher and Aaron Parecki to set up the draft clustering framework on the OAuth WG Wiki to help authors self-categorize their submissions.
+
+---
+
+## Next Steps
+
+* **Attestation-Based Client Authentication**: The authors of `draft-ietf-oauth-attestation-based-client-auth` will work with the SPIFFE profiling team to resolve the feedback on the `sub` claim, key rotation, and JWT types to prepare the document for Working Group Last Call (WGLC).
+* **Deferred Token Response**: The authors will collaborate with the authors of the transaction challenge and asynchronous interaction drafts to align polling mechanisms and explore merging overlapping drafts.

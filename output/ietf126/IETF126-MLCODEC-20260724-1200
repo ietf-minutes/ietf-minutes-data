@@ -1,0 +1,91 @@
+# [MLCODEC](../wg/mlcodec.html)
+
+## Summary
+
+The MLCODEC Working Group met at IETF 120 in Vienna. The session focused on progressing the core suite of documents extending the Opus codec. The group reviewed the state of the Opus extension mechanism and deep redundancy (DRED) drafts, both of which are nearing completion. Updates were also presented on the scalable quality extension, speech coding enhancement, and the test battery. The Working Group agreed to advance multiple documents to Working Group Last Call (WGLC) and discussed release coordination for the reference implementations.
+
+---
+
+## Key Discussion Points
+
+### 1. Introduction and Document Status
+Mo Zanaty opened the session, presenting the [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-mlcodec-chair-slides-02) and summarizing the timeline and status of the Working Group documents:
+*   **`draft-ietf-mlcodec-opus-extension`**: Completed its first WGLC, but needs a brief second WGLC because the draft expired before being progressed. Target for IESG submission is November.
+*   **`draft-ietf-mlcodec-opus-dred`**: Considered mature by the editors. The WG plans to advance this to WGLC shortly, targeting IESG submission before the next meeting.
+*   **`draft-ietf-mlcodec-opus-speech-coding-enhancement`** and **`draft-ietf-mlcodec-opus-scalable-quality-extension`**: Targeted for completion by March 2027 (two meetings from now).
+*   **`draft-ietf-mlcodec-test-battery`**: Milestone to be determined in coordination with the editors.
+
+### 2. Opus Extension Mechanism
+Timothy B. Terriberry presented the update for `draft-ietf-mlcodec-opus-extension` using the [Opus Extension](https://datatracker.ietf.org/meeting/126/materials/slides-126-mlcodec-opus-extension-00) slides.
+*   The draft had no functional changes; the recent upload was solely to prevent expiration.
+*   All previous comments from Roman Danyliw have been addressed and verified.
+*   The chairs agreed to initiate a quick, two-week second WGLC to confirm there are no remaining concerns before starting the Shepherd write-up.
+
+### 3. Deep Audio Redundancy (DRED) Extension
+Jean-Marc Valin presented the status of `draft-ietf-mlcodec-opus-dred` using the [DRED](https://datatracker.ietf.org/meeting/126/materials/slides-126-mlcodec-dred-00) slides.
+*   **Changes**: There were no changes to the DRED model or compatibility. A decoder-side bug regarding offsets was fixed in the implementation, but this did not break compatibility.
+*   **Artifacts**: Normative and informative artifacts (excluding heavy training data) are hosted temporarily on Jean-Marc's personal server. The WG has identified a permanent, small-scale IANA archival location for these binaries.
+    *   *Normative artifacts*: Unquantized model weights (`dread_unquantized_weights.bin`), test vectors, and a C-based comparison tool.
+    *   *Informative artifacts*: PyTorch Python model, complete unquantized weights (including Vocoder and PLC), quantized weights, complete C reference implementation, and training Python scripts.
+*   **Discussion on Integrity & Releases**:
+    *   Mo Zanaty suggested adding SHA-256 hashes of the normative artifacts directly into the draft to ensure integrity. Jean-Marc and Timothy B. Terriberry agreed.
+    *   Jonathan Lennox initiated a discussion on coordinating the official Opus code release with the RFC publication. Because final IANA extension ID assignments and RFC number references are required in the code, the WG agreed that a coordinated release "cluster" would make sense once the drafts pass IESG review.
+
+### 4. Scalable Quality Extension (Opus HD)
+Jean-Marc Valin presented `draft-ietf-mlcodec-opus-scalable-quality-extension` using the [Quality extension](https://datatracker.ietf.org/meeting/126/materials/slides-126-mlcodec-quality-extension-00) slides.
+*   **Technical Details**: The extension lifts Opus bitstream limits to support >8 bits of depth per band, >20 kHz audio bandwidth, and bitrates up to 500 kbps per channel, maintaining backward compatibility with RFC 6716.
+*   **Updates**: 
+    *   Bit allocation now allows up to 14 extra bits for all bands (breaking compatibility with prior draft versions).
+    *   Two minor bit allocation typos found by LLMs were corrected.
+    *   The Japanese Audio Society (JAS) recently certified Opus HD as "High-Res Audio Wireless".
+*   **Testing**: Test vectors consist of 96 kHz floating-point clips (synthetic and synthetically extended speech/music). A fixed-point implementation has been verified to pass all tests.
+*   **Discussion**: Mo Zanaty asked if true, captured 96 kHz acoustic recordings could be integrated into the test set instead of synthetic ones. Jean-Marc noted the difficulty of finding high-quality, permissively licensed (CC0) 96 kHz recordings, and invited the WG to contribute sources.
+*   **WGLC Call**: Hearing no objections, the chairs agreed that this draft is sufficiently simple and stable to progress directly to WGLC alongside DRED.
+
+### 5. Speech Codec Enhancement Algorithms
+Jan Buethe presented `draft-ietf-mlcodec-opus-speech-coding-enhancement` using the [Speech coding enhancement](https://datatracker.ietf.org/meeting/126/materials/slides-126-mlcodec-speech-coding-enhancement-01) slides.
+*   **Version -04 Updates**: The draft is now feature-complete.
+    *   **Scope reduction**: The editor decided to drop enhancement with side information (encoder-guided) due to a lack of testable/promising implementations. The draft now focuses solely on decoder-side, non-bitstream-altering enhancements.
+    *   **Methodology**: To simulate "bad" enhancement models for testing, the draft now distorts model weights by adding noise (rather than using poorly trained models), making the tests easily reproducible.
+*   **Requirements and Tests**:
+    *   *Low-band test*: Standardized using a C-implemented metric to resolve prior PLC and clipping issues. It compares the enhanced decoder directly against a conforming reference decoder.
+    *   *High-band test*: Verifies that bandwidth extension does not perform worse than low-pass filtering. To avoid penalizing plausible generative outputs, this test is a "Should" rather than a "Must." A permissive dataset (VCTK) was selected to replace the restricted EARS dataset.
+*   **SDP Signaling**: Two new optional FMTP parameters were introduced: `speech-enhancements` (0-40 scale) and `extended-bandwidth` (target bandwidth in kHz). Mo Zanaty recommended shortening these parameter names (e.g., `EXTBW`) to prevent SDP bloat.
+*   **Distribution**: The WG agreed that the speech enhancement weights should follow the same pattern as DRED, being packaged as informative binary artifacts with SHA-256 hashes listed in the draft.
+
+### 6. Test Battery for Opus ML Codec Extensions
+Camille presented `draft-ietf-mlcodec-test-battery` using the [Test battery](https://datatracker.ietf.org/meeting/126/materials/slides-126-mlcodec-test-battery-01) slides.
+*   The draft was officially adopted by the WG, with only minor editorial changes. It benchmarks DRED Candidate B.
+*   **Future Work & Objective Metrics**: Camille asked if the WG wanted to expand the scope to investigate and recommend objective quality/intelligibility metrics (like WARP-Q) that correlate well with subjective test battery results.
+*   **Discussion**: 
+    *   Jean-Marc Valin questioned the utility of objective metrics for DRED since the features are strictly defined, but suggested they could be useful for validating end-to-end Vocoder quality. He recommended comparing any proposed objective metric against the existing `dred_compare` tool.
+    *   Jan Buethe warned that objective metrics run into alignment issues in realistic packet-loss scenarios due to Jitter Buffer (NetEQ) time-warping.
+    *   Jean-Marc suggested a compromise: testing at the `opus_demo` command-line level where packets are lost but synchronization is preserved.
+*   **Conclusion**: There is currently no WG consensus to add objective metric recommendations to the test battery draft. Camille was advised to keep the draft as-is for now and bring more concrete proposals to the mailing list.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1.  **`draft-ietf-mlcodec-opus-extension`**: Move to a quick 2-week second Working Group Last Call (WGLC) once initiated by the chairs.
+2.  **`draft-ietf-mlcodec-opus-dred`**: Add SHA-256 integrity hashes of the normative binary artifacts to the text of the draft. Progress the draft to WGLC.
+3.  **`draft-ietf-mlcodec-opus-scalable-quality-extension`**: Progress the draft directly to WGLC, as the technical specifications are complete and stable.
+4.  **`draft-ietf-mlcodec-opus-speech-coding-enhancement`**: Drop side-information-guided enhancements from the draft. Rely purely on SDP signaling for decoder-side enhancements. Package informative model weights using the same artifact format and hashing scheme adopted for DRED.
+5.  **`draft-ietf-mlcodec-test-battery`**: Do not add objective metric recommendations to the active draft at this stage due to a lack of consensus on test methodology.
+
+### Action Items
+*   **Jean-Marc Valin**: Update `draft-ietf-mlcodec-opus-dred` with SHA-256 hashes for the normative artifacts.
+*   **WG Participants / Contributors**: Search for high-quality, permissively licensed (CC0) 96 kHz acoustic audio recordings to enrich the Opus HD test suite.
+*   **Jan Buethe**:
+    *   Shorten the proposed SDP FMTP parameter names to mitigate SDP bloat.
+    *   Prepare informative binary weight blobs for the speech enhancement reference model.
+    *   Land the current implementation changes onto the main branch of the Opus repository.
+    *   Upload the 4 GB VCTK high-band test vector dataset to the designated WG storage.
+*   **Camille / Laura**: Bring a concrete proposal for evaluating objective metrics under synchronized packet-loss conditions (`opus_demo` level) to the mailing list for further discussion.
+
+---
+
+## Next Steps
+*   Chairs to initiate WGLC for `draft-ietf-mlcodec-opus-extension`, `draft-ietf-mlcodec-opus-dred`, and `draft-ietf-mlcodec-opus-scalable-quality-extension`.
+*   Editors of the speech coding enhancement draft will work toward completing and landing changes prior to the next IETF meeting.

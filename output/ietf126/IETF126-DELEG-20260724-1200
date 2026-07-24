@@ -1,0 +1,72 @@
+# [DELEG](../wg/deleg.html)
+
+## Summary
+
+The DELEG Working Group met to discuss the restructuring of the extensible delegation protocol, specifically the division of labor between the DELEG working group draft and the DNSOP delegation extensions draft (DELEXT). The group reviewed updates to both specifications, discussed coordination for implementation testing, and explored a new proposal for secure transports in DELEG. 
+
+---
+
+## Key Discussion Points
+
+### 1. Protocol Restructuring and Document Split
+* **Presentations**:
+  * [DELEG base protocol](https://datatracker.ietf.org/meeting/126/materials/slides-126-deleg-deleg-base-protocol-01) – Presented by Petr Špaček
+  * [IETF-126-dd-DELEXT-roy](https://datatracker.ietf.org/meeting/126/materials/slides-126-deleg-ietf-126-dd-delext-roy-00) – Presented by Roy Arends
+
+* **DELEG Base Protocol (`draft-ietf-deleg`) Updates**:
+  * Petr Špaček summarized the efforts to split the original specification. The generic delegation extension machinery has been moved to the DELEXT document in DNSOP, while DELEG-specific parameters and Version 1 protocol details remain in `draft-ietf-deleg`.
+  * Roughly 10% of the text (normative resolver delegation lookup algorithms, referral generation, DNSSEC validation, and downgrade protections) was moved to DELEXT.
+  * Added test vectors for key-value parameter encoding (contributed by PowerDNS, verified against BIND and dnspython).
+  * Removed hardcoded limits on layers of indirection, deferring to DNSOP's unwanted query limit draft (`draft-fujiwara-dnsop-unwanted-query-limit`).
+  * Security considerations were updated to prevent duplicate target IP probing loops (addressing potential CVEs).
+
+* **DELEXT (DNSOP) Updates**:
+  * Roy Arends presented changes to the DELEXT draft, including wildcard expansion, QTYPE=ANY handling, ADT flag processing updates, compact out-of-bailiwick answers, and a formal threat model.
+  * Both authors emphasized that `draft-ietf-deleg` and DELEXT are complementary and must be reviewed together in lockstep.
+
+* **Discussion on Restructuring & Testing**:
+  * Pieter Lexis advocated for requiring at least two interoperable implementations (including servers, resolvers, and validators) before advancing `draft-ietf-deleg` to Working Group Last Call (WGLC).
+  * Paul Hoffman noted that his toy resolver and other implementations have already demonstrated successful interoperability during early development.
+  * Petr Špaček confirmed that authoritative servers (including BIND, Knot DNS, and Akamai) generate identical responses for over 2,000 query test cases, but agreed that more resolver testing is needed.
+  * Pieter Lexis suggested publishing a comprehensive zone file for testing. The room agreed that hosting test zones and validation scripts in the WG GitHub repository was preferable to adding a massive appendix to the RFC.
+  * Florian Obser raised concerns regarding the `resinfo` parameter and potential bloat/extensibility if future versions of DELEG are introduced.
+
+---
+
+### 2. Secure Transports for DELEG
+* **Presentation**: [Secure Transports for DELEG](https://datatracker.ietf.org/meeting/126/materials/slides-126-deleg-secure-transports-for-deleg-00) – Presented by Paul Hoffman
+
+* **Proposed Keys**:
+  * `secure-transport`: Specifies transport protocols such as DoT (DNS over TLS) or DoQ (DNS over QUIC).
+  * `no-do53`: Signals that the target server does not support unencrypted DNS over port 53.
+  * `tlsa`: Contains the certificate or public key association to authenticate the secure transport.
+
+* **Discussion on Design and Parity with SVCB**:
+  * Pieter Lexis and Shane Kerr recommended renaming `secure-transport` to `transport` and making it an explicit list. If `do53` is omitted from the list, resolvers should assume it is unsupported, thereby eliminating the need for a separate `no-do53` parameter.
+  * Erik Nygren shared context from RFC 9460 (SVCB/HTTPS), where an implicit default transport was assumed and a `no-default-alpn` parameter was used to prevent operational failure modes. He suggested keeping parity with SVCB’s design philosophy.
+  * Benjamin Schwartz expressed disappointment that the design does not maintain strict parallelism with SVCB/HTTPS, noting that the WG may need to replicate encodings for TLS features (like Encrypted ClientHello or supported groups) in the future.
+  * Eric Osterweil raised questions about handling multiple TLSA records for different secure endpoints (e.g., DoT vs. DoQ). Ralf Weber noted that multiple TLSA RRs can be sent, and they are required because secure transport cannot be safely bootstrapped without them.
+  * Shane Kerr and Petr Špaček discussed leveraging DELEG's inclusion mechanism (indirection) to avoid duplicating large TLSA RRsets across millions of delegated zones.
+
+* **Applicability to Root Servers**:
+  * Florian Obser and Petr Špaček discussed how secure transports could be signaled for root servers, given that the root zone has no parent zone to host a DELEG record.
+  * Paul Hoffman and Petr Špaček noted that while this draft does not solve the root priming issue, root transport configuration could be handled via a separate priming document or an updated hints file format.
+
+---
+
+## Decisions and Action Items
+
+* **Early Code Point Allocation**: 
+  * Three of the five registry requests have been completed. The `resinfo` key is awaiting a second expert review.
+  * **Action Item**: Tommy Jensen to complete the IESG write-up to approve early allocation for the DELEG and DELEGPARAM RR types.
+* **Test Vectors**: 
+  * The WG decided to host test vectors, zone files, and testing scripts on the official WG GitHub repository rather than adding them as a static RFC appendix.
+* **WGLC Coordination**:
+  * The chairs will coordinate a single, synchronized Working Group Last Call (WGLC) for both `draft-ietf-deleg` and the DNSOP DELEXT draft. The call will be cross-posted to both the DELEG and DNSOP mailing lists to ensure cohesive review.
+
+---
+
+## Next Steps
+
+* **Document Review**: WG members are urged to review `draft-ietf-deleg` and the DELEXT draft side-by-side to ensure internal consistency.
+* **Secure Transports Draft**: Further discussion regarding the parameter design (explicit list vs. `no-do53` flag) will continue on the DELEG mailing list.

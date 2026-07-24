@@ -1,0 +1,108 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC Working Group met at IETF 126. The meeting began with a leadership update, welcoming Marion Dumay as the new co-chair and Quentin Lampin as the technical advisor, alongside a warm tribute to the outgoing co-chair Pascal Thubert for his ten years of contribution to the group.
+
+The working group reviewed the progress of its core active drafts, including the finalization stages of the CoAP update (`draft-ietf-schc-8824-update`) and the consolidated design team progress on the Architecture document (`draft-ietf-schc-architecture`). Additionally, five individual technical contributions were presented, exploring dynamic address compression, hierarchical context management, session multiplexing, QUIC frame compression feasibility, and private SID optimization in CBOR.
+
+---
+
+## Key Discussion Points
+
+### 1. Administration and WG Status
+* **Chairs**: Dominique Barthel, Marion Dumay (co-chair), Alexander Pelov, Quentin Lampin (technical advisor)
+* **Note Takers**: Marco Tiloca, Alejandro Acosta
+* **Slides**: [Chair Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-chair-slides-00)
+* **Status Updates**:
+  * `draft-ietf-schc-8824-update` is nearly complete; a final version 10 is expected soon.
+  * `draft-ietf-schc-architecture` has incorporated feedback from the design team and a side meeting.
+  * Expired drafts (such as the ICMP basics document) will be updated by Laurent Toutain.
+  * Discussions are ongoing regarding the resumption of on-hold documents (e.g., the SCHC data model and access control). Laurent Toutain announced plans to submit a draft for the next interim meeting addressing the evolution of the data model to include universal options and ICMP parsing.
+
+### 2. SCHC Architecture
+* **Presenter**: Alexander Pelov
+* **Slides**: [SCHC Architecture](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-schc-architecture-00)
+* **Draft**: `draft-ietf-schc-architecture`
+* **Discussion**:
+  * Alexander Pelov reported that the design team’s work is complete and has been handed back to the WG. The document is now 18 pages, with clear terminology and illustrative deployment profiles.
+  * Based on side meeting discussions, the team converged on using the term "SCHC Data Unit" instead of "SCHC Datagram" (to be corrected in version 07).
+  * The draft defines the roles of *endpoints*, *instances*, *sessions*, *strata*, *domains*, and *domain managers*. It also describes *dispatchers* and *discriminators* for handling multiple instances on a single endpoint.
+  * Impact analysis of version 06 on other drafts showed that 14 active drafts require straightforward search-and-replace terminology updates. Three documents, including `draft-ietf-6lo-schc-15dot4` and the delay-tolerant networks document (`draft-ietf-schc-over-networks-prone-to-disruptions`), require closer manual alignment.
+  * **Feedback**: Laurent Toutain expressed concern that mixing existing architecture with new management concepts like "domains" might confuse new readers and suggested splitting the content into two documents. AD Éric Vyncke countered that maintaining a single document for all terms is simpler and reduces working group overhead.
+
+### 3. CoAP Header Compression Update
+* **Presenter**: Marco Tiloca
+* **Slides**: [draft-ietf-schc-8824-update](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-draft-ietf-schc-8824-update-00)
+* **Draft**: `draft-ietf-schc-8824-update`
+* **Discussion**:
+  * Version 09 addresses reviews from Alexander Pelov and early feedback from the YANG Doctor.
+  * Per the YANG Doctor's advice, the YANG module will be removed from this document since it is an incremental update to RFC 9363. The module will be hosted on GitHub for future core updates.
+  * Field descriptor descriptions were relaxed to allow multiple adjacent options (e.g., Uri-Path) to map to a single field descriptor when the exact count of options is unknown at rule creation.
+  * A pending PR from Laurent Toutain addresses the handling of Field Length (FL) values when using the "not sent" or "mapping sent" CDAs, ensuring they contain constant values or dynamic evaluation functions instead of being blank.
+  * Alignment with the updated `draft-ietf-schc-architecture` terminology will be integrated into the upcoming version 10.
+
+### 4. Dynamic Address Compression
+* **Presenter**: Magnus Westerlund
+* **Slides**: [SCHC Compute Address CDA for Dynamic Addresses](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-schc-compute-address-cda-for-dynamic-addresses-01)
+* **Discussion**:
+  * Magnus Westerlund presented a proposal to compress dynamically assigned IPv4 and IPv6 addresses over mobile networks.
+  * The solution proposes maintaining sorted tables of interface addresses on both sides. An index is used to reference these addresses, keeping rules independent of the device's actual IP assignment. 
+  * Compressing IPv6 Interface Identifiers (IIDs) is more complex due to RFC 7217 stable IDs and temporary privacy addresses.
+  * **Feedback**: Éric Vyncke raised concerns about synchronization reliability over lossy channels. Magnus Westerlund suggested adding a small hash/version check to verify consistency. Alexander Pelov suggested defining strict interface requirements for the address table instead of standardizing the synchronization protocol itself within this document. Laurent Toutain suggested using standard matching lists in rules and leveraging CoreConf for dynamic rule deployment.
+
+### 5. Context Management Extensions
+* **Presenter**: Lorenzo Cornell
+* **Slides**: [schc-ctx-mgmt](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-schc-ctx-mgmt-00)
+* **Discussion**:
+  * Lorenzo Cornell proposed extensions to address context scalability, duplicate field descriptions, and rule explosion.
+  * The draft introduces:
+    1. **Referencing Rules**: Using `RefN` (unconditional reference) and `RefNM` (referencing with adjustments to adjacent fields) to build hierarchical rules.
+    2. **Branching CDAs**: Using `branch` operators to direct parsing to specific rule fragments based on match mapping (header fields) or match rule probing (payload probing).
+  * Security concerns include circular rule dependencies, resource exhaustion from complex parsing, and context desynchronization.
+  * **Feedback**: Alexander Pelov noted that for static rules, these structures could alternatively be represented using a compact data model built on top of standard RFC 8724 rules. Magnus Westerlund clarified that branching is necessary for dynamic protocol components such as RTP extension headers.
+
+### 6. VOICI - A Minimal Multiplexer for SCHC
+* **Presenter**: Quentin Lampin
+* **Slides**: [VOICI - a minimal multiplexer for SCHC](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-voici-a-minimal-multiplexer-for-schc-03)
+* **Discussion**:
+  * Quentin Lampin presented VOICI, a 1-byte minimal multiplexing header designed for situations where the carrier layer cannot provide session discrimination.
+  * The header contains flags for original port restoration, integrity checks (CRC), content identification, a version bit, and a session ID. It can be compressed using standard SCHC rules.
+  * **Feedback**: Laurent Toutain argued that adding specialized semantics increases complexity, suggesting instead that session ID serialization should rely purely on standard SCHC rules. Quentin Lampin replied that a standardized format simplifies data models and deployments. Éric Vyncke recommended adding explicit handling instructions when the version (V) flag is received as 1 and requested renaming the draft to include "SCHC" in the filename.
+
+### 7. Exploring SCHC Compression of QUIC Frames
+* **Presenter**: Samar Abbas
+* **Slides**: [Exploring SCHC Compression of QUIC Frames](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-exploring-schc-compression-of-quic-frames-00)
+* **Discussion**:
+  * Samar Abbas analyzed compressing QUIC frame metadata (e.g., Stream IDs, offsets, ACKs).
+  * Because QUIC payloads are encrypted, SCHC must be integrated directly inside the QUIC transport pipeline.
+  * The study concluded that because QUIC frames are already highly optimized, the compression gains are minimal (only a few bytes) and do not justify the implementation complexity of deep frame compression.
+  * **Feedback**: Magnus Westerlund and Samar Abbas agreed that future efforts should focus on dynamic rule management (using CoreConf) to compress unencrypted external connection elements, such as Connection IDs (SIDs).
+
+### 8. Private SIDs
+* **Presenter**: Laurent Toutain
+* **Slides**: [private SIDs](https://datatracker.ietf.org/meeting/126/materials/slides-126-schc-private-sids-00)
+* **Discussion**:
+  * Laurent Toutain presented a method to compress CoreConf (YANG-CBOR) rule transmission payloads by translating positive YANG SID numbers into small negative numbers.
+  * Because small negative numbers require fewer bytes in CBOR encoding, this translation achieved a ~25% reduction in rule size (from 4,000 bytes to 3,000 bytes in test cases).
+  * In SCHC, this would require introducing a new matching operator (MO) and compression-decompression action (CDA) to handle the translation offset.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-schc-8824-update`**:
+  * The YANG module will be removed from the draft, with the files retained on GitHub for future base YANG module updates.
+  * Laurent Toutain’s PR on FL (Field Length) consistency will be merged.
+  * Marco Tiloca will update the draft to version 10 to align with `draft-ietf-schc-architecture` terminology, after which Alexander Pelov will initiate the shepherding write-up.
+
+* **VOICI Draft**:
+  * Quentin Lampin will update the draft's filename to include "SCHC" and add text describing receiver behavior when the version (V) flag is set to 1.
+
+---
+
+## Next Steps
+
+* **`draft-ietf-schc-architecture`**: Alexander Pelov will publish version 07 next week, correcting "SCHC datagram" to "SCHC data unit" and clarifying header format definitions.
+* **Terminology Migration**: Authors of active drafts should review the terminology diff files generated by the design team on the working group's GitHub repository to plan their migrations to the new architecture terminology.
+* **Data Model & ICMP**: Laurent Toutain will prepare a draft for the next interim meeting proposing updates to the data model to support universal options and ICMPv6 parsing.

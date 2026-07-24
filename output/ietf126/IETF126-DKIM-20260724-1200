@@ -1,0 +1,93 @@
+# [DKIM](../wg/dkim.html)
+
+## Summary
+
+The DKIM Working Group met at IETF 118 to discuss the progress of DomainKeys Identified Mail Signatures v2 (DKIM2). The session included a Hackathon report, a detailed review of open technical issues within the core protocol specification (`draft-ietf-dkim-dkim2-spec`), deployment concerns for the best practices document (`draft-ietf-dkim-dkim2-bcp`), and a proposal to handle trace headers. 
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and Agenda Bash
+Chairs Pete Resnick and Murray Kucherawy opened the meeting and presented the [Chair slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-dkim-chair-slides-01). The agenda was updated to add a discussion on trace headers led by Bron Gondwana and a brief AOB on feedback loops raised by John Levine.
+
+### 2. Hackathon Report
+* **Bron Gondwana** reported on development work leading up to the Hackathon. He noted that `Received-SPF` was identified as an issue on his testing systems due to headers being dynamically added. He has established a weekly Zoom meeting to coordinate DKIM2 interop testing.
+* **Mauro Escalante** announced that he implemented DKIM2 in the Rust-based `mail-auth` library and the Stalwart mail server. He created a Docker-based test matrix for cross-testing multiple implementations (including Bron Gondwana's and Steve Atkins' Go implementations). The only minor issue identified was related to message folding. The Docker containers will be moved to the official working group repository.
+
+### 3. Issues Discussion
+Richard Clayton presented the [Issues Discussion](https://datatracker.ietf.org/meeting/126/materials/slides-126-dkim-issues-discussion-00) slides, covering several open items in `draft-ietf-dkim-dkim2-spec` and `draft-ietf-dkim-dkim2-bcp`.
+
+* **Null Recipes for Header Fields in DSN Generation:**
+  In `draft-ietf-dkim-dkim2-spec` -04, null recipes for header fields were removed because no valid use cases were found (unlike null recipes for bodies). Since no use cases were presented by the working group, the decision to exclude them remains.
+
+* **Extraneous Message Instances (Must Not vs. Discourage):**
+  The current specification draft contains "must not" language regarding the generation of unnecessary message instance header fields. To address interop issues where strict parsers bounced valid messages containing empty instances, Pete Resnick suggested downgrading "must not" to a recommendation (discouraging unnecessary instances to save processing overhead/prevent "heating up the planet").
+  * **Bron Gondwana** suggested implementing a maximum limit on message instances (e.g., 255) and DKIM2 hops.
+  * **Richard Clayton** and **Alexey Melnikov** suggested lower, more practical limits, such as 15 or 31, aligning with typical SMTP `Received` header count limits.
+  * *Outcome:* The "must not" language will be removed in favor of discouragement. The specific maximum hop/instance limits will be debated and finalized on the mailing list.
+
+* **Post-Quantum (PQ) Cryptography Integration:**
+  The working group is working toward selecting a PQ algorithm to insert into the specification. 
+  * **Richard Clayton** raised concerns about key sizes and running DNS over UDP, referencing ongoing discussions in the DNSOP working group about increased TCP usage.
+  * **Wei Chuang** updated the group on a proposed problem statement drafted for CFRG/security experts (specifically Paul Wouters).
+  * **Barry Leiba**, **Bron Gondwana**, and **John Levine** discussed whether all signatures/algorithms on a given instance are required to pass. The group agreed that a verifier should only be required to validate algorithms it understands; if an unknown algorithm is encountered, it must be ignored for interop, but any validated signatures must pass.
+  * *Outcome:* The group will refine the problem statement to consult with security area experts and aim to select an algorithm by the next IETF meeting.
+
+* **Lowercasing JSON Header Field Names:**
+  Richard Clayton proposed that all header field names in the JSON recipes must be lowercase to simplify parsing and matching. 
+  * *Outcome:* No objections were raised. This requirement will be integrated into the next draft.
+
+* **Receipts and Certifications (DSN Detection Flag):**
+  The group discussed whether a specific flag should be added to the DKIM2 signature header to signal that a message is a DSN.
+  * **Mauro Escalante** and **Bron Gondwana** agreed that parsing the MIME content-type (`multipart/report`) is sufficient to identify DSNs, making a new flag redundant.
+  * *Outcome:* No new flag will be added.
+
+* **Alignment in DKIM2 BCP:**
+  The group discussed whether `draft-ietf-dkim-dkim2-bcp` should require strict alignment between the RFC 5322 `From` header, the RFC 5321 `Mail From` envelope, and the DKIM2 `d=` domain.
+  * **Alan Robinson** highlighted the need for DMARC to recognize DKIM2 to enforce alignment policies.
+  * **John Levine** and **Jim Fenton** raised concerns about legacy mailing lists that rewrite the `From` header.
+  * **Alan Robinson**, **Richard Clayton**, and **Bron Gondwana** clarified that this alignment requirement only applies to hop 1 (the originator) and that DKIM2 recipes allow receivers to roll back modifications to verify the original aligned state.
+  * *Outcome:* The core protocol (`draft-ietf-dkim-dkim2-spec`) will remain silent on `From` alignment, and these guidelines will be documented in `draft-ietf-dkim-dkim2-bcp`.
+
+* **Handling DKIM1 Messages:**
+  Richard Clayton outlined recommendations for DKIM2-aware nodes handling inbound DKIM1 messages:
+  * Mailing lists should sign with DKIM2 to safely handle bounces.
+  * Standard forwarders should not sign with DKIM2 due to replay and reputation risks.
+  * Submission servers should strip DKIM1 and initiate a clean DKIM2 chain.
+  * *Outcome:* There was general agreement with these principles, which will be incorporated into `draft-ietf-dkim-dkim2-bcp`.
+
+* **Feedback Loops (FBL):**
+  Richard Clayton asked if there was interest in standardizing FBL protocols.
+  * **Alan Robinson**, **Bron Gondwana**, and **John Levine** noted that while FBL standardization is valuable, it is out of scope for the DKIM WG and should not block the core DKIM2 specifications.
+  * **Kenneth Murchison** and **Alexey Melnikov** noted that `draft-brotman-dkim-fbl` is currently being tracked by the MAILMAINT working group.
+  * *Outcome:* FBL standardization is deferred. The privacy protection flags currently in `draft-ietf-dkim-dkim2-spec` -04 will be retained.
+
+### 4. Trace Headers
+Bron Gondwana presented the [Trace Headers](https://datatracker.ietf.org/meeting/126/materials/slides-126-dkim-trace-headers-00) slides. He reviewed headers that act like trace fields (such as `Received-SPF`, `Authentication-Results`, and `Delivered-To`) which should be skipped during DKIM2 signature verification.
+
+* **IANA Registry Updates:** Bron suggested updating the central IANA registry to accurately tag these headers as trace fields.
+* **Trace/Vendor Prefixes:** To prevent future headers from breaking DKIM2 verification, Bron proposed reserving `Trace-` and `Vendor-` prefixes so that conforming parsers automatically skip them.
+* **Discussion:**
+  * **Alexey Melnikov** suggested that registry maintenance should remain separate from his active email core work.
+  * **Andrew Newton** (AD) and **Kenneth Murchison** indicated that the MAILMAINT working group is the appropriate venue for updating the registry.
+  * **Jim Fenton** and **Alexey Melnikov** expressed skepticism about tying semantics directly to a naming prefix.
+  * *Outcome:* Bron Gondwana will split the work into two documents: an informational document targeting MAILMAINT to update the IANA registry, and a separate standards-track proposal for the prefix-skipping behavior.
+
+---
+
+## Decisions and Action Items
+
+| Action Item | Responsible Party | Status |
+| :--- | :--- | :--- |
+| Update `draft-ietf-dkim-dkim2-spec` to mandate lowercase header names in JSON recipes. | Richard Clayton | **Pending** |
+| Remove "must not" restriction on empty message instances and replace with a recommendation. | Richard Clayton | **Pending** |
+| Propose specific maximum hop/instance limits on the mailing list for feedback. | Richard Clayton / Working Group | **Pending** |
+| Refine the CFRG PQ cryptography problem statement based on feedback from Stephen Farrell and John Levine. | Wei Chuang | **Pending** |
+| Initiate the security area/CFRG expert consultation on PQ algorithms once the statement is finalized. | Murray Kucherawy | **Pending** |
+| Split the trace headers proposal into an informational registry update (for MAILMAINT) and a standards-track prefix document. | Bron Gondwana | **Pending** |
+
+---
+
+## Next Steps
+* The chairs will coordinate a virtual interim meeting to continue resolving outstanding issues before the next face-to-face meeting.

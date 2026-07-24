@@ -1,0 +1,126 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The IDR Working Group met at IETF 126 (Session 1) to discuss core BGP protocol updates, Segment Routing (SR), SR Traffic Engineering (SRTE), BGP Link-State (BGP-LS), and multicast policy routing. Key discussions centered on signaling tunnel encapsulation for MASQUE, the controversial BGP Unreachable Prefix Announcement (UPA) v2 proposal, hierarchical route reflection improvements for Route Target Constrain (RTC), and various SR/BGP-LS extensions.
+
+---
+
+## Key Discussion Points
+
+### 1. Welcome and WG Status
+* **Presenter**: Susan Hares
+* **Slides**: [1-0. IDR Chairs Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-sessa-1-0-idr-chairs-slides-00)
+* **Details**: The IDR charter has been approved. The chairs have split drafts into parallel queues: BGP Core, SR/SRTE, BGP-LS, and Flowspec to streamline progress. 
+
+---
+
+### 2. MASQUE Tunnel Encapsulation (RFC 9012 for Mask)
+* **Presenter**: Alvaro Retana
+* **Technical Details**: Proposes signaling MASQUE (multiplexed application substrate over QUIC encryption) tunnel encapsulation in BGP (RFC 9012). It defines four new tunnel types (connect-tcp, connect-udp, connect-ip, connect-ethernet) and two new sub-TLVs (ALPN and URI template).
+* **Discussion**:
+  * Alvaro Retana raised a validation issue: the current draft requires performing a DNS query to resolve the proxy URI and obtain the IP address to validate the tunnel egress endpoint. He proposed adding a tunnel egress endpoint sub-TLV to carry the IP address directly.
+  * David Schinazi suggested using the HTTPS DNS Resource Record (RR) format inside the BGP payload instead of inventing new sub-TLVs. This provides built-in extensibility for all ALPN and address hints.
+  * Warren Kumari supported David Schinazi’s suggestion of embedding the record data directly rather than dynamically querying DNS.
+  * John Scudder expressed caution regarding routing mechanisms relying on DNS, but conceded it might be acceptable for overlay scenarios. He preferred having explicit IP addresses in the attribute.
+  * Jeff Tantsura pointed out that the BGP next hop must maintain a logical relationship with the tunnel endpoint.
+
+---
+
+### 3. BGP Unreachable Prefix Announcement (UPA) v2
+* **Presenter**: Yannick Voyer
+* **Slides**: [2-2. BGP Unreachable Prefix Announcement (UPA) v2](https://datatracker.ietf.org/meeting/126/materials/slides-126-idr-upav2-00)
+* **Technical Details**: The proposal aims to signal the loss of reachability for a specific covered prefix/next hop under an aggregate route to trigger fast reroute (PIC) on ingress PEs. Since the last meeting, the design transitioned from using `MP_UNREACH_NLRI` to utilizing `MP_REACH_NLRI` carrying a "UPA Extended Community" with a D-bit (explicit drop) and a router ID for deduplication.
+* **Discussion**:
+  * Bo Wu agreed that using `MP_REACH` is a better implementation choice but noted that data center scenarios might have different requirements than service provider networks.
+  * Maria Matějka and Jie Dong raised critical deployment concerns: if a node in a partial deployment does not support or understand the new UPA community, it will treat the route as standard reachable unicast, thereby attracting and silently blackholing traffic.
+  * John Scudder noted that the BGP Identifier carried in the community may cross EBGP boundaries, where it is no longer guaranteed to be unique.
+  * Yannick Voyer responded that UPA is intended to be strictly configured and scoped between UPA-capable neighbors.
+  * Jeff Apcar expressed support for the use case and promised to share interworking implementation results by the next meeting.
+  * Jeff Tantsura (chair) strongly cautioned against the current design, calling it "terrifying" due to the risk of attribute escape or community stripping, which would cause blackholes. He and several chat participants (including Jeffrey Haas and Robert Raszuk) suggested that a separate, dedicated AFI/SAFI (similar to the older unreachability SAFI concept) would be a much safer approach to ensure only capable clients receive and parse this state.
+
+---
+
+### 4. BGP Point/Port Extended Communities for AIDC
+* **Presenter**: Jungha Zhao
+* **Technical Details**: Proposes a new BGP Extended Community to advertise egress switch port IDs to the ingress nodes in AI data centers. This allows the sending sides to negotiate bandwidth and avoid congesting specific egress ports.
+* **Discussion**:
+  * Jeff Tantsura pointed out in the chat that standard community aggregation procedures (similar to those used in DMZ link bandwidth) could be leveraged to aggregate these communities without losing port information when multiple paths are merged.
+
+---
+
+### 5. Extensions to RT-Constrain in Hierarchical RR Scenarios
+* **Presenter**: Jie Dong
+* **Draft**: [draft-ietf-idr-rtc-hierarchical-rr](https://datatracker.ietf.org/doc/draft-ietf-idr-rtc-hierarchical-rr/)
+* **Technical Details**: Addresses the problem where level-1 Route Reflectors (RRs) discard RTC routes received from level-2 RRs due to cluster ID loop detection, resulting in incomplete route distribution graphs.
+* **Discussion**:
+  * Jie Dong presented three optional solutions:
+    1. **Add-Path**: Supported by multiple implementations.
+    2. **Cluster ID Loop Knob**: Supported by at least one implementation.
+    3. **Most Disjoint Route Advertisement**: No current implementations.
+  * Jeff Tantsura suggested moving the third option (disjoint routes) to the appendix and progressing the draft toward Working Group Last Call (WGLC).
+
+---
+
+### 6. BGP-LS Extensions for BGP-Only Networks
+* **Presenter**: Marvin d'Souza
+* **Draft**: [draft-ietf-idr-bgp-ls-bgp-only-fabric](https://datatracker.ietf.org/doc/draft-ietf-idr-bgp-ls-bgp-only-fabric/)
+* **Technical Details**: Updates include reducing attributes to a recommended baseline, consolidating SR Policy and SRv6 sections to reference existing RFCs rather than duplicating formats, and adding TI-LFA and SRv6 deployment use cases.
+* **Discussion**:
+  * Marvin d'Souza shared that there is an active implementation in Sonic FRR.
+  * Jeff Tantsura noted that the draft seems close to completion and suggested targeting progression by the San Francisco meeting.
+
+---
+
+### 7. Advertising P2MP Policies in BGP
+* **Presenter**: Hooman Bidgoli
+* **Draft**: [draft-ietf-idr-sr-p2mp-policy](https://datatracker.ietf.org/doc/draft-ietf-idr-sr-p2mp-policy/)
+* **Technical Details**: Introduces a new BGP NLRI containing three route types (P2MP Policy, Replication Segment, and OIF) to program multicast states via a controller.
+* **Discussion**:
+  * Jeff Tantsura asked if this is designed to interoperate with or run in parallel to standard MVPN procedures (RFC 6514).
+  * Hooman Bidgoli replied that it is designed as a "ships in the night" solution to match unicast SR Policy workflows.
+  * Jeff Tantsura noted that coordination with the BESS working group is required.
+
+---
+
+### 8. BGP SR Policy Extensions for BFD Configuration
+* **Presenter**: Jiandong Jin
+* **Technical Details**: Refines the proposal to configure Seamless BFD (SBFD) parameters via BGP SR Policy. The draft was modified to remove generic two-sided BFD configuration (since SR Policy is unidirectional and only targets the head-end). It dramatically simplifies encoding by keeping only the SBFD discriminator in the fixed field and nested optional sub-TLVs for timers.
+* **Discussion**:
+  * Jeff Tantsura suggested presenting this work to the Spring Working Group for coordination.
+
+---
+
+### 9. BGP Extensions for Intra-Domain Flex-Algo with SRv6
+* **Presenter**: Liuyan Han
+* **Technical Details**: Proposes a new BGP Extended Community to carry the Flex-Algo ID alongside IPv6 prefix/locator advertisements across domains.
+* **Discussion**:
+  * Ketan Talaulikar raised concerns that carrying critical routing constraints in an extended community is risky because communities can be filtered. He also noted that if a prefix has multiple algorithms, BGP best path selection might pick only one, which breaks disjoint topology requirements.
+  * Liuyan Han clarified that this is designed for a single operator managing multiple domains where algorithm IDs are kept consistent.
+  * Jeff Tantsura recommended that the authors analyze disjoint forwarding scenarios where multiple routes for the same destination must be advertised.
+
+---
+
+### 10. BGP Extensions for Network Resource Partition (NRP)
+* **Presenter**: Jiandong Jin
+* **Technical Details**: Proposes carrying an NRP ID within a new BGP Extended Community to map traffic to resource partitions. This allows many-to-one mappings where multiple NRPs share a single SR Policy path, and provides support for non-SR-Policy environments (like Flex-Algo or SR-MPLS).
+* **Discussion**:
+  * Ketan Talaulikar questioned the scalability of the approach, asking how many communities would be carried and if they would exceed standard BGP path attribute size limits.
+  * Jiandong Jin clarified that the private routes are advertised separately per color, allowing scalable sharing of the underlying path.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-idr-rtc-hierarchical-rr`**: The third option (Most Disjoint Route) will be moved to the appendix. The chairs will prepare the draft for Working Group Last Call (WGLC).
+* **`draft-ietf-idr-bgp-ls-bgp-only-fabric`**: The authors are to finalize outstanding items and target progression at the next IETF meeting.
+* **SBFD Configuration**: The authors of the BFD configuration draft will present and coordinate their work with the Spring Working Group.
+* **P2MP Policy**: The authors of `draft-ietf-idr-sr-p2mp-policy` will coordinate with the BESS Working Group.
+
+---
+
+## Next Steps
+
+* **MASQUE Tunnel Encapsulation**: Alvaro Retana and coauthors will update the draft to utilize embedded HTTPS DNS Resource Records (RR) instead of custom ALPN/IP sub-TLVs.
+* **BGP UPA v2**: The authors will address critical security concerns regarding attribute stripping, route leaks, and the potential transition of the design to a separate, safe AFI/SAFI.
+* **Flex-Algo & NRP Extended Communities**: Authors must address scalability and filtering concerns raised during the sessions on the IDR mailing list.
