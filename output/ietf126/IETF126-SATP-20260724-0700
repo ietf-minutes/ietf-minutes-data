@@ -1,0 +1,84 @@
+# [SATP](../wg/satp.html)
+
+## Summary
+
+The Secure Asset Transfer Protocol (SATP) Working Group met at IETF 126 to discuss updates to its core specifications, transition plans for its deliverables, and future work items. Key topics included resolving outstanding Area Director (AD) comments on the core and architecture drafts, introducing a major overhaul of the error-handling mechanism to align with RFC 9457, and discussing proposed charter extensions for "Stage Zero" (pre-transfer setup) and standardized asset registries.
+
+## Key Discussion Points
+
+### 1. Administration and Document Status
+* **Slides**: [Chair Introduction Slides](https://datatracker.ietf.org/meeting/126/materials/slides-126-satp-chair-introduction-slides-00)
+* **Presenter**: Claire
+* Wes Hardaker noted that because the upcoming error-handling changes to `draft-ietf-sat-core-protocol` are substantial, the document will undergo a brief, two-week Working Group Last Call (WGLC) once those changes are integrated.
+* Andrew Newton (AD) stated that both `draft-ietf-sat-architecture` and `draft-ietf-sat-use-cases` are currently in "Revised ID Needed" status. He intends to hold all three core documents and progress them to the IESG together once they are finalized.
+
+### 2. Updates on SATP Core
+* **Slides**: [Updates on SATP Core](https://datatracker.ietf.org/meeting/126/materials/slides-126-satp-updates-on-satp-core-00)
+* **Presenter**: Thomas Hardjono
+* Thomas Hardjono detailed updates made to `draft-ietf-sat-core-protocol` to address AD feedback:
+  * Changed the document header to "Proposed Standard".
+  * Fixed stray backslashes in JSON examples resulting from markdown-to-text conversion.
+  * Capitalized BCP 14 key terms (*MUST*, *SHOULD*).
+  * Removed non-ASCII characters to resolve ID nits.
+  * Discussed IPR disclosures; authors were reminded to submit their statements.
+* **URN and Media Type Registration**:
+  * Thomas Hardjono proposed a group-based URN namespace format to partition core and future specifications. 
+  * Andrew Newton recommended verifying the URN format against RFC 2648 and RFC 3688. 
+  * Andrew Newton also noted that the core draft does not currently define a media type, suggesting the registration of `application/satp+json`. He advised consulting the HTTP Directorate to determine if an application-specific media type is required and recommended using Mark Nottingham's tool guidelines for an early HTTP Directorate review.
+
+### 3. Error Handling in SATP Core
+* **Slides**: [Error Handling in SATP Core (updated)](https://datatracker.ietf.org/meeting/126/materials/slides-126-satp-error-handling-in-satp-core-updated-00)
+* **Presenter**: Martin Gfeller
+* Martin Gfeller presented an overhaul of the error-handling framework designed to make errors structured, machine-processable, and consistent across implementations, rather than relying strictly on Postel's robustness principle.
+* **Adoption of RFC 9457**:
+  * The error-handling mechanism has been updated to use RFC 9457 ("Problem Details for HTTP APIs") formatting.
+  * Consolidated the disparate error tables into a single table.
+  * Mapped generic `400 Bad Request` errors to more specific codes, such as `422 Unprocessable Entity` and `404 Not Found`.
+  * Included an optional "instance" field to reference the transfer context ID.
+* **IANA Registry for Errors**:
+  * Martin Gfeller questioned whether individual error codes need to be registered with IANA, suggesting that reserving the top-level URN prefix would prevent collision while maintaining flexibility.
+  * Andrew Newton agreed that if the HTTP status code remains the primary indicator, the extended error code acts as application context. However, if gateways must take automated actions based on these extended codes, an IANA registry with a "Specification Required" policy would ensure uniqueness.
+  * Wes Hardaker suggested registering the SATP URN prefix to protect the namespace, allowing the WG to manage specific codes internally.
+* **Prescriptiveness**:
+  * Martin Gfeller noted that the draft does not yet specify exactly which error code is returned under every specific processing condition. Wes Hardaker remarked that while some behavior is refined through implementation, being as prescriptive as possible in the text is crucial for interoperability.
+
+### 4. Stage Zero (Pre-Transfer Setup)
+* **Slides**: [Updates on Stage Zero](https://datatracker.ietf.org/meeting/126/materials/slides-126-satp-updates-on-stage-zero-00)
+* **Presenter**: Thomas Hardjono
+* Thomas Hardjono introduced "Stage Zero," which represents future work focusing on the pre-transfer setup phase. Stage Zero comprises four primary areas:
+  1. **Asset Validation**: Confirming the legitimacy of a tokenized asset before starting a transfer.
+  2. **Identity Verification**: Complying with Financial Action Task Force (FATF) Recommendation 15 for digital assets.
+  3. **Transfer Context Establishment**: Binding negotiated details so neither party can repudiate or alter the transaction.
+  4. **SATP Core Binding**: Connecting the agreed transfer context to the SATP Core session.
+* **Architectural Components**:
+  * The setup introduces "Artifact Registries" (for asset schemas and metadata), "Identity Registries/Verifiers", and "Audit Log Registries" (append-only logs for transaction hashes).
+  * Wes Hardaker and Peter discussed integrating Remote Attestation Procedures (RATS) to attest gateway devices, ensuring that sessions occur between designated, secure platforms.
+  * Thomas Hardjono noted that identity verification might leverage Verifiable Legal Entity Identifiers (vLEIs) in collaboration with the Global LEI Foundation (GLEIF; see [vlei.com](https://vlei.com/)).
+  * Martin Gfeller inquired about ledger agnosticism, asking if assets like bonds could be represented simply as signed PDFs. Thomas Hardjono confirmed that the protocol remains ledger-agnostic, standardizing access APIs and pointers rather than the asset definitions themselves.
+
+### 5. SATP Registries
+* **Slides**: [SATP Registries](https://datatracker.ietf.org/meeting/126/materials/slides-126-satp-satp-registries-01)
+* **Presenter**: Denis Avrilionis
+* Denis Avrilionis elaborated on the proposed registry architecture, which acts as a passive, immutable repository for artifacts such as asset definitions, gateway identities, and transfer context logs.
+* **Need for Standardized Registries**:
+  * Wes Hardaker challenged the necessity of a standardized registry API versus vendor-specific implementations, given how much asset networks differ.
+  * Denis Avrilionis responded that achieving vendor-independent, cross-chain transfers requires standardizing how gateways look up asset semantics (referencing models like SWIFT's ISO 20022) to avoid complex, point-to-point negotiations.
+  * Peter noted that for consortium or alliance networks, standard registries prevent a combinatorial explosion of peer-to-peer configurations.
+  * Claire raised concerns about the WG attempting to define asset semantics rather than focusing purely on the transport protocol, reminding the group that asset-level agreements typically occur out-of-band.
+  * Denis clarified that the registry does not redefine asset semantics; it exposes a "smart pointer" called a Tokenized Asset Record (TAR) consisting of an off-chain verifiable metadata portion (Artifact Record) and an on-chain tokenized reference to verify integrity.
+
+---
+
+## Decisions and Action Items
+
+* **Core Draft Last Call**: Once the new error-handling sections are successfully merged into `draft-ietf-sat-core-protocol`, the chairs will initiate a final two-week Working Group Last Call.
+* **Document Progression**: The AD (Andrew Newton) will hold the Core, Architecture (`draft-ietf-sat-architecture`), and Use Cases (`draft-ietf-sat-use-cases`) drafts and submit them to the IESG as a single package.
+* **Use Cases Update**: Venkatraman Ramakrishna will submit a revised ID of the Use Cases draft to address outstanding AD comments.
+* **URN & Media Type Investigation**: Thomas Hardjono will follow up on the preferred URN format and draft the registration template for `application/satp+json`.
+
+---
+
+## Next Steps
+
+* **Collaboration on Core Errors**: Thomas Hardjono, Martin Gfeller, and Rafael Belkior will organize a meeting to synchronize the GitHub source markdown, resolve text rendering errors for figures, and complete the integration of the RFC 9457 error format into the core draft.
+* **Rechartering**: Discussions on rechartering the WG for Stage Zero, Registry APIs, and vLEI integration will proceed after the three active charter documents clear IESG evaluation.
