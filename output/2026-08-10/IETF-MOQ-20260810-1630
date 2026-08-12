@@ -1,0 +1,72 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The Media over QUIC (MOQ) Working Group held a virtual interim meeting to progress several pull requests (PRs) and issues on the core transport specification, discuss a proposal for fetch pacing, and plan the upcoming draft release pipeline. The session was chaired by Martin Duke, and Alan Frindell led the review of transport issues and PRs based on the slides.
+
+---
+
+## Key Discussion Points
+
+### 1. Location Filters & `PUBLISH_NOTIFY` (`draft-ietf-moq-transport`)
+The working group discussed the status of the location filters PR and the newly introduced `PUBLISH_NOTIFY` message, referencing the slide deck [MOQT PRs and Issues 8/10](https://datatracker.ietf.org/meeting/interim-2026-moq-21/materials/slides-interim-2026-moq-21-sessa-moqt-prs-and-issues-810-00).
+
+*   **Location Filters Default Resolution:** The group addressed what happens when a subscriber requests $N$ groups before the largest object, but no objects have been published yet. Mo Zanaty argued that "unfiltered" is the cleanest option, which Alan Frindell, Suhas Nandakumar, and Ian Swett supported. 
+*   **Special Encoding:** There was a brief discussion on the unintuitive nature of using `(0, 0)` to mean "largest object," but Martin Duke and Cullen Jennings agreed that avoiding separate filter types (which introduce complex error overlap cases) justifies keeping this compressed encoding.
+*   **`PUBLISH_NOTIFY` Mechanics:** Alan Frindell clarified that this message is purely informative and requires no confirmation or state-changing reaction from a relay, resolving a previous comment from Cullen Jennings.
+
+### 2. Fill Fetch Open Questions (`draft-ietf-moq-transport`)
+The group evaluated several open issues on the fill fetch PR:
+
+*   **Independent Location Filters:** The current direction is to have completely separate location filters for the subscription and the fill portion. Cullen Jennings noted that this supports use cases like asking for high-resolution live video but filling historical frames with low-resolution/base-layer data.
+*   **Invalid Range Error Code:** Mo Zanaty and Alan Frindell proposed removing the "invalid range" error code. If a subscriber requests a range that is out of bounds (e.g., asking to go 5 groups back when the current head is at group 2), the publisher will clamp the range to the start `(0,0)` rather than returning an error.
+*   **Subscription Lifetime:** The group confirmed that if the subscription end is entirely before the largest object, the subscription remains open to handle out-of-order publication or subsequent `REQUEST_UPDATE` messages.
+*   **Forward State Intersections:** With ongoing proposals to replace "forward" completely with explicit location ranges, the group agreed to remove draft sentences coupling forward-state transitions to fill-fetch triggers and replace them with a generic to-do.
+*   **Signaling Fill Failures:** Suhas Nandakumar raised concerns about losing fetch error granularity (like redirects or retries) by signaling fill failures via `RESET_STREAM`. Alan Frindell suggested that these details can reside on the parent subscription.
+*   **Subscriber Priority Changes:** Ian Swett raised whether changing a subscriber priority updates ongoing fill fetches. The group concluded that priority changes only affect the active subscription and not active fill streams.
+
+### 3. Publisher Default Priority Update (`draft-ietf-moq-transport`)
+The group reviewed PR 1770 (written by Michal Hošna), which changes the default publisher priority property back to an updatable parameter.
+
+*   **Raciness Concerns:** Martin Duke and Suhas Nandakumar highlighted the highly racy nature of dynamically updating priority defaults over the control plane while data flows over the data plane. 
+*   **Overhead vs. Complexity:** Luke Curley and Martin Duke opposed introducing complex synchronization mechanisms just to save a single byte per object. Suhas Nandakumar noted that senders wishing to change priorities can simply include the explicit priority byte on the data plane during transitions instead of introducing complex signaling.
+
+### 4. FETCH Pacing for MOQT
+Will Law presented a proposal for signaling pacing rates, referencing the slide deck [FETCH pacing for MOQT](https://datatracker.ietf.org/meeting/interim-2026-moq-21/materials/slides-interim-2026-moq-21-sessa-fetch-pacing-for-moqt-00).
+
+*   **Motivation:** Standard congestion control downloads fetch responses as fast as possible, creating bursty traffic, buffer bloat, and packet loss on intermediate networks. The proposal introduces a boolean setup option `fetch_pacing_supported` and a logarithmic `pacing_rate` parameter on FETCH requests.
+*   **QUIC Flow Control vs. Application Pacing:** Mo Zanaty asked if this could be handled natively via QUIC stream flow control. Will Law responded that many client environments (such as web browsers using WebTransport) do not expose stream-level flow control rate controls to the application. Alan Frindell added that flow control should be reserved for memory/resource management rather than rate shaping.
+*   **Pacing Scope:** Michal Hošna asked if pacing should apply to subscriptions as well. Will Law replied that subscriptions are naturally paced by their media encoding rate, but pacing is highly valuable for non-low-latency catch-up and historical fetches. The current consensus is to continue this work as an external extension draft.
+
+### 5. Other Transport Issues
+*   **Eliminating the Forward Parameter (Issue 1352):** Suhas Nandakumar has prepared a PR based on the location-filters branch. It explores pausing subscriptions by declaring a start range greater than the end range.
+*   **Include Property Zeros and Mandatory Properties:** The group discussed what happens when a subscriber uses "include property zero" but misses mandatory-to-implement properties. Martin Duke and Mo Zanaty agreed that if a client requests this without actually caching the properties, they are violating the specification and failure is acceptable.
+*   **Query in URI Scope:** The group agreed that the query parameter of a URI is not part of the MoQT scope. Alan Frindell will draft text to make this explicit.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1.  **Location Filters:** If a client requests a relative offset before the largest object and no objects have been published, the publisher will treat the filter as "unfiltered" (fetching from the beginning).
+2.  **Invalid Range:** The "invalid range" error code will be removed from `draft-ietf-moq-transport`. Out-of-bounds requests will be clamped to `(0,0)` and proceed.
+3.  **Subscription Expiry:** Subscriptions will remain open even if the current range filter is entirely in the past.
+4.  **Fetch Priority Updates:** A `SUBSCRIBER_PRIORITY` update will only affect the live subscription stream and will not retroactively update the priority of ongoing fill-fetch streams.
+5.  **Scope Definition:** The query portion of a URI path is officially excluded from the MoQT scope.
+
+### Action Items
+*   **Alan Frindell** to double-check that no critical fetch error codes are lost when mapping fill-fetch failures to `RESET_STREAM` error codes.
+*   **Alan Frindell** to draft a PR clarifying that "include property zero" can fail if the subscriber does not actually possess the mandatory track properties.
+*   **Alan Frindell** to draft text clarifying that the URI query parameter is excluded from MoQT scope.
+*   **Martin Duke** to initiate a mailing list thread to gauge consensus on PR 1770 (Publisher Default Priority Update), noting the interim group's strong preference to reject the PR due to complexity.
+*   **Mo Zanaty** to open a new issue to remove the rule making it a "malformed track" condition if an object is received twice with different priorities.
+
+---
+
+## Next Steps
+
+*   **Authors & Editors Face-to-Face:** The editorial team is meeting in-person in 3–4 weeks to process approximately 50 editorial issues.
+*   **Draft Release Pipeline:** 
+    *   **Draft 20** will be cut immediately prior to the editorial meeting and will consist of purely editorial changes (including alphabetical reordering of messages, as requested by Will Law).
+    *   **Draft 21** will capture the output of the editorial meeting.
+    *   **Draft 22** will be published as the next official interop target.
