@@ -1,0 +1,65 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The Media over QUIC (MOQ) Working Group held a virtual interim meeting on August 28, 2026. The session focused primarily on addressing design issues and PRs for `draft-ietf-moq-transport`. Key discussions centered around the behavior of location filters and fill fetches, the inclusion of "or" logical operators in subscription filters, introducing parameters to namespace subscriptions, and handling edge cases related to cache updates and object state transitions.
+
+The next milestone is an upcoming virtual interop testing implementation of draft 18 on September 2, 2026.
+
+---
+
+## Key Discussion Points
+
+### Working Group Updates
+Martin Duke presented the [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-22/materials/slides-interim-2026-moq-22-sessa-chair-slides-00). 
+* **Priority PR 1770 (Default Priority):** The call for comments ends today. Because of the complexities of immutable properties, ambiguity, and race conditions, the consensus is to close this PR with no action unless new feedback is received on the mailing list.
+* **Virtual Interop:** Mike English is organizing a virtual interop on September 2, 2026, to test implementations of draft 18 of `draft-ietf-moq-transport`.
+* **Upcoming Meetings:** Two additional virtual interims are scheduled before the in-person interim meeting in Seattle on October 14–15, 2026.
+
+---
+
+### PRs and Issues Discussion
+Ian Swett presented the [PRs and Issues](https://datatracker.ietf.org/meeting/interim-2026-moq-22/materials/slides-interim-2026-moq-22-sessa-prs-and-issues-00) slide deck to guide technical discussion on `draft-ietf-moq-transport`.
+
+#### 1. Location Filters & Fill Fetch (PRs 1823 & 1824)
+* **Discussion:** Cullen Jennings raised concerns that configuring a standard "joining fetch" is currently difficult to understand under the proposed filter text. Martin Duke explained that although relative (group-only) and absolute (group and object) filters are compact, the layout can be unintuitive. 
+* **Clarification:** Mo Zanaty clarified the relationship between the `fill-fetch` parameter, subscription location filters, and filters inside fill parameters. For the common "joining fetch" use case, a subscriber configures a standard location filter and appends an empty `fill-fetch` parameter.
+* **Outcome:** The working group agreed that the draft requires explicit, clear editorial sections. Mo Zanaty and Ian Swett will collaborate to write a dedicated subsection explaining how to construct a standard joining fetch.
+
+#### 2. Issue 1881: "Or" Filters and Deduplication
+* **Background:** Range filters are optional, and location filters do not support Set IDs. Other filters can utilize Set IDs to achieve "or" query functionality, allowing relays to deduplicate identical upstream data requests.
+* **Debate:** Victor Vasiliev questioned whether the complexity of the "or" operator (via Set IDs) is justified by its use cases, suggesting it be removed for now and reintroduced later if real-world demand arises. 
+* Mo Zanaty and Luke Curley defended keeping "or" functionality, noting its utility for property filtering (e.g., matching multiple independent properties) and upstream relay aggregation. Cullen Jennings agreed, noting that deduplication logic is trivial to implement and that removing "or" now would make it significantly harder to specify in the future.
+* **Filter Updates:** Ian Swett raised concerns about the complexity of updating individual filter sets. Mo Zanaty clarified that under the current specification, any update replaces the entire filter parameter (overwriting all sets), which is simpler than updating individual Set IDs piece-by-piece.
+* **Consensus:** The working group agreed to retain the "or" filter functionality.
+
+#### 3. Issue 1800: Parameters in `SUBSCRIBE_NAMESPACE`
+* **Discussion:** Luke Curley proposed adding parameters to `SUBSCRIBE_NAMESPACE` messages (matching the extensibility of `PUBLISH_NAMESPACE`). This would support use cases such as signaling ETags, start times, or custom hop weights to assist with multi-connection routing.
+* **Safety Concerns:** Martin Duke cautioned that allowing `REQUEST_UPDATE` on namespace subscriptions introduces significant state-machine complexity. He suggested supporting unilateral updates via a notification mechanism (similar to `PUBLISH_NOTIFY`) instead of `REQUEST_UPDATE`.
+* **Consensus:** There was general agreement to add parameters to namespace subscriptions to align with published namespaces, restricting updates to a unilateral signaling model to avoid `REQUEST_UPDATE` overhead.
+
+#### 4. Issue 1703: Updating Cache Field Properties
+* **Discussion:** Cullen Jennings and Ian Swett discussed how relays should behave if they receive conflicting information for immutable object fields.
+* **Consensus:** Because objects and their properties are structurally immutable, the protocol should not design a complex cache-updating mechanism. If a relay receives conflicting values for these fields, it should ignore the subsequent value to maintain eventual consistency.
+
+#### 5. Nonexistent to Exist State Transition
+* **Discussion:** Cullen Jennings highlighted an issue where an endpoint is told an object does not exist, but later receives the object anyway.
+* **Consensus:** The group agreed that transitioning an object's state from nonexistent back to existent is invalid. To prevent upstream connection termination (which occurs with protocol errors), this transition will be explicitly classified in the text as a **malformed track** error.
+
+#### 6. Issue 1830: Top Tracks
+* **Update:** Mo Zanaty noted plans to update the Top Tracks PR to leverage the newly merged `PUBLISH_NOTIFY` mechanism (PR 1820). This change is expected to cut control channel traffic in half during track switches by eliminating the `REQUEST_UPDATE` and `OK` message round-trip.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **Deduplication ("Or" Filters):** Retain the Set ID-based "or" filtering mechanism in `draft-ietf-moq-transport`.
+2. **Namespace Subscription Parameters:** Add parameter support to `SUBSCRIBE_NAMESPACE` for protocol extensibility. Updates to these parameters will be unilateral (no `REQUEST_UPDATE` support).
+3. **Cache Conflict Resolution:** Relays will ignore subsequent conflicting updates to immutable object fields.
+4. **State Transitions:** Classify transitions from nonexistent to existent states as a **malformed track** error instead of a generic connection-terminating protocol error.
+
+### Action Items
+* **Mo Zanaty & Ian Swett:** Write an editorial section for `draft-ietf-moq-transport` detailing the step-by-step configuration of a joining fetch.
+* **Mo Zanaty:** Update the Top Tracks PR (Issue 1830) to utilize `PUBLISH_NOTIFY`.
+* **Editors (Ian Swett, Victor Vasiliev, Alan):** Address outstanding editorial issues during the upcoming in-person editorial meeting.
