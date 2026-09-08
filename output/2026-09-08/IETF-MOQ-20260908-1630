@@ -1,0 +1,87 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ working group held a virtual interim meeting on September 8, 2026. The session focused on the restructuring of the core transport protocol in `draft-ietf-moq-transport`, planning for the upcoming hybrid interop and interim meeting in Seattle, and addressing key outstanding design issues and pull requests. Additionally, the group discussed a proposed liaison statement to MPEG regarding low-overhead media containers and introduced a new draft on URI resolution.
+
+---
+
+## Key Discussion Points
+
+### 1. Administrivia & Upcoming Dates
+Martin Duke opened the meeting and presented the IETF Note Well. He outlined the upcoming working group schedule based on the [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-23/materials/slides-interim-2026-moq-23-sessa-chair-slides-00):
+*   **September 21, 2026**: Final virtual interim.
+*   **October 12–13, 2026**: Hybrid Interop in Seattle.
+*   **October 14–15, 2026**: Hybrid Issue Discussion in Seattle.
+
+Martin Duke also noted that the consensus call for the changes between Draft 18 and Draft 19 of `draft-ietf-moq-transport` has begun, with a higher bar for issues filed against this diff after September 18, 2026.
+
+### 2. MPEG Liaison Statement on Low-Overhead Media Container (LocMAF)
+The group discussed a proposed liaison statement to MPEG regarding `draft-ietf-moq-loc` (Low Overhead Media Container/LocMAF). 
+*   Will Law clarified that CMAF does not yet have a normative dependency on LocMAF, but an open pull request would introduce this dependency. 
+*   Torbjörn Einarsson explained that for low-latency CMAF, placing every audio frame in a Media over QUIC (MoQ) object introduces more than 100 bytes of repetitive overhead. LocMAF reduces this overhead to approximately 2 bytes via delta-encoding/calculation, enabling the receiver to reconstruct the full CMAF container. 
+*   Victor Vasiliev expressed skepticism about adopting a third normative container format. Magnus Westerlund clarified that LocMAF is not a new format but rather an optimization specifically designed to handle `draft-ietf-moq-cmsf` requirements (behaving similarly to a transfer-encoding).
+*   **Path Forward**: Magnus Westerlund proposed sending the liaison statement to MPEG communicating IETF's intentions before formally holding a working group adoption call for `draft-ietf-moq-loc`. Martin Duke agreed with this sequence of operations.
+
+### 3. Transport Draft Reorganization
+Alan Frindell presented the structural overhaul of `draft-ietf-moq-transport` as detailed in the [MoQ Issues and PRs Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-23/materials/slides-interim-2026-moq-23-sessa-moq-issues-and-prs-01). 
+*   To improve editorial clarity, the protocol's semantics (Part 1) have been completely separated from its wire format (Part 2, Section 8+).
+*   Cullen Jennings requested that the editors publish a "pure move" draft (Draft 21) containing only the reordering, followed immediately by an editorial cleanup draft (Draft 22). This allows reviewers to perform clean diffs. Martin Duke and the editors agreed to this publishing plan.
+
+### 4. Interop Target for Seattle
+The chairs and editors debated whether the Seattle hybrid interop in October should target Draft 18 or Draft 20 of `draft-ietf-moq-transport`.
+*   Several implementers (including Suhas Nandakumar, Martin Duke, and Zafer Gürel) noted that their codebases are currently aligned with Draft 18.
+*   Ian Swett and Alan Frindell emphasized the importance of testing newer features, particularly **Fill Fetch** (which landed in Draft 20) and filters.
+*   To gauge working group readiness, a session poll was conducted.
+
+#### Session Poll:
+*   **Question**: *I will be able to support draft-20 in Seattle. (No opinion if I have no implementation)*
+*   **Results**: Yes: 7, No: 5, No Opinion: 4 (Total: 21)
+
+*   **Agreement**: The formal interop target will be Draft 20. Implementations still on Draft 18 are welcome to interop on a best-effort basis. To give implementers stability, no further wire-breaking design changes will be merged into the interop target.
+
+### 5. Technical Issues and Pull Requests
+
+#### A. PR #1625: Remove Forward Parameter and Respold Pause/Resume with Location Filters
+*   The PR proposes replacing the `forward` parameter with an unsatisfiable location filter (e.g., `end < start`) to signal pausing/resuming.
+*   Victor Vasiliev and Cullen Jennings raised concerns regarding state-tracking: when a relay unpauses a stream, it must know whether to restore the previous filter state.
+*   Mo Zanaty recommended focusing the PR strictly on location filters and removing mentions of other filters (e.g., largest object).
+*   Ian Swett noted that for clean track-switching, clients should explicitly set location filters rather than relying on the `forward` parameter.
+*   **Decision**: The editors will split the PR. The editorial and terminology changes (renaming states to "paused"/"resumed") will proceed, while the removal of the `forward` parameter and the mechanics of unsatisfiable filters will undergo further design.
+
+#### B. PR #1620: Compress and Update Publisher Priority
+*   The PR moves the default publisher priority from an immutable object property to a hop-by-hop message parameter.
+*   Cullen Jennings supported the change, stating that setting priority on every individual object is too costly for audio. Steven Riedl expressed interest in the feature as well.
+*   Victor Vasiliev and Luke Curley expressed concern over the debugging complexity introduced by race conditions and out-of-order priority delivery.
+*   Martin Duke noted that changing priority mid-subgroup breaks object property immutability and requires removing the "malformed track" error.
+*   **Decision**: The editors will refine the PR to move the priority to a message parameter, strip out the "malformed track" constraint, and investigate restricting priority changes to group boundaries to mitigate mid-subgroup complexity.
+
+#### C. PR #1667 & Issue #1656: Align Fetch OK and Fill Fetch
+*   Ian Swett highlighted that `FETCH_OK` retains `end location` and `end of track` fields, which are largely redundant with the `largest object` logic used in `FILL_FETCH`. He proposed aligning the two messages.
+*   Mo Zanaty suggested adding `first object` and `last object` as static track properties for Video-on-Demand (VOD) tracks to eliminate downstream guessing.
+*   **Decision**: This issue is parked until after the Seattle interop to gather deployment experience from implementing Fill Fetch.
+
+#### D. PR #1683 & Issue #1682: Revisit Prohibition on Overlapping Subscriptions
+*   Under the current specification, overlapping `SUBSCRIBE_NAMESPACE` or `SUBSCRIBE_TRACKS` calls are protocol errors. However, due to the bidirectional nature of streams, a client cannot easily determine when a server has processed a cancellation, leading to unavoidable race conditions.
+*   Martin Duke expressed concern about how parameters are matched if duplicate subscriptions exist. Alan Frindell suggested adding a subscription request ID correlator to `PUBLISH`.
+*   Mo Zanaty warned that allowing overlaps would create complex routing and duplication issues for relays. Ian Swett proposed that allowing overlapping `SUBSCRIBE_NAMESPACE` calls is safe and simple, while `SUBSCRIBE_TRACKS` remains complex.
+*   **Decision**: No consensus was reached. Alan Frindell and Luke Curley will coordinate offline to find a solution.
+
+### 6. MoQ URI and Resolution Draft
+Cullen Jennings introduced `draft-jennings-moq-resolution-00` and discussed the key DNS and TLS requirements needed for MoQ transport resolution (PR #1901):
+*   **DNS Service Binding**: Proposing mandatory client support for SVCB (Service Binding) records to facilitate server-side load balancing.
+*   **TLS SAN Checks**: Restricting certificate name validation strictly to the Subject Alternative Name (SAN) fields, ignoring the legacy Common Name (CN). Supported fields include DNS names, URIs (for narrow-scoped CDN routing), and IP addresses.
+*   **Wildcard Matching**: Proposing a ban on wildcard certificates (e.g., `*.example.com`) in MoQ to align with modern security best practices.
+*   Victor Vasiliev inquired about browser/WebTransport compatibility. Cullen Jennings noted that raw QUIC would fully support this specification, and browser limitations would be resolved over time.
+*   Alan Frindell suggested moving the MoQ URI scheme definition from `draft-ietf-moq-transport` into this new resolution draft. Cullen Jennings agreed with this approach.
+
+---
+
+## Decisions and Action Items
+
+1.  **Liaison Statement**: The working group will send a liaison statement to MPEG indicating plans to optimize CMAF compression overhead via LocMAF (`draft-ietf-moq-loc`). A call for working group adoption of `draft-ietf-moq-loc` will be initiated after receiving MPEG's response.
+2.  **Draft 21 & 22 Publishing**: The editors will publish Draft 21 of `draft-ietf-moq-transport` as a "pure move" document (reflecting only reordering). Draft 22, containing the editorial cleanups and clarifications, will be published immediately after to maintain clear git history.
+3.  **Seattle Interop Target**: The target for the Seattle interop is set to Draft 20. No further wire-breaking pull requests will be merged into the main branch until after the interop.
+4.  **Split PR #1625**: Editors will split the forward parameter PR into an editorial/terminology PR (ready to land) and a technical PR on location filter pausing (needs work).
+5.  **Refine PR #1620**: Editors will update the publisher priority PR to restrict priority changes to group boundaries and remove the associated "malformed track" errors.
+6.  **URI Scheme Relocation**: Cullen Jennings will work on incorporating the MoQ URI scheme definition from `draft-ietf-moq-transport` into `draft-jennings-moq-resolution-00`.
