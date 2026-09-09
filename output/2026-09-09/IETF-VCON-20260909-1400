@@ -1,0 +1,59 @@
+# [VCON](../wg/vcon.html)
+
+## Summary
+
+The VCON Working Group held an interim meeting to discuss updates to the core vCon specification, address open issues regarding multi-segment recordings, and evaluate the overall information model. Daniel Petrie presented the latest edits to `draft-ietf-vcon-vcon-core` (-04). The major technical focus was on how to group multiple dialogue recordings for a single conversation. Daniel Petrie's "recording set" proposal was compared against a broader "session-based" counterproposal from Jonathan Rosenberg designed to accommodate voice AI agents, nested sub-sessions, and point-in-time events. The group agreed on a path forward to introduce an optional hierarchical session container and first-class events while maintaining backward compatibility.
+
+---
+
+## Key Discussion Points
+
+### 1. vCon Core I-D Updates (`draft-ietf-vcon-vcon-core` -04)
+Daniel Petrie presented updates based on his slides, [vCon core I-D](https://datatracker.ietf.org/meeting/interim-2026-vcon-02/materials/slides-interim-2026-vcon-02-sessa-vcon-core-i-d-00):
+* **Reorganization:** Sections 4.3 and 4.3.1 were reorganized by dialogue object type, and a clarification table was added based on feedback from Scott Godin.
+* **CDDL & JSON Schema:** CDDL was added back into the draft, and the JSON schema was updated. Scott Godin questioned if both schema formats need to be maintained. Daniel Petrie explained that other WG members (such as Rowan) previously requested the JSON schema, so both will be retained. The text remains the normative authority, while the schemas/CDDL are informative.
+* **Syntax and Cleanup:** Fixed party syntax optionality, added text to differentiate JSON versus gZIP forms, and removed arrays for transfer objects. 
+
+### 2. Multi-segment Recordings & The "Recording Set" Proposal
+Daniel Petrie presented a proposal to resolve five open issues regarding multi-segment recordings (e.g., talkspert-only recordings where silence is trimmed):
+* **The Problem:** When a call has multiple active talk spurts recorded separately, there is no single object to anchor call-level start/end times, passive/silent participants, or point-in-time events (such as DTMF, join/leave signals, or transfers).
+* **The Proposal:** Introduce a "recording set" dialogue object type to act as a grouping mechanism for these separate recordings, providing a single dialogue reference for transfers.
+
+### 3. Session and Event Counterproposal for AI Agent Trajectories
+Jonathan Rosenberg presented an alternative to the "recording set" model, aiming to align the core format with the needs of voice AI agents (referencing `draft-howe-vcon-agent-session-00` and `draft-birkholz-verifiable-agent-conversations-01` in the chat log to clarify Scott Godin's question about the "protocols draft" / "Birkholz's draft"):
+* **The Counterproposal:** Rename the grouping concept to **Session** and make it a first-class, top-level (and potentially recursive) container. 
+* **Distinguishing Objects:** Disentangle the flat list of dialogues into three distinct concepts:
+  1. **Sessions:** Top-level containers with start/end times.
+  2. **Dialogues:** Shared media content with start/duration (audio, transcripts, text).
+  3. **Events:** Point-in-time occurrences with no duration (DTMF, join/leave, tool call requests/responses, transfer signals).
+* **Dialogue Properties:** Explicitly separate *contributors* (who provided media), *receivers* (who heard/received media), and *active speakers* to easily model mixed audio, sidebars, and speaker-separated audio.
+* **AI Trajectories:** For AI agents, each utterance is a dialogue with metadata (tokens burned, model used, prompt context), while tool calls and reasoning steps are events.
+* **Call Center State Context:** In the chat, Pavan Kumar noted that call center flows can be enriched by capturing specific states (waiting in queue, ringing, attended transfers, customer hold) in addition to active speaking bursts.
+
+### 4. Backward Compatibility and Compromise
+Daniel Petrie raised concerns about breaking four years of existing vCon implementations. The group discussed how to compromise:
+* **Optional Sessions:** Jonathan Lennox and Daniel Petrie suggested that the new hierarchical "session" container be optional. Legacy vCons without an explicit session container would be treated as having an implicit single session, preserving backward compatibility.
+* **Event Peer:** The group agreed that "party history" should be extracted from the dialogue object and redefined as a first-class "events" object that sits as a peer to dialogues.
+* **Data Minimization:** Thomas McCarthy-Howe highlighted that this architecture supports data minimization (e.g., redacting dialogues while keeping consent attachments for compliance queries) and streaming vCons using MPEG-DASH.
+
+### 5. ID-Based References vs. Array Indices
+Jonathan Lennox and Jonathan Rosenberg pointed out that the current draft's method of referencing parties and dialogues using array indices makes document editing and deletion difficult (as deleting an item requires recalculating all downstream indices). They recommended transitioning to internal string IDs (or UUIDs) for object references within the vCon file. Daniel Petrie acknowledged that while this is a breaking change, it solves the referencing issues introduced by recursive sessions.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **CDDL & JSON Schema:** Both CDDL and JSON Schema will continue to be maintained in `draft-ietf-vcon-vcon-core`, with the text remains as the normative reference.
+2. **First-Class Events:** "Party history" will be moved out of dialogue objects and established as a peer level "events" object.
+3. **Session Container:** The WG will adopt a recursive "session" container model, but keep it optional at the top level to preserve backward compatibility for legacy flat vCons.
+
+### Action Items
+* **Jonathan Rosenberg** to write a 3-to-4-page proposal document outlining the revised information model (Sessions, Events, Dialogues, and ID-based referencing) and providing ~10 concrete use-case examples (including sidebars, consultative transfers, and AI sub-agents) within the next two weeks.
+* **Daniel Petrie** to review the proposal for integration into `draft-ietf-vcon-vcon-core`.
+
+---
+
+## Next Steps
+
+* **Next Interim Meeting:** Scheduled for **Thursday, October 24th, 2026, 10:00 AM – 12:00 PM Eastern** to discuss Jonathan Rosenberg's proposal and determine the next steps for `draft-ietf-vcon-vcon-core` and the associated agent drafts.
