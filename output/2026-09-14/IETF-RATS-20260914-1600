@@ -1,0 +1,116 @@
+# [RATS](../wg/rats.html)
+
+## Summary
+
+The RATS Working Group held an interim meeting to discuss active drafts, security guidelines, platform-specific attestation profiles, and novel architectural extensions. The session covered security baseline guidelines for the RATS ecosystem, the Concise Reference Integrity Manifest (CoRIM) profile for Arm Confidential Compute Architecture (CCA), kernel and key attestation for Entity Attestation Tokens (EAT), a trajectory-based proof-of-humanity mechanism, and trustworthy acquisition of credentials. The group also evaluated the transition of the composite attester taxonomy from an active draft to an IETF wiki.
+
+---
+
+## Key Discussion Points
+
+### 1. Administrative and Agenda Bash
+* **Presenter:** Ned Smith
+* **Slides:** [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-rats-03/materials/slides-interim-2026-rats-03-sessa-chair-slides-00)
+* Ned Smith opened the meeting, presenting the Note Well (RFC 7154) and noting the code of conduct. Yogesh Deshpande and Muhammad Usama Sardar volunteered to take minutes.
+
+### 2. Protecting the RATS Ecosystem from Critical-severity Vulnerabilities
+* **Presenter:** Muhammad Usama Sardar
+* **Co-authors:** Songbo Bu, Serhii Nikolaichuk
+* **Slides:** [Protecting the RATS Ecosystem from Critical-severity Vulnerabilities](https://datatracker.ietf.org/meeting/interim-2026-rats-03/materials/slides-interim-2026-rats-03-sessa-protecting-the-rats-ecosystem-from-critical-severity-vulnerabilities-00)
+* **Discussion:**
+  * Muhammad Usama Sardar outlined the motivation for establishing structural security baselines to prevent relay-class and diversion attacks (referencing CVE-2023-3697 and other critical-severity vulnerabilities).
+  * The proposed framework operates at three levels: 
+    1. **Connection Binding:** Binding the evidence directly to the underlying transport connection (e.g., via TLS exporter values as per RFC 9266).
+    2. **Verifier Enforcement:** Ensuring the verifier strictly verifies and compares expected reference values.
+    3. **Workload Authorization:** Applying consistent workload policies across all valid execution paths.
+  * Kathleen Moriarty raised procedural concerns, noting that the draft did not follow the guidelines provided during the Madrid meeting. She stated that Section 1.4 lacked collegial writing norms, making it difficult to adopt. Kathleen clarified that corrections to published RFCs must use factual, non-critical "updates" drafts, whereas general template-based security advice belongs on a WG wiki. 
+  * Muhammad Usama Sardar argued that wikis are less visible to developers and that highly severe CVEs (9.1 to 10.0) merit a dedicated draft. 
+  * Carl Wallace suggested that the authors trim the scope down to a general security baseline or template that other drafts can point to, which would make the draft significantly shorter and easier to progress. The authors agreed to release an updated version focusing purely on this tightened scope.
+
+### 3. CoRIM Profile for Arm CCA Endorsements
+* **Presenter:** Yogesh Deshpande
+* **Slides:** [CoRIM Profile for Arm CCA Endorsements](https://datatracker.ietf.org/meeting/interim-2026-rats-03/materials/slides-interim-2026-rats-03-sessa-corim-profile-for-arm-cca-endorsements-00)
+* **Relevant WG Draft:** [draft-ietf-rats-corim](https://datatracker.ietf.org/doc/draft-ietf-rats-corim/)
+* **Discussion:**
+  * Yogesh Deshpande introduced a CoRIM profile tailored to the Arm Confidential Compute Architecture (CCA). 
+  * The architecture relies on a layered attester model where platform attestation and realm attestation are combined. Platform endorsements map platform identifiers and instance identifiers using base CoRIM types without requiring extension slots.
+  * Realm measurements (initial measurements and extended runtime measurements) use the initial measurements as a stable identifier.
+  * Henk Birkholz questioned the restriction of allowing only a single crypto key inside the software component signer sequence. Yogesh explained that while the current revision restricts this to one key for simplicity, the profile is designed to expand to multiple signer keys in future revisions.
+  * In the session chat, Giridhar Mandyam inquired about the provenance of Device Assignment (DA) measurements and whether they are treated as part of the realm extensions.
+
+### 4. KIA Evidence + GAR Governance Log
+* **Presenter:** Tom Sato
+* **Slides:** [KIA Evidence + GAR Governance Log](https://datatracker.ietf.org/meeting/interim-2026-rats-03/materials/slides-interim-2026-rats-03-sessa-kia-evidence-gar-governance-log-00)
+* **Discussion:**
+  * Tom Sato presented on agentic attestation and audit architectures in multi-agent systems, introducing Kernel Identity and Attestation (KIA) and the Governance Audit Record (GAR).
+  * The model establishes a trust chain spanning a hardware root of trust, a Governing Enforcement Component (GEC), and signed event logs. Tom highlighted the integration of a Cross Principle Identifier to correlate agent identities across different GECs securely.
+  * Tom noted that the security design was actively informed by the relay-attack mitigations championed by Muhammad Usama Sardar.
+  * Kathleen Moriarty asked how this work correlates with existing industry mechanisms like Linux Integrity Measurement Architecture (IMA). She also urged the presenter to review active WG drafts to identify overlaps and prevent duplicating trustworthiness claims. Tom Sato agreed to publish an IMA-to-KIA architectural comparison on the RATS mailing list.
+
+### 5. Key Attestation for Entity Attestation Tokens (EAT)
+* **Presenter:** Ionuț Mihalcea
+* **Slides:** [Key Attestation for Entity Attestation Tokens (EAT)](https://datatracker.ietf.org/meeting/interim-2026-rats-03/materials/slides-interim-2026-rats-03-sessa-key-attestation-for-entity-attestation-tokens-eat-00)
+* **Relevant WG Draft:** [draft-ietf-rats-pkix-key-attestation](https://datatracker.ietf.org/doc/draft-ietf-rats-pkix-key-attestation/)
+* **Discussion:**
+  * Ionuț Mihalcea addressed a critical vulnerability in standard certificate signing requests (CSRs) where a malicious client can pair a "bad" key pair with a valid platform EAT token because no cryptographic link exists between the EAT token and the CSR key.
+  * The proposed solution introduces a new EAT claim set signed by an attesting key, providing freshness (nonces), a subject public key in confirmation (CNF) format, and protection properties. This directly reuses the extractable, sensitive, local, and purpose object identifiers (OIDs) specified in [draft-ietf-rats-pkix-key-attestation].
+  * During the handshake or CSR processing, the verifier validates the signature on the CSR and matches the public key against the key attested in the EAT.
+  * Giridhar Mandyam noted in the chat that binding the public key to the challenge data could also prevent key substitution if the TEE restricts who can populate that challenge field.
+
+### 6. TRIP: Trajectory-based Recognition of Identity Proof
+* **Presenter:** Camilo Posada
+* **Slides:** [TRIP: Trajectory-based Recognition of Identity Proof](https://datatracker.ietf.org/meeting/interim-2026-rats-03/materials/slides-interim-2026-rats-03-sessa-trip-trajectory-based-recognition-of-identity-proof-00)
+* **Discussion:**
+  * Camilo Posada presented an individual draft focused on proving continuous human presence ("embodied continuity") by measuring physical movement over time.
+  * The architecture maps directly onto RFC 9334: the attester is a TRIP-enabled device, the evidence consists of location "breadcrumbs," and the verifier runs a "criticality engine" to emit a Proof of Humanity (POH) certificate.
+  * To protect user privacy, coordinates are quantized into Uber H3 hexagonal grid cells (approximately 15,000 square meters) on-device before signing. The verifier only learns statistical movement exponents rather than precise locational history.
+  * Ned Smith asked about the nature of the reference values used by the verifier to validate human presence. Camilo explained that the criticality engine checks the displacement series against statistical thresholds that distinguish organic human movement from bots or drones.
+  * Henk Birkholz recommended explicitly defining the H3 grid layout in the introduction and questioned the use of the term "epoch," suggesting the use of standard UTC timestamps.
+  * Yogesh Deshpande suggested that because it relies on append-only logs, this model might fit better within the SCITT architecture than RATS.
+
+### 7. Trustworthy Acquisition of Credentials using Remote Attestation (TACRA)
+* **Presenter:** Mark Novak
+* **Slides:** [Trustworthy Acquisition of Credentials using Remote Attestation](https://datatracker.ietf.org/meeting/interim-2026-rats-03/materials/slides-interim-2026-rats-03-sessa-trustworthy-acquisition-of-credentials-using-remote-attestation-00)
+* **Discussion:**
+  * Mark Novak addressed the deployment gap where existing relying parties and credential acquisition protocols (such as SPIFFE/SPIRE, ACME v2, and EST) do not natively support remote attestation evidence.
+  * TACRA introduces a Credential Acquisition Interface (CAI) with a unified `acquired credentials` API, operating via three main phases: Initiate, Retrieve, and Enroll. This approach abstracts platform-specific features (TDX, SEV, CCA) into plug-ins, keeping the credential acquisition system outside the trusted computing base (TCB) as a simple router.
+  * Henk Birkholz noted that TACRA provides a vital abstraction layer to connect RATS components to legacy systems.
+  * Muhammad Usama Sardar questioned how a workload's identity is safely established if the cloud provider is omitted from the TCB, raising concerns over relay attacks. Mark Novak clarified that the cloud provider manages the physical hardware but cannot inspect the credential acquisition pipeline.
+
+### 8. Composite Attester Taxonomy Wiki Transition
+* **Background:** The composite verifier/multi-verifier design team proposed moving the taxonomy portion of the composite attester draft (`draft-richardson-rats-composite-attesters`) to an active wiki page (`https://wiki.ietf.org/group/rats/atomic-composites`).
+* **Relevant WG Drafts:** [draft-ietf-rats-multi-verifier](https://datatracker.ietf.org/doc/draft-ietf-rats-multi-verifier/)
+* **Discussion:**
+  * Muhammad Usama Sardar favored keeping the taxonomy as an active Internet-Draft to ensure better visibility and structure during discussions.
+  * Michael Richardson and Ned Smith clarified that wikis are fully editable, support GitHub pull requests, and can be referenced within RFCs in the same manner as external resources.
+  * Kathleen Moriarty and Yogesh Deshpande discussed how the wiki would be maintained by the design team. They noted that once the taxonomy matures and stabilizes on the wiki, the working group can re-incorporate it into an informational RFC.
+
+---
+
+## Session Polls
+
+The following polls were conducted during the session:
+
+### Poll 1
+* **Question:** MCR's question on use of a wiki for existing draft
+* **Results:** 
+  * Yes: 0
+  * No: 0
+  * No Opinion: 0
+  * **Total:** 17
+
+### Poll 2
+* **Question:** (1) YES: I like the wiki (2) No: I preferred to write and publish an normativeRFC, even if it delays other documents (3) No Opinion: I prefer a WIP I-D that will be informatively referenced, and eventually published
+* **Results:** 
+  * Yes: 6
+  * No: 0
+  * No Opinion: 0
+  * **Total:** 7
+
+---
+
+## Decisions and Action Items
+
+* **Decision:** The working group agreed to utilize the RATS Wiki for maintaining and evolving the taxonomy of composite attesters for the time being, with the option to publish it as an informational RFC once stabilized.
+* **Action Item:** Tom Sato to write a detailed comparison between Kernel Identity and Attestation (KIA) and Linux Integrity Measurement Architecture (IMA) and share it on the RATS working group mailing list.
+* **Action Item:** Muhammad Usama Sardar to submit a scoped revision of the security guidelines draft, focusing on a general security baseline and template guidance.
