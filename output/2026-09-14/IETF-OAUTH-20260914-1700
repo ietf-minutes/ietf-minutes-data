@@ -1,0 +1,60 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group held a virtual interim meeting to discuss the integration of HTTP Message Signatures (RFC 9421) with OAuth Proof of Possession (PoP). 
+
+Rifaat Shekh-Yusef opened the meeting and reviewed the [Chairs Slides](https://datatracker.ietf.org/meeting/interim-2026-oauth-04/materials/slides-interim-2026-oauth-04-sessa-chairs-slides-00), noting the Note Well guidelines and outlining the schedule for the upcoming series of virtual interims. Hannes Tschofenig acted as the secretary for the session.
+
+Justin Richer presented [HTTP Message Signatures for OAuth PoP](https://datatracker.ietf.org/meeting/interim-2026-oauth-04/materials/slides-interim-2026-oauth-04-sessa-http-message-signatures-for-oauth-pop-00), covering the core concepts of `draft-richer-oauth-httpsig` (co-authored with Aaron Parecki, Paul, Filip Skokan, and Christian Bormann). The working group discussed the use cases for HTTP message signing, comparison and coexistence with DPoP, implementation complexity, and generic versus OAuth-specific client authentication. A adoption poll was conducted to gauge working group interest in pursuing this draft as a starting point.
+
+---
+
+## Key Discussion Points
+
+### Presentation: HTTP Message Signatures for OAuth PoP
+Justin Richer presented the proposal to use HTTP Message Signatures (RFC 9421) for OAuth proof of possession. 
+* **Core Mechanisms**: HTTP Message Signatures provide a native, detached signing mechanism for HTTP messages, creating a deterministic signature base string. It allows signing specific headers, methods, and target URIs without requiring a specific key distribution mechanism.
+* **OAuth Application**: The proposed draft (`draft-richer-oauth-httpsig`) defines how to sign access token presentations to Resource Servers (RS) and token requests to the Authorization Server (AS). It supports:
+  * **Preregistered Keys**: Keys registered to the client ahead of time.
+  * **Runtime Keys**: Keys introduced dynamically at runtime (similar to DPoP) using structured fields to pass public keys by value instead of using JOSE-specific formats.
+* **Token Verification**: Utilizes the confirmation (`cnf`) claim for JWTs and token introspection to map key material to tokens.
+
+### Relationship with DPoP and Use Cases
+* **Coexistence**: Yaroslav Rosomakho questioned if the proposal would eventually deprecate DPoP due to overlapping use cases. Justin Richer and Christian Bormann clarified that this is not intended to deprecate DPoP. DPoP remains well-suited for JOSE-heavy application environments, whereas HTTP signatures provide native HTTP-level signing. Pieter Kasselman added that token theft is a significant problem and multiple tools should exist without discouraging DPoP deployment.
+* **API Protection Requirements**: Brian Campbell questioned the necessity of introducing another mechanism and asked what concrete use cases require more power and coverage than DPoP. Justin Richer explained that some APIs require binding the signature to HTTP request bodies or specific headers to prevent semantic replication issues, which DPoP was intentionally not designed to handle.
+* **Refresh Tokens**: Yaroslav Rosomakho noted that proof of possession for refresh tokens for confidential clients where DPoP is difficult to apply could be an interesting use case. Brian Campbell expressed skepticism about whether poorly implemented clients would succeed in implementing HTTP Message Signatures correctly.
+
+### Implementation Complexity
+* **Lowering the Bar**: Aaron Parecki and Filip Skokan pointed out that while HTTP message signing is complex, it can be handled natively by HTTP libraries (e.g., `curl` has already implemented RFC 9421 support). This pushes the implementation complexity down to the network/library layer, shielding application developers from performing cryptographic operations manually, unlike DPoP.
+* **Extension Configuration**: Christian Bormann highlighted that configuring what headers to sign is much cleaner in HTTP Message Signatures compared to defining custom, messy extension points in DPoP.
+
+### Protocol Conflicts and Key Management
+* **Dual Mechanisms**: krooj raised a scenario where an ill-behaved client might attempt to use both DPoP and HTTP message signatures during an authorization flow. Justin Richer noted this would likely be treated as an error state rather than trying to define a precedence order. Filip Skokan added that a confirmation claim (`cnf`) should not contain multiple conflicting key definitions.
+* **Generic Client Identity**: Dick Hardt suggested that client key distribution and authentication should be solved generically at the HTTP level (similar to server-side HTTPS/TLS/ACME) rather than inside OAuth-specific protocols, citing successful implementations in WebAuthn and email verification. 
+* **OAuth Specifics vs. Generic Approach**: Justin Richer responded that key distribution and trust relationships are inherently semantic and bound to the protocol (such as OAuth's client registration or token request steps). Aaron Parecki agreed that while generic HTTP client identity is a useful goal—potentially building on Client ID Metadata Document specifications like [draft-ietf-oauth-client-id-metadata-document]—it represents a different scope than access token proof of possession.
+* **Post-Quantum Cryptography**: Hannes Tschofenig noted that under Post-Quantum Cryptography (PQC), signatures are computationally expensive. He suggested the working group consider whether dynamic signatures on initial requests are always necessary, drawing a parallel to historical debates on certificate signing requests (CSRs).
+
+---
+
+## Decisions and Action Items
+
+### Session Polls
+The chairs conducted the following poll during the session:
+
+* **Question**: *Do you support working on this draft as a WG document. Remember, this is only a starting point*
+* **Results**: 
+  * **yes**: 10
+  * **no**: 3
+  * **no_opinion**: 2
+  * **total**: 17
+
+### Feedback on Poll Outcomes
+Following the poll, Dick Hardt explained his "no" vote, expressing concern that the draft might try to solve generic HTTP client authentication within OAuth. He supported limiting the document's focus strictly to OAuth-specific use cases.
+
+---
+
+## Next Steps
+
+* **Call for Adoption**: The chairs will take the adoption question for `draft-richer-oauth-httpsig` to the official OAUTH working group mailing list to establish broader consensus.
+* **Mailing List Discussion**: The authors and contributors will continue discussing the open design issues (including runtime key confirmation formats, signature profiles, and the generic client authentication scope) on the mailing list in preparation for the upcoming face-to-face meetings.
