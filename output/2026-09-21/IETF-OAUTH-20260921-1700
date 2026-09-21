@@ -1,0 +1,38 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group held an interim meeting to discuss a proposal for mitigating authorization code exposure during browser redirects by passing credentials in HTTP headers rather than URL query parameters. The session focused on the presentation of "OAuth Protected Authorization" by Dick Hardt, followed by a detailed technical discussion on its applicability, security guarantees, potential deployment challenges, and whether there is currently a consensus on the problem being addressed.
+
+## Key Discussion Points
+
+### Presentation: OAuth Protected Authorization
+Dick Hardt presented the slide deck [OAuth Protocted Authorization](https://datatracker.ietf.org/meeting/interim-2026-oauth-05/materials/slides-interim-2026-oauth-05-sessa-oauth-protocted-authorization-00). 
+* **Background:** The proposal originally targeted the generic HTTP ecosystem (presented at HTTPbis), but since interest was primarily OAUTH-specific, it is now brought to the OAUTH Working Group. The primary goal is preventing authorization code theft from browser history, URL logs, or intermediary leakage during redirects.
+* **Mechanism:** The draft proposes moving credentials into a structured HTTP header field (e.g., `OAuth-Authorization`) containing a `query` string, browser-populated `origin`, and client-provided `path` (for multitenant isolation). It is designed to be an incremental, opt-in mechanism requiring support from the browser, client libraries, and the Authorization Server (AS).
+
+### Technical Feasibility & Scope
+* **Origin Verification:** Emelia Smith raised concerns regarding the proposed origin-checking mechanism, noting that matching the request `origin` against registered redirect URIs might fail in deployments involving broker intermediaries where origins do not align. Dick Hardt acknowledged that origin verification rules are an open question requiring real-world experimentation.
+* **Header Size Limits:** krooj highlighted that header bloating is a regular practical concern in production environments (e.g., Atlassian) due to large tokens and scope structures, meaning duplicating query information in headers could trigger buffer overflows.
+* **Applicability to Browser-Based (JS) Public Clients:** Filip Skokan noted that the mechanism does not assist public browser-based applications that do not use `302`/`303` redirects to handle code exchange, yet these clients represent a major risk surface for code leakage. Dick Hardt clarified that the mechanism is primarily beneficial for server-side/confidential clients. Emelia Smith suggested IDP-initiated FedCM as a potential alternative path for securing browser-based JS clients.
+* **Telemetry and Logging:** Emelia Smith pointed out that modern telemetry systems (such as OpenTelemetry) automatically log headers unless they are explicitly excluded (such as standard `Authorization` or `Set-Cookie` headers). Moving credentials from the URL to a custom header therefore may not entirely prevent logging leakages unless library defaults are updated to treat the new header as sensitive.
+
+### Problem Definition and Attack Vectors
+* **Need for a Crisp Problem Statement:** Aaron Parecki and Deb Cooley emphasized that the specification must clearly define the precise attack vectors (e.g., the Browser-Swapping Attack) it intends to solve. Deb Cooley noted that omitting a clear problem statement in the introduction or security considerations makes it difficult for the working group to evaluate the necessity of the solution.
+* **Context from HTTPbis:** Justin Richer recalled that during the HTTPbis discussion, browser-swapping and client-side credential management were heavily debated, and that adopting a solution without a clearly defined problem or attacker model is premature.
+* **Potential Mitigations:** Hannes Tschofenig asked if encrypting the authorization code could solve the logging issue more simply without changing transport mechanisms. Dick Hardt noted that introducing encryption keys to public or simple clients would significantly increase the deployment barrier compared to library-level header injection.
+
+## Session Polls
+
+The following poll was taken to gauge group consensus on the underlying problem:
+
+1. **Do people agree that there is a problem to be solved?**
+   * **Yes:** 3
+   * **No:** 5
+   * **No opinion:** 1
+   * **Total votes:** 14 (including non-voting participants)
+
+## Decisions and Next Steps
+
+* **No Adoption Decision:** The working group did not reach consensus on whether a sufficiently defined problem exists to justify adopting the draft. 
+* **Next Steps:** Dick Hardt indicated he will consider whether to continue pursuing this work within OAUTH. To build a compelling case for future adoption, the draft would need to be updated in collaboration with security researchers (such as Jonas) to explicitly map out the exact attack models and surfaces (such as the Browser-Swapping Attack) that the proposed header-based flow successfully mitigates. Dick Hardt also noted that alternative protocols like GNAP inherently resolve these redirect-loop security issues.
