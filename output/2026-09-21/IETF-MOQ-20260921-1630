@@ -1,0 +1,61 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ Working Group held an interim virtual meeting on September 21, 2026. The session focused on scheduling and planning for the upcoming hybrid interim in Seattle, defining the next interoperability target draft for `draft-ietf-moq-transport`, and resolving key technical issues in the transport specification. Major technical discussions centered on location filter serialization, pausing semantics, the validity of empty namespaces/tuples, and the proposed "switch from" mechanism.
+
+---
+
+## Key Discussion Points
+
+### Working Group Logistics and Milestones
+Martin Duke presented the [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-moq-24/materials/slides-interim-2026-moq-24-sessa-chair-slides-00) and outlined key deadlines:
+*   **Seattle Interim (October 12–15, 2026):** Attendees must register on the working group materials wiki. Agenda requests must be submitted to the chairs by September 29, 2026.
+*   **Next Virtual Interim:** Proposed for October 26, 2026.
+*   **Future Hybrid Interim (February 2027):** Planned to align with Mile High Video in the Denver/Boulder area. Cullen Jennings indicated that Cisco might be able to host in Boulder.
+
+### Transport Draft Status and Interop Target
+Ian Swett reported that Draft 21 of `draft-ietf-moq-transport` consists almost entirely of editorial restructuring to improve document flow. Draft 22 is planned to resolve minor normative inconsistencies and clarify editorial issues while remaining functionally wire-compatible with Draft 20. 
+
+A discussion ensued on which draft version to target for the Seattle interop. Martin Duke declared Draft 22 of `draft-ietf-moq-transport` as the official interop target alongside Draft 18, ensuring a unified ALPN and allowing implementers to test against updated clarifications.
+
+### Location Filter Representation
+Ian Swett introduced a proposal to change the serialization of the location filter from a length-in-bytes format to an enum representation.
+*   **Alan Frindell** expressed a slight preference for the enum format but noted that supporting both representations across active draft implementations is a minor developer burden.
+*   **Martin Duke** remarked that the current length-based representation limits invalid states compared to an enum (which would require explicit bounds checking for values greater than the defined states).
+*   **Mo Zanaty** recalled that the primary implementation complaint with the current location filter was the special `0x00` encoding used for the "largest object," rather than the byte-length representation itself.
+
+### Pausing Semantics and the "Forward" Parameter
+The working group discussed a pending pull request to deprecate the `forward` parameter and instead use location filters to represent paused states.
+*   **Cullen Jennings** raised concerns regarding state synchronization and complexity when pausing and resuming subscriptions, especially with server-side filters.
+*   **Mo Zanaty** argued that range filters should be entirely decoupled from pausing, proposing that if `forward` is removed, a paused state should be explicitly represented via a dedicated location filter enum value.
+*   **Alan Frindell** and **Will Law** strongly advocated for keeping pausing orthogonal to filters. When a subscriber pauses, the underlying filters must remain active and unchanged, ensuring the prior state is seamlessly restored upon unpausing.
+
+### Zero-Tuple and Zero-Length Namespaces
+The group debated the validity of allowing empty namespaces (zero tuples) and zero-length individual tuples inside `draft-ietf-moq-transport`.
+*   **Cullen Jennings** and **Will Law** opposed zero-length namespace tuples, arguing they introduce significant software bugs and debugging challenges, analogous to zero-length directory names in file systems.
+*   **Mo Zanaty** clarified the need to distinguish between a zero-tuple namespace (representing the root or an empty prefix array) and a single tuple of zero length. The current canonical text representation (`--`) fails to differentiate between these two states.
+*   **Mike English** suggested that a zero-tuple namespace is valid for default routing/gateways, but individual tuples within a namespace should contain at least one byte of data.
+*   **Martin Duke** proposed reserving a specific wildcard string (e.g., `.all`) to avoid the implementation hazards of empty strings.
+
+### "Switch From" Mechanism
+Alan Frindell walked through the 6-step switch algorithm detailed in [MOQT Issues and PRs 9/21](https://datatracker.ietf.org/meeting/interim-2026-moq-24/materials/slides-interim-2026-moq-24-sessa-moqt-issues-and-prs-921-00).
+*   **Failure States:** In response to questions on handling timeouts, Cullen Jennings argued that if a publisher fails to produce a group during a switch, the relay does not need complex internal timeout logic; the client can manage the failure state at the application layer.
+*   **Forwarding Zero:** Will Law and Cullen Jennings supported allowing `forward=0` (paused) on an activating subscription, permitting clients to pre-configure and warm up tracks (e.g., in virtual reality scene changes) before unpausing.
+*   **Hard vs. Aligned Modes:** Mo Zanaty expressed concern that the hard switch mode was becoming overly complex with fill-fetch rules. Alan Frindell explained that hard switch is designed for unaligned tracks (such as switching cameras or users), where old streams are torn down as soon as new data is decodable, whereas aligned switch applies to group-aligned ABR tracks.
+*   **Unaligned Group Matching:** Suhas Nandakumar pointed out that because unaligned tracks do not share group boundaries, matching an exact group number fails. He suggested the boundary check should be a greater-than-or-equal-to (`>=`) comparison. Alan Frindell agreed to change the algorithm's start gate to `>=` to handle unaligned streams.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1.  **Interop Target:** Draft 22 of `draft-ietf-moq-transport` is designated as the target for the Seattle interoperability event, alongside Draft 18.
+2.  **Pausing:** The proposal to bind the paused state to location/range filters was rejected. Pausing/unpausing will remain orthogonal to active filter states.
+3.  **Switch From Algorithm:** The threshold for initiating an unaligned hard switch will be updated from an exact group match (`==`) to a greater-than-or-equal-to (`>=`) group comparison.
+
+### Action Items
+*   **All Participants:** Review the remaining slides in [MOQT Issues and PRs 9/21](https://datatracker.ietf.org/meeting/interim-2026-moq-24/materials/slides-interim-2026-moq-24-sessa-moqt-issues-and-prs-921-00) asynchronously and comment on GitHub issues to save agenda time in Seattle.
+*   **In-Person Attendees:** Add names to the Seattle hybrid interim attendee wiki by September 26, 2026.
+*   **Alan Frindell & Switch Authors:** Transition primary ownership of the "switch from" PR to the core "switch proponents" (Gwendal Simon, Zafer Gürel, Will Law) to align on use cases and refine the draft text prior to the Seattle meeting.
+*   **Transport Editors:** Draft a PR addressing the canonical notation bug and clarify that namespace tuples must have a length of at least 1 byte, while zero-tuple prefixes remain valid for wildcard matching.
