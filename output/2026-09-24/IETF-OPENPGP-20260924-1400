@@ -1,0 +1,67 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+The OPENPGP Working Group held an interim virtual meeting in February 2026. The session focused on progressing several active working group drafts, including persistent symmetric keys, external secrets, HKP, and key replacement. The group also discussed non-adopted proposals related to legacy hardware identifiers and key validity periods. Note-taking was split between Daniel Huigens and Andrew Gallagher.
+
+## Key Discussion Points
+
+### Persistent Symmetric Keys
+* **Draft**: `draft-ietf-openpgp-persistent-symmetric-keys`
+* **Presentation**: "[Persistent Symmetric Keys](https://datatracker.ietf.org/meeting/interim-2026-openpgp-02/materials/slides-interim-2026-openpgp-02-sessa-persistent-symmetric-keys-00)" presented by Daniel Huigens.
+* **Status**: A new draft version has been published, which explicitly disallows symmetric algorithms weaker than AES-128. Interoperability tests are now fully passing.
+* **Open Questions**:
+  * *Local Certifications & Revocations*: Discussion on how to handle certifications over third-party certificates and key revocations for persistent symmetric keys (PSKs).
+  * *Grammar vs. Flags*: Daniel Gillmor proposed putting a flag in the packet to avoid complex sequence-of-packets grammar. Andrew Gallagher suggested using an unhashed subpackets area in the symmetric key packet to store metadata such as expiry dates and key flags. Heiko Schaefer expressed a strong preference for keeping the design as simple as possible and avoiding metadata.
+  * *SOP Integration & KOpenPGP*: Daniel Huigens presented two CLI options for SOP integration: Proposal 1 integrates `--with-key` and `--with-key-password` directly, keeping keys in memory. Proposal 2 (preferred by Daniel Gillmor) relies on extracting the public certificate first using a password. Andrew Gallagher warned that Proposal 2 risks writing unencrypted secret keys to disk. Heiko Schaefer preferred keeping PSK functionality in its own subset of the CLI to keep the core API simple.
+
+### OpenPGP Wire Format for Externally Stored Secret Keys
+* **Draft**: `draft-ietf-openpgp-external-secrets`
+* **Presentation**: "[OpenPGP wire format for externally stored secret keys](https://datatracker.ietf.org/meeting/interim-2026-openpgp-02/materials/slides-interim-2026-openpgp-02-sessa-openpgp-wire-format-for-externally-stored-secret-keys-01)" presented by Heiko Schaefer.
+* **Status**: The draft was recently adopted by the working group. Paul Sharp joined Heiko Schaefer as co-editor, while Daniel Gillmor stepped back from the editor role.
+* **Discussion**: Active work is focusing on standardizing the locator hint representation. Current proposals suggest changing the default behavior from "best-effort" search to "unavailable" when no locator hint is present. Additional issues include defining user-facing device names (e.g., prompting the user to plug in a specific token) and decoupling S2K usage from symmetric key algorithm registries.
+
+### OpenPGP HTTP Keyserver Protocol (HKP)
+* **Draft**: `draft-ietf-openpgp-hkp`
+* **Presentation**: "[HKP](https://datatracker.ietf.org/meeting/interim-2026-openpgp-02/materials/slides-interim-2026-openpgp-02-sessa-hkp-00)" presented by Andrew Gallagher.
+* **Status**: Hockeypuck 2.4 has been released, supporting HKPv2 and post-quantum (PQ) keys. The public SKS pool is progressively upgrading.
+* **Open Questions**:
+  * *JSON Format*: The editors are evaluating JSON Schema instead of JSON-LD to avoid the heavy specification requirements of the latter.
+  * *`.well-known` Path*: Discussed the necessity of using a `.well-known` path. Daniel Huigens argued that dedicated HKP servers might not need `.well-known` constraints. Daniel Gillmor clarified that URL prefixes are sufficient for HKP engines, whereas `.well-known` is valuable for domain discovery.
+  * *SRV Records*: Andrew Gallagher noted that legacy SRV record configurations have caused client-side issues and proposed formalizing SRV record usage to match existing SKS deployments.
+
+### OpenPGP Key Replacement
+* **Draft**: `draft-ietf-openpgp-replacementkey`
+* **Presentation**: "[Key Replacement](https://datatracker.ietf.org/meeting/interim-2026-openpgp-02/materials/slides-interim-2026-openpgp-02-sessa-key-replacement-00)" presented by Andrew Gallagher.
+* **Status**: The core protocol is stable, with library-level interoperability established.
+* **Discussion**:
+  * *Equivalent Set Enforcement*: Andrew Gallagher proposed a mechanism to prevent fallback encryption to lost or destroyed keys in the equivalent set (a "stop line" stub inside the target list).
+  * *Opposition*: Daniel Huigens and Daniel Gillmor opposed adding this complexity, stating that standard revocation certificates should be created before key destruction, and failing to encrypt due to a metadata "stop line" creates usability issues.
+  * *Designated Revoker Alternative*: In the session chat, Daniel Gillmor suggested that if a preferred key issues a revocation signature over a fallback key, it acts as a designated revoker. Aron Wussler and Daniel Huigens supported exploring this approach.
+
+### Legacy Hardware Key Identifiers
+* **Presentation**: "[OpenPGP key identifiers for legacy hardware devices](https://datatracker.ietf.org/meeting/interim-2026-openpgp-02/materials/slides-interim-2026-openpgp-02-sessa-openpgp-key-identifiers-for-legacy-hardware-devices-00)" presented by Heiko Schaefer.
+* **Discussion**: Existing OpenPGP smartcards feature a hardcoded 20-octet fingerprint field that cannot accommodate v6 fingerprints. Heiko Schaefer proposed an interoperable encoding scheme using a 12-octet padded version marker followed by an 8-octet fingerprint prefix. Daniel Gillmor noted that because the IETF does not own the OpenPGP card specification, this work would remain informational or act as a statement of intent.
+
+### Hole-Free Validity
+* **Presentation**: "[Hole-Free Validity](https://datatracker.ietf.org/meeting/interim-2026-openpgp-02/materials/slides-interim-2026-openpgp-02-sessa-hole-free-validity-00)" presented by Andrew Gallagher.
+* **Discussion**: The proposal seeks to decouple signature creation times from the start of key validity for subkey binding and direct key signatures. This avoids invalidating historical signatures when updating self-signatures—a problem exacerbated by large SLH-DSA signatures. Daniel Huigens raised concerns regarding the ambiguity of key capabilities prior to the newest binding signature but acknowledged the validity of the problem.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-openpgp-persistent-symmetric-keys`**:
+  * **Action**: Daniel Huigens to formulate a concrete proposal regarding metadata and packet signatures and share it on the mailing list.
+* **`draft-ietf-openpgp-hkp`**:
+  * **Action**: Daniel Gillmor to draft a proposal to clarify prefix URLs versus `.well-known` domain mapping.
+  * **Action**: Andrew Gallagher to submit a merge request introducing SRV records for non-discovery legacy pool usage.
+* **`draft-ietf-openpgp-replacementkey`**:
+  * **Action**: A volunteer to submit a merge request addressing the "designated revoker" concept for fallback keys to handle destroyed key material without introducing a "stop line" parser feature.
+
+---
+
+## Next Steps
+
+* Discussions on SOP API design, PSK integration, and HKP formatting will continue on the OpenPGP mailing list.
+* Editors will update active drafts in preparation for the upcoming IETF 127 meeting in San Francisco.

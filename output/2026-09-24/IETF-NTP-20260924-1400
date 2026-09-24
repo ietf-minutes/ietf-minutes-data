@@ -1,0 +1,86 @@
+# [NTP](../wg/ntp.html)
+
+## Summary
+
+The NTP Working Group met for a virtual interim session to discuss active working group drafts, interoperability testing progress, coordination with external bodies (ITU and IEEE 1588), leap second updates, and time synchronization challenges in deep space. 
+
+Key milestones include the publication of `draft-ietf-ntp-nts-for-ptp` and progress on NTPv5 (`draft-ietf-ntp-ntpv5`) design decisions. The group decided to handle outstanding NTPv5 issues via the mailing list rather than holding an additional virtual interim before IETF 121.
+
+---
+
+## Key Discussion Points
+
+### Working Group Document Status
+*   **NTS for PTP**: Karen O'Donoghue announced that `draft-ietf-ntp-nts-for-ptp` has been officially published. She thanked Miroslav Lichvar and the IEEE 1588 working group for their extensive efforts.
+*   **Roughtime**: The Roughtime specification is currently in the final review stage with the RFC Editor and is awaiting minor actions from the authors and chairs.
+
+---
+
+### NTPv5 Status and Interoperability
+*   **Draft Status (`draft-ietf-ntp-ntpv5`)**: 
+    *   Miroslav Lichvar reported that an updated draft is planned ahead of IETF 121. Recent progress includes resolving the "Flux" issue (the pull request was accepted) and replacing the Bloom filter with a list of NTPv5 node reference IDs to prevent false positives.
+    *   Because the updated Bloom filter list only tracks NTPv5 nodes, reference clocks can no longer be observed through it. A new proposed extension for primary reference IDs (tracking sources like GPS or IP addresses) is under consideration. The group needs to decide whether to allow multiple reference IDs via this optional extension or restrict it to primary reference clocks.
+    *   Karen O'Donoghue recommended postponing any major document reorganization to keep the draft readable for reviewers. Miroslav Lichvar agreed this can be decided at a later stage.
+*   **Interoperability Testing**:
+    *   Sarah Grant presented [NTPv5 Interop Status](https://datatracker.ietf.org/meeting/interim-2026-ntp-05/materials/slides-interim-2026-ntp-05-sessa-ntpv5-interop-status-00), detailing testing from the IETF 120 Hackathon in Vienna using `ntp-aparnos`.
+    *   Several tracked "failures" in the spreadsheet are actually configuration-related (e.g., version mismatches or local stratum-1 behaviors) rather than protocol errors.
+    *   Further implementation work is needed on extension fields (optional vs. mandatory) and standardizing how implementations expose TLS and NTS keys (client-to-server and server-to-client) to facilitate NTS testing.
+    *   Karen O'Donoghue supported moving the interoperability tracking resources to the NTP Working Group GitHub repository.
+
+---
+
+### NTS Extensions for Enabling Pools
+*   **Pools Status (`draft-ietf-ntp-nts-keyexchange-pool`)**:
+    *   Ruben Nijveld reported that the experimental NTS pool is still actively running and undergoing testing. No major draft updates were presented.
+
+---
+
+### Leap Second Resolution Update
+*   Kristof Teichel presented an update on the BIPM and ITU-R efforts to phase out leap seconds:
+    *   In 2022, the BIPM decided to increase the leap second tolerance threshold beyond 1 second by 2035.
+    *   In 2023, the ITU-R World Radio Conference proposed a new threshold of 1 hour (3,600 seconds).
+    *   The BIPM General Conference of Weights and Measures (CGPM) is voting on this proposal between October 13 and 15, 2026. If accepted unanimously, it will take effect in May 2027, effectively ending the practice of introducing leap seconds for several thousand years.
+    *   *Discussion*: Miroslav Lichvar asked if NTPv5 needs to deprecate leap seconds or support "leap hours." Kristof Teichel suggested keeping the protocol backward-compatible with NTPv4. Because a 1-hour deviation will take millennia to accumulate, the issue is functionally mitigated.
+
+---
+
+### Time Synchronization for Deep Space
+*   Marc Blanchet presented [Time Sync for Deep Space](https://datatracker.ietf.org/meeting/interim-2026-ntp-05/materials/slides-interim-2026-ntp-05-sessa-time-sync-for-deep-space-00).
+    *   Deep space communications (coordinated via the TIPTOP WG) experience delays ranging from seconds (Moon) to tens of minutes (Mars) and rely on store-and-forward buffering.
+    *   The proposed draft focuses on providing UTC-based time synchronization to generic payload and surface computers, rather than replacing critical navigation-grade Position, Navigation, and Timing (PNT) systems.
+    *   Simulations using Chrony, `ntpdig`, and `ntp.org` yielded a clock error of approximately 100ms. A critical requirement is that propagation delays must be symmetric. 
+    *   Traditional NTS is unsuitable due to multi-RTT TCP/TLS handshakes; NTP over QUIC is proposed as a potential alternative.
+    *   *Discussion*: Miroslav Lichvar noted that standard NTP clients reject delays exceeding certain thresholds, and the 32-bit fixed-point `root_delay` field in NTP packets has a maximum limit (65,535 seconds in NTPv4, and only 16 seconds in NTPv5). A 24-hour RTT would overflow this field, necessitating an extension field. 
+    *   Ruben Nijveld suggested in the chat that the spacecraft or orbiter could act as a new stratum root, eliminating the need to propagate terrestrial root delay. Marc Blanchet agreed this was an excellent point to incorporate into the draft.
+
+---
+
+### ITU Liaison and Time Rollovers (2036 / 2038)
+*   Karen O'Donoghue reported on the ITU liaison addressing Unix (2038) and NTP (2036) era rollovers.
+*   Danny Mayer emphasized that the Unix 2038 rollover must be actively addressed. He argued that systems must explicitly validate timestamp sanity at epoch boundaries, and recommended baking these validation rules into NTPv5.
+*   Sarah Grant questioned if other protocols using NTP timestamps (e.g., SSTP) would fail due to a lack of epoch/era indicator fields.
+*   Ruben Nijveld noted that because NTPv4 will have a long deployment tail, the working group must address how existing systems handle era jumps, particularly when a local clock boots uninitialized (at zero).
+*   Miroslav Lichvar stated that the NTPv4 protocol is technically capable of handling the rollover, making it primarily an implementation issue. He proposed documenting a best practice where implementations pivot incoming timestamps around their software build date.
+
+---
+
+### IEEE 1588 Update
+*   Karen O'Donoghue provided an update on security integration with IEEE 1588:
+    1.  **NTS for PTP**: The companion implementation profile is progressing toward an IEEE working group ballot in October or November 2026.
+    2.  **Client-Server PTP (CSPTP / P1588.1)**: A newer effort defining an NTP-like client-server model for PTP. Security for CSPTP is being modeled directly on NTS.
+*   Interested contributors can request access to the restricted IEEE draft documents by contacting Karen O'Donoghue or Dieter Sibold.
+
+---
+
+## Decisions and Action Items
+
+*   **Action Item**: Karen O'Donoghue to migrate the NTPv5 interoperability tracking spreadsheet to the NTP Working Group GitHub repository.
+*   **Action Item**: Marc Blanchet to publish the initial Deep Space Time Sync draft in the coming weeks and coordinate with interested co-authors.
+*   **Action Item**: Karen O'Donoghue to coordinate the formal liaison response to the ITU.
+
+---
+
+## Next Steps
+
+*   **NTPv5 Working Group Draft**: The working group agreed to address outstanding NTPv5 design issues via the mailing list rather than scheduling a virtual interim in October.
+*   **IETF 121 (Dublin)**: The working group will meet in person/remotely at IETF 121. No hackathon projects will be scheduled for Dublin unless requested by developers.
