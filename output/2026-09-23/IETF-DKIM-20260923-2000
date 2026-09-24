@@ -1,0 +1,96 @@
+# [DKIM](../wg/dkim.html)
+
+## Summary
+
+The DKIM Working Group held a virtual interim meeting on September 23, 2026. The session focused on progressing the DomainKeys Identified Mail Signatures v2 (DKIM2) specifications. Key topics of discussion included establishing authenticity requirements for the RFC 5322 `From` header field in [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/), integrating DKIM2 with DMARC, evaluating protocol policy flags, addressing character set representation for non-UTF-8 email within JSON recipes, selecting Post-Quantum Cryptography (PQC) algorithms, and defining standard `Authentication-Results` for DKIM2. 
+
+---
+
+## Key Discussion Points
+
+### 1. Agenda Bashing and Opening Remarks
+* **Slides**: [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-dkim-05/materials/slides-interim-2026-dkim-05-sessa-chair-slides-00)
+* Working group chairs Murray Kucherawy and Pete Resnick opened the meeting and presented the standard introductory materials.
+* Richard Clayton requested a brief discussion on "character sets" to be inserted into the agenda prior to the PQC signing discussion. The agenda was updated accordingly.
+
+### 2. From Header Field Authenticity
+* **Slides**: [From header field authenticity](https://datatracker.ietf.org/meeting/interim-2026-dkim-05/materials/slides-interim-2026-dkim-05-sessa-from-header-field-authenticity-00)
+* **Presenter**: Richard Clayton
+* **Discussion**:
+  * Richard Clayton outlined a proposal to require that the RFC 5322 `From` header field in an email match the signing domain ($d=$ value) of the DKIM2 signature at the initial hop ($I=1$) and at any subsequent hop where the `From` header is modified. Matching would use subdomain-stripping to avoid DNS public suffix list lookups.
+  * Discussion ensued regarding what action should be taken if an email lacks this "authentic" `From` property:
+    * Richard Clayton supported **Option 1** (the specification should dictate a "should reject" action).
+    * Allen Robinson argued that "reject" is too strong for the core protocol specification, suggesting instead that the spec define the message as "not DKIM2-authentic" and leave the final action (such as rejection) to local policy or separate layers, especially during transition periods.
+    * Tobias Herkula supported Option 1, stating that the primary goal of DKIM2 should be rejecting invalid/broken chains to prevent backscatter and forwarding issues.
+    * Bron Gondwana suggested a middle ground: the core specification ([draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/)) should declare the message non-authentic (invalid DKIM2), while the Best Common Practices document ([draft-ietf-dkim-dkim2-bcp](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-bcp/)) should advise receivers to reject such messages.
+  * Pete Resnick raised questions about the Email Service Provider (ESP) use case, where the envelope `Mail From` and header `From` differ. Richard Clayton and Tobias Herkula clarified that ESPs would sign twice or utilize the Next Domain (`nd`) property to ensure the $I=1$ signature is aligned with the `From` header. 
+  * Pete Resnick requested that this multi-signature ordering and the requirement for $I=1$ to align with the `From` header be explicitly documented in the specification. Richard Clayton agreed to add clarifying text.
+
+### 3. DKIM2 and DMARC
+* **Slides**: [DKIM2 and DMARC](https://datatracker.ietf.org/meeting/interim-2026-dkim-05/materials/slides-interim-2026-dkim-05-sessa-dkim2-and-dmarc-01)
+* **Presenter**: Wei Chuang
+* **Discussion**:
+  * Wei Chuang presented ideas on integrating DKIM2 and DMARC, including a proposed `auth=` tag in DMARC DNS records to explicitly list expected authentication mechanisms (e.g., `dkim2`). This would prevent header-stripping attacks where intermediate actors strip DKIM2 headers from a message.
+  * Bron Gondwana objected to the proposed use of an empty `RT` (Receipt-To) tag to indicate exiting the DKIM2 ecosystem, noting that a sender-side DNS lookup of the receiver's capabilities on every send is error-prone. He proposed instead that the receiving hop ($C$) perform a lookup on the intermediate hop's ($B$) DMARC record to see if $B$ claims to support DKIM2. If $B$ supports it but did not sign, $C$ can treat it as a replay/strip. Wei Chuang agreed to collaborate with Bron Gondwana on a mailing list write-up of these lookup scenarios.
+  * Richard Clayton supported the `auth=dkim2` DMARC record concept but warned that including `auth=spf` would introduce complexities due to cloud sending and SPF softfails. He also cautioned against forward lookups on receiving MX domains, since receiving domains may not publish sending policies.
+  * Richard Clayton also recommended that the working group avoid attempts to transition DKIM1 messages into DKIM2.
+  * Tobias Herkula argued that if DKIM2 succeeds, the role of DMARC will shift, and policy flags (such as `do not explode` or `do not modify`) should reside in a DMARC-related update or a separate policy document, rather than the core DKIM2 protocol.
+
+### 4. DKIM2 Flags
+* **Slides**: [DKIM2 flags](https://datatracker.ietf.org/meeting/interim-2026-dkim-05/materials/slides-interim-2026-dkim-05-sessa-dkim2-flags-00)
+* **Presenter**: Richard Clayton
+* **Discussion**:
+  * **`exploded`**: No interop issues reported. The flag remains in the specification to help detect undeclared replays.
+  * **`feedback` and `feedhere`**: Uncontentious, though currently undefined in implementation. These will remain in the specification.
+  * **`do not explode`**: Richard Clayton noted that many systems (such as mailing lists) must explode messages, and honoring this flag would block legitimate mail. There was strong working group consensus to drop this flag.
+  * **`do not modify`**: This flag proved highly controversial. 
+    * Tobias Herkula shared a real-world business case where companies append subject line tags to incoming invoices and forward them to external accounting systems (e.g., Google or Microsoft). If an invoice sender sets `do not modify`, these legitimate forwards would fail, prompting customer complaints.
+    * Brian Godiksen agreed, noting that senders would over-aggressively configure this flag, causing receivers to ignore it and rendering it useless.
+    * Wei Chuang saw value in the flag for signaling highly sensitive messages.
+    * Tobias Herkula and Richard Clayton discussed moving the flag out of the DKIM2 protocol spec and potentially defining it in a separate document as a distinct header field (e.g., a "Sensitivity" or "Do-Not-Modify" header).
+    * Pete Resnick noted that while there is consensus to drop `do not explode`, there is no consensus to drop `do not modify` yet. Richard Clayton will keep it in the draft for now to facilitate further discussion.
+
+### 5. Character Sets (Non-UTF-8)
+* **Presenter**: Richard Clayton
+* **Discussion**:
+  * Richard Clayton raised a point identified by Hannah on the mailing list: if a DKIM2 modification recipe contains non-UTF-8 characters, they cannot be natively represented in JSON literal strings.
+  * Richard Clayton proposed a fallback mechanism: when non-UTF-8 bytes are detected, they should be Base64-encoded and placed inside a differently labeled recipe that instructs the validator to decode them back to a raw byte array.
+  * John Levine noted that detecting non-UTF-8 is computationally simple but questioned if DKIM2 should simply be restricted to UTF-8 expressible email, as suggested by Bron Gondwana in the session chat.
+  * Bron Gondwana expressed a preference for keeping the protocol simple and avoiding double Base64-encoding but noted that Japanese character sets (e.g., ISO-2022-JP) remain common.
+  * Richard Clayton decided to write the Base64 encoding fallback mechanism into the next revision of the specification so the working group can review the concrete implementation text.
+
+### 6. Post-Quantum Cryptography (PQC) Signing
+* **Presenter**: Wei Chuang
+* **Discussion**:
+  * Wei Chuang summarized list discussions regarding PQC algorithm selection. While informal advice suggested MLDSA (MLDSA-44 or MLDSA-65), list feedback (primarily from Hannah) strongly favored a composite signature construction (MLDSA + a classical algorithm like Ed25519) to guard against potential cryptanalytic breakthroughs in new PQC algorithms.
+  * John Levine supported composite signatures, noting that because MLDSA signatures and keys are already quite large, the incremental overhead of adding Ed25519 is negligible, while the safety margins are substantial. He suggested aligning with the DNSSEC choices made in the DNSOP working group.
+  * Richard Clayton and Pete Resnick agreed that composite signatures are non-controversial and represent the safest option. They concluded that composite signatures should be documented directly within [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/) to ensure standard, day-one adoption.
+
+### 7. Authres and Debug
+* **Slides**: [Authres and Debug](https://datatracker.ietf.org/meeting/interim-2026-dkim-05/materials/slides-interim-2026-dkim-05-sessa-authres-and-debug-00)
+* **Presenter**: Bron Gondwana
+* **Discussion**:
+  * Bron Gondwana introduced `draft-gondwana-dkim2-authres`, a personal draft defining `Authentication-Results` headers for DKIM2.
+  * Tobias Herkula and Richard Clayton supported specifying this in a separate document. 
+  * Murray Kucherawy noted that while a document is needed to describe the semantics, the registration itself can be performed directly in the IANA registry rather than updating RFC 8601. Murray Kucherawy offered to assist Bron Gondwana with the IANA registration process.
+  * Pete Resnick confirmed that adopting this work falls within the current DKIM working group charter.
+  * Bron Gondwana also briefly presented a draft introducing a debug header (`x-dkim2-info`) for testing experimental implementations. No WG adoption action is planned for the debug header, but implementers are encouraged to use it.
+
+---
+
+## Decisions and Action Items
+
+* **Decision**: Drop the `do not explode` flag from [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/).
+* **Decision**: Adopt composite signatures (MLDSA + Ed25519) directly within [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/) as the standard post-quantum cryptographic mechanism.
+* **Action Item**: Richard Clayton to publish `-07` of [draft-ietf-dkim-dkim2-spec](https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/) including:
+  * Clarifying text requiring the initial signature ($I=1$) to align with the RFC 5322 `From` header, alongside multi-signature ordering rules.
+  * The Base64 fallback mechanism for handling non-UTF-8 characters in JSON recipes.
+  * The removal of the `do not explode` flag.
+* **Action Item**: Murray Kucherawy to issue a Call for Adoption (CFA) for `draft-gondwana-dkim2-authres` on the working group mailing list.
+* **Action Item**: Bron Gondwana and Wei Chuang to draft a mailing list write-up comparing the sender-side and receiver-side DMARC capabilities lookup scenarios for DKIM2 transition.
+
+---
+
+## Next Steps
+
+* **Next Interim Meeting**: The chairs will schedule the next DKIM virtual interim in mid-October 2026, targeting the week of October 12, 2026, to avoid scheduling conflicts with ICANN and M3AAWG. An official announcement and agenda will be sent to the list.
