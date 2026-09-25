@@ -1,0 +1,65 @@
+# [VCON](../wg/vcon.html)
+
+## Summary
+The VCON Working Group held an interim meeting to discuss key architectural updates to the core data model, specifically focusing on integrating sessions, events, and hierarchical relationship structures into the core specification. The group debated the merits of a flat graph-based model versus a nested tree-based model, the mechanism for document references (document-scoped IDs vs. array indices), and how to best represent passive participants and redacted data. It was agreed that these significant updates will be incorporated directly into the core document, [draft-ietf-vcon-vcon-core](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/).
+
+---
+
+## Key Discussion Points
+
+### 1. Concept Proposal: Sessions and Events Model
+Jonathan Rosenberg presented a concept proposal aimed at updating the underlying data model to support complex multi-party and AI agent conversations. The proposal introduces:
+*   **Sessions**: A container for conversations that can recursively contain other sessions (e.g., sidebars in human meetings or sub-agents spawned by a parent AI agent).
+*   **Events**: Specific occurrences in time (e.g., DTMF, call control states, and AI tool call requests/responses) elevated to top-level objects.
+*   **Dialogues**: Tapped recordings or transcripts of the conversation.
+*   **Parties/Participants**: Entities referenced by redirection rather than repeating metadata.
+
+Edward Guy asked if this model would support real-time streaming. Jonathan Rosenberg and Daniel Petrie clarified that while a streaming URL (e.g., dash URL) can be referenced, the format is primarily optimized for post-conversation representation rather than real-time protocol execution.
+
+There was general consensus to incorporate these concepts directly into [draft-ietf-vcon-vcon-core](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) rather than as separate extensions. Thomas McCarthy-Howe and Chris Wendt supported this approach.
+
+### 2. Flat Model (Graph) vs. Nested Model (Tree)
+Daniel Petrie presented the [Petrie Session Proposal](https://datatracker.ietf.org/meeting/interim-2026-vcon-03/materials/slides-interim-2026-vcon-03-sessa-petrie-session-proposal-00), advocating for a flat array of session objects where parent-child relationships are handled by reference.
+
+*   **Tree vs. Graph Use Cases**: Jonathan Rosenberg initially favored a tree structure for simplicity but was convinced by a contact center coaching scenario raised by Scott Godin. In coaching, an agent's audio stream (dialogue) is mixed into both the main customer session and a separate supervisor-coaching session. Because a single dialogue can belong to multiple sessions, the relationships form a graph rather than a tree.
+*   **Cycles**: Jonathan Lennox cautioned that moving to a graph-based model introduces the risk of cyclical references, which requires parsers to validate and handle cycles carefully.
+*   **Implementation & Readability**: Daniel Petrie noted that a flat model simplifies analysis because consumer systems can iterate over dialogues directly without deep tree traversal. Jonathan Rosenberg expressed concern that flat models with references decrease human readability and might be harder for LLMs to generate accurately. He proposed testing LLM comprehension of the flat reference syntax.
+
+### 3. Redirection References: Indices vs. Unique IDs
+A key point of contention was how to reference other objects (e.g., parties, dialogues) within the document.
+*   **Index-Based (Daniel Petrie)**: Referencing elements by their array index (e.g., `party 0`) simplifies lookups and avoids needing to construct search maps. To handle redaction without shifting indices, deleted objects would remain as empty "husks." (Supported by Scott Godin's chat comment "+1 to flat only").
+*   **ID-Based (Jonathan Rosenberg, Jonathan Lennox, Edward Guy)**: Referencing via document-scoped, unique identifier strings or numbers is much less fragile. If elements are reordered, written out of order (e.g., via a real-time message bus), or deleted during an amended redaction, indices break, whereas IDs remain intact. Edward Guy raised the scenario where a participant must be completely wiped from a document; using indices would force a full regeneration of the file, whereas IDs would easily tolerate the deletion. 
+
+This technical issue remains open for further discussion.
+
+### 4. Dialogue Participants and Contributors
+The group refined how to track who is involved in a dialogue:
+*   Daniel Petrie's slides proposed tracking "contributors" (active speakers) and "participants" (passive recipients) on a dialogue-by-dialogue basis.
+*   Edward Guy and Jonathan Rosenberg noted that tracking passive recipients per dialogue is overly complex and duplicate with the event stream.
+*   **Agreement**: The passive "participants" array will be removed from individual dialogues. Instead, a master list of participants will exist at the session level, and individual join/leave events will be used to reconstruct who heard which portions of the conversation.
+
+### 5. Redaction and AI Agent Auditing
+Jonathan Rosenberg highlighted feedback from the IETF Audit BOF, where participants discussed using vCon for AI agent audit logs but raised concerns about insufficient redaction features.
+*   Jonathan Rosenberg argued that the specification needs to support "redacted text" as a first-class semantic object (not just a string of "xxxx" characters) so program systems can explicitly recognize redacted values.
+*   Daniel Petrie noted that [draft-ietf-vcon-vcon-core](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) already includes redaction mechanisms and examples (referenced in chat by Edward Guy as Section 4.1.8 and A8), particularly within the analysis object. Jonathan Rosenberg agreed to review these examples and provide feedback.
+
+---
+
+## Decisions and Action Items
+
+### Decisions Made:
+1.  **Direct Core Integration**: The concepts of sessions, events, and top-level flat arrays will be integrated directly into [draft-ietf-vcon-vcon-core](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) rather than as extensions.
+2.  **Graph Model Adoption**: The group agreed to adopt a flat graph-based model with references over a strictly nested tree model to support complex multi-session routing (e.g., whispering/coaching).
+3.  **Passive Participant Tracking**: Passive participants will not be tracked on individual dialogue objects; instead, they will be tracked at the session level, using join/leave events to calculate real-time presence.
+
+### Action Items:
+*   **Daniel Petrie**: Draft the agreed-upon structural updates (sessions, events, flat graph references using indices) into [draft-ietf-vcon-vcon-core](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) within the next two weeks.
+*   **Jonathan Rosenberg**:
+    *   Review the redaction examples in the current draft and submit an email proposing a first-class semantic representation for redacted entities if the current mechanism is insufficient.
+    *   Coordinate with Miria (running the IETF Audit BOF) to discuss aligning vCon as the standard format for AI agent audit logs, copy in Daniel Petrie, Chris Wendt, and Thomas McCarthy-Howe.
+*   **Chris Wendt**: Schedule the next virtual interim meeting.
+
+---
+
+## Next Steps
+The next VCON Interim Meeting is scheduled for **October 8, 2026, at 10:00 AM Eastern Time**. The primary goal of this meeting will be to review Daniel Petrie's updated draft text, resolve the outstanding ID vs. Index reference issue, and discuss coordination with the Audit BOF.
