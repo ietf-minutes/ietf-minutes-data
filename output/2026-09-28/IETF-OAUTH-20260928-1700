@@ -1,0 +1,49 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group held an interim meeting on September 21, 2026, to discuss OAuth in the context of agentic and Large Language Model (LLM) use cases. The session focused on a joint presentation by Anthropic and OpenAI outlining real-world integration challenges, including client registration friction, consent fatigue, principal selection/cardinality, and fine-grained scoping.
+
+## Key Discussion Points
+
+### 1. Welcome and Administrative Updates
+* **Chair Update:** Rifaat Shekh-Yusef opened the meeting. Hannes Tschofenig was unable to attend. Bhavani Garikapati volunteered as the notetaker.
+* **Note Well & Agenda:** Rifaat Shekh-Yusef presented the Note Well via the [Chairs Slides](https://datatracker.ietf.org/meeting/interim-2026-oauth-08/materials/slides-interim-2026-oauth-08-sessa-chairs-slides-00). 
+* **Interim Schedule:** Future interim meetings are scheduled for October 5 and October 19. The proposed October 26 meeting was canceled, with remaining items deferred to the upcoming face-to-face meeting in San Francisco.
+
+---
+
+### 2. Presentation: Anthropic / OpenAI OAuth Interop
+Paul Carleton (Anthropic) and Nick Steele (OpenAI) delivered a presentation based on the [Anthropic / OpenAI OAuth Interop Deck](https://datatracker.ietf.org/meeting/interim-2026-oauth-08/materials/slides-interim-2026-oauth-08-sessa-anthropic-openai-oauth-interop-deck-00). The presentation categorized agentic OAuth challenges into three areas: "boring" client friction, principal selection, and scoping issues.
+
+#### A. "Boring" OAuth Problems & Integration Friction
+LLM applications act as highly general-purpose clients, connecting to numerous downstream resources dynamically. This behavior amplifies existing OAuth integration friction:
+
+* **Client Registration:** Manually registering clients for every new integration is unsustainable. The presenters highlighted the utility of [draft-ietf-oauth-client-id-metadata-document](https://datatracker.ietf.org/doc/draft-ietf-oauth-client-id-metadata-document/) (CIMD) to streamline registration.
+  * **Localhost Clients:** Filip Skokan raised concerns about local/desktop clients unable to host CIMD files. Paul Carleton noted that remote hosting of the CIMD file with redirects to localhost is a workaround, though not a perfect security solution. Philippe Dellaert and `krooj` (in chat) discussed using tools like ngrok combined with ACME-style validation or Dynamic Client Registration (DCR) to manage trust for localhost clients.
+* **Consent Fatigue:** Because agents connect to many services rapidly, users face an overwhelming number of consent screens. 
+  * Jonathan Rosenberg warned that consent fatigue trains users to blindly click "yes" to all prompts.
+  * George Fletcher and Ankit Agarwal noted that some consent prompts belong at the Resource Server (RS) level rather than the client/Authorization Server (AS) level.
+  * **Deferred Token Response:** Efe Kahraman and Maxwell Gerber suggested that [draft-ietf-oauth-deferred-token-response](https://datatracker.ietf.org/doc/draft-ietf-oauth-deferred-token-response/) (DTR) could allow the AS to defer issuing tokens while consulting with external policy engines, reducing user friction.
+* **Cross-Organization Consent:** Paul Carleton noted that mixing corporate and personal data flows is a significant risk. Admin-level consents and assertions defined in [draft-ietf-oauth-identity-assertion-authz-grant](https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/) can help isolate permissions and decrease individual user prompts.
+* **Tokens:** The presenters noted difficulties with opaque refresh token issuance policies across different servers and the security implications of bearer token leakage (e.g., via logging).
+
+#### B. Client and Principal Selection
+Representing an agent's identity and its relationship to a user in OAuth tokens is complex:
+
+* **Claim Mapping (`sub` and `act`):** Paul Carleton presented models using `sub` (subject) and `act` (actor) claims to define permissions (e.g., user as subject, agent as actor, or vice versa).
+  * Dick Hardt suggested defining a dedicated agent-specific claim instead of squeezing complex agent semantics into traditional `sub` and `act` claims.
+  * Michael Jones pointed to `draft-skyfire-oauth-kyapay-token` as an example of separating the "Agent Platform" from the "Agent Instance" in claims.
+  * Jessica Trochet argued in chat that the `sub`/`act` structure is useful because it explicitly captures the relative roles of the participating entities. Karl McGuinness also pointed to his work on `draft-mcguinness-oauth-actor-profile` to address this.
+* **Cardinality Explosion:** High-cardinality identifiers (such as representing individual agent instances, projects, or conversational threads) clash with traditional AS databases designed for static client IDs. High friction in obtaining clean identities often forces developers to fallback to insecure, shared API keys. Dynamic workload identity assertion grants ([draft-ietf-oauth-identity-assertion-authz-grant](https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/)) were noted as a potential path forward.
+
+#### C. Scope Issues & Fine-Grained Authorization
+OAuth scopes are typically evaluated upfront and are often too broad (e.g., full read/write) for a safe agentic execution environment.
+
+* **Enforcement Location:** Nick Steele pointed out that modern agent architectures rely heavily on client-side "classifiers" or "guardians" to restrict what an agent actually executes. Ideally, this context should be passed upstream so the RS can make granular enforcement decisions.
+* **Action-First Approval (Asynchronous Settlement):** Jonathan Rosenberg observed that agentic workflows suggest a fundamental shift in OAuth sequencing. Instead of obtaining broad, coarse-grained authorization *prior* to taking actions, agents need to attempt an action, pause, and dynamically seek specific approval (from a user or policy engine) *during* or *after* the action is contextualized. Paul Carleton and Nick Steele agreed that "action settlement" models are much closer to how auto-mode agents operate.
+* **Bridging OAuth Scopes and Fine-Grained Access Control:** Omri Gazitt, David Waite, and Pieter Kasselman discussed how to connect coarse OAuth scopes with downstream fine-grained authorization systems (such as Zanzibar or OpenID AuthZen). Karl McGuinness noted that the AuthZen Working Group is actively designing access request profiles to address this. Ni Yuan agreed that async, conditional, or two-step authorization matching a "pre-approval + execution" pattern mirrors patterns seen in modern payment networks.
+* **Chaining and Trust Domains:** George Fletcher raised the issue of chaining agent calls across distinct trust domains (e.g., an enterprise agent calling an external SaaS like Salesforce) where subject identifiers must be translated across trust boundaries.
+
+## Next Steps
+* The working group will continue these discussions at the upcoming interim sessions on October 5 and October 19, 2026.
