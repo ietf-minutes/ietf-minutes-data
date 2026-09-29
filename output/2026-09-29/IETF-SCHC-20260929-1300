@@ -1,0 +1,52 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC Working Group held its 13th interim meeting of 2026. The session was chaired by Alexander Pelov. The group discussed the status and management of active and expiring working group documents, made plans for the upcoming IETF 127 meeting, and reviewed two technical presentations on updates to the SCHC YANG data model and an ICMPv6 security extension designed to handle LPWAN-specific timer challenges.
+
+---
+
+## WG Document Status & IETF 127 Planning
+
+* **`draft-ietf-schc-8824-update`**: Marco Tiloca confirmed that version 10 addresses all pending comments from the Vienna session. The draft is ready for submission to the IESG. Alexander Pelov agreed to write the shepherding report and submit the document.
+* **`draft-ietf-schc-access-control`**: Ana Minaburo and Laurent Toutain confirmed that this work remains active but needs updates to realign with the YANG data model. Ana Minaburo committed to publishing a new version to prevent its expiration.
+* **Draft Cleanup**: Alexander Pelov noted several drafts are expired or close to expiration (including the ICMPv6 compression draft and universal options draft). He urged authors to upload minor updates to keep them active before a planned end-of-year cleanup.
+* **IETF 127 Prep**: Alexander Pelov proposed keeping the 1.5-hour meeting format for IETF 127, requesting a slot scheduled no later than Thursday. Éric Vyncke agreed that the 1.5-hour duration is appropriate.
+
+---
+
+## Key Discussion Points
+
+### 1. Toward rfc9363bis
+* **Presenter**: Laurent Toutain
+* **Slides**: [Toward rfc9363bis](https://datatracker.ietf.org/meeting/interim-2026-schc-13/materials/slides-interim-2026-schc-13-sessa-toward-rfc9363bis-00)
+* **Discussion**:
+  * Laurent Toutain presented potential modifications and optimizations to the existing SCHC YANG data model (RFC 9363).
+  * **YANG Structure and Indexing**: To resolve issues where option ordering was not preserved under the original indexing (using field ID, position, and direction), the draft proposes a unified indexing structure called `entry-index`. This simplifies indexing to a single byte and preserves order.
+  * **CoAP Options Deprecation**: The model proposes deprecating individual CoAP options defined in RFC 9363 in favor of universal options. Deep-option parsing would still be supported for OSCORE and KUDOS (`draft-ietf-core-oscore-key-update`) subfields.
+  * **New Fields and Functions**: Laurent Toutain introduced generic functions such as `field-length-bytes` and `field-length-bits`, alongside new pseudo-fields like `unused` (generic protocol padding skipper) and `payload` (referencing the remaining bytes, useful for structured payload compression).
+  * **ICMPv6 Compression Options**: Laurent Toutain compared the current ICMPv6 compression approach (compressing the headers and sending the inner packet as payload residue) with a new proposed approach that parses and compresses the payload of the ICMPv6 error message directly. He noted the latter is easier to implement and produces less residue.
+  * **Action Field**: The presentation proposed re-introducing the "action" field for ICMPv6 and general rules. Alexander Pelov recalled that the working group had previously decided to exclude actions from the core specification and noted that re-inclusion would require explicit consensus.
+  * **Document Structure Strategy**: Alexander Pelov expressed concern over consolidating multiple updates (e.g., universal options, ICMPv6, and 8824-update) into a single monolithic "bis" document, suggesting it might be faster to progress them in their respective individual drafts. Laurent Toutain argued that managing multiple parallel YANG doctor reviews and SID allocations would block progression, making a centralized update more efficient.
+  * **Errata**: Alexander Pelov suggested submitting an official errata against RFC 9363 to add the `ordered-by user` statement in the YANG model to address current rule-ordering ambiguities.
+  * **Draft Naming**: Éric Vyncke advised Laurent Toutain to change the draft filename in future revisions. Using "RFC9363bis" in the name causes the Datatracker to automatically flag the document as a formal revision of the RFC, which is premature for what is currently a discussion paper.
+
+### 2. ICMPv6-SEC for SCHC
+* **Presenter**: Alexander Pelov
+* **Slides**: [ICMPv6-SEC for SCHC](https://datatracker.ietf.org/meeting/interim-2026-schc-13/materials/slides-interim-2026-schc-13-sessa-icmpv6-sec-for-schc-00)
+* **Discussion**:
+  * Alexander Pelov presented a solution addressing high Round-Trip Time (RTT) challenges on LPWAN networks where devices sleep. For example, during a DTLS handshake, an IPv6 host might time out and continuously retransmit handshakes before a sleeping device wakes up to receive and answer the initial hello.
+  * The proposal introduces an ICMPv6 informational message containing a COSE-signed segment descriptor. This descriptor carries RTT metadata from the SCHC gateway, enabling the remote host to dynamically adjust its DTLS or CoAP timers. Because the COSE-signed data is static (valid for a period, e.g., one day), the gateway does not need to perform real-time cryptographic signing operations per packet.
+  * Laurent Toutain observed that from the host's perspective, the SCHC gateway is just an intermediate router, raising trust boundary questions. He also noted that this work falls outside the current SCHC WG charter.
+  * Alexander Pelov agreed that the work is out of scope for the current SCHC charter and indicated he plans to introduce the draft in more appropriate venues (such as IPv6 operations or internet area groups), but wanted to present it to the SCHC group due to its direct utility for SCHC-enabled gateways and networks.
+  * Éric Vyncke noted that the security considerations for such an ICMPv6 signaling mechanism will need to be very carefully detailed.
+
+---
+
+## Decisions and Action Items
+
+* **Decision**: Maintain the 1.5-hour meeting format for SCHC sessions at IETF 127.
+* **Action Item**: Alexander Pelov to write the shepherding report and submit `draft-ietf-schc-8824-update` to the IESG.
+* **Action Item**: Ana Minaburo and Laurent Toutain to publish an updated version of `draft-ietf-schc-access-control` to prevent it from expiring.
+* **Action Item**: Alexander Pelov to submit an errata on RFC 9363 to introduce the `ordered-by user` statement in the YANG module to resolve rule-ordering ambiguity.
+* **Action Item**: Laurent Toutain to rename the "rfc9363bis" draft in its next upload to avoid triggering the automated Datatracker "bis" revision status.
