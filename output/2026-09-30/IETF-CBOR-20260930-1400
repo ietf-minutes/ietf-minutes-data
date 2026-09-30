@@ -1,0 +1,72 @@
+# [CBOR](../wg/cbor.html)
+
+**Interim Meeting Minutes**  
+**Date:** September 30  
+
+---
+
+## Attendees
+*   Barry Leiba (Chair)
+*   Carsten Bormann
+*   Christian Amsüss
+*   Joe Hildebrand
+*   Ira McDonald
+*   Laurence Lundblade
+*   Marco Tiloca
+*   Martine Lenders
+*   Michael Richardson
+*   Rohan Mahy
+*   Вадим Гончаров
+
+---
+
+## Summary
+The CBOR Working Group met to discuss the progression of `draft-ietf-cbor-edn-literals` (Concise Diagnostic Notation (CDN) / Extended Diagnostic Notation (EDN)). The discussion primarily focused on resolving outstanding feedback regarding extensibility points for encoding indicators, the handling of non-JSON decimal number formats (specifically leading zeros and leading plus signs), and various syntax refinements such as renaming `float''`. 
+
+---
+
+## Key Discussion Points
+
+### 1. Extensibility in `draft-ietf-cbor-edn-literals`
+*   **Carsten Bormann** introduced the latest update (version -28) of `draft-ietf-cbor-edn-literals`, noting that eight of the eleven requested changes had been addressed. He explained that for extensibility, the IANA registry had been removed, replaced with text allowing future standards-track documents to define extensions.
+*   **Joe Hildebrand** clarified that his original intent was to remove extensibility points entirely rather than just moving them out of IANA. He argued that explicit extensibility points complicate parser and tooling implementations. If future standards action is needed, a new RFC can update the specification and tools directly.
+*   **Ira McDonald** questioned the justification for removing future standards-track extensibility, noting that we cannot assume we know all future requirements.
+*   **Carsten Bormann** explained that the grammar (modified based on a proposal by **Rohan Mahy**) allows parsers to parse and safely ignore unknown encoding indicators without throwing errors.
+*   **Joe Hildebrand** disagreed with the model of ignoring unknown inputs, stating that his software would throw an error if an unrecognized encoding indicator was encountered.
+*   **Christian Amsüss** referenced a mailing list discussion on this topic ([Reference Mail](https://mailarchive.ietf.org/arch/msg/cbor/qgMoc_0i0JY96Jj5m3alGBy0MsQ/)) in the session chat.
+*   **Вадим Гончаров** argued against removing extensibility from EDN, noting that he would like to specify translations like `200_ms` to native representations, which contradicts a "just ignore" design.
+*   **Barry Leiba** noted that the objective is to place extensions only where they make logical sense, regardless of the specification's name.
+
+### 2. Non-JSON Decimal Number Forms (Leading Zero and Leading Plus)
+*   **Carsten Bormann** noted that version -28 removed C-style leading zeros from decimal numbers. This change was accepted based on a technical usability argument: copying and pasting numbers from C environments (where a leading zero denotes octal) could lead to silent interpretation errors in EDN.
+*   **Rohan Mahy** argued that leading plus signs (`+`) should also be removed to align with JSON, reduce parser complexity, and keep the specification focused on shipping without adding new, non-essential features.
+*   **Вадим Гончаров** argued that the leading plus is harmless and facilitates copy-pasting.
+*   **Martine Lenders** suggested that leading plus signs can be useful for readability in signed value arrays:
+    ```json
+    [
+       { "value": +1.0, "name": "x"},
+       { "value": -0.9, "name": "y"}
+    ]
+    ```
+*   **Michael Richardson** queried whether the proposed changes to number forms were non-backward-compatible (NBC). **Rohan Mahy** responded that Carsten's proposals were indeed non-backward-compatible, whereas the proposals to align with JSON would maintain compatibility.
+
+### 3. Syntax Renaming (`float''`) and Safety Limits
+*   **Вадим Гончаров** voiced objection to the name `float''` and proposed renaming it.
+*   **Carsten Bormann** agreed that renaming `float''` is acceptable and proposed deferring this to a broader "great renaming" discussion, noting that the name was originally selected because it had already been adopted in several implementations.
+*   **Laurence Lundblade** commented on limiting input sizes (e.g., backticks), suggesting that a default limit of 10K is fine but should be configurable.
+
+### 4. Status of Other Drafts
+*   **Carsten Bormann** noted in chat that he has not yet reviewed the latest updates for `draft-ietf-cbor-serialization` (CBOR Serialization and Determinism). No updates were discussed for `draft-ietf-cbor-cddl-modules`.
+
+---
+
+## Decisions and Action Items
+*   **Decision:** Retain the removal of leading zeros in decimal forms to prevent octal confusion when copy-pasting from C-like environments.
+*   **Action Item:** Move the discussion on the leading plus sign (`+`) and the broader extensibility parsing behavior (erroring vs. ignoring unknown encoding indicators) to the mailing list to reach a final consensus.
+*   **Action Item:** Track the proposed renaming of `float''` as part of the upcoming syntax naming cleanup.
+
+---
+
+## Next Steps
+*   Working group members to review the diff between versions -27 and -28 of `draft-ietf-cbor-edn-literals`.
+*   Continue technical debates regarding parser error-handling and JSON compatibility limits on the CBOR mailing list.
