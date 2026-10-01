@@ -1,0 +1,76 @@
+# [OCM](../wg/ocm.html)
+
+## Summary
+
+The Open Cloud Mesh (OCM) Working Group held an interim meeting on October 2, 2026. The session focused on the status of the active working group documents, implementation updates and upcoming funding extensions, and proposals for enhancing the core specification. Specifically, the group discussed adding a `collectionId` to better support dataset sharing, a proposal for batching JSON payloads via arrays, and a design for a distributed directory service. The group also discussed planning for IETF 128, including a potential joint hybrid meeting with the CS3 community in Bologna.
+
+---
+
+## Key Discussion Points
+
+### 1. Agenda and Document Status
+* **Presentation**: Thibault Meunier opened the meeting, presenting the [Chair slides](https://datatracker.ietf.org/meeting/interim-2026-ocm-02/materials/slides-interim-2026-ocm-02-sessa-chair-slides-00) and noting the IETF Note Well guidelines.
+* **Document Progress**:
+  * Thibault Meunier reported that `draft-ietf-ocm-mls-federated-groups` and `draft-ietf-ocm-integration-protocol` have been adopted as version 00 working group documents. No major modifications have occurred since adoption, except for some security model and precision updates resolved during the adoption call.
+  * A new version of the main core specification, `draft-ietf-ocm-open-cloud-mesh`, was published. This revision tightens the HTTP message signature implementation, reworks notification mechanisms, and introduces basic encryption capabilities.
+
+### 2. Implementation Status and Next Steps
+* **Presentation**: Giuseppe Presti presented on the [Implementation status and next steps](https://datatracker.ietf.org/meeting/interim-2026-ocm-02/materials/slides-interim-2026-ocm-02-sessa-implementation-status-and-next-steps-00).
+* **Funding and Development**: 
+  * Giuseppe Presti noted that the Sovereign Tech Agency funding (which ended in September) is likely to be extended through the end of the year. This extension would fund the implementations of notifications, Messaging Layer Security (MLS) federated groups (`draft-ietf-ocm-mls-federated-groups`), and the proposed distributed directory service.
+  * Micke Nordin noted that besides their own implementation efforts, two external open-source projects—FileSender and One Data—are actively working to implement OCM.
+* **Security Review**: A security review of the specification is being pursued through the security team of the European Open Science Cloud (EOSC) CS3 node.
+* **IETF 128 / CS3 Joint Hybrid Meeting**:
+  * Since IETF 128 (Kuala Lumpur) coincides with the annual CS3 (Cloud Services for Synchronization and Sharing) conference in Bologna (March 2025), Giuseppe Presti and Micke Nordin proposed organizing a joint hybrid meeting.
+  * Richard Freitag, representing the CS3 organizing committee, supported the proposal, noting that CS3 typically draws 50 to 70 attendees who would be interested in a virtual collaborative session with the IETF.
+  * Thibault Meunier agreed to investigate the technical and administrative logistics required by the IETF to support a joint remote hub session.
+
+### 3. Collection ID Proposal
+* **Presentation**: Micke Nordin presented the [collectionId](https://datatracker.ietf.org/meeting/interim-2026-ocm-02/materials/slides-interim-2026-ocm-02-sessa-collectionid-00) proposal.
+* **Technical Details**:
+  * The proposal addresses the "request to share" flow. Currently, the specification uses `share_id` to refer to the identifier of the resource itself, which is confusing. Micke Nordin proposed renaming `share_id` to `collection_id` within the "request to share" flow (where it would be required) and adding an optional `collection_id` field to the "share creation" flow.
+  * This change allows the recipient of a share request to cleanly link the request to the resulting share and group disjoint datasets semantically. 
+  * Rasmus Welander noted in the chat that generalizing sharing to better fit dataset definitions is highly relevant for the EOSC Data Commons project.
+  * Nextcloud is also looking to leverage a similar field to reconstruct group-share objects on the receiver's end.
+  * Giuseppe Presti agreed with the design, noting that keeping the field optional in the share creation flow prevents complex transactional requirements (such as handling partial success/partial failure semantics).
+
+### 4. More Arrays (Batching) Proposal
+* **Presentation**: Micke Nordin presented the [More arrays](https://datatracker.ietf.org/meeting/interim-2026-ocm-02/materials/slides-interim-2026-ocm-02-sessa-more-arrays-00) proposal.
+* **Technical Details**:
+  * Micke Nordin proposed allowing endpoints to accept JSON payloads structured as arrays (exposed via an `accept arrays` capability) to coalesce requests, batch notifications, and allow multiple disjoint resources or recipients to be handled in a single transaction.
+  * Giuseppe Presti expressed concern that supporting arrays for shares introduces significant complexity, particularly around multi-status responses (e.g., if some shares within an array succeed while others fail), requiring complex error-handling and routing logic on the server.
+  * Micke Nordin acknowledged the concern and agreed that while batching is useful for notifications, it is too complex for shares. He decided to put the array proposal on hold.
+
+### 5. Distributed Directory Service
+* **Presentation**: Giuseppe Presti introduced the [Distributed Directory Service](https://datatracker.ietf.org/meeting/interim-2026-ocm-02/materials/slides-interim-2026-ocm-02-sessa-distributed-directory-service-00) proposal and discussed an open Pull Request (PR) on the OCM core repository.
+* **Technical Details**:
+  * The current directory service model relies on a centralized, statically shared JSON file. The proposal aims to decentralize this.
+  * Two models were presented:
+    1. **Peer-Announced Model**: Peers exchange notifications regarding membership in a federation, achieving eventual consistency.
+    2. **MLS-Based Model**: Utilizing `draft-ietf-ocm-mls-federated-groups`, where servers act as nodes within a federated group to manage directory state.
+* **Discussion**:
+  * Micke Nordin raised two main issues with the PR:
+    1. The PR utilizes `federation` as a "share type" in notifications, which is technically inaccurate as no actual shares are created. New notification types should be defined instead.
+    2. In the Peer-Announced model, if consistency is achieved purely via notifications, there is no need to host a public JSON document endpoint because there are no direct external consumers for it.
+  * Giuseppe Presti agreed to simplify the Peer-Announced model by removing the JSON endpoint and will revise the notification types.
+  * Thibault Meunier noted that incorporating MLS-dependent directory services into the core specification (`draft-ietf-ocm-open-cloud-mesh`) would block the core document's advancement, as `draft-ietf-ocm-mls-federated-groups` is in an earlier stage of development. Micke Nordin suggested that the distributed directory specification could be moved directly into the MLS-federated groups draft.
+
+---
+
+## Decisions and Action Items
+
+* **Decisions**:
+  * The WG will target Last Call for the core draft (`draft-ietf-ocm-open-cloud-mesh`) around December 2026.
+  * The array batching proposal will be put on hold and not pursued for the core draft.
+* **Action Items**:
+  * **Micke Nordin** to submit a Pull Request introducing `collection_id` into the core specification.
+  * **Giuseppe Presti** to update the Distributed Directory Service PR, resolving issues regarding the "share type" misnomer and removing the unnecessary JSON endpoint.
+  * **WG Chairs (Thibault Meunier / Lisa)** to request an early review of the HTTP directory and message signature components of `draft-ietf-ocm-open-cloud-mesh` from the IETF HTTP Directorate.
+  * **WG Chairs** to coordinate the logistical setup for the hybrid IETF 128 / CS3 session.
+
+---
+
+## Next Steps
+
+* **Milestone Updates**: The WG will look into extending the milestones for the newly adopted companion drafts (`draft-ietf-ocm-integration-protocol` and `draft-ietf-ocm-mls-federated-groups`) into 2027 to allow the core specification to finalize first.
+* **Mailing List Discussion**: Further refinement of the distributed directory service design and its placement (within the core draft versus the MLS draft) will be conducted on the OCM mailing list.
