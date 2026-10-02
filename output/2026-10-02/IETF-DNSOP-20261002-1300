@@ -1,0 +1,63 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+The DNSOP Working Group held an interim meeting to discuss operational challenges and transition pathways for deploying Post-Quantum Cryptography (PQC) in DNSSEC. The session focused on the operational trade-offs of standardized algorithms (such as ML-DSA and FN-DSA), the deployment of ML-DSA (Algorithm 18) in active networks, optimizations via Merkle Tree Ladders (MTL), and the impact of TCP fallback on authoritative servers. The meeting concluded with a broad architectural discussion on how the working group should address larger packet sizes and coordinate future PQC efforts within the IETF structure.
+
+## Key Discussion Points
+
+### 1. Post-quantum Cryptography for DNSSEC, a temporary view
+Paul Hoffman presented [Post-quantum Cryptography for DNSSEC, a temporary view](https://datatracker.ietf.org/meeting/interim-2026-dnsop-02/materials/slides-interim-2026-dnsop-02-sessa-post-quantum-cryptography-for-dnssec-a-temporary-view-01).
+* **Algorithm Selection Considerations**: Key factors include NIST or external standardization status, deployment speed, record sizes (keys/signatures), CPU usage for signing and validation, required DNS protocol changes, HSM vendor support, and cryptanalysis assurance.
+* **ML-DSA-44**: Standardized by NIST (FIPS 204) and assigned DNSSEC IANA Algorithm 18. Signatures are large (~2400 bytes), making TCP fallback inevitable. It has high cryptographic assurance and requires no DNS protocol changes.
+* **FN-DSA (Falcon)**: NIST is standardizing a fixed-point version (FIPS 206), which is easier to implement but slower to sign. Signatures are ~666 bytes.
+  * *Chat Discussion*: Bas Westerbaan noted that FN-DSA verification is fast and does not use floating-point arithmetic. Fixed-point signing is only about 2x slower than floating-point (previously 20x). Shumon Huque and Paul Hoffman pointed out that responses containing two or more FN-DSA signatures (e.g., DNSKEY and NXDOMAIN responses) will still exceed the 1280-byte UDP truncation limit.
+* **Merkle Tree Ladders (MTL) Mode**: Employs condensed signatures to fit in UDP, falling back to TCP for full signatures only when the validator lacks the full Merkle tree. 
+* **Other Proposals**: Includes candidates from China's next-generation commercial cryptography program (~70 algorithms), though many have already been weakened or broken under cryptanalysis.
+
+### 2. Alg 18 in 1.1.1.1
+Bas Westerbaan presented [Alg 18 in 1.1.1.1](https://datatracker.ietf.org/meeting/interim-2026-dnsop-02/materials/slides-interim-2026-dnsop-02-sessa-alg-18-in-1111-00).
+* **Story and Deadlines**: The industry requires a clear transition plan around 2031 (when NIST deprecates classical algorithms). Moving forward with ML-DSA-44 is the most straightforward path to test.
+* **Running Code**: Cloudflare's 1.1.1.1 now validates ML-DSA-44 by default, with test zones hosted at `dnstest.dev`. Active measurement probes are running on a 1-in-1000 sample of user challenge pages to evaluate real-world performance and breakages.
+* **Downgrade Mitigation**: Dual-signed zones (classic + PQC) are vulnerable to downgrade attacks where an attacker strips out PQC signatures. Bas proposed that if a validator sees a PQC key in a DS record, it must require PQC signatures. This directly contradicts the "any valid path" recommendation in RFC 6840.
+
+### 3. How Merkle Tree Ladders Help Address PQC DNSSEC Challenges
+Andrew Kaizer presented [How Merkle Tree Ladders Help Address PQC DNSSEC Challenges](https://datatracker.ietf.org/meeting/interim-2026-dnsop-02/materials/slides-interim-2026-dnsop-02-sessa-how-merkle-tree-ladders-help-address-pqc-dnssec-challenges-00).
+* **The PQC Timeline**: With NIST deprecating RSA and ECDSA in 2031, global root zone key rollovers (which take years of coordination) must plan for PQC transitions now.
+* **MTL Design**: MTL groups hashes of RRsets into a Merkle tree and signs only the tree root with a PQC algorithm. Individual responses carry a quick-to-verify Merkle proof and the shared root signature, amortizing the signature size across the zone.
+* **Draft Specifications**: 
+  * The *base draft* uses ML-DSA-44 for MTL, designed for drop-in validation.
+  * The *extension draft* introduces a "SigTag" in requests, allowing clients to signal cached signatures so servers only return Merkle proofs, enabling bandwidth savings and possible UDP delivery.
+* **Open Source & IPR**: Reference code is available for LDNS, NSD, and Unbound on Verisign's GitHub. IPR licensing declarations are published on the IETF pages.
+  * *Chat Discussion*: Paul Wouters cited Verisign's IPR statement, noting the mutual self-destruction termination clause. Karl Dyson and Kazunori Fujiwara raised questions on how high-churn, dynamically updated zones (like `.uk` or `.com`/`.net`) function under MTL. Stefan Ubbink responded that frequent delta updates are possible.
+
+### 4. Preliminary Results of Measuring TCP Pressure on DNS Authoritative Servers
+Paul Hoffman presented [Preliminary Results of Measuring TCP Pressure on DNS Authoritative Servers](https://datatracker.ietf.org/meeting/interim-2026-dnsop-02/materials/slides-interim-2026-dnsop-02-sessa-preliminary-results-of-measuring-tcp-pressure-on-dns-authoritative-servers-00).
+* **Test Methodology**: Measured the point where packet drop rates exceeded 1% using `kxdpgun` on a $500 Intel-based server running Debian and four open-source DNS servers. Tests compared bare setups, developer-recommended TCP configurations, and kernel tuning.
+* **Findings**: 
+  * The TCP-to-UDP throughput ratio was between 5% and 20%, meaning pure TCP performance degrades the server's capacity by 5x to 20x compared to UDP.
+  * Server-level configuration improvements yielded minor gains, while kernel tuning had virtually no impact.
+  * AMD 16-core system testing showed similar performance degradation ratios. Full results will be published in an open repository.
+  * *Chat Discussion*: Allison Mankin noted that many ccTLD operators in smaller countries run on older hardware and face severe performance issues if forced to use TCP.
+
+### 5. Planning for large packet sizes -- discussion
+Wes Hardaker kicked off the general discussion with a presentation on [Planning for large packet sizes -- discussion](https://datatracker.ietf.org/meeting/interim-2026-dnsop-02/materials/slides-interim-2026-dnsop-02-sessa-planning-for-large-packet-sizes-discussion-00).
+* **Strategic Directions**: The options are to wait for smaller PQC algorithms (nebulous timelines), force a move to TCP (performance degradation and increased latency), or reduce response sizes (MTL, adjusting TTL behaviors, and limiting the constant re-sending of unchanged signatures).
+
+### 6. Queue Discussion
+* **Peter Koch** suggested that the WG should prioritize ML-DSA-44 and optimize the transport network for TCP. Large transport capacity is needed anyway for other applications (such as SVCB/HTTPS records) and core DNSSEC keys. Advanced optimizations like MTL can be evaluated in parallel without stalling ML-DSA deployment.
+* **Stephen Farrell** agreed with Peter Koch, stating that complex protocol changes like MTL are difficult to justify solely for optimization unless they directly increase the global deployment of DNSSEC, which remains low.
+* **Benjamin Schwartz** noted that transport modifications (e.g., [draft-ietf-dnsop-delext](https://datatracker.ietf.org/draft-ietf-dnsop-delext/)) and DoQ are changing how we handle connected transports. He argued that authoritative TCP sizing is less about capacity and more about DoS defense budgets, where TCP is actually easier to defend than spoofed UDP. He highlighted that validation rule modifications (as suggested by Bas Westerbaan) are necessary to prevent downgrade attacks in multi-algorithm environments.
+* **Karl Dyson** raised operational concerns for registries running dynamic updates (such as `.uk` changing once per second), seeking clarity on whether MTL would require a fundamental redesign of zone-building pipelines.
+* **Mukund Sivaraman** advocated for adopting the ML-DSA specification, noting its wide platform support (e.g., OpenSSL 3.5) and simplicity as a drop-in algorithm.
+* **Paul Hoffman** clarified that because ML-DSA already has an assigned IANA code point (Algorithm 18), there is no technical need for the WG to adopt a draft simply to assign the code point.
+* **Mohamed Boucadair (AD)** stated that documenting deployment experiences, operational hurdles, and updating registry algorithm recommendations (like ML-DSA) are clearly in scope for DNSOP. Pure cryptographic design is out of scope.
+* **Deb Cooley (AD)** added that well-vetted, widely deployed algorithms are appropriate for DNSOP with security area coordination. Novel techniques like MTL need closer security oversight, and unvetted algorithms should be routed through CFRG.
+
+## Decisions and Action Items
+* **No formal consensus calls or binding decisions were made** during this interim session.
+* IANA has already assigned Algorithm 18 for ML-DSA-44.
+
+## Next Steps
+* Cloudflare will continue background testing of Algorithm 18 and plans to present the empirical data at OARC 47.
+* Paul Hoffman will publish the complete TCP pressure measurement results in a public repository for community replication and feedback.
+* Discussions on PQC migration paths, validation rules (to mitigate downgrade attacks), and MTL applicability will continue on the DNSOP mailing list and at the upcoming face-to-face meeting.
