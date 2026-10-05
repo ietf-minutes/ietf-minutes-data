@@ -1,0 +1,64 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group held an interim virtual meeting on February 5, 2026. The main focus of the meeting was a presentation and discussion on the **AAuth (Agent Authorization / Authentication)** protocol proposal. The group debated whether AAuth should be developed as a new protocol (either within a new working group or as a major reboot of OAuth) or whether the core requirements of autonomous agents should be addressed incrementally by evolving the existing OAuth 2.0 framework.
+
+## Key Discussion Points
+
+### 1. Introduction & Working Group Status
+* **Rifaat Shekh-Yusef** opened the meeting and reminded participants that the IETF Note Well applies to the session.
+* **Hannes Tschofenig** volunteered to take notes.
+* **Rifaat Shekh-Yusef** outlined the upcoming meeting schedule: there will be no meeting next week, but the interim series will resume on February 19, 2026, with another potential meeting on February 26, 2026.
+* The meeting slides were introduced, starting with the [Chairs Slides](https://datatracker.ietf.org/meeting/interim-2026-oauth-06/materials/slides-interim-2026-oauth-06-sessa-chairs-slides-00).
+
+---
+
+### 2. AAuth Protocol Overview
+**Dick Hardt** presented the [AAuth Protocol Overview](https://datatracker.ietf.org/meeting/interim-2026-oauth-06/materials/slides-interim-2026-oauth-06-sessa-aauth-protocol-overview-00), highlighting how it addresses agent-oriented workflows.
+
+* **Key Roles in AAuth:**
+  * **Supervisor:** A governance/guardian agent making nondeterministic policy decisions at machine speed.
+  * **Agent Provider:** Verifies agent posture and binds public keys to the agent instance (the "client").
+  * **Agent:** The entity performing tasks (analogous to an OAuth client).
+  * **Resource:** The target API (analogous to an OAuth Resource Server).
+  * **Access Server (AS):** Manages access independently from the user (analogous to an OAuth Authorization Server).
+  * **Person Server (PS):** Manages user identity and consent, functioning as a mix of an Identity Provider and a consent manager.
+
+* **Architectural Differences from OAuth:**
+  * **Cryptographic Foundation:** No pre-registration is required. Everything (requests, tokens, API calls) is cryptographically signed using HTTP Message Signatures (RFC 9421) and a dynamic discovery scheme called `Signature-Key`.
+  * **Flow Inversion:** The flow starts at the Resource rather than triggering an initial redirect to the Authorization Server.
+  * **Inherent Security Bindings:** Eliminates bearer tokens and authorization codes, mitigating token theft, code theft, confused deputy, and mix-up attacks.
+  * **Advanced Agent Features:** Core support for budgets (limiting resource usage per token to prevent agent-driven DOS), subagents (delegated keys), call chaining, and cascading token revocation.
+
+* **Access Modes & Deployments:**
+  * Four modes of access ranging from simple API-key replacements to fully-federated flows utilizing Person Servers and Access Servers.
+  * Integration mode (Proxy) allowing existing OAuth infrastructure to be wrapped inside an AAuth interface.
+  * Real-world implementations include Model Context Protocol (MCP) servers, analytics services, and messaging co-ops.
+
+---
+
+### 3. Group Discussion: Architectural Paths and Working Group Strategy
+
+The chairs opened the floor to discuss how the working group should treat this proposal. **Dick Hardt** framed the options as:
+* **Option A:** Develop AAuth as "OAuth 3.0" (a major protocol reboot).
+* **Option B:** Create a new dedicated working group (similar to how GNAP was spun out).
+* **Option C:** Evolve OAuth to fill any agent-related gaps.
+
+#### Evolving OAuth vs. Greenfield Protocol (AAuth)
+* **Aaron Parecki** advocated for **Option C (Evolution)**. He suggested identifying the genuinely new elements required for agents and backporting or building those into OAuth incrementally. He noted that OAuth already supports dynamic client capabilities via the OAuth Client ID Metadata Document (using the mechanisms of `draft-ietf-oauth-client-id-metadata-document`) and client attestation (`draft-ietf-oauth-attestation-based-client-auth`).
+* **Jeff Lombardo** supported Aaron's point, stating that OAuth already has mechanisms for managing keys (e.g., private_key_jwt, mTLS) and signing endpoints. He also pointed out that workload posture and downstream trust can be handled by working groups like WIMSE (Workload Identity in Multi-System Environments) using the AIMS drafts, rather than inventing an entirely new protocol.
+* **Jonathan Rosenberg** agreed that the "what" (identifying gaps) must precede the "where" (which WG). He favored an incremental approach and noted that he and **Pat White** had authored an early strawman (`draft-rosenberg-oauth-aauth-01`) illustrating how these capabilities could be built directly on top of OAuth.
+* **Karl McGuinness** provided a counter-perspective. He explained that trying to achieve first-class agentic outcomes (like budgeting, multi-resource consent loops, and mission-bound tokens) within the current OAuth framework would require 12 to 15 complex, optional extensions. This would heavily fragment the ecosystem and force major, costly rewrites of existing Authorization Servers. He supported a dual-stack approach: continuing to evolve legacy OAuth systems, while simultaneously backing AAuth as a purpose-built, native protocol optimized for developers moving at "agent speed."
+* **Dick Hardt** strongly disagreed with relying solely on OAuth evolution. He argued that OAuth 2.0 foundationally lacks per-instance identity and key-bound architectures. He likened the evolutionary argument to past proposals where SAML proponents claimed SAML could solve everything, which ultimately led to the creation of OpenID Connect as a simpler, greenfield protocol.
+
+#### Technical Details and Overhead
+* **Atul Tulshibagwale** asked about the status of the `Signature-Key` proposal. **Dick Hardt** replied that it was originally proposed to the HTTPbis WG but did not find enough energy for a general-purpose adoption. It is currently maintained as an independent document tailored for AAuth.
+* **Justin Richer** and **Brian Campbell** noted in the chat that there was significant public criticism of the `Signature-Key` design on the HTTP working group mailing list that would need to be addressed before progressing.
+* **Pat White** asked if AAuth's signed-message design makes the protocol overly chatty by adding multiple roundtrips per call. **Dick Hardt** clarified that signing calls does not add roundtrips once a token is obtained. The chattiness comes from the requirement that the Agent must always route through the Person Server to reach the Access Server; this design choice is necessary to give the Person Server complete visibility for driving cascading revocation.
+
+---
+
+## Next Steps
+
+* **Rifaat Shekh-Yusef** and **Hannes Tschofenig** (Chairs) will synthesize the feedback and bring a structured set of questions to the OAUTH mailing list to formally determine the working group's consensus on if and how to progress this work.
