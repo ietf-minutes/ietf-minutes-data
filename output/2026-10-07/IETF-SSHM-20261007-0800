@@ -1,0 +1,88 @@
+# [SSHM](../wg/sshm.html)
+
+## Summary
+
+The Secure Shell Maintenance (SSHM) Working Group held an interim meeting on October 9, 2026, to discuss open issues regarding the composite signatures draft, evaluate the potential adoption of SLH-DSA, and address several other administrative and technical topics, including a newly published side-channel attack on SSH transport-level compression.
+
+The session was chaired by Stephen Farrell and Job Snijders, using the [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-sshm-01/materials/slides-interim-2026-sshm-01-sessa-chair-slides-02).
+
+---
+
+## Key Discussion Points
+
+### 1. Composite Signatures (`draft-ietf-sshm-composite-sigs`)
+
+#### Selection of Signature Algorithms
+* Damien Miller (editor) noted that the draft currently specifies `ML-DSA-44 + Ed25519` as the minimum viable combination, and `ML-DSA-87 + P-384` was added by request. He emphasized the need to avoid a combinatorial explosion of hybrid options.
+* Lucas Prabel suggested considering `ML-DSA-65` combined with `Ed25519` for consistency with hybrid key exchange configurations (such as `ML-KEM-768 + X25519`).
+* Scott Fluhrer and Damien Miller pushed back against adding `ML-DSA-65`, noting that `ML-DSA-44` already offers a better security margin than its KEM counterpart, and that browser vendors are heavily aligning on `ML-DSA-44`.
+* Job Snijders agreed that the working group should keep the set of choices highly restricted.
+* Guilin WANG supported adding `ML-DSA-65` (either with `Ed25519` or `ECDSA P-256`) to provide a balanced middle security level.
+* Dmitry Belyavskiy, John Preuß Mattsson, and Alicja Kario supported keeping `ML-DSA-87 + P-384` in the draft. 
+* **Outcome**: The WG will proceed with the two currently defined algorithms (`ML-DSA-44 + Ed25519` and `ML-DSA-87 + P-384`). The chairs will issue a call on the mailing list to gauge if there is genuine interest in adding `ML-DSA-65`.
+
+#### Wire Encoding Compatibility
+* Damien Miller explained that his draft currently uses a custom, SSH-friendly wire encoding, whereas the "sundraft" (and the LAMPS working group) uses an alternative encoding.
+* Lucas Prabel expressed a preference for aligning with the LAMPS/JOSE encoding to ensure compatibility with existing cryptographic libraries that already implement those standards.
+* Alicja Kario argued that having an encoding natural to the SSH ecosystem is more beneficial for adoption, as the envelope format is secondary.
+* **Outcome**: The decision is left to the editor's discretion. Interoperability issues, if any, will be addressed as implementation progresses.
+
+#### Decoupling Certificates
+* Damien Miller proposed that instead of modifying the existing `draft-ietf-sshm-cert` to handle post-quantum/composite certificates, all composite-specific certificate formats and SSHFP DNS resource records should be defined directly within `draft-ietf-sshm-composite-sigs`. This decouples the progress of both drafts.
+* There were no objections to this proposed path.
+
+#### Private Key Representation (Seeds vs. Expanded Keys)
+* Damien Miller and Alicja Kario discussed the encoding of private keys for SSH agents. The draft currently uses seed representation for `ML-DSA` and `Ed25519`, but expanded keys for `ECDSA`. 
+* **Outcome**: Damien Miller will verify offline whether Section 4.1.2.2 (regarding raw private keys for `ML-DSA-87 + P-384`) requires adjustments.
+
+#### Strong Unforgeability (SUF-CMA) and Security Considerations
+* John Preuß Mattsson raised concerns that composite signatures might introduce malleability vulnerabilities and fail to comply with strict government definitions for hybrid schemes.
+* Damien Miller responded that while the SSH protocol itself does not rely on or benefit from strong unforgeability, the security considerations section should accurately reflect these concerns. 
+* Scott Fluhrer and John Preuß Mattsson discussed the malleability characteristics of the underlying algorithms (including `Ed25519`).
+* **Outcome**: Damien Miller will merge the security considerations text provided by John Preuß Mattsson into the next revision.
+
+---
+
+### 2. SLH-DSA
+* John Preuß Mattsson advocated for the adoption of SLH-DSA in SSH, citing its highly conservative, hash-based security properties and recent scares regarding potential breaks in lattice-based cryptography.
+* Damien Miller and Scott Fluhrer agreed that SLH-DSA is an excellent, conservative choice that is straightforward to implement, though Damien Miller noted he would not have the bandwidth to work on it until next year.
+* Guilin WANG voiced concern over the performance impact of SLH-DSA on resource-constrained IoT devices (e.g., Raspberry Pi) and suggested finishing the composite signatures draft first.
+* **Outcome**: The working group will prioritize completing the active `draft-ietf-sshm-composite-sigs` before formally adopting an SLH-DSA draft.
+
+---
+
+### 3. Any Other Business (AOB)
+
+#### Pure ML-DSA Draft
+* Dmitry Belyavskiy requested that the chairs reconsider their decision regarding the adoption of a pure (non-hybrid) ML-DSA signature draft, noting that implementations (such as in Go) are progressing.
+* Stephen Farrell and Job Snijders agreed to discuss this during their upcoming chairs' meeting.
+
+#### GSS-API PQC Draft
+* Dmitry Belyavskiy asked for a path forward on the GSS-API PQC draft (`draft-kario-gss-keyex-pqc`). 
+* Stephen Farrell and Job Snijders will review this draft and coordinate with the GSS-API/KITTEN chairs to determine the appropriate home for the work.
+
+#### SSH Transport-Level Compression Security
+* Job Snijders brought up a recent research paper (by Fabian et al.) demonstrating a side-channel attack on SSH transport-level compression (zlib LZ77) when the compression context is shared across multiple channels.
+* John Preuß Mattsson supported forbidding transport-level compression in SSH guidelines.
+* Damien Miller outlined two paths: (1) deprecate/disrecommend transport-level compression, or (2) design per-channel compression. He strongly favored deprecating transport-level compression completely, calling it "an artifact from the 1990s" that introduces brittle security mitigations.
+* Scott Fluhrer agreed that any shared compression state across channels must be avoided.
+* **Outcome**: The chairs will reach out to the authors of the side-channel paper to see if they are interested in drafting a proposal to deprecate transport-level compression in SSH.
+
+---
+
+## Decisions and Action Items
+
+| Action Item | Responsible Party | Status |
+| :--- | :--- | :--- |
+| Issue a mailing list call to check for interest in `ML-DSA-65` within `draft-ietf-sshm-composite-sigs` | Chairs (Stephen Farrell / Job Snijders) | Pending |
+| Verify seed vs. expanded private key representations in Section 4.1.2.2 of the composite draft | Damien Miller | Pending |
+| Merge John Preuß Mattsson's security considerations text into `draft-ietf-sshm-composite-sigs` and publish a new version | Damien Miller | Pending |
+| Hold a chairs' meeting to discuss pure ML-DSA adoption, the GSS-API draft, and next steps for other active WG documents (including `draft-ietf-sshm-cert`) | Chairs (Stephen Farrell / Job Snijders) | Scheduled |
+| Contact the authors of the SSH compression side-channel paper regarding a deprecation draft | Chairs (Stephen Farrell / Job Snijders) | Pending |
+
+---
+
+## Next Steps
+
+* The working group confirmed that they will keep their scheduled session for the upcoming IETF meeting in San Francisco.
+* A new revision of `draft-ietf-sshm-composite-sigs` will be published incorporating the editorial updates and certificate decoupling discussed during this session.
