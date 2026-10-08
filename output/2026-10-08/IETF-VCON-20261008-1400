@@ -1,0 +1,54 @@
+# [VCON](../wg/vcon.html)
+
+## Summary
+The VCON Working Group held an interim virtual meeting to discuss updates to the working group charter, review structural refactoring in the core specification (`draft-ietf-vcon-vcon-core`), discuss a new proposal for text and audio/video redaction, and analyze technical edge cases for call monitoring and AI tool utilization. 
+
+## Key Discussion Points
+
+### 1. Working Group Charter Revisions
+The group reviewed a pending pull request (PR) for the VCON charter. 
+* **Wording Adjustment:** Thomas McCarthy-Howe suggested refining the language around data rights to move beyond pure privacy. He proposed changing "trying to enforce privacy of personal data" to "respecting and enabling the personal data rights of the subjects in the conversation." Jonathan Rosenberg agreed with this change.
+* **Scope and AI:** The group discussed adding explicit references to AI agents to the charter. Scott Godin questioned if "AI" needed to be formally defined, but Jonathan Rosenberg advised against trying to write the specification inside the charter itself.
+* **Process:** The group agreed to merge the base PR, apply minor typo corrections and Thomas's proposed wording edits via follow-up PRs, and then share the clean draft with the broader mailing list for feedback. Chris Wendt will coordinate with AD Charles Eckel.
+
+### 2. Redaction Framework Proposal
+Jonathan Rosenberg presented a framework for standardizing redaction in vCons based on experience building AI agent integrations.
+* **Redaction Gaps:** In current implementations of `draft-ietf-vcon-vcon-core`, fully removing a dialog object causes noticeable context loss (e.g., in call transcripts or audio playbacks). There is currently no standardized way to indicate *where* a beep or placeholder occurs in audio/video, or how to detect text redaction without triggering false positives (e.g., standardizing on text like "XXX" can conflict with legitimate text).
+* **Proposed Approach:** 
+  * **Audio/Video:** Introduce a positional and redaction indicator that maps timestamps and content references to redacted segments.
+  * **Text:** Define a standardized programmatic reference token (e.g., `__redacted_rep_001`) mapped to a metadata dictionary specifying the type of PII redacted (e.g., credit card, SSN) and, optionally, the original value (with appropriate access controls).
+* **Consensus on Placement:** Thomas McCarthy-Howe and Chris Wendt agreed that this capability is critical for privacy compliance and should be integrated directly into the core specification (`draft-ietf-vcon-vcon-core`) rather than treated as an extension. Daniel Petrie agreed, noting that target completion for `draft-ietf-vcon-vcon-core` is roughly six months away, which leaves ample time to incorporate it.
+
+### 3. Core Specification Refactoring (`draft-ietf-vcon-vcon-core`)
+Daniel Petrie presented structural changes implemented in the editor's copy of `draft-ietf-vcon-vcon-core` (prior to the -05 draft submission) using the slide deck [Petrie vCon core editors update pre 05](https://datatracker.ietf.org/meeting/interim-2026-vcon-04/materials/slides-interim-2026-vcon-04-sessa-petrie-vcon-core-editors-update-pre-05-00).
+* **Session Object:** Formally defined a top-level `session` object and `sessions` array.
+* **Originator:** Moved the `originator` property from the individual dialog to the parent `session` object.
+* **Events Array:** Moved and renamed "party history events" to a top-level `events` array, and added session references globally where appropriate.
+* **Recording Set Removal:** Removed the redundant `recording_set` concept as its capabilities are now covered by the new `session` object.
+* **Transfers:** Removed the "transfer" dialog type and replaced it with four discrete event types: *Consultation*, *Blind Transfer*, *Consultative Transfer*, and *Transfer Abandoned*.
+* **CDDL Sockets:** Incorporated CDDL updates from Hank. To avoid parameter namespace collisions when extending the schema, Daniel modified the CDDL to use unique sockets across all top-level objects.
+* **Backward Compatibility:** Making the `session` object required if the events, dialog, or attachment arrays are populated will break backward compatibility. Jonathan Rosenberg suggested sending a dedicated query to the mailing list to gauge impact on existing implementations (e.g., Crexendo, Edward Guy's adjacent team, etc.). Edward Guy noted that breaking backward compatibility for the -05 draft is not an issue for his team.
+
+### 4. Technical Use Case Walkthroughs
+Daniel Petrie walked through two test cases using the refactored schema:
+
+* **Call Coaching/Monitoring (Multi-Session Topology):**
+  * **Scenario:** A customer and an agent are talking (Session 1), and a supervisor joins to coach the agent out-of-band (Session 2). The supervisor can hear both parties, but the customer cannot hear the supervisor. 
+  * **Event Placement:** Daniel placed the join/drop events on a parent "Session 0" because they applied to both Session 1 and Session 2. Jonathan Rosenberg pointed out that this requires a strict semantic rule where parent session events automatically cascade to children. The alternative is duplicating the events on Sessions 1 and 2, which would eliminate the need for the umbrella Session 0 entirely.
+  * **Dialogue vs. Session Durations:** The group noted that dialogs (e.g., the agent's recording) often extend past the end of a specific session (e.g., after the customer hangs up). Jonathan Rosenberg proposed a golden rule to address this: *In a session, a user "hears" all dialogs associated with that session for the duration between when they joined and left, for those dialogs which have content between their join and leave.*
+  * **Text-Based History Visibility:** Edward Guy raised the issue of text-based chats where a newly added party may or may not be granted visibility into historical messages. Jonathan Rosenberg suggested adding an optional "history join point/message ID" to join events to clarify what a participant actually had access to.
+
+* **AI Agent and Tool Conversation:**
+  * Daniel modeled a complex scenario involving a human, a top-level AI agent, a debugger agent, a history agent, and a test runner agent executing tool calls.
+  * Tool calls were represented as events (categorized into 7 conceptual event types). The exercise proved that the core session-and-dialog schema is robust enough to handle multi-agent tool execution without requiring core schema modifications.
+
+## Decisions and Action Items
+* **Action Item (Daniel Petrie):** Merge the base charter PR in GitHub, then coordinate with Jonathan Rosenberg and Thomas McCarthy-Howe to merge their follow-up edits (wording changes and typo fixes).
+* **Action Item (Chris Wendt):** Reach out to Area Director Charles Eckel to discuss the rechartering process.
+* **Action Item (Daniel Petrie):** Send an email to the VCON list querying active implementers on whether breaking backward compatibility for the `session` object requirement in the -05 draft of `draft-ietf-vcon-vcon-core` poses a significant problem.
+* **Action Item (Jonathan Rosenberg):** Review the core editor's copy and submit a PR containing the new redaction framework section to `draft-ietf-vcon-vcon-core` early next week.
+* **Action Item (Thomas McCarthy-Howe):** Submit updates to the overview document (`draft-ietf-vcon-overview`) to align with the refactored core draft.
+
+## Next Steps
+* **Next Interim Meeting:** Scheduled for **October 22, 2026, from 10:00 AM to 12:00 PM Eastern Time**.
+* **Submission Deadline:** The team aims to resolve open issues, merge Jonathan's redaction PR, and submit `draft-ietf-vcon-vcon-core-05` prior to the November 2nd IETF meeting submission deadline.
