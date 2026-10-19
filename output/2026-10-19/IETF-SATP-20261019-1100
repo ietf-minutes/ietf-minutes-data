@@ -1,0 +1,76 @@
+# [SATP](../wg/satp.html)
+
+## Summary
+
+The SATP Working Group held an interim session to review document status across core working group specifications, discuss transport substrate requirements, review open-source implementation updates, discuss Stage Zero registry models, and review a formal security analysis of the SATP core protocol.
+
+## Key Discussion Points
+
+### Meeting Administration & Document Status
+- Claire opened the session, reviewed the Note Well and meeting guidelines referencing the [2026-10-19-SATP-interim-chairs-slides](https://datatracker.ietf.org/meeting/interim-2026-satp-03/materials/slides-interim-2026-satp-03-sessa-2026-10-19-satp-interim-chairs-slides-00), and arranged note-taking.
+
+### Core Draft (`draft-ietf-satp-core`) & Architecture (`draft-ietf-satp-architecture`) Updates
+- **Draft Status**: Rafael Belchior presented recent updates to `draft-ietf-satp-core`. Version 13 incorporated updates to the media type (`application/satp+json`) and standardized error messages using RFC 9457 format (`urn:ietf:params:satp:<GROUP>:<code>`).
+- **Directorate Review Feedback**:
+  - **Security Directorate**: Highlighted concerns around failure modes, protocol termination semantics, trust anchor definitions, gateway attestation, key certification, cryptographic primitive binding, replay protection, and double-mint prevention.
+  - **General Directorate**: Raised points on potential race conditions, network block type definitions, and transport substrate choices.
+- **Crash & Recovery Handling**: Failure modes and race conditions arising from gateway crashes or network disconnects are addressed in `draft-ietf-satp-crash-recovery`. Thomas Hardjono and Rafael Belchior discussed referencing `draft-ietf-satp-crash-recovery` or published literature in non-normative references.
+- **IANA Considerations**: Hyojin Song, Martin Gfeller, and Rafael Belchior discussed the IANA URN structure for SATP error codes (`urn:ietf:params:satp:<GROUP>:<code>`).
+
+### Use Cases Draft (`draft-ietf-satp-use-cases`)
+- **Review Comments**: Hyojin Song summarized feedback from AD review (Andy), GenART, OpsDIR, and DNS DIR reviews.
+  - AD review recommended avoiding specific commercial/service names in normative text. Venkatraman Ramakrishna noted that brand names (e.g., Netflix) were removed from main text sentences but retained in reference titles.
+  - GenART review suggested changing references to `draft-ietf-satp-core` and `draft-ietf-satp-architecture` from informative to normative, and requested explicit trust model preconditions for participating networks/gateways.
+  - OpsDIR review noted EPP coordination requirements in Section 6.
+- Venkatraman Ramakrishna confirmed that authors will respond to and address remaining review comments on the mailing list.
+
+### Transport Layer Substrate Discussion
+- **Abstract Transport vs. Mandated Substrate**: Thomas Hardjono raised the question of defining `draft-ietf-satp-core` over an abstract transport layer while specifying required transport properties/capabilities, rather than hardcoding HTTP.
+- **Interoperability & Bindings**: Martin Gfeller pointed out that having an abstract transport requires defining minimal transport requirements in detail, and noted that without a mandated default, implementations could face interoperability challenges.
+- **Proposed Approach**: Define desirable transport properties in `draft-ietf-satp-core` and include specific transport bindings in appendices (e.g., Appendix A for gRPC, Appendix B for HTTP).
+- **Transport Choices**: Martin Gfeller offered to draft the HTTP binding appendix. Venkatraman Ramakrishna and Rafael Belchior noted that gRPC is widely used across blockchain implementations.
+- **Guidance**: Thomas Hardjono and Claire agreed to post the transport proposal to the mailing list for feedback from chairs and Area Directors regarding non-IETF specifications (e.g., gRPC) and appendix structure.
+
+### Open-Source Implementation Progress
+- Rafael Belchior presented progress on the open-source implementation in Hyperledger Cacti (Hermes / Weaver).
+- **API Architecture**:
+  - API 1 (Client-to-Gateway): Implemented using HTTP/HTTPS.
+  - API 2 (Gateway-to-Gateway): Implemented using gRPC to support bidirectional streaming, long-running transfers, built-in retry mechanics for crash recovery, multiplexing, and high performance.
+- **Current & Upcoming Features**: Currently aligned with version 13 concepts. Work is underway to implement full crash recovery protocols (`draft-ietf-satp-crash-recovery`), write-ahead logging, and state resynchronization.
+- **Roadmap**: 2025 plans include full spec compliance, Stage Zero registry integration, formal state machine modeling, and proof-of-concept deployments.
+- In response to a question from Hyojin Song, Rafael Belchior noted that theoretical advantages favor gRPC for concurrent long-lived sessions, though formal comparative benchmarks between HTTP and gRPC have not yet been run.
+
+### Stage Zero Registry & Transfer Context
+- Denis Avrilionis presented the Stage Zero registry architecture (`draft-ietf-satp-stage0`) and asset transfer context models.
+- **RVE Pattern**: Outlined a Registration, Verification, and Execution (RVE) pattern for managing the asset transfer lifecycle across networks, gateways, and registries.
+- **Cross-Chain Comparison**: Showed how this pattern compares with other architectures such as Chainlink CCIP.
+- **Opaque/Private Networks**: Rafael Belchior asked how verification is handled when gateways communicate with private/opaque blockchains. Denis Avrilionis explained that zero-knowledge (ZK) proofs or selective disclosure mechanisms enable state verification without exposing private data, connecting to gateway attestation.
+
+### Formal Security Analysis
+- 張一凡 presented PhD research on formal cryptographic security analysis of SATP core (Stage 2) using game-based and Universal Composability (UC) frameworks.
+- **Key Findings**:
+  - SATP core is proven secure (correct, atomic, unforgeable) assuming gateways are honest.
+  - Threat Model: A single compromised gateway holding signing keys can forge a lock assertion without locking assets on the source ledger. A remote target gateway cannot detect this if the source ledger is private/opaque or experiences forks.
+- **Proposed Mitigation**: Require lock signatures from $f+1$ validators of the source ledger ($n \ge 3f + 1$) after finality, embedding validator signatures into the lock claim format.
+- **Recommendations for Working Group**:
+  1. Note in Security Considerations that a compromised gateway can forge lock assertions.
+  2. Mandate that lock assertions refer only to finalized locks.
+  3. Explicitly list transport security requirements in core specs.
+  4. Consider validator-backed claim formats for future extensions.
+- Venkatraman Ramakrishna noted that SATP core was intentionally designed to be network-agnostic (supporting both blockchains and legacy enterprise systems), which is why consensus-based validator attestations were not built into the core protocol itself.
+- Thomas Hardjono and Hyojin Song requested sharing the slides and research paper on the SATP mailing list.
+
+---
+
+## Decisions and Action Items
+
+- **Action Item**: Martin Gfeller to draft an HTTP transport binding appendix for `draft-ietf-satp-core`.
+- **Action Item**: Thomas Hardjono to post a query to the SATP mailing list regarding transport abstraction, gRPC citation rules, and HTTP/gRPC appendix proposals to seek guidance from WG chairs and Area Directors.
+- **Action Item**: Venkatraman Ramakrishna and co-authors to address outstanding directorate review comments on `draft-ietf-satp-use-cases` on the mailing list.
+- **Action Item**: 張一凡 to share the security analysis presentation slides and ICBC 2026 paper with the SATP mailing list.
+
+---
+
+## Next Steps
+
+- Continue mailing list discussions on transport abstraction, crash recovery draft references, and registry models ahead of the upcoming IETF meeting.
