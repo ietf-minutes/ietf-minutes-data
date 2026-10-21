@@ -1,0 +1,63 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The Constrained RESTful Environments (CoRE) Working Group held an interim meeting to discuss two main technical items:
+1. A proposal for a new CoAP response code (2.06 No Content) to cleanly represent resources that exist but currently carry no representation, addressing issues identified during AD review of the CoAP PubSub specification.
+2. An update on CORECONF (COMI) open issues, pull requests, and implementation feedback, as well as a brief status check on `draft-ietf-core-yang-metadata`.
+
+## Key Discussion Points
+
+### Administrative and Intro
+* **Chairs**: Carsten Bormann, Marco Tiloca
+* Note Well was acknowledged. Agenda approved.
+
+### CoAP Response Code 2.06 (No Content)
+* **Presentation**: [No-Content](https://datatracker.ietf.org/meeting/interim-2026-core-14/materials/slides-interim-2026-core-14-sessa-no-content-00) (Presented by Carsten Bormann on behalf of Jaime Jiménez and himself)
+* **Context & Motivation**:
+  * An AD review on the CoAP PubSub draft pointed out the complexity of the "half-created" resource state. 
+  * Resources may exist before an initial representation is submitted (e.g., initialization in PubSub) or after representation expiry/retraction.
+  * Using `4.04 Not Found` or `4.05 Method Not Allowed` is semantically inaccurate and actively harmful when used with CoAP Observe (RFC 7641), as error responses terminate observation relationships.
+  * Using `2.05 Content` with empty payloads is ambiguous if the media type allows zero-length strings as valid content. Using `5.03 Service Unavailable` misrepresents valid resource behavior as a server error.
+* **Proposed Semantics for 2.06**:
+  * Indicates that the request succeeded, the target resource exists, but it currently has no representation that can be retrieved.
+  * Response carries no payload, no `Content-Format` option, and no `ETag`.
+  * Primarily designed for `GET` and `FETCH`. Standard modifications (`PUT`, `POST`, `PATCH`, `iPATCH`, `DELETE`) keep existing response codes (`2.02`, `2.04`).
+  * `Max-Age` can be included to indicate when a representation may become available or when to poll next. Receiving a `2.06` invalidates existing cached `2.05` representations for that resource.
+* **Interaction with Observe**:
+  * An observer requesting a resource that exists without content receives a `2.06` response while keeping the observation active. When a publisher updates the resource (e.g., via `PUT`), the server notifies the observer with a `2.05 Content` response containing the new payload.
+* **Proxy and Deployment Considerations**:
+  * RFC 7252 mandates that proxies forward unknown 2.xx success codes without caching them, preventing protocol breakage across legacy intermediaries.
+  * CoAP-to-HTTP cross-proxies can map `2.06` to HTTP `204 No Content`.
+* **Discussion**:
+  * **Marco Tiloca**: Noted that resource updates and observe behaviors might require clarifying updates to RFC 7641 (Observe) and RFC 8132 (PATCH/iPATCH).
+  * **Dave Robin**: Highlighted HTTP-to-CoAP mapping nuances, noting that HTTP `204` responses to `PUT` can carry ETags representing the entity tag for the resource, which proxies need to consider if `2.06` explicitly forbids ETags.
+  * **Laurent Toutain**: Asked for clarification on how `POST` interacts with no-content states.
+
+### CORECONF (COMI) Updates
+* **Presentation**: [CORECONF-update](https://datatracker.ietf.org/meeting/interim-2026-core-14/materials/slides-interim-2026-core-14-sessa-coreconf-update-00) (Reported by Carsten Bormann and Vojtěch Vilímek)
+* **GitHub Issues and PR Review**:
+  * 11 pull requests and 8 GitHub issues are active based on ongoing implementation work (led by Alexander Pelov and team).
+  * **PR #1 (iPATCH Atomicity)**: RFC 8132 requires iPATCH to be atomic. Discussion focused on whether constrained servers executing operations sequentially should strictly maintain atomicity or if execution semantics can be adjusted without creating excessive implementation complexity.
+  * **SIDs in URIs / Discovery**: Evaluated whether SID encoding in URIs is required for discovery under RFC 6690 Link Format. Vojtěch Vilímek and Laurent Toutain noted that URIs with SIDs are primarily used for Link Format discovery rather than standard fetching. Laurent Toutain expressed preference for static memory handling and depth parameters over URI-encoded SID hacks. The consensus was that deep-linking extensions do not need to be forced into base CORECONF and can be addressed separately.
+  * **PR #25 (JSON Merge Patch / Null vs Undefined)**: RFC 7396 (JSON Merge Patch) uses `null` to delete keys. In YANG-CBOR, `null` is a valid value, creating ambiguity. The proposal is to use CBOR `undefined` to signal deletion in IPATCH, preserving CBOR `null` semantics.
+  * **Event Streams with Empty Messages**: Discussion regarding event streams where no notifications have been generated yet. Vojtěch Vilímek clarified that subscription responses should be allowed to return an empty message (an empty CBOR sequence) so the observation request succeeds immediately without requiring dummy data.
+* **YANG Metadata Draft**:
+  * Carsten Bormann resubmitted `draft-ietf-core-yang-metadata` to refresh its status.
+  * Laurent Toutain reported that other draft authors are actively asking about SID allocations for metadata and agreed to direct interested reviewers to the working group.
+
+## Decisions and Action Items
+
+* **2.06 Response Code**:
+  * Submit a `-00` Internet-Draft defining the `2.06 No Content` response code prior to the draft submission cutoff.
+  * Update the CoAP PubSub draft in parallel to use `2.06 No Content` and remove the "half-created" state complexity.
+* **CORECONF**:
+  * Review open GitHub PRs; merge non-controversial editorial/clear pull requests to issue draft version `-22` before the draft cutoff.
+  * Leave more complex technical PRs (such as iPATCH atomicity and event stream formats) for further discussion.
+* **Tooling**:
+  * Vojtěch Vilímek created pull requests for the CoRE WG fork of `pyang` and will announce them to the WG and the YANG tooling mailing list.
+
+## Next Steps
+
+* Continue review and discussion on open CORECONF pull requests via GitHub and the mailing list.
+* The next CoRE WG interim meeting is scheduled in two weeks.
