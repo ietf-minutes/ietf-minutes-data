@@ -1,0 +1,56 @@
+# [DKIM](../wg/dkim.html)
+
+## Summary
+
+The DKIM Working Group held a virtual interim session to review updates to the core DKIM2 specification (`draft-ietf-dkim-dkim2-spec`), discuss post-quantum signature schemes and multi-signature semantics, and review implementation experience from active deployments. The working group confirmed that `draft-ietf-dkim-dkim2-spec` is nearing readiness for Working Group Last Call (WGLC) once version -08 is published.
+
+## Key Discussion Points
+
+### Administrivia and Milestones
+Pete Resnick and Murray Kucherawy opened the meeting using [Chair Slides](https://datatracker.ietf.org/meeting/interim-2026-dkim-06/materials/slides-interim-2026-dkim-06-sessa-chair-slides-00). 
+* Murray Kucherawy noted that no further virtual interims will be scheduled prior to IETF 125 in San Francisco.
+* Milestone updates were noted: adoption milestones for `draft-ietf-dkim-dkim2-spec` and `draft-ietf-dkim-dkim2-dns` have been completed, and the motivation draft milestone was removed. Target dates for submitting documents to the IESG were adjusted to March 2027.
+
+### DKIM2 Base Specification Updates (`draft-ietf-dkim-dkim2-spec`)
+Richard Clayton presented updates from version -07 of `draft-ietf-dkim-dkim2-spec` using [Clayton-Interim-Oct2026](https://datatracker.ietf.org/meeting/interim-2026-dkim-06/materials/slides-interim-2026-dkim-06-sessa-clayton-interim-oct2026-00).
+
+* **Signing Rules and Verification Reporting**: Draft -07 defines strict `MUST` requirements for signers while avoiding verifier `MUST` requirements, shifting verifier behavior to generating classification states (e.g., "validly signed" vs. "provisionally verified").
+* **Chain of Custody and Forwarding**: Signers `MUST NOT` sign or extend a chain on a message containing existing DKIM2 signature/instance headers unless it is a validly signed message or covered by an out-of-band arrangement. Intermediaries (such as alumni forwarders or mailing lists) that break validation must either re-originate the message by rewriting the `From:` header or remove broken DKIM2 history before applying a new signature.
+  * Emanuel Schorsch, Allen Robinson, Bron Gondwana, and Pete Resnick discussed the operational impact on mailing lists and forwarders. Emanuel Schorsch volunteered to propose text clarifying rules around extending signature chains.
+* **Tag-Value Syntax**: Standardized `tag=value` syntax definitions were restored in `draft-ietf-dkim-dkim2-spec` to allow `draft-ietf-dkim-dkim2-dns` and other related specifications to reference it directly without pointing to historic DKIM1 RFCs.
+* **Feature Removal and Additions**:
+  * The `do-not-explode` and `do-not-modify` flags were removed. Potential future mechanisms for permitted modifications will be evaluated separately or covered in `draft-ietf-dkim-dkim2-bcp`.
+  * Added a `u` (raw byte sequence) step for recipes and explicitly prohibited duplicate JSON keys.
+  * Added sections on international characters, authentic `From:` header enforcement, and generic DoS guidance in the Security Considerations section.
+
+### Post-Quantum Cryptography & Signature Semantics
+Richard Clayton led a discussion on signature algorithm selection in `draft-ietf-dkim-dkim2-spec` and `draft-ietf-dkim-dkim2-dns`.
+
+* **AND vs. OR Semantics**: The WG evaluated moving from OR semantics (where any single valid signature yields verification success) to AND semantics (where all present signatures must validate).
+* **Hybrid Schemes**: Under AND semantics, complex hybrid algorithm definitions (e.g., combining ML-DSA-44 with ED25519 or RSA) are unnecessary because signers can independently attach separate post-quantum and classical signatures.
+* **Transition and Deliverability Risks**: Wei Chuang and Allen Robinson raised concerns regarding transition periods, deliverability issues when introducing new algorithms, and potential flag days. Bron Gondwana noted that signature-stripping attacks would require counter/count protections under AND semantics. Richard Clayton suggested exploring syntax (such as an OR operator/delimiter) to facilitate algorithm rollouts.
+
+### Implementation Experience
+Bron Gondwana presented deployment experience and technical notes using [implementation-notes](https://datatracker.ietf.org/meeting/interim-2026-dkim-06/materials/slides-interim-2026-dkim-06-sessa-implementation-notes-00).
+
+* **Active Implementations**: Multiple independent implementations exist, including Perl (`Mail::DKIM`), Python, Erlang, C, JavaScript (browser-based validation via Cloudflare HTTP DNS), Mailman, TopicBox, and Fastmail (100% outbound DKIM2 signing and active verification).
+* **Performance Considerations**:
+  * Validating message instances can be optimized by streaming header and body ranges in a single pass.
+  * Signature verification can trigger up to 8 parallel DNS lookup requests immediately after header parsing.
+* **MTA Interoperability**: MTA header stripping/rewriting (such as Postfix removing `Content-Length` or `Bcc`) requires running DKIM2 milters early or configuring MTAs to disable header conversions.
+* **WGLC Readiness**: Pete Resnick, Richard Clayton, and Bron Gondwana noted that broad running code demonstrates draft maturity, supporting a move toward Working Group Last Call following the publication of draft -08.
+
+### Any Other Business
+Wei Chuang reported on updates to the DKIM2 DMARC / sender policy draft, highlighting discussions around the `auth=dkim2` tag to signal DKIM2 capability and prevent fallback attacks. Wei Chuang will continue refining the draft on the working group list before cross-posting to the DMARC working group.
+
+## Decisions and Action Items
+
+* **Emanuel Schorsch**: Send suggested replacement text to the mailing list clarifying Section 13/chaining rules regarding when intermediaries may extend or restart a DKIM2 signature chain.
+* **Richard Clayton**: Publish `draft-ietf-dkim-dkim2-spec`-08 incorporating IANA considerations, updated tag-value syntax references, and finalized signature semantics, preparing the draft for WGLC.
+* **Bron Gondwana**: Update the Authentication-Results draft for compatibility with `draft-ietf-dkim-dkim2-spec`-07.
+* **Wei Chuang**: Update `draft-ietf-dkim-dkim2-dns` to reference the tag-value syntax in `draft-ietf-dkim-dkim2-spec`.
+
+## Next Steps
+
+* The Working Group will review `draft-ietf-dkim-dkim2-spec`-08 on the mailing list ahead of initiating Working Group Last Call (WGLC).
+* The next formal working group meeting will take place at IETF 125 in San Francisco (January 2027).
