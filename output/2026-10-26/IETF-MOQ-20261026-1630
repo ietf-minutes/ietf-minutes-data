@@ -1,0 +1,61 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The MOQ working group held a virtual interim session to discuss administrative updates for upcoming meetings and address open pull requests and issues on [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) (Media over QUIC Transport). Key technical topics included parameter naming/inversion for track pausing, receiver state machine additions for object existence, mandatory track properties extensibility, cache update rules for properties, redirect semantics across track namespaces, end-to-group signaling interaction with object filtering, and encoder redundancy.
+
+## Key Discussion Points
+
+### Administrative & General Updates
+- **Chair Announcements**: Martin Duke and Magnus Westerlund presented the [Chair slides](https://datatracker.ietf.org/meeting/interim-2026-moq-30/materials/slides-interim-2026-moq-30-sessa-chair-slides-00). 
+  - Deadline for agenda requests for IETF 127 is the upcoming Monday. MOQ sessions will take place on Tuesday, Thursday, and Friday.
+  - The next hybrid interim will be held in Europe from 8 to 11 February; hosting proposals are requested.
+  - Proposed virtual interim dates prior to the February interim were circulated to the mailing list.
+- **PR & Issue Status**: Alan Frindell presented the status of working group PRs using [MOQT Issues and PRs](https://datatracker.ietf.org/meeting/interim-2026-moq-30/materials/slides-interim-2026-moq-30-sessa-moqt-issues-and-prs-01).
+
+### draft-ietf-moq-transport: Issues and Pull Requests
+
+#### PR #2002: Rename and Invert FORWARD Parameter to PAUSED
+- **Discussion**: The PR proposes renaming the `FORWARD` parameter to `PAUSED` and inverting the bit so that `0` represents unpaused (the default state) and `1` represents paused. Mo Zanaty favored the change because `0` as a default unpaused state is logical and aligns with pause semantics in other protocols (e.g., RTP). Magnus Westerlund noted that redefining the parameter avoids code point collisions. Martin Duke accepted the design change.
+- **Decision**: Merge PR #2002, renaming the parameter to `PAUSED` and inverting the bit value.
+
+#### PR #2022: Receiver Object State Machine — "Gone" State
+- **Discussion**: Alan Frindell explained that PR #2022 introduces a fourth state, `Gone`, to represent a persistent unknown state (e.g., following a publisher restart) that is cacheable up to the maximum cache duration without triggering a malformed track error upon out-of-order signals. Mo Zanaty and Martin Duke clarified the distinction between `Unknown` (transient, non-cacheable) and `Gone` (persistent unknown, cacheable). Magnus Westerlund noted that the specification text should be expanded to ensure `Gone` semantics are clear to readers.
+- **Decision**: Refine text clarity in PR #2022 and target merging before the draft deadline following review by Victor.
+
+#### PR #2005: Mandatory Track Properties (MTP) and Parsing Fetch Streams
+- **Discussion**: Alan Frindell raised concerns over unclear use cases for Mandatory Track Properties (MTP) in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/). He proposed that unless a concrete draft extension utilizing MTP is presented at IETF 127, the feature should be removed or replaced with reserved code points. Mo Zanaty suggested that defining gap signaling as an extension could serve as an MTP use case. Suhas Nandakumar agreed to evaluate potential use cases prior to IETF 127.
+
+#### Updating Cached Object and Track Properties
+- **Discussion**: The working group reviewed cache behavior when receiving updated track or object properties. Mo Zanaty and Suhas Nandakumar noted that relays must accept the latest wholesale set of properties for a given object or track without attempting to merge sets. Mo Zanaty and Suhas Nandakumar emphasized that immutable properties (used in end-to-end authentication mechanisms, such as [draft-ietf-moq-secure-objects](https://datatracker.ietf.org/doc/draft-ietf-moq-secure-objects/)) remain untouched by relays, while relays may update mutable property sets. Ian Swett and Martin Duke supported maintaining predictable cache replacement logic.
+- **Decision**: Reaffirm current draft behavior allowing relays to update cached track and object properties wholesale upon receiving a new set, without merging old and new properties.
+
+#### Issue #2000 & Redirects Changing Track Namespaces
+- **Discussion**: Alan Frindell raised the question of whether redirects should be allowed to change a track's namespace or track name during a publish request. Michal Hošna, Suhas Nandakumar, and Mo Zanaty highlighted the distinction between service-level redirects (re-steering to another relay/host) versus content-level redirects (changing track names or namespaces). Asad Saeed and Martin Duke noted security implications regarding namespace authentication and potential CORS-like vulnerabilities.
+- **Action Item**: Alan Frindell to consult HTTP and security experts regarding redirect rules across track namespaces before taking further action at IETF 127.
+
+#### End of Group (EOG) Signaling on Multi-Object Streams
+- **Discussion**: Alan Frindell and Martin Duke presented issue scenarios where object filtering interacts with the End of Group (EOG) bit on multi-object subgroups (e.g., when the final object of a group is filtered out). Several options were evaluated:
+  - *Option A*: Object filters break EOG signaling expectations.
+  - *Option B*: Reset the stream instead of sending a FIN if the EOG object is filtered out.
+  - *Option C*: Limit the EOG header bit to single-object subgroups, requiring multi-object subgroups to use an explicit End of Group status object.
+  - *Option D*: Remove the EOG header bit entirely.
+  - *Option E*: Specify that filters do not apply to status objects.
+  Ian Swett expressed support for Option D or Option C, noting that EOG is an object property rather than a subgroup property. Martin Duke and Steven Riedl discussed implementation complexity. Suhas Nandakumar supported clear, explicit status object signaling.
+- **Decision**: Alan Frindell to draft PR text based on Option C (limiting the EOG header bit to single-object subgroups and using explicit status objects for multi-object subgroups).
+
+#### Publisher Redundancy / Non-Byte-Identical Tracks
+- **Discussion**: Alan Frindell introduced a topic regarding redundant broadcast streams where two distinct encoders generate visually similar but non-byte-identical tracks under redundant setups. Allowing identical track names for non-byte-identical content would violate core MOQT uniqueness guarantees. Martin Duke noted that introducing mechanisms to handle this at the relay level represents a major architectural change. The topic was deferred for asynchronous discussion and further evaluation at IETF 127.
+
+## Decisions and Action Items
+
+### Decisions
+1. **PR #2002**: Merge PR #2002 to rename the `FORWARD` parameter to `PAUSED` and invert the bit definition (`0` = unpaused/default, `1` = paused).
+2. **PR #2022**: Proceed with adding the `Gone` state to the object state machine, with editorial refinements to clarify semantics prior to merging.
+3. **Cache Property Updates**: Retain existing specification behavior where relays overwrite cached track and object properties wholesale upon receiving updated sets, without merging.
+4. **End of Group (EOG) Signaling**: Adopt Option C for EOG signaling (constraining the EOG header bit to single-object subgroups and utilizing status objects for multi-object subgroups).
+
+### Action Items
+- **Alan Frindell**: Prepare PR text implementing Option C for End of Group signaling.
+- **Alan Frindell**: Solicit feedback from HTTP/security experts regarding cross-namespace redirects prior to IETF 127.
+- **Suhas Nandakumar / Mo Zanaty**: Evaluate concrete use cases for Mandatory Track Properties (MTP) ahead of IETF 127.

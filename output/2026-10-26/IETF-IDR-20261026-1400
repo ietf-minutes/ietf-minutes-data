@@ -1,0 +1,111 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The Inter-Domain Routing (IDR) Working Group held an interim meeting to review ongoing work across Segment Routing (SR) and Traffic Engineering (TE) extensions, BGP Flow Specification Version 2 (FSv2) specifications, BGP base protocol maintenance (`draft-ietf-idr-bgp4-rfc4271bis`), BGP best path next-hop selection mechanisms, and core protocol adoption candidates. Key presentations included updates on SR Policy BFD parameters, Network Resource Partitioning (NRP), FSv2 filter and action components, `draft-ietf-idr-bgp4-rfc4271bis` error handling integration, BGP next-hop selection framework, Add-Path limits, and Only-To-Customer (OTC) route server verification.
+
+---
+
+## Key Discussion Points
+
+### 1. SR and TE Drafts
+
+* **BGP SR Policy Indications for BFD Configuration**
+  * **Presentation:** Presented by liusong ([02-SR Policy BFD extension](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-02-sr-policy-bfd-extension-00)).
+  * **Discussion:** The draft defines optional S-BFD parameters (Desired Min TX Interval, Detection Multiplier) within the encapsulation attribute carried in SR Policy NLRIs to unify policy and monitoring intent. Sue Hares and Jeffrey Haas noted that while BFD usage with SR is common, carrying BFD provisioning parameters in BGP state is novel; input will be coordinated with the BFD and SPRING working groups.
+
+* **BGP Extensions for Network Resource Partition (NRP)**
+  * **Presentation:** Presented by ruiqianhu ([03 -draft-li-idr-bgp-nrp NRP Ext. Community](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-03-draft-li-idr-bgp-nrp-nrp-ext-community-00); context in `draft-ietf-idr-bgp-ls-sr-policy-nrp`).
+  * **Discussion:** Proposes decoupling SR policies from NRPs by advertising NRP IDs in standard routing updates via a new opaque extended community, allowing multiple NRPs to share a common SR policy. Keyur Patel and Jeffrey Haas raised concerns regarding BGP PDU space consumption (8 octets per extended community) and potential issues if extended communities are filtered or dropped along the path.
+
+---
+
+### 2. BGP Flow Specification Version 2 (FSv2)
+
+* **FSv2 Basic IP Overview (`draft-ietf-idr-fsv2-ip-basic`)**
+  * **Presentation:** Presented by Sue Hares ([04-FSv2 Basic IP Summary-v1](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-04-fsv2-basic-ip-summary-v1-00)).
+  * **Discussion:** Summarized upcoming updates in versions -09 and -10. FSv2 utilizes a single NLRI with Unicast and VPN SAFIs. Key features include TLV component ordering, dependency filter chains, component flags (mandatory vs. optional/ignore), and validation rules. Keyur Patel noted that version 10 will define capability advertisement for filter families.
+
+* **FSv2 Time Filters (`draft-zzd-idr-flowspec-scheduling`)**
+  * **Presentation:** Presented by Li Zhang ([05-FSv2-Time filters zzd-idr-flowspec-scheduling](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-05-fsv2-time-filters-zzd-idr-flowspec-scheduling-01)).
+  * **Discussion:** Defines a scheduling time component (type 200) under the time filter family. Based on feedback, the authors removed FSv1 extensions, eliminated a redundant priority field, and added clarifications regarding UTC clock synchronization assumptions.
+
+* **FSv2 Bitwise IP Filters (`draft-kao-idr-bitwise-ip-filters`)**
+  * **Presentation:** Presented by Nat Kao ([06-FSv2 Bitwise Filters draft-kao-idr-bitwise-ip-filters](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-06-fsv2-bitwise-filters-draft-kao-idr-bitwise-ip-filters-00)).
+  * **Discussion:** Component types were renumbered to align with `draft-ietf-idr-fsv2-ip-basic` for IPv4/IPv6 source and destination payload bitwise matching.
+
+* **FSv2 Packet Content Filter (`draft-cui-idr-content-filter`)**
+  * **Presentation:** Presented by Yujia Gao ([07-FSv2-draft-cui-idr-content-filter](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-07-fsv2-draft-cui-idr-content-filter-00)).
+  * **Discussion:** Defines component type 3000 to match static payload patterns in DDoS mitigation scenarios. Hardware testing on an ASIC demonstrated low latency overhead (~2 µs at 100 Gbps). Addressing comments from Robert Raszuk and Jie Dong, the presentation highlighted that this filter is meant for unencrypted, static patterns and requires explicit trust/import policy on eBGP boundaries.
+
+* **FSv2 FlowSpec for QUIC (`draft-lin-idr-flowspec-quic`)**
+  * **Presentation:** Presented by Yujia Gao ([08-FSv2-draft-lin-idr-flowspec-quic](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-08-fsv2-draft-lin-idr-flowspec-quic-00)).
+  * **Discussion:** Defines components matching visible outer QUIC headers (Destination Connection ID, Source Connection ID, Header Flags) to allow traffic steering for QUIC sessions sharing common UDP ports.
+
+* **Routing Filter Family (IP and AS/Community Filters)**
+  * **Presentation:** Presented by Sue Hares ([09-IP and AS/community Filters for BGP Flow  Specification](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-09-ip-and-ascommunity-filters-for-bgp-flow-specification-01) and [09-FSv2-Routing-Filter-Family-Components](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-09-fsv2-routing-filter-family-components-00)).
+  * **Discussion:** Explored filter components combining packet header matching with Loc-RIB route lookups to check Origin AS or Community attributes of the matching route.
+
+* **FSv2 Actions: SRv6 Path Redirect, Redirect to Direct IP, and Traffic Compression**
+  * **SRv6 Path Redirect (`draft-chen-idr-srv6-flowspec-path-redirect`):** Presented by Sue Hares ([10-draft-chen-idr-srv6-flowspec-path-redirect](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-10-draft-chen-idr-srv6-flowspec-path-redirect-00)), redirecting traffic to Binding SIDs or SRv6 SIDs.
+  * **Redirect to Direct Connect IP (`draft-zhiwei-idr-redirect-ip`):** Presented by Zhiwei An ([12-FSv2-Redirect-to-Direct-ip Ext-Com Action](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-12-fsv2-redirect-to-direct-ip-ext-com-action-00)), introducing a Direct-link flag (D-bit) to invalidate redirect rules if the directly connected interface fails, preventing forwarding loops.
+  * **Traffic Compression Action (`draft-shen-idr-flowspec-traffic-compression-action`):** Presented by Sue Hares ([13-draft-shen-idr-flowspec-traffic-compression-action](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-13-draft-shen-idr-flowspec-traffic-compression-action-00)), signaling RFC 3172 compression parameters. Joel Halpern noted on chat that encapsulation requirements associated with compression need to be clearly specified.
+
+---
+
+### 3. BGP Base Specification Maintenance (`draft-ietf-idr-bgp4-rfc4271bis`)
+
+* **Presentation:** Presented by John Scudder ([14-RFC4271bis Update](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-14-rfc4271bis-update-00)).
+* **Key Topics:**
+  * Re-emphasized scope: documenting existing mature protocol behavior to advance to Full Standard, rather than introducing new mechanisms.
+  * **Version 03 Updates:** Fully integrated RFC 7606 revised error handling procedures. Added normative text allowing implementations to revert to session reset via configuration. Marked unreachable error subcodes as `deprecated`. Added a formal definition for "recognized".
+  * **Open Question on NLRI Encodings:** John Scudder solicited WG input on how to handle legacy AFI/SAFI 1/1 encodings versus RFC 4760 (MP-BGP) encodings.
+  * **Discussion:** Robert Raszuk, Jeffrey Haas, Keyur Patel, and Jie Dong discussed on chat whether RFC 4760 should be merged into the base specification or kept separate, noting tradeoffs between document complexity and reflecting modern implementation practices.
+
+---
+
+### 4. BGP Best Path Next-Hop Selection Framework
+
+* **Framework Introduction and Overview**
+  * **Presentation:** Presented by Sue Hares ([15-18-19-Hares-BGP Best Path Selection Next Hop](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-15-18-19-hares-bgp-best-path-selection-next-hop-03)).
+  * **Discussion:** Outlined how various next-hop documents (`draft-ietf-idr-bgp-bestpath-selection-criteria`, `draft-ietf-idr-bgp-bestpath-nh-selection`, `draft-ietf-idr-multinexthop-attribute`, SR policy drafts) relate to RFC 4271 tie-breaking rules.
+
+* **BGP Best Path Next-Hop Selection Enhancements (`draft-ietf-idr-bgp-bestpath-nh-selection`)**
+  * **Presentation:** Presented by Olivier Vroonen ([16-BGP Best Path Next-Hop Selection Enhancements](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-16-bgp-best-path-next-hop-selection-enhancements-00)).
+  * **Discussion:** Addresses broken data planes and inconsistent metric comparisons across different transport types by introducing a Path Resolution Tuple (Resolution Key + Resolution Context) and Resolution Constraints / Preferences into the decision process. Kaliraj Vairavakkalai noted that resolution schemes (e.g., CT/CAR) can achieve similar functionality without making path preference changes mandatory. Jeffrey Haas highlighted three essential requirements: reachability check, convergence toward the egress exit, and consistent domain-wide forwarding to avoid loops.
+
+* **BGP Next-next Hop Nodes (`draft-ietf-idr-next-next-hop-nodes`)**
+  * **Presentation:** Presented by Kevin Wang ([17-Core-NH-draft-ietf-idr-next-nexthop-NHC](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-17-core-nh-draft-ietf-idr-next-nexthop-nhc-00)).
+  * **Discussion:** Signals next-next hop nodes within the BGP Next Hop Capability (NHC) attribute to enable global load balancing (GLB) and offloading in CLOS fabrics. The draft was adopted and is undergoing revision based on directorate reviews.
+
+* **MultiNexthop Attribute (`draft-ietf-idr-multinexthop-attribute`)**
+  * **Discussion:** Sue Hares and Kaliraj Vairavakkalai reviewed how the multi-nexthop attribute specifies multiple next hops, tie-breaking criteria, and explicit forwarding actions (e.g., replicate, push, pop, swap), expanding traditional BGP next-hop semantics to broader forwarding paradigms.
+
+---
+
+### 5. Core Adoptions
+
+* **BGP Add-Path Limits (`21-Core-Adoption-Add-Path-limits`)**
+  * **Presentation:** Presented by Donatas Abraitis ([21-Core-Adoption-Add-Path-limits](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-21-core-adoption-add-path-limits-00)).
+  * **Discussion:** Signals a receiver's maximum desired paths per prefix using a new capability, and integrates a notification subcode when limits are exceeded. Kaliraj Vairavakkalai, Keyur Patel, and Robert Raszuk raised concerns regarding update group fragmentation and potential path oscillations when receivers specify different path limits.
+
+* **Only-To-Customer (OTC) Route Server Verification (`22-Core-Adoption-OTC-RS-Verification`)**
+  * **Presentation:** Presented by Antonis Chariton ([22-Core-Adoption-OTC-RS-Verification](https://datatracker.ietf.org/meeting/interim-2026-idr-03/materials/slides-interim-2026-idr-03-sessa-22-core-adoption-otc-rs-verification-00)).
+  * **Discussion:** Updates RFC 9234 procedure for route server clients to discard routes containing an OTC attribute if the AS in OTC does not match the route server AS, preventing route leaks across IXPs when route servers lack RFC 9234 implementation. The proposal received positive feedback on the list.
+
+---
+
+## Decisions and Action Items
+
+1. **FSv2 Draft Alignment:** Authors of individual FSv2 filter and action drafts are to align their component type numbering and formats with `draft-ietf-idr-fsv2-ip-basic`.
+2. **`draft-ietf-idr-bgp4-rfc4271bis` Feedback:** John Scudder opened a mailing list thread to gather consensus on incorporating RFC 4760 MP-BGP encodings versus maintaining standalone status.
+3. **External WG Coordination:** Sue Hares and Jeffrey Haas will coordinate with the BFD and SPRING working groups regarding the BFD parameter extensions for BGP SR Policy.
+4. **Add-Path Limits Early Allocation:** Upon successful adoption of `21-Core-Adoption-Add-Path-limits`, the chairs will request early IANA allocation for the BGP PC Notification subcode ("maximum number of paths").
+
+---
+
+## Next Steps
+
+1. **FSv2 Progression:** Sue Hares to publish version -09 and -10 of `draft-ietf-idr-fsv2-ip-basic` on GitHub, incorporating capability signaling and standard validation checks.
+2. **Adoption Summaries:** Chairs to finalize and post working group adoption call results for the FSv2 filter/action candidates and core protocol candidates (`21-Core-Adoption-Add-Path-limits` and `22-Core-Adoption-OTC-RS-Verification`).
+3. **IETF 126 Agenda Preparation:** Further consolidate discussions on next-hop path selection frameworks, `draft-ietf-idr-bgp4-rfc4271bis` open issues, and FSv2 core specifications ahead of IETF 126.

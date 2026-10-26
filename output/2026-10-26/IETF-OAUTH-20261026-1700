@@ -1,0 +1,82 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+This document records the minutes for the OAUTH Working Group virtual interim meeting (Interim 2026-OAUTH-10). The session focused on AI agent authorization and featured a deep-dive presentation on "mission-bound authorization"—a framework to govern approved work rather than relying solely on credentials and access tokens. 
+
+Karl McGuinness presented the framework, detailing how agent intent can be shaped into deterministic, user-approved authority ("missions"), how missions bind to OAuth tokens, mechanisms for job-level revocation, and a proposed Minimum Viable Product (MVP). The working group discussed the scope of protocol changes, handling dynamic authority discovery, resource server requirements, and how to manage the complexity of overlapping agent authorization proposals.
+
+## Key Discussion Points
+
+### 1. Welcome and Administrative Updates
+* **Presenter:** Hannes Tschofenig
+* **Slides:** [Chairs Slides](https://datatracker.ietf.org/meeting/interim-2026-oauth-10/materials/slides-interim-2026-oauth-10-sessa-chairs-slides-00)
+* Hannes Tschofenig opened the session, noting that this interim meeting concludes the series of virtual interims organized to address the high volume of AI agent authorization requests prior to the upcoming IETF meeting.
+* Deb Cooley and Hannes Tschofenig noted the note-taking and administrative setup. Justin Richer noted in chat that a joint WIMSE/OAuth meeting is scheduled for the next IETF meeting.
+
+---
+
+### 2. Governing the Approved Work, Not Just the Token
+* **Presenter:** Karl McGuinness
+* **Slides:** [Governing the approved work, not just the token](https://datatracker.ietf.org/meeting/interim-2026-oauth-10/materials/slides-interim-2026-oauth-10-sessa-governing-the-approved-work-not-just-the-token-01)
+
+#### Problem Statement & Background
+* OAuth authorization is historically centered around credentials and grants rather than the specific unit of work to be performed.
+* In agentic scenarios where an agent executes a multi-step task (e.g., reviewing Q3 invoices and posting adjustments up to $500), OAuth lacks an interoperable object representing the approved work across token refreshes, token exchanges, or multiple authorization servers.
+* Existing revocation options (revoking the client, revoking tokens, or revoking a grant) do not allow stopping a specific job by name across code refreshes and token exchanges without invalidating broader client access.
+* Related work across the ecosystem includes work on identity chaining, Rich Authorization Requests (RAR), token status lists, shared signals, and transaction challenges as described in [draft-ietf-oauth-deferred-token-response](../draft-ietf-oauth-deferred-token-response/). However, a missing object remains: what was this work approved to do, and is it still approved?
+
+#### Mission Architecture Concepts
+* **Mission:** A durable, approval-backed governance object held by a mission issuer. It makes approved work addressable and acts as an authority ceiling.
+* **Roles:** A Mission Issuer can be co-located with an Authorization Server (AS) or run as a standalone Mission Authority Server complementing the AS.
+* **Mission Shaping:** The process of translating probabilistic, untrusted intent (e.g., natural language prompts) across a trust boundary into deterministic, approved authority. The human or policy approves the translated authority set rather than the raw prompt.
+* **Ceiling & Delegation:** An agent may improvise *how* it performs the work within the approved ceiling, but cannot improvise *authority*.
+
+#### Minimum Viable Product (MVP) Proposal
+Karl McGuinness outlined a simplified MVP focusing on **Commit, Narrow, and Gate**:
+1. **Commit / Proposal:** The client sends a `mission_intent` parameter via Pushed Authorization Requests (PAR) containing prompt goals, hints, and requested RAR details.
+2. **Approval:** The AS shapes the intent into a proposed authority set, obtains user consent (or evaluates policy), and commits an active mission record with a unique `mission_id`.
+3. **Gate:** Issued access/refresh tokens carry a `mission_id` claim. Token issuance, refresh, and token exchange evaluate whether the mission remains valid and whether requested scopes/RARs remain within the approved mission ceiling.
+4. **Revocation:** Introduces a dedicated mission revocation mechanism (revoking by `mission_id`) so that an entire job can be cancelled across all derived tokens without revoking the client credential.
+
+---
+
+### 3. Discussion and Technical Feedback
+
+* **Mission Shaping Scope:**
+  * Pieter Kasselman observed (in chat and verbally) that mission shaping conceptually resembles translating a search query into structured results. He emphasized that turning intent into a mission is largely out of scope for OAuth standardisation, which should focus on signaling downstream that these authorization steps occurred.
+  * Karl McGuinness agreed that the "how" of shaping is explicitly out of scope for OAuth standardization, but noted that structured evidence and attestations produced during shaping can be carried in OAuth requests/claims.
+
+* **Dynamic Discovery and Authority Ceilings:**
+  * Yaron Zehavi asked whether the authority set approved at the beginning is a rigid ceiling or if an agent can dynamically request additional authority as it discovers new resources.
+  * Karl McGuinness clarified that while the MVP models a strict upper bound, protocol extensions allow for mission amendments, versioning, and re-approval loops (either via automated policy or re-prompting the human).
+
+* **Resource Server (RS) Impact:**
+  * Yaron Zehavi asked if Resource Servers must be modified to be mission-aware.
+  * Karl McGuinness explained that RS awareness is optional. In basic deployments, the AS gates token issuance against the active mission, issuing standard audience-scoped tokens or RARs to the RS. Advanced deployments can optionally adopt RS-level mission checks for time-of-use/time-of-check validation or action-level evidence logging.
+
+* **Revocation vs. Token Lifetimes:**
+  * Hannes Tschofenig questioned how mission revocation interacts with token lifetimes.
+  * Karl McGuinness noted that because $n$ tokens across multiple authorization steps can derive from a single mission, binding tokens to a `mission_id` allows targeted revocation of the entire job context across systems (e.g., via Shared Signals Framework or introspection) without needing to track every individual JTI or revoke the client.
+
+* **Managing Specification Complexity:**
+  * Flemming Andreasen and Pieter Kasselman expressed concern over the breath and length of the combined mission documentation set (noting large document sizes), recommending that the work be clearly decomposed into distinct use cases, requirements, and targeted protocol extensions to make it digestible.
+  * Yaron Zehavi supported the core intent-governance concept as a missing piece for delegated IAM control and consent fatigue prevention, requesting clear guidance on how this framework layers with other active WG drafts.
+  * Karl McGuinness acknowledged the complexity, stating the presentation aimed to provide a unifying reference architecture to map existing WG proposals, and committed to modularizing and simplifying the specifications.
+  * Brian Campbell noted in chat the difficulty of keeping up with the volume of proposals in this space.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* No formal consensus calls or formal decisions were taken during this interim meeting.
+
+### Action Items
+* **Karl McGuinness:** Package and distribute a simplified whitepaper / executive summary focusing specifically on the MVP protocol boundary to help the WG digest the proposal ahead of IETF 122.
+* **Working Group Participants:** Review the mission-bound authorization concept and provide feedback on the mailing list regarding the proposed MVP scope and alignment with active OAuth drafts.
+
+---
+
+## Next Steps
+* The OAUTH Working Group will continue discussions on AI agent authorization framework proposals at the upcoming IETF meeting, including joint coordination with the WIMSE Working Group.
