@@ -1,0 +1,52 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The CoRE Working Group held an interim meeting prior to IETF 127. The meeting focused on two primary topics: a proposed new CoAP response code (2.06 No Content) designed to handle resource lifecycles where a resource exists without a current representation (such as in CoAP PubSub), and open design issues in the CoAP Management Interface (CORECONF / COMI) specification (`draft-ietf-core-comi`).
+
+---
+
+## Key Discussion Points
+
+### Administrivia & Announcements
+- **Presentation:** [Chairs' slides](https://datatracker.ietf.org/meeting/interim-2026-core-15/materials/slides-interim-2026-core-15-sessa-chairs-slides-02) presented by Marco Tiloca.
+- Marco Tiloca highlighted an IETF 127 Hackathon project focusing on implementation and testing of `draft-ietf-core-coap-bp` (Constrained Application Protocol over Bundle Protocol), led by Carlos Calveras and Alma Calveras.
+- In chat, Martine Lenders noted plans to add an Oblivious CoAP project (`aiocoap`) to the hackathon.
+- The draft agenda for the IETF 127 CoRE session (scheduled for Wednesday) was noted with no immediate objections.
+
+### CoAP 2.06 No Content Response Code
+- **Presentation:** [No Content](https://datatracker.ietf.org/meeting/interim-2026-core-15/materials/slides-interim-2026-core-15-sessa-no-content-00) presented by Carsten Bormann.
+- **Context & Motivation:** Triggered by an Area Director review of the CoAP PubSub document. To avoid complex "half-created" topic states, a `2.06 No Content` response code is proposed. This response indicates that a target resource exists (and can be observed or targeted with `GET`/`FETCH`), but does not currently possess a representation.
+- **Resource Lifecycle and Semantics:**
+  - Carsten Bormann outlined state transitions between: (1) no resource, (2) resource existing with no representation, and (3) resource existing with representation.
+  - Carsten Bormann and Mikolai Gütschow (in chat) discussed the distinction between empty content (payload of length zero) and no representation. Empty content semantics depend on the media type, whereas "no content" indicates no representation is present (analogous to a null pointer).
+  - **ETags:** ETags are not applicable to `2.06 No Content` responses because there is no content payload to identify. Martine Lenders agreed in chat that omitting ETags for 2.06 responses is sensible.
+  - **Caching and Max-Age:** `2.06 No Content` responses are cacheable. `Max-Age` dictates cache freshness of the no-content state, which must be distinguished from the expiration of origin resource values.
+  - **State Transitions & REST Methods:** Transitioning resources back to a no-content state (purging/clearing) or creating resources directly into a no-content state requires standardized method handling (e.g., via `POST`, `PUT` with a clear option, or a new method).
+  - **Authorization (AIF / RFC 9237):** Authorization Information Format (AIF) maps permissions to REST methods. Clearing or setting a resource to no-content may require distinct permissions to be evaluated in AIF.
+  - **Interoperability & Proxies:** Client handling, behavior in implementations such as `libcoap`, and cross-proxy mapping between CoAP `2.06` and HTTP `2.04` were discussed.
+- **PubSub Dependencies:** Esko Dijk (document shepherd for PubSub) and Carsten Bormann discussed working group involvement and document flow regarding the updates to the PubSub specification. Esko Dijk suggested adding a transition from No Content back to Not Found (upon resource deletion) to the state diagram.
+
+### CoAP Management Interface (COMI / CORECONF)
+- **Document:** `draft-ietf-core-comi`
+- **Presentation:** [Coreconf-dash22](https://datatracker.ietf.org/meeting/interim-2026-core-15/materials/slides-interim-2026-core-15-sessa-coreconf-dash22-00) presented by Carsten Bormann.
+- Carsten Bormann presented updates in `draft-ietf-core-comi-22`, which resolves approximately twelve minor issues, and requested working group review on the changes from `-21` to `-22`.
+- **Key Technical Issues:**
+  - **Issue 26 (SIDs in URI Path Segments):**
+    - In earlier versions (up to draft `-12`), SIDs were encoded into URI path segments using base64 integers. This was removed in draft `-13` when COMI focused on using `FETCH` and `iPATCH` with YANG Identifiers/Instances in request payloads.
+    - Implementation experience has raised scenarios where addressing subtrees directly via URI paths (e.g., during discovery) is desired.
+    - Vojtěch Vilímek clarified that a data store formatted as `yang-data+cbor` contains maps keyed by SIDs for the root subtrees.
+    - Laurent Toutain advocated keeping URIs and datastore identifiers separate for the core specification to avoid delaying publication, suggesting extensions could address URI-based subtrees later.
+    - Carsten Bormann supported keeping the main specification concise while ensuring potential future extension paths remain valid.
+  - **Issue 29 (Content Format on POST):** Carsten Bormann noted that requiring an explicit Content-Format on `POST` requests avoids ambiguity compared to relying on implicit server defaults.
+  - **Transport over TCP:** In response to a query from Vojtěch Vilímek regarding running COMI over TCP, Carsten Bormann noted that while COMI can run over CoAP over TCP, transport-specific signaling features are out of scope for the base document.
+
+### Other Business (AOB)
+- Laurent Toutain and Javier FERNANDEZ noted plans for IETF 127 presentations, including SID extensions (to be presented by Javier FERNANDEZ remotely or Laurent Toutain on-site) and SID DNS usage.
+
+---
+
+## Next Steps
+
+- Prepare and submit revision `-01` of the `2.06 No Content` draft ahead of IETF 127 for working group feedback and potential adoption discussion.
+- Review `draft-ietf-core-comi-22` and address the remaining open design issues to prepare revision `-23` prior to IETF 127.
