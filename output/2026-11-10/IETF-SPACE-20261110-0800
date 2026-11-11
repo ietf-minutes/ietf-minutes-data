@@ -1,0 +1,170 @@
+# [SPACE](../wg/space.html)
+
+## Summary
+
+The SPACE Research Group (SPACE RG) held an interim meeting hosted by ESA at the European Space Operations Center (ESOC) in Darmstadt, Germany. The meeting brought together researchers, space agency operational leads, and industrial standardization experts to discuss the convergence of Internet protocol architectures with space networks and non-terrestrial networks (NTN). 
+
+Key topics included:
+- Transport protocol integration (QUIC convergence layers for Delay-Tolerant Networking / Bundle Protocol).
+- Environmental sustainability and carbon footprint accounting of LEO satellite constellations and in-orbit edge compute.
+- Real-world simulation and routing validation of mega-constellations using discrete-event frameworks (OMNeT++/INET).
+- Operational lessons from interplanetary communication networks (the ESA/NASA Mars Relay Network).
+- Security architectures and trust boundaries in 3GPP 5G/6G NTN and Open RAN (O-RAN).
+- Scalable routing logic in time-varying networks, comparing link-state, geographic checkpoint routing, and segment routing.
+- Architectural principles for onboard IP routers ("flying subnets") and IETF standard technology adoption in constellation networks.
+
+---
+
+## Key Discussion Points
+
+### Welcome and Introduction to ESOC
+* **Presenter**: Daniel Fischer (ESA)
+* **Slide Deck**: [Welcome and introduction to ESOC (Daniel Fischer, ESA)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-welcome-and-introduction-to-esoc-daniel-fischer-esa-00)
+
+Daniel Fischer welcomed participants to ESOC, detailing ESA's operational role across 23 member states. ESOC manages complex interplanetary missions (e.g., JUICE, BepiColombo, Hera), ground systems engineering, and the STRACK tracking station network (featuring 35-meter deep-space antennas). 
+
+Fischer outlined ESA’s roadmap toward space-based communication architectures, including HydRON (LEO optical), Marconi (Mars optical network), Moonlight/LunarNet (lunar PNT and communications), and IRIS² (the EU LEO/MEO governmental communication constellation). He highlighted the necessity of international standardization (CCSDS, IETF) to realize an interoperable "Solar System Internet."
+
+### Chairs' Opening Remarks
+* **Presenters**: Juan Fraire, Joerg Ott
+* **Slide Deck**: [Chairs' slides: Note Well, goals of the day, agenda](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-chairs-slides-note-well-goals-of-the-day-agenda-01)
+
+Juan Fraire reviewed the IETF/IRTF Note Well guidelines (IPR disclosure rules, code of conduct, privacy policy, Meetecho recording consent). The chairs emphasized that as an IRTF research group, Space RG focuses on long-term systems research, informational and experimental frameworks, reference evaluation scenarios, datasets, and tooling to support future IETF standardization efforts.
+
+---
+
+### Session 1: Research Talks
+
+#### Earth-to-Moon Networking: Comparison of End-to-End and DTN Approaches
+* **Presenter**: Tomaso de Cola (DLR)
+* **Slide Deck**: [Earth-to-Moon Networking: Comparison of End-to-End and DTN Approaches (Tomaso de Cola, DLR)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-earth-to-moon-networking-comparison-of-end-to-end-and-dtn-approaches-tomaso-de-cola-dlr-00)
+
+Tomaso de Cola presented research conducted with the University of Bologna on running the Bundle Protocol (BPv6 [RFC 5050] / BPv7 [RFC 9171]) over a custom QUIC Convergence Layer (QUIC-CL). 
+* **Protocol Design**: QUIC-CL builds on QUIC features (RFC 9000, RFC 9001) such as native TLS encryption, multiplexed streams, and datagram extensions. It defines three service levels:
+  1. *Unreliable Service*: Maps bundles directly to QUIC datagrams.
+  2. *Reliable Service*: Relies on native QUIC stream reliability and congestion control.
+  3. *Notified Service*: Uses stream-level signaling to provide delivery notifications, allowing upper-layer BP mechanisms (e.g., custodial transfer, status reporting) to trigger retransmissions.
+* **QoS Mapping**: Mapped extended Class of Service (ECOS) priorities from BP to distinct QUIC streams.
+* **Validation**: Initial prototype validation was completed using PicoQUIC across simulated LEO, LEO-GEO, and Earth-Moon topology scenarios.
+* **Discussion**:
+  * Michael Welzl asked about the standardization status of ECOS. Tomaso de Cola clarified that ECOS was standardized in the CCSDS BPv6 annex and is being updated for BPv7 framework specifications.
+  * Joerg Ott raised concerns regarding MTU constraints when mapping large bundles into QUIC datagrams for unreliable transfer. Tomaso acknowledged that datagram size limitations require careful payload sizing or leveraging unreliable stream resets, which will be evaluated in follow-up work.
+
+#### Space for Sustainability?
+* **Presenter**: Andreas Schmidt (Saarland University)
+* **Slide Deck**: [Space for Sustainability? (Andreas Schmidt, Saarland University)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-space-for-sustainability-andreas-schmidt-saarland-university-00)
+
+Andreas Schmidt analyzed the lifecycle environmental impact of LEO satellite constellations and proposed orbital data centers across four phases: production, launch, operation, and reentry.
+* **Emissions Accounting**:
+  * Launch intensity for a Falcon 9 payload contributes ~35.5 kg CO₂eq per kg of payload, while reentry atmospheric burnup contributes ~16 kg CO₂eq per kg (primarily due to $NO_x$ production and alumina particle degradation).
+  * Solar power in LEO carries an embodied carbon intensity of ~66 g CO₂eq/kWh (accounting for panel/battery launch mass and degradation), compared to ~34 g CO₂eq/kWh for terrestrial solar.
+* **Thermal Dissipation Bottleneck**: Radiative heat transfer in a vacuum requires substantial physical radiator area/mass. A 1 kW GPU node (e.g., NVIDIA H100) weighing 3 kg requires ~30 kg of radiator equipment, making thermal control account for 56% of the compute node's total carbon footprint.
+* **Hardware Lifecycle**: High compute hardware failure/degradation rates (3-year GPU lifespan vs. 5-year satellite platform lifespan) force inefficient redundancy trade-offs. Schmidt presented the open-source `ESpace` simulator modeling these parameters.
+* **Discussion**:
+  * Felix Flentge asked if transceiver power and communication volume were included. Schmidt confirmed transceiver mass is modeled, though communication traffic volume requires further scenario modeling.
+  * Nishanth Sastry asked about future hardware paradigms such as superconductive quantum computing in space.
+  * Joerg Ott and Juan Fraire discussed orbit capacity constraints in Sun-Synchronous Orbits (SSO) and the distinction between Total Ionizing Dose (TID) and Single Event Latch-ups (SEL) on unshielded commercial off-the-shelf (COTS) components.
+
+#### Simulating Satellite Constellations and Aircraft with Real-World Data
+* **Presenter**: Marcin Bosk (TUM)
+* **Slide Deck**: [Simulating Satellite Constellations and Aircraft with Real-World Data (Marcin Bosk, TUM)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-simulating-satellite-constellations-and-aircraft-with-real-world-data-marcin-bosk-tum-00)
+
+Marcin Bosk presented an OMNeT++/INET discrete-event simulation framework capable of processing real-world TLE datasets and ground tracks to model high-density satellite and aeronautical networks.
+* **Framework Architecture**: 
+  * Ingests full TLE sets (~10,000 Starlink satellites) and uses the LEONET algorithm to recover Walker Delta constellation grids, inter-satellite links (ISLs, using 4-link plus-grid topologies), and shell dynamics.
+  * Treats satellites and ground stations as standard IPv4/IPv6 routers inheriting native INET networking stacks.
+  * Implements a global control-plane Oracle computing delay-optimal routes deployed out-of-band.
+* **Validation**: Simulated a path between Reunion Island and Frankfurt. The simulation achieved end-to-end RTTs between 100–200 ms, closely matching empirical measurements published by Mohammad Rajiullah et al. (2023). Applied the model to a transatlantic flight path (NYC to Frankfurt) connected via LEO GSLs.
+* **Discussion**:
+  * Nishanth Sastry noted that matching empirical latency data without modeled processing delays suggests current commercial ISL utilization may be low.
+  * Matthias asked whether link breakage logic was evaluated; Bosk confirmed the global Oracle accounts for link state transitions (e.g., polar orbit crossings).
+  * Roland Bliss commented on source routing versus per-hop routing convergence, pointing out Starlink's 15-second routing update intervals.
+
+#### Mars Relay Network: An Operational Example
+* **Presenter**: Silvia Sangiorgi (ESA)
+* **Slide Deck**: [Mars Relay Network: An Operational Example (Silvia Sangiorgi, ESA)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-mars-relay-network-an-operational-example-silvia-sangiorgi-esa-00)
+
+Silvia Sangiorgi shared operational insights from the joint ESA/NASA Mars Relay Network, which handles over 99% of science data returned from the Martian surface via orbiting relays (such as ESA’s Trace Gas Orbiter [TGO] and Mars Express).
+* **Protocol & Operational Mechanics**:
+  * Uses CCSDS Proximity-1 over the UHF proximity link. Key features include adaptive data rates based on signal strength, hailing mechanisms for link setup, and selection between reliable (ARQ) and unreliable transmission modes.
+  * Relies on a centralized 5-stage coordination process: Strategic Planning (months out), Tactical Planning (2-week window), Forward Link execution, Telemetry Return, and Performance Analysis.
+  * Operational tools include MAROS (NASA's central hub) and ERCO (ESA's internal coordination node).
+* **Future Requirements**: Upcoming surface assets (e.g., the 2028 Rosalind Franklin rover and NASA Mars helicopters) will lack Direct-to-Earth (DTE) communication capabilities, requiring proximity-link time correlation and automated relay scheduling.
+* **Discussion**:
+  * Juan Fraire asked if un-planned proximity link establishment is supported. Sangiorgi explained that link creation currently requires pre-planned orbiter attitude pointing, though surface assets maintain standby flexibility to respond to incoming hails.
+
+---
+
+### Session 2: Industrial and European Directions
+
+#### Securing Connected Space: 3GPP NTN from 5G to 6G
+* **Presenters**: Emile Stephan, Clifton Fernandes (Nokia)
+* **Slide Deck**: [Securing connected space: 3GPP NTN from 5G to 6G (Emrah Tomur and Clifton Fernandes, Nokia)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-securing-connected-space-3gpp-ntn-from-5g-to-6g-emrah-tomur-and-clifton-fernandes-nokia-01)
+
+Emile Stephan and Clifton Fernandes outlined the evolution of Non-Terrestrial Networks within 3GPP standards, moving from 5G additions (Rel-17/18) to native 6G integration (Rel-21).
+* **Architecture & Security Boundaries**:
+  * Differentiated between *Transparent Payload* (bent-pipe RF repeaters) and *Regenerative Payload* (onboard gNodeB base stations or core network functions).
+  * 3GPP SA3 has initiated a dedicated Security Study Area (Security Area 11, working under TR 23.801) to evaluate NTN security.
+  * Key security challenges: moving cell patterns crossing national PLMN borders, authentication timers over long/variable propagation delays, tracking area updates without continuous GNSS, and disaggregated Open RAN (O-RAN) split interfaces (O-RU, O-DU, O-CU) across orbital and ground entities.
+* **Discussion**:
+  * Joerg Ott asked about specific trust boundary challenges when network functions are hosted in orbit. Clifton Fernandes highlighted the multi-tenant trust boundaries between Satellite Network Operators (SNOs) and Mobile Network Operators (MNOs).
+  * Ahmad Mahmod and Matthias discussed regulatory spectrum licensing and cross-border beam projection constraints.
+
+#### Routing in Time-Varying Networks
+* **Presenter**: Paulo Mendes (Airbus)
+* **Slide Deck**: [Routing in Time-Varying Networks (Paulo Mendes, Airbus)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-routing-in-time-varying-networks-paulo-mendes-airbus-00)
+
+Paulo Mendes examined routing approaches for dynamic, time-varying flying networks (LEO constellations, aeronautical meshes).
+* **Current Operational Reality**: Commercial constellations (e.g., Starlink) largely utilize "hot-potato" ground landing, routing traffic immediately to the nearest terrestrial gateway/POP rather than performing multi-hop in-space network routing.
+* **Routing Scalability**: Standard link-state protocols (OSPF, IS-IS) struggle to scale across dynamic global satellite topologies. Topological clustering algorithms (e.g., spectral clustering) exhibit high computational overhead.
+* **Proposed Architecture**: Introduced *Geographic Checkpoint Routing* integrated with Segment Routing (SRv6 / MPLS). Ground/aircraft service edges compute routes based on geographic checkpoints rather than individual IP topological hops, allowing satellites to execute source routing along spatial zones.
+* **Discussion**:
+  * Michael Welzl inquired about packet encapsulation roles. Mendes clarified that encapsulation occurs at service edges (terminals or aircraft gateways), keeping satellite payload processing minimal.
+  * *Chat context*: Felix Flentge and Juan Fraire noted that while the IETF TVR (Time-Varying Routing) WG defines data models for time-evolving topologies, it does not define specific routing algorithms.
+
+#### Towards Constellation Networks Built from IETF Technologies
+* **Presenter**: Théo Tchilinguirian (Aerospace Lab)
+* **Slide Deck**: [Towards Constellation Networks built from IETF Technologies](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-towards-constellation-networks-built-from-ietf-technologies-00)
+
+Théo Tchilinguirian presented Aerospace Lab's perspective on building constellation networks using standardized IETF protocol stacks.
+* **Onboard Architecture**: Modeled modern satellites as "flying subnets" centered around a radiation-hardened central IP router connecting internal payload units (gNodeB splits, management hosts) and external interfaces (ISLs, feeder links).
+* **Key Principles for IP Convergence**:
+  1. *Native IP Forwarding*: Space networks should expose standard IP hop-by-hop forwarding services.
+  2. *Differentiated Treatment & Transparency*: Maintain standard ICMP signaling, ECN marking, Path MTU Discovery, QoS mapping, and network slicing (IETF network slices).
+  3. *Reuse of Terrestrial Tooling*: Adopt existing IETF Network Management and OAM protocols.
+* **Ongoing Contributions**: Introduced a CDDL specification draft (`draft-tchilinguirian-space-constellation-cddl`) for standardized constellation topology descriptions. Previewed a CoNEXT paper detailing link-state micro-loop prevention using ordered FIB updates and multicast tree topology distribution.
+* **Discussion**:
+  * Joerg Ott pointed out that carrying IP routing state across space segments conflicts with local terrestrial POP breakouts due to IP address prefix aggregation limits.
+
+#### Introducing the NexaSphere Project
+* **Presenter**: Tomaso de Cola (DLR)
+* **Slide Deck**: [Introducing the NexaSphere project (Tomaso de Cola, DLR)](https://datatracker.ietf.org/meeting/interim-2026-space-01/materials/slides-interim-2026-space-01-sessa-introducing-the-nexasphere-project-tomaso-de-cola-dlr-00)
+
+Tomaso de Cola introduced *NexaSphere*, a 36-month EU Horizon SNS JU project (16 partners) focused on harmonizing 3D NTN/TN networks within the 6G architecture.
+* **Focus Areas**: Multi-connectivity across aviation, automotive, and railway verticals; free-space optical (FSO) feeder/inter-satellite links; onboard train/plane LiFi integration; disaggregated RAN splits; and AI-driven cross-domain network orchestration.
+* **Demonstration Roadmap**: Subsystem demonstrations planned for IEEE/EUCNC 2026 (June in Dublin), leading to final proof-of-concept validation in late 2026.
+
+---
+
+### Joint Panel & Open Discussion
+
+A panel session featuring Tomaso de Cola, Théo Tchilinguirian, Emile Stephan, Paulo Mendes, Clifton Fernandes, Joerg Ott, and Nishanth Sastry addressed the broader relationship between IETF, 3GPP, and industry requirements:
+
+1. **3GPP and IETF Alignment**: The panel emphasized establishing formal touchpoints between 3GPP (RAN2/SA2/SA3) and IETF/IRTF. While 3GPP defines radio interfaces, core mobility, and cellular trust boundaries, IETF protocols provide the underlying IP transport, routing logic, slice mapping, and OAM mechanisms.
+2. **Protocol Complexity vs. Deployability**: Hans Joerg Ober (Redis) cautioned against creating overly complex routing standards that industry will not deploy, advocating for minimalistic, robust solutions.
+3. **Constellation Sizing and Planetary Bounds**: Joerg Ott raised the question of how many satellites and competing constellations are needed globally given their environmental footprint. Panelists noted that constellation sizing is driven by coverage gaps, sovereign access (e.g., IRIS²), and disaster resilience, balancing payload computational power against orbital fleet size.
+
+---
+
+## Decisions and Action Items
+
+* **Comparative Analysis of QUIC-CL Drafts**: The research group agreed to conduct an exhaustive comparative evaluation between the DLR/Univ. of Bologna QUIC-CL proposal (`draft-caini-tsvwg-quic-dtn-dtn-cl`) and alternative convergence layer specifications (such as Alira's QUIC-CL proposal) to inform future IETF transport standardization.
+* **Alignment with 3GPP SA3/RAN2**: Establish liaison and coordination points between SPACE RG and 3GPP SA3 (Security Area 11 / TR 23.801) regarding NTN security assumptions, high propagation delay timers, and disaggregated RAN transport boundaries.
+* **Constellation Schema Standardization**: Advance community work on standardized constellation topology representation schemas using CDDL (`draft-tchilinguirian-space-constellation-cddl`) within SPACE RG.
+
+---
+
+## Next Steps
+
+1. **Evaluation Scenarios & Datasets**: Refine space networking evaluation scenarios (LEO mega-constellations, aeronautical meshes, and deep-space/lunar relay networks) for reproducible protocol benchmarking.
+2. **Follow-up Meetings**: Continue discussions at upcoming IETF sessions and virtual SPACE RG interim meetings to progress informational drafts on time-varying routing, QUIC convergence layers, and space network architecture frameworks.
