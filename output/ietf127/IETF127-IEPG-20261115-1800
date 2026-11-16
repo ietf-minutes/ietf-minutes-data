@@ -1,0 +1,88 @@
+# [IEPG](../wg/iepg.html)
+
+## Summary
+
+The IEPG meeting held prior to IETF 121 featured operational DNS research, measurements of the 2024 DNS Root Zone KSK Rollover, analysis of DNS query duplication and retry behavior, and a practical implementation of IPv6 multi-homing for residential networks. Key topics included real-time root DNS monitoring via RIPE Atlas, the amplification effects of `SERVFAIL` responses, and implementation challenges with IPv6 source address selection during uplink failover.
+
+---
+
+## Key Discussion Points
+
+### Chair Updates
+* **Chairs:** Warren Kumari, Joel Jaeggli (sitting in for Jen Linkova).
+* **Slides:** [Chairs slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-iepg-sessa-chairs-slides-02)
+
+---
+
+### [RootViz: visualizing real-time monitoring of the Root DNS Servers](https://datatracker.ietf.org/meeting/127/materials/slides-127-iepg-sessa-rootviz-visualizing-real-time-monitoring-of-the-root-dns-servers-00)
+* **Presenter:** Giovane Moura (SIDN Labs / TU Delft)
+* **Overview:**
+  * Introduced RootViz, a real-time dashboard aggregating RIPE Atlas active measurement data (14,000+ probes across 180 countries) to monitor the reachability and performance of all 13 root server letters.
+  * Emphasized that for root DNS servers, reachability is the primary metric, while latency is secondary due to aggressive caching by recursive resolvers.
+* **Findings:**
+  * Root server instances maintain distinct baseline failure rates across global networks.
+  * Spikes in probe timeouts are frequently caused by transit or peering disputes in intermediate networks (e.g., between Deutsche Telekom and Cogent affecting C-Root reachability in Europe) rather than root infrastructure failures.
+  * The administrative and operational diversity of the root server system ensures global DNS resilience; failures on individual root letters or routing paths do not impact end-user resolution because resolvers automatically fall back to alternative root letters.
+  * Ongoing student research at TU Delft focuses on automating anomaly detection, analyzing BGP path shifts, and releasing public APIs and datasets for open source use.
+* **Discussion:**
+  * Joel Jaeggli inquired whether the observed events demonstrate the value of administrative diversity. Giovane Moura confirmed that the root system has never experienced a simultaneous global failure across all root letters, validating its design.
+
+---
+
+### [The 2024 KSK Roll](https://datatracker.ietf.org/meeting/127/materials/slides-127-iepg-sessa-the-2024-ksk-roll-00)
+* **Presenter:** Geoff Huston (APNIC)
+* **Overview:**
+  * Presented an evaluation of the October 11, 2024 Root Zone Key Signing Key (KSK) rollover using large-scale Google Ad-based end-user measurement.
+  * Approximately 40% of global internet users currently validate DNSSEC.
+* **Findings:**
+  * The overall rollover executed smoothly without global network disruptions.
+  * Pre-roll direct outreach to large service providers (such as Reliance Jio in India) successfully prevented outages and resulted in increased post-roll DNSSEC validation rates in those regions.
+  * Networks where operators could not be contacted prior to the roll (e.g., Telenor in Bulgaria, operators in Brazil) experienced drops in validation as resolvers failed to update their trusted KSK states.
+  * Critically evaluated trust anchor signaling mechanisms (RFC 8145 and RFC 8509 / Key Sentinel). Once a resolver fails validation, Key Sentinel signaling breaks down into noisy `SERVFAIL` responses rather than clear state reports, because resolvers execute sentinel checks late in the resolution stack rather than at the entry point.
+  * Raised concerns regarding planned 3-year KSK rollover cycles and future post-quantum algorithm transitions, which will significantly increase signature sizes and force DNS over TCP.
+* **Discussion & Chat:**
+  * Andrew Campling raised questions regarding the 3-year rollover policy and post-quantum readiness. Geoff Huston noted that post-quantum keys will necessitate larger payloads and heavier reliance on TCP, which front-end load balancing infrastructure is currently ill-equipped to handle efficiently.
+  * Dan York suggested establishing a formal, proactive outreach framework within ICANN/PTI to identify non-updated networks ahead of future key rolls.
+  * Chat discussions (Warren Kumari, Erik Nygren, Tom Hill, David Lawrence) noted that several operators temporarily or permanently disabled DNSSEC validation in response to rollover failures rather than fixing local resolver trust anchors.
+
+---
+
+### [Query Duplication in the DNS](https://datatracker.ietf.org/meeting/127/materials/slides-127-iepg-sessa-query-duplication-in-the-dns-00)
+* **Presenter:** Geoff Huston (APNIC)
+* **Overview:**
+  * Analyzed duplicate query behavior at authoritative DNS servers using end-user ad traffic measurements.
+* **Findings:**
+  * Average queries generated per user request rose from 2.37 in 2019 to 4.43 in 2024.
+  * Contributing factors include dual-stack IPv4/IPv6 querying (A and AAAA), increased usage of SVCB/HTTPS records (RFC 9460), and aggressive load balancer front-ends.
+  * Load balancers and recursive clusters frequently replicate UDP queries across multiple back-end instances within 10ms to optimize for low latency, generating high rates of redundant traffic.
+  * **Response Code Amplification:** Returning `SERVFAIL` acts as a severe traffic amplifier, generating an average of ~83 retry queries per request because resolvers interpret `SERVFAIL` as a transient, server-side error and retry across all configured upstreams. In contrast, returning `NXDOMAIN`, `REFUSED`, or `NOERROR` with `NODATA` yields dramatically lower retry rates.
+* **Discussion & Chat:**
+  * Rich Salz and David Lawrence noted that `SERVFAIL` carries the connotation of a transient server error, making retries expected resolver behavior.
+  * Mark Andrews explained that stub resolvers hit all configured servers on `SERVFAIL` because the response is uncacheable at the stub level.
+  * Erik Nygren suggested implementing exponential back-off in stubs and recursives upon receiving `SERVFAIL`.
+  * Andrew Campling and Joel Jaeggli discussed whether a Best Current Practice (BCP) document is needed for DNS front-end load balancer implementations to curb unnecessary query duplication.
+
+---
+
+### [Uplinkmgr: Multi-homing for the Home](https://datatracker.ietf.org/meeting/127/materials/slides-127-iepg-sessa-uplinkmgr-multi-homing-for-the-home-00)
+* **Presenter:** Kyle Rose
+* **Overview:**
+  * Detailed a practical scenario of residential Internet failover in rural environments prone to long power outages. Commercial cable Internet repeaters lose battery backup after ~10 minutes, and cellular towers exhaust backup batteries after ~2 hours. To maintain connectivity via a local generator, a secondary Starlink connection was deployed alongside primary cable Internet.
+  * Developed a custom Linux failover daemon (`uplinkmgr`) using AI-assisted development tools (Claude).
+* **Technical Insights:**
+  * **IPv4:** Managed via standard metric adjustment on default routes across WAN interfaces.
+  * **IPv6 Multi-homing:** Discovered that standard Linux client implementations do not consistently enforce RFC 6724 / draft-ietf-6man-rfc6724bis Rule 5.5 for source address selection when multi-homed across multiple delegated prefixes (e.g., `/56` cable and `/60` Starlink).
+  * Workaround: Implemented dynamic Router Advertisement (RA) management via `radvd`, setting advertised valid and preferred lifetimes to zero for inactive IPv6 uplinks, successfully forcing host source address selection onto the active uplink.
+* **Discussion & Chat:**
+  * Lorenzo Colitti suggested contributing the implementation lessons and code to OpenWRT and documenting residential IPv6 multi-homing practices.
+  * Chat notes: Brian Carpenter highlighted that draft-ietf-6man-rfc6724bis addresses these source selection rules. Erik Nygren noted that cellular/ISP failovers providing only a `/64` prefix force operators to use NAT66 for residential backup.
+
+---
+
+## Decisions and Action Items
+
+* **DNS Load Balancing BCP:** The community discussed the need for operational guidance or a BCP addressing DNS front-end load balancers to prevent query duplication and aggressive UDP retransmissions.
+* **Deprecation of Key Sentinel Signaling:** Geoff Huston recommended deprecating RFC 8509 / RFC 8145 trust anchor sentinel queries due to uninterpretable signal degradation under failure conditions.
+* **Open Source Releases:**
+  * SIDN Labs plans to open-source the RootViz back-end codebase and release public APIs/datasets for root server monitoring.
+  * Kyle Rose made the `uplinkmgr` Linux residential multi-homing daemon available for operational testing.
