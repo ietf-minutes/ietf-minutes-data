@@ -1,0 +1,137 @@
+# [SPRING](../wg/spring.html)
+
+## Summary
+
+The SPRING Working Group met during IETF 127. The session was chaired by Joel Halpern. The agenda covered working group administration and document status updates, followed by technical presentations and discussions on ICMP error handling in SRv6 networks, flexible candidate path selection, distributed bandwidth management using RSVP-TE, BGP SR Policy extensions for BFD configuration, SRv6 multipath traffic engineering, time-scheduled color-based SR Policy selection, and quality-aware dynamic adaptive adjustment for SR-TE paths.
+
+---
+
+## Key Discussion Points
+
+### Working Group Administration & Document Status
+* **Presenter:** Joel Halpern
+* **Slides:** [IETF 127 Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-ietf-127-chair-slides-00)
+* **Status Updates:**
+  * **Adopted Document:** [draft-ietf-spring-sid-as-source-address](https://datatracker.ietf.org/doc/draft-ietf-spring-sid-as-source-address/) (*SID as source address in SRv6*) was adopted. Further discussion on the mailing list is encouraged.
+  * **Working Group Last Call (WGLC):**
+    * [draft-ietf-spring-sr-policy-yang](https://datatracker.ietf.org/doc/draft-ietf-spring-sr-policy-yang/) (*YANG Data Model for Segment Routing Policy*): Shepherded by Joel Halpern; awaiting author responses to clear outstanding feedback. Zafar Ali noted an update is forthcoming following related YANG document work at the IESG.
+    * [draft-ietf-spring-stamp-srpm-mpls](https://datatracker.ietf.org/doc/draft-ietf-spring-stamp-srpm-mpls/) (*Performance Measurement Using Simple Two-Way Active Measurement Protocol (STAMP) for Segment Routing over the MPLS Data Plane*): WGLC ends Monday; circulated to MPLS and IPPM/BMP working groups.
+  * **IESG / RFC Editor Queue:**
+    * Resource-aware segments and SRv6 security documents are moving forward in the RFC Editor queue. The chairs thanked the design team for their work on the security document.
+
+---
+
+### ICMP Error Handling for VPNs in SRv6 Networks
+* **Presenter:** Zafar Ali
+* **Slides:** [ICMP Error Handling for VPNs in SRv6 Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-icmp-error-handling-for-vpns-in-srv6-networks-00)
+* **Discussion:**
+  * Zafar Ali presented the merged draft addressing ICMP error generation in SRv6 VPN deployments (e.g., traceroute under the uniform TTL model where provider node addresses are exposed to the customer).
+  * Three operational methods were presented to accommodate different operator scenarios:
+    1. **P-Node Data Plane Loopback:** P-node forwards ICMP errors toward the egress PE using the VPN SID, which then loops the packet back via the data plane to the ingress PE and invoking CE.
+    2. **Ingress PE VPN SID Source Address:** P-node sends ICMP error directly to the ingress PE, which uses the VPN SID placed in the IPv6 source address by the ingress PE to identify the correct VPN context.
+    3. **Ingress PE Loopback Address Lookup:** P-node sends ICMP error to the ingress PE's loopback address; ingress PE inspects the invoking packet's inner destination (VPN SID of egress PE) to construct and loop the error via the egress PE.
+  * Authors requested working group feedback on the merged draft to prepare for a formal adoption call on the mailing list.
+
+---
+
+### Flexible Candidate Path Selection of SR Policy
+* **Presenter:** Isoo Liu
+* **Slides:** [Flexible Candidate Path Selection of SR Policy](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-flexible-candidate-path-selection-of-sr-policy-00)
+* **Document Reference:** [draft-ietf-spring-sr-policy-flexible-cp-selection](https://datatracker.ietf.org/doc/draft-ietf-spring-sr-policy-flexible-cp-selection/) (*Flexible Candidate Path Selection of SR Policy*)
+* **Updates & Discussion:**
+  * Isoo Liu detailed updates following adoption:
+    * **Information Model (Section 4.2):** Added threshold parameters for jitter/latency under Candidate Paths (CP).
+    * **Multiple Segment Lists (Section 4.4):** Defined evaluation rules when individual segment lists fail quality thresholds, re-evaluating aggregated CP metrics over remaining segment lists before toggling CP eligibility.
+    * **Performance Measurement (Section 4.5):** Integrated STAMP extensions and IPv6 end-to-end bandwidth measurement.
+    * **Wait-to-Restore (WTR) Timer (Section 4.7):** Added configurable WTR interval for quality degradation and recovery.
+    * **Operational Considerations (Section 6):** Added randomness, smoothing, and flapping suppression logic.
+  * Greg Mirsky noted that STAMP is designed for end-to-end measurements rather than hop-by-hop tracking, suggesting IOAM or alternate marking for hop-by-hop metrics.
+  * Rakesh Gandhi questioned whether bandwidth measurements target control plane or data plane metrics and noted IPv6 destination options are processed by destination nodes rather than hop-by-hop.
+  * Successful lab and field trials were reported with H3C and ZTE equipment in China Mobile networks. Authors plan to request WGLC after addressing mailing list comments.
+
+---
+
+### Distributed Bandwidth Management in Segment Routing Networks using RSVP-TE
+* **Presenter:** Pawan Biram
+* **Slides:** [Distributed Bandwidth Management in Segment Routing Networks using RSVP-TE](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-distributed-bandwidth-management-in-segment-routing-networks-using-rsvp-te-00)
+* **Discussion:**
+  * Pawan Biram outlined the rationale for bringing a distributed RSVP-TE control plane bandwidth reservation toolkit to SR networks (SR-MPLS and SRv6) without requiring a centralized controller.
+  * The mechanism leverages RFC 8577 procedures: RSVP-TE path/reservation signaling handles per-hop bandwidth admission control, priority preemption, auto-bandwidth, and binding SID delegation while installing standard SR adjacency/End.X SIDs into the forwarding plane. Interoperability between HP and Arcus was demonstrated at the IETF 127 hackathon.
+  * Susan Hares clarified that the proposal introduces control plane RSVP-TE signaling without altering BGP or data plane forwarding states.
+  * Zafar Ali raised concerns regarding protection mechanism interactions (RSVP facility backup vs. TI-LFA), IGP label ownership, and handling IGP label re-assignments.
+  * Greg Mirsky confirmed that IGP-TE advertisement of link attributes is assumed.
+  * Tarek Saad expressed concern that limiting bandwidth reservations to strict adjacency SIDs / End.X SIDs restricts operators from using non-strict SR paths (node SIDs and ECMP).
+  * Jie Dong suggested that the SPRING working group should first evaluate overall requirements for distributed bandwidth management before selecting specific protocol approaches.
+  * Andrew Stone noted potential subtle operational assumptions being broken when standard SR adjacency SIDs are consumed by RSVP-TE LSPs.
+
+---
+
+### BGP SR Policy Extensions for BFD Configuration
+* **Presenter:** Yujie Liu
+* **Slides:** [BGP SR Policy Extensions for BFD Configuration](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-bgp-sr-policy-extensions-for-bfd-configuration-00)
+* **Discussion:**
+  * Yujie Liu presented a proposal to define a new operational sub-TLV in BGP SR Policy for carrying Seamless BFD (SBFD) parameters (desired minimum transmit interval and detection multiplier) alongside the SR path intent.
+  * Co-locating path configuration and monitoring intent within the BGP update avoids out-of-band Netconf/CLI orchestration and prevents state inconsistencies.
+  * Jeffrey Haas (BFD/IDR Chair) affirmed the utility of SBFD plumbing but advised SPRING to clearly define what BFD is protecting when candidate paths are encoded in different ways across control plane protocols.
+  * Participants noted support for SBFD usage in production SR Policy deployments.
+
+---
+
+### Distributed Bandwidth Management for Segment Routing
+* **Presenter:** Shraddha Hegde
+* **Slides:** [Distributed Bandwidth Management for Segment Routing (draft-hegde-spring-sr-distributed-bw-00)](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-distributed-bandwidth-management-for-segment-routing-draft-hegde-spring-sr-distributed-bw-00-00)
+* **Discussion:**
+  * Shraddha Hegde presented the architectural integration of RSVP-TE distributed bandwidth management into the SR Policy framework (RFC 9256).
+  * The headend computes paths and triggers RSVP-TE signaling to reserve link bandwidth via IGP-TE accounting. Upon successful signaling, the headend programs standard SR segment lists (adjacency SIDs, End.X SIDs, micro-SIDs). Auto-bandwidth dynamically adjusts segment list bandwidth or container segment list counts.
+  * Zafar Ali supported documenting the overall architecture in SPRING as a baseline for protocol-specific drafts in MPLS and TEAS, emphasizing the need to document SID ownership, protection mechanisms, and OAM interactions.
+  * Michael Gorokhovsky raised concerns about mixing traffic engineering databases and application-specific link attributes (ASLA) between RSVP-TE and SR applications.
+
+---
+
+### SRv6 for Multipath Traffic Engineering
+* **Presenter:** Abhishek
+* **Slides:** [SRv6 for Multipath Traffic Engineering](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-srv6-for-multipath-traffic-engineering-00)
+* **Discussion:**
+  * Abhishek presented an SRv6 data plane realization for Native Multipath Traffic Engineering (MPTE) architectures.
+  * A directed acyclic graph (DAG) locator and DAG SID (index SID) are assigned per MPTE DAG. Ingress nodes encapsulate traffic with the DAG SID. Transit junctions route traffic via standard SRv6 locator lookups over weighted ECMP legs. Penultimate hop (PHP) nodes terminate the DAG SID (using PSP/USD flavors) and forward the payload/service SID to the egress nodes.
+  * Andrew Stone questioned whether provisioning the same locator across all nodes in a DAG alters the standard SRv6 locator concept (identifying a specific node vs. a DAG) and essentially mimics a static IPv6 route with multiple next hops. Abhishek explained that the DAG locator acts as a private forwarding semantic for the specific TE DAG tunnel.
+  * Greg Mirsky asked how point-to-point SBFD sessions map to point-to-multipoint DAG structures, which the author noted is addressed in companion MPTE OAM drafts.
+
+---
+
+### Framework for Time-Scheduled Color based SR Policy Selection
+* **Presenter:** Kang Xi
+* **Slides:** [Framework for Time-Scheduled Color based SR Policy Selection](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-framework-for-time-scheduled-color-based-sr-policy-selection-00)
+* **Discussion:**
+  * Kang Xi presented a framework addressing time-varying VPN SLA requirements (e.g., standard office traffic during daytime vs. bulk data processing overnight).
+  * Rather than re-advertising BGP VPN routes at schedule boundaries (causing network-wide BGP churn), the egress PE advertises a set of color schedule tuples within a single BGP update. The ingress PE evaluates local time against the schedule to dynamically switch the active SR Policy color locally per VIF/VSI.
+  * Companion specifications cover BGP extensions (IDR), BGP-LS, YANG models (OPSAWG), and policy paradigms (RTGWG).
+  * Jie Dong asked why scheduling is applied at the VPN route color selection level rather than at the candidate path or segment list level within an SR Policy. Kang Xi explained that color scheduling maps VPN service requirements directly to appropriate SR Policies without requiring candidate path structure modifications.
+
+---
+
+### SR-TE Path Based on Quality-Aware Dynamic Adaptive Adjustment
+* **Presenter:** Li Zhang
+* **Slides:** [SR-TE Path Based on Quality-Aware Dynamic Adaptive Adjustment](https://datatracker.ietf.org/meeting/127/materials/slides-127-spring-sr-te-path-based-on-quality-aware-dynamic-adaptive-adjustment-00)
+* **Discussion:**
+  * Li Zhang presented a closed-loop framework for dynamic, quality-aware load balancing across segment lists within an active Candidate Path, specifically targeting AI training and inference workloads.
+  * The framework operates in four steps: Monitor per-hop metrics -> Report and aggregate to produce an end-to-end composite quality score -> Calculate updated load-balancing weights -> Apply updated weights at the headend forwarding plane.
+  * Supports two modes: Dynamic Weight Adjustment (adjusting segment list weights based on composite quality) and Dynamic Flow Adjustment (redirecting specific congested flows to less-loaded segment lists).
+  * Can be deployed in a centralized mode (controller as Candidate Path Quality Agent via PCEP) or distributed mode (headend router as local CPQA using telemetry/IGP). Includes dampening logic to prevent weight oscillation.
+
+---
+
+## Decisions and Action Items
+
+* **Document Adoption:** [draft-ietf-spring-sid-as-source-address](https://datatracker.ietf.org/doc/draft-ietf-spring-sid-as-source-address/) has been officially adopted as a working group document.
+* **WGLC Progress:**
+  * Authors of [draft-ietf-spring-sr-policy-yang](https://datatracker.ietf.org/doc/draft-ietf-spring-sr-policy-yang/) to submit updated draft responding to IESG/shepherd comments.
+  * Working group members requested to review [draft-ietf-spring-stamp-srpm-mpls](https://datatracker.ietf.org/doc/draft-ietf-spring-stamp-srpm-mpls/) before WGLC closure on Monday.
+
+---
+
+## Next Steps
+
+* **ICMP Error Handling Draft:** Authors to continue working group discussion on the merged text on the mailing list to prepare for adoption polling.
+* **Flexible Candidate Path Selection:** Authors to address hop-by-hop measurement feedback from Greg Mirsky and Rakesh Gandhi before requesting WGLC.
+* **Distributed Bandwidth Management (RSVP-TE):** Detailed technical discussions regarding protection mechanisms, ASLA database separation, and architectural integration to be pursued on the SPRING and MPLS mailing lists.

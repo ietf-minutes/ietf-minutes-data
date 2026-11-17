@@ -1,0 +1,159 @@
+# [DNSSD](../wg/dnssd.html)
+
+## Summary
+
+The DNS-SD Working Group met at IETF 127. The session covered updates on active working group documents—including Unicast Local Discovery (ULD), Multicast DNS conflict resolution using Time Since Received (TSR), and Advertising Proxy—as well as discussions on SNAC topology complexity, DNS message signatures (DNS MSGSIG), and non-IP DNS-SD service discovery via the DNS-SD Data Block format.
+
+The working group agreed to target Working Group Last Call (WGLC) for `draft-ietf-dnssd-tsr` in the near term following minor text refinements and scope adjustments.
+
+---
+
+## Key Discussion Points
+
+### Working Group Administration and Status
+- **Presenter:** Chris Bowers
+- **Slide Deck:** [Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnssd-chair-slides-00)
+- Co-chair Florian Kerschbaum was unable to attend.
+- Active drafts were reviewed: `draft-ietf-dnssd-uld`, `draft-ietf-dnssd-tsr`, and `draft-ietf-dnssd-advertising-proxy`.
+- Plan announced to issue Working Group Last Call for `draft-ietf-dnssd-tsr` during the month.
+
+---
+
+### Unicast Local Discovery (ULD)
+- **Presenter:** Carsten Schormann
+- **Slide Deck:** [Unicast Local Discovery](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnssd-unicast-local-discovery-00)
+- **Draft:** `draft-ietf-dnssd-uld`
+
+#### Technical Presentation & Updates
+- ULD integrates SRP, Advertising Proxy, and Discovery Proxy into a service for infrastructure networks (e.g., Wi-Fi), enabling `.local` service discovery primarily over unicast with minimal or no multicast.
+- **IPv6 Router Advertisements (RA):** Specified an RA option format to advertise ULD servers. Flags indicate infrastructure server capability (`I` flag) and explicit address presence (`A` flag). Routers acting as ULD servers advertise with `A=0`; non-router ULD servers are advertised by a router on their behalf.
+- **Ad-Hoc Server Selection:** Replaced the single priority value with a multi-field comparison scheme:
+  1. *Server Version:* Future-proofing field.
+  2. *Coarse Priority:* Reduces flip-flopping between marginally different servers.
+  3. *Sequence Number / Lamport Clock:* A 32-bit modular sequence number assigned at startup to prefer older, more stable servers and allow clients to detect server restarts.
+- **mDNS Fallback:** Mandates that ULD clients MUST use TSR (`draft-ietf-dnssd-tsr`) when falling back to mDNS.
+- **Transport Security:** Updates RFC 8765 to permit opportunistic privacy over plain TCP for local ULD connections (accommodating constrained devices), while TLS remains recommended for clients and Mandatory to Implement (MTI) for servers (noted by Ted Lemon).
+- **IPv4 Anti-Spoofing:** Requires checking TTL=255 for link-local enforcement on IPv4 UDP.
+- **DNSSEC & Updates:** Explicitly excludes NSEC record synthesis for `.local` (no DNSSEC delegation) and rejects non-SRP DNS update requests for `.local`.
+
+#### Conflict Reporting Discussion
+- Conflict types: SRP zone conflicts (FCFS key-based, rejected with `YXDOMAIN`) and mDNS conflicts (detected during Advertising Proxy probing or network petition/merges).
+- Consensus reached on providing per-name conflict reporting:
+  - **Zone conflicts:** Binary status per name.
+  - **mDNS conflicts:** Statuses include *pending*, *in conflict*, *claimed*, or *not advertised*.
+- Asynchronous conflict notification is required because mDNS probing cannot delay initial SRP zone updates.
+- Rename strategies remain a client-side decision (e.g., human-readable laptop names rename; Matter fabric-derived identifiers do not).
+- **Encoding Proposals:**
+  - *Proposal A (Carsten Schormann):* Use EDNS(0) index/status pairs in immediate responses and DSO TLVs for asynchronous notifications.
+  - *Proposal B (Ted Lemon):* Use DNS query/response structures carrying conflicting names in the question section with QCLASS=ANY and QTYPE set to the status code, enabled via an EDNS(0) opt-in flag.
+- François Michel, Esko Dijk, and Ted Lemon discussed DSO connection management, idle timeouts, and keeping DSO sessions active during outstanding SRP registrations.
+
+---
+
+### Multicast DNS Conflict Resolution using TSR
+- **Presenter:** Esko Dijk
+- **Slide Deck:** [Multicast DNS conflict resolution using the Time Since Received (TSR) EDNS option](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnssd-multicast-dns-conflict-resolution-using-the-time-since-received-tsr-edns-option-00)
+- **Draft:** `draft-ietf-dnssd-tsr`
+
+#### Technical Presentation & Updates
+- Resolves apparent mDNS conflicts when multiple proxy/router instances (e.g., SNAC routers) advertise identical service records.
+- Updates in version 04:
+  - Formalized TSR time comparison using a 2-second tolerance window.
+  - Added guidance to maintain high internal time resolution and use explicit rounding when converting to 1-second TSR EDNS fields.
+  - Rewrote section on suppressing redundant probing across mDNS registrants.
+  - Imported terminology from RFC 9499.
+  - Mandated that mDNS goodbye announcements MUST include the TSR option.
+
+#### Discussion & Refinements
+- **SRP Hints Field:** Ted Lemon proposed incorporating a 32-bit hash of the SRP update into the TSR option. This payload hash allows receivers to conclusively identify identical data updates regardless of timing jitter.
+- **Document Scope & Title:** Ted Lemon and Esko Dijk noted the draft has expanded from defining the TSR EDNS option to specifying broader multi-advertiser cooperation behavior. The title and abstract will be updated to reflect this scope.
+- **Redundant Goodbye & Primary/Secondary Roles:** Discussed adding explicit primary and secondary roles for mDNS registrants to prevent redundant goodbye broadcasts and handle fallback if a primary registrant disconnects.
+- **Non-Delayed Responses:** Primary/secondary designations will also resolve potential storm issues with non-delayed mDNS responses (RFC 6762).
+
+---
+
+### Advertising Proxy
+- **Presenter:** Ted Lemon
+- **Slide Deck:** [Advertising Proxy](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnssd-advertising-proxy-01)
+- **Draft:** `draft-ietf-dnssd-advertising-proxy`
+
+#### Technical Content
+- Updated document following progress on `draft-ietf-dnssd-tsr`.
+- **Address Selection Rules:**
+  - *Link-Local Addresses:* Only advertised if confirmed to originate from the local link.
+  - *Global Addresses (GUA/ULA):* Select valid source/destination pairs matching the routing table; omit addresses that cannot form valid pairs unless routing table accuracy is uncertain (in which case, fall back to advertising all available addresses).
+- **Internal Consistency:** Requires advertising proxies to resolve hanging pointers if a dependent record (e.g., service instance) references a name that encountered a conflict.
+- **Deployment Contexts:**
+  - *Managed Zone:* Managed infrastructure domain.
+  - *Infrastructure Zone:* CE router controlling local resolver.
+  - *Ad-Hoc Zone:* SNAC router without infrastructure DNS control.
+  - In managed and infrastructure topologies, conflicts can be resolved by redirecting service resolution directly to unicast DNS rather than mDNS.
+- **API Browsing Compatibility:** Stuart Cheshire noted that standard browsing APIs (e.g., macOS) store (name, type, domain) triplets; as long as clients retain the full triplet, resolving services redirected to unicast domains functions correctly.
+- **mDNS Address Record TTL:** Discussed increasing address record TTLs from 120 seconds (RFC 6762 default) to 75 minutes in the proxy context to prevent frequent multicast refresh traffic. Stuart Cheshire and Lorenzo Colitti supported this change for proxies, noting Happy Eyeballs mitigates risks associated with stale address records.
+
+---
+
+### SNAC Complex vs. ULD Topologies
+- **Presenter:** Ted Lemon
+- **Slide Deck:** [SNAC Complex or DNSSD ULD Complex?](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnssd-snac-complex-or-dnssd-uld-complex-00)
+- Discussed the relationship between SNAC multi-link topologies ("SNAC Complex") and ULD (`draft-ietf-dnssd-uld`).
+- ULD handles infrastructure integration, but multi-link border router setups require SRP replication and cross-link routing support.
+- The chairs and authors will coordinate whether this work is completed within DNSSD or SNAC.
+
+---
+
+### DNS MSGSIG and SIG(0)
+- **Presenter:** Donald Eastlake
+- **Slide Deck:** [DNS MSGSIG and SIG(0)](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnssd-dns-msgsig-and-sig0-01)
+
+#### Technical Content
+- Renamed the specification to **DNS MSGSIG** to distinguish it clearly from classic SIG(0).
+- Uses public/private key pairs to sign DNS messages/transactions as meta-RRs.
+- Key advantages over SIG(0): Supports multiple signatures per message, explicit cryptographic error codes (independent of DNS RCODEs), extensibility, and forwarding support for UPDATE and TKEY operations.
+- Latest updates require an OPT RR when MSGSIG is present and define rules for partial OPT option forwarding.
+- **Error Responses:** Ted Lemon and Donald Eastlake discussed signature verification failure responses, agreeing that standard DNS error responses should be returned rather than dropping packets silently.
+- **Use Case:** Co-author implementation is underway for delegation synchronization dynamic updates where parental/registrar forwarding is required.
+- The author requested adoption by the DNSSD working group, with cross-review planned with DNSOP.
+
+---
+
+### DNS-SD Data Block Introduction
+- **Presenter:** Smith Kennedy
+- **Slide Deck:** [DNS-SD Data Block Introduction](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnssd-dns-sd-data-block-introduction-00)
+
+#### Technical Content
+- Proposed a compact binary payload format (DNSSD Data Block / DDB) to convey standard DNS-SD service names and TXT/SRV records over non-IP link layer transports (Bluetooth LE Transport Discovery Service, NFC Connection Handover, Wi-Fi Aware/Direct).
+- Designed for environments where network infrastructure blocks multicast DNS or where pre-association service filtering is needed before bringing up an IP link.
+- **Payload Constraints:**
+  - BLE Legacy Advertising: ~26 octets (with TDS overhead).
+  - NFC Record Descriptor: ~32 octets.
+  - Extended BLE Advertising: Up to 252 octets.
+- **Discussion:**
+  - Stuart Cheshire strongly supported the initiative, emphasizing the high architectural value of leveraging the unified IANA Service Name Registry (RFC 6763) across non-IP technologies instead of creating fragmented per-technology service dictionaries.
+  - Lorenzo Colitti inquired about address resolution prior to IP connectivity. Smith Kennedy clarified that pre-association DDB advertisements enable application-level filtering (e.g., filtering for printing services prior to triggering link establishment or pairing).
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-dnssd-tsr` Updates & WGLC:**
+   - Add a 32-bit SRP update hash field into the TSR option.
+   - Update document title and abstract to reflect multi-advertiser operational scope.
+   - Clarify BCP 14 MUST/SHOULD requirements and exception cases.
+   - Proceed to Working Group Last Call (WGLC) within the month once edits are posted.
+
+2. **`draft-ietf-dnssd-uld` Conflict Handling:**
+   - Incorporate per-name conflict reporting status for both SRP zone updates and asynchronous mDNS probing.
+   - Document DSO connection handling to prevent premature idle disconnects during active SRP registrations.
+
+3. **`draft-ietf-dnssd-advertising-proxy` TTL Settings:**
+   - Update proxy address record TTL recommendations to 75 minutes to minimize multicast polling overhead.
+
+---
+
+## Next Steps
+
+- **`draft-ietf-dnssd-tsr`:** Esko Dijk to post version 05 incorporating the SRP update hash, revised title/abstract, and primary/secondary role definitions ahead of WGLC.
+- **`draft-ietf-dnssd-uld`:** Authors to select between EDNS(0) and DNS question-section encoding for conflict reporting.
+- **DNS MSGSIG:** Presenters and chairs to coordinate working group adoption path and DNSOP cross-review.
+- **DNS-SD Data Block:** Continue discussion on the DNSSD mailing list regarding working group adoption.

@@ -1,0 +1,77 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+The DNSOP Working Group met during IETF 127. The session covered working group administrative updates—including the introduction of a new Dispatch Acceptance Policy—followed by technical discussions on standardizing DNS response behaviors (handling QTYPE RRSIG queries, deprecating QTYPE ANY queries, and clarifying CNAME response ordering). The session concluded with three dispatch proposals: Domain Set, Globally-Reachable Service Parameters, and Originator Profile Key via DNSSEC.
+
+## Key Discussion Points
+
+### Working Group Administration & New Dispatch Policy
+* Chairs Peter Thomassen, Benno Overeinder, and Ondřej Surý opened the session and presented the [DNSOP Chairs Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-dnsop-chairs-slides-00).
+* The chairs announced a new Dispatch Acceptance Policy. Future dispatch requests must submit a structured template answering specific criteria. Presentations will follow a strict format (6 minutes presentation, 4 minutes dispatch guidance), capped at three dispatch topics per IETF session.
+
+### Answering QTYPE RRSIG
+* **Presenter:** Evan Hunt (on behalf of Ondřej Surý)
+* **Problem Statement:** Explicit queries for `QTYPE=RRSIG` return signatures without the associated data they cover, rendering the response unusable for caching or validation. These queries create implementation complexity and serve as a DDoS amplification vector.
+* **Proposal:** Refuse or fail queries specifically requesting `QTYPE=RRSIG`. The draft proposes returning `FORMERR` with the `invalid query type` Extended DNS Error (EDE), aligning with existing implementations such as BIND.
+* **Discussion:**
+  * Jim Reid questioned the necessity, noting occasional manual lookup use cases.
+  * Ondřej Surý explained that apex `RRSIG` queries return large RRsets, posing DDoS risks without operational benefit.
+  * Ben Schwartz and Joe Abley suggested expanding the document's scope into a unified registry/guidance covering other DNSSEC types that should not be queried directly (e.g., `NSEC`, `NSEC3`).
+  * Roy Arends and Geoff Huston discussed the choice between `FORMERR` and `REFUSED`, emphasizing the operational impacts of return code selection (avoiding responses that trigger client retries or act as amplification vectors).
+  * Shumon Huque supported the proposal and favored `FORMERR` to align with established meta-query error behaviors.
+
+### Deprecating / Stopping QTYPE ANY
+* **Presenter:** Ralf Weber
+* **Problem Statement:** Historically used for debugging and mail processing (e.g., legacy Qmail), `QTYPE=ANY` queries are now predominantly exploited for DDoS amplification attacks. Recent implementation bugs handling RFC 8482 in production environments further demonstrate the operational risks.
+* **Proposal:** Completely deprecate or block `ANY` queries at both resolvers and authoritative servers.
+* **Discussion:**
+  * Ondřej Surý shared details of a BIND modification that blocks outgoing `ANY` queries and recursive `ANY` responses, while permitting cache snooping locally over TCP or returning minimal single-record responses.
+  * Ralf Weber argued that the security and operational benefits of eliminating amplification vectors outweigh the remaining niche debugging use cases.
+  * Participants noted in chat that cache snooping via TCP could serve as an acceptable compromise during deprecation.
+
+### CNAME Response Ordering
+* **Presenter:** Joe Abley
+* **Problem Statement:** Ambiguity in RFC 1034 regarding record copying in CNAME chain processing has caused real-world client failures in 2015 and 2026 when resolver implementations altered the record order in answer sections.
+* **Proposal:** Update RFC 1034 to explicitly specify the required sequential ordering when copying CNAME chains into answer sections.
+* **Discussion:**
+  * Ben Schwartz supported working on the document and suggested clarifying broader response ordering or randomizing non-CNAME sets to expose fragile client assumptions.
+  * Mark Andrews clarified that CNAME and DNAME chains must be ordered sequentially from the query name to the final target so clients can correctly process incoming name-type pairs.
+  * Joe Abley requested working group adoption to formalize the standard on CNAME processing.
+
+### Dispatch Topic 1: Domain Set
+* **Presenter:** Tom Barrett
+* **Proposal:** Introduce a mechanism using DNS TXT records under `_domainset` labels (and optional HTTPS manifest files) allowing organizations to explicitly declare all domains owned across various TLDs to enhance trust and combat abuse.
+* **Discussion & Guidance:**
+  * Shumon Huque referenced existing published work in `draft-ietf-dnsop-domain-verification-techniques`.
+  * Peter Thomassen noted that registering an underscore label (`_domainset`) in the IANA registry does not require a working group document or RFC, as it can be accomplished via expert review.
+  * Ben Schwartz noted that adopting this in the IETF would significantly expand its complexity and shift scope toward HTTP `.well-known` endpoints.
+  * Paul Hoffman recommended against adopting the work in DNSOP, advising the authors to either proceed independently or seek a dedicated working group focused on domain identity and trust.
+
+### Dispatch Topic 2: Globally-Reachable Service Parameters
+* **Presenter:** Eric Kinnear
+* **Proposal:** Introduce a flag within `HTTPS`/`SVCB` records indicating that service parameters and target addresses remain valid across network interface changes (e.g., cellular to Wi-Fi), avoiding re-resolution delays (saving 200–400ms).
+* **Discussion & Guidance:**
+  * Alessandro Ghedini supported the problem statement while noting edge cases involving enterprise TLS interception and middleboxes.
+  * Ben Schwartz and Erik Nygren agreed that DNSOP is the appropriate venue to address this protocol enhancement.
+
+### Dispatch Topic 3: Originator Profile Key (OPK) via DNSSEC
+* **Presenter:** Shigeo Suzuki
+* **Proposal:** Use DNSSEC to signal key rollover and revocation status for the "Originator Profile" framework (used for web and email origin verification), introducing a new resource record type `OPKEY` (structurally similar to `TLSA`).
+* **Discussion & Guidance:**
+  * Eric Osterweil inquired about the structural overlap with `SMIMEA` (RFC 8162).
+  * Ben Schwartz pointed out that new RR type allocations do not require DNSOP chartering or an RFC, as they are handled via IANA expert review. He advised against re-using existing RR type semantics partially and suggested specifying the full Originator Profile system in its own venue if broader standardization is needed.
+  * Paul Wouters recommended leveraging existing `TLSA` structures with specific prefixes before requesting dedicated RR types.
+  * Jim Reid warned against placing TXT records at the zone apex and suggested socializing the work in groups such as ACME.
+
+---
+
+## Decisions and Action Items
+
+* **New Dispatch Policy:** The chairs will circulate the new Dispatch Acceptance Policy template and guidelines to the DNSOP mailing list.
+* **QTYPE RRSIG & QTYPE ANY:** Discussions regarding preferred response RCODEs (`FORMERR` vs. `REFUSED`), Extended DNS Errors, and scope expansion to other DNSSEC meta-types will continue on the mailing list.
+* **CNAME Response Ordering:** Authors will issue a call for working group adoption on the list.
+* **Dispatch Guidance Outcomes:**
+  * **Domain Set:** *Not dispatched to DNSOP.* Authors were advised to register the underscore label via the lightweight IANA expert review process or seek a dedicated trust/identity working group.
+  * **Globally-Reachable Service Parameters:** *Dispatched to DNSOP.* Further technical discussion and development will take place within the DNSOP Working Group.
+  * **Originator Profile Key:** *Not dispatched to DNSOP.* Authors were advised to utilize the standard IANA RR type allocation process, leverage existing `TLSA` prefix structures, or present the broader profile framework to relevant groups like ACME.

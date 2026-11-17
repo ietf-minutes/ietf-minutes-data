@@ -1,0 +1,145 @@
+# [CCAMP](../wg/ccamp.html)
+
+## Summary
+
+The Common Control and Measurement Plane (CCAMP) Working Group met at IETF 127. The session covered working group document status updates, AD guidance, liaison reviews, and technical presentations on optical interface parameters, microwave radio link models, optical pluggables gap analysis, CMIS access and control, performance monitoring (PM) streaming, network management agent (NMA) integration into ACTN, SLA assurance management, and fine-grain OTN (fgOTN) data models.
+
+---
+
+## Key Discussion Points
+
+### 1. Administrativia and Agenda Bashing
+* **Presentation:** [00 - Administrativia and Agenda Bashing](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-00-administrativia-and-agenda-bashing-00)
+* **Presenter:** Luis M. Contreras (supported by Ketan Talaulikar and Daniel King)
+* **Discussion:**
+  * **Document & Queue Status:** Several WG documents in the RFC Editor queue remain blocked awaiting final author approvals (AUTH48 phase). The Working Group adoption priorities include PM streaming, fine-grain OTN (`draft-ietf-ccamp-fgotn-yang`), microwave radio links (`draft-ietf-ccamp-rfc8561bis`), and client signal monitoring. Working Group Last Call (WGLC) priorities include `draft-ietf-ccamp-dwdm-if-param-yang`.
+  * **Document Updates:** `draft-ietf-ccamp-actn-optical-transport-mgmt` was updated to incorporate FCAPS capabilities; `draft-ietf-ccamp-eth-client-te-topo-yang` was updated to align with packet TE topology; and `draft-ietf-ccamp-yang-otn-slicing` is considered ready for WGLC by the authors pending Cluster 517 dependency reviews.
+  * **Liaisons:** An informational liaison was received from ITU-T on Recommendation ITU-T Y.2326. Formal liaisons were established between IETF and OIF, and a joint CCAMP/IPPM liaison was sent to ITU-T regarding ITU-T G.7710.
+  * **AD Guidance (Ketan Talaulikar):**
+    * Urged document authors to complete AUTH48 approvals to progress cluster documents.
+    * Reminded authors and reviewers to check all YANG documents for compliance against RFC 9907 (*YANG Guidelines*) before requesting WGLC.
+    * Highlighted the upcoming transition of YANG versioning documents to the RFC Editor queue and recommended attending OPS/Routing area sessions on handling non-backward-compatible changes.
+  * **FlexGrid & Transport MBI (Daniel King):**
+    * Noted that fixes for `draft-ietf-ccamp-flexgrid-yang` under AD evaluation are straightforward (import checks, media channel usage) and will be resolved shortly.
+    * Reported that the Transport MBI work is complete; proposed summarizing the work in a lightweight document while hosting detailed examples on a wiki.
+
+---
+
+### 2. Configurable DWDM Optical Interfaces
+* **Presentation:** [01 - A YANG data model to manage configurable DWDM optical interfaces](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-01-a-yang-data-model-to-manage-configurable-dwdm-optical-interfaces-00)
+* **Presenter:** Gabriele Galimberti
+* **Draft:** `draft-ietf-ccamp-dwdm-if-param-yang`
+* **Discussion:**
+  * Addressed Routing Area Directorate review comments and closed all outstanding GitHub issues (including issue 27).
+  * To avoid ongoing maintenance whenever new Threshold Crossing Alerts (TCAs) are introduced, the model updated `TCA type` from an `identityref` to an `instance-identifier` for both provisioning and notifications.
+  * Updated Appendix D with JSON representations of TCA thresholds.
+  * The authors consider the document feature-complete and ready for WGLC.
+
+---
+
+### 3. Microwave Radio Link YANG Model
+* **Presentation:** [02 - A YANG Data Model for Microwave Radio Link](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-02-a-yang-data-model-for-microwave-radio-link-00)
+* **Presenter:** Jonas Ahlberg
+* **Draft:** `draft-ietf-ccamp-rfc8561bis`
+* **Discussion:**
+  * The document has been adopted as `draft-ietf-ccamp-rfc8561bis` to replace RFC 8561 and moved to the IETF CCAMP GitHub repository.
+  * **Reference Modulation Scheme:** Replaced spectral efficiency clause with "reference modulation index" to align with ETSI EN 302 217.
+  * **Band and Carrier Aggregation:** A pull request is under review to support mixing carriers on different frequency bands and capacities (distinct from traditional bonding).
+  * **Radio Link Terminal (RLT) Mode:** Proposed making `RLT mode` a read-only leaf to prevent configuration conflicts with individual constituent carrier configurations.
+  * **Other Features:** Ongoing work on space diversity, cross-polarization across multiple nodes (XPIC), and evaluation of loopback placement (radio link vs. Ethernet layer).
+  * **Receiver Control:** Vendor and operator feedback was requested regarding use cases for disabling individual receivers (`Rx enabled`).
+  * Luis M. Contreras suggested sending an informational liaison to ETSI as the alignment progresses.
+
+---
+
+### 4. Optical Pluggables Gap Analysis
+* **Presentation:** [03 - Data Modelling and Gap Analysis of Optical Pluggables in Packet Over Optical Network](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-03-data-modelling-and-gap-analysis-of-optical-pluggables-in-packet-over-optical-network-00)
+* **Presenter:** Nigel Davis
+* **Discussion:**
+  * The team concluded that line-side photonic properties of pluggables are independent of form factor and should be integrated into existing optical models (e.g., `draft-ietf-ccamp-dwdm-if-param-yang`) rather than creating standalone pluggable YANG models.
+  * Line-side gap analysis is near completion. Remaining work focuses on host-to-plug interface properties (power, lane configuration) and external capability metadata handling.
+  * Fatai Zhang clarified the interaction between host/line models and pluggable attributes; Nigel Davis confirmed no standalone line-side pluggable model is being created.
+
+---
+
+### 5. CMIS Access and Control
+* **Presentation:** [04 - A YANG Data Model for CMIS Access and Control](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-04-a-yang-data-model-for-cmis-access-and-control-00)
+* **Presenter:** Shoichi Sakeno
+* **Discussion:**
+  * Defines a YANG model mirroring the CMIS memory map for attributes not abstracted by host Network Operating Systems (NOS), keeping the host NOS NETCONF server in the control loop.
+  * **v04 Updates:** Introduced opt-in page delegation, clear handover rules between host NOS and external controller, non-delegable critical registers (lower memory, CDB pages), rate-limited RPCs/actions, and phased deployment recommendations. Prototype implementation is underway on open-source SONiC.
+  * **Future v05 Plan:** Embed delegation constraints directly into YANG schema rules and unify error handling between RPCs and actions.
+  * **Comments & Feedback:**
+    * Fatai Zhang raised bank-granular access control scenarios (e.g., allocating specific banks/lanes to remote controllers).
+    * Nigel Davis inquired about handling CMIS reset-on-read and time-critical counters (to be discussed on the mailing list).
+    * Italo Busi and Nigel Davis recommended splitting the work into a problem statement draft and a solution draft, and sharing the problem statement with OIF.
+    * Authors requested a Working Group adoption call for the draft.
+
+---
+
+### 6. Performance Monitoring Streaming
+* **Presentation:** [05 - A YANG Data Model for Performance Monitoring Streaming on Common Transport Equipment](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-05-a-yang-data-model-for-performance-monitoring-streaming-on-common-transport-equipment-00)
+* **Presenter:** Young-Hwa Kim
+* **Discussion:**
+  * Updated the model structure to eliminate duplicate parameter definitions by importing base parameter identities from the core PM collection model.
+  * Intended status changed to Standards Track.
+  * Aligned current mechanisms with ITU-T G.7710 count mode; snapshot and tide-mark modes will be specified in future revisions.
+  * **Companion Draft Updates:**
+    * Core PM Collection: Added measurement method metadata (active/passive/hybrid per RFC 7799) and interval data status (complete/partial/unavailable).
+    * PM Interface Capabilities: Added capabilities for measurement method advertisement, collection types, and retained interval counts.
+  * Confirmed alignment with ITU-T SG15/Q14 during recent Geneva meetings.
+
+---
+
+### 7. NMA Integration into ACTN Architecture
+* **Presentation:** [06 - Integration of Network Management Agent (NMA) into ACTN-Based Optical Network](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-06-integration-of-network-management-agent-nma-into-actn-based-optical-network-00)
+* **Presenter:** De Xiao
+* **Draft Context:** `draft-ietf-ccamp-actn-optical-transport-mgmt`
+* **Discussion:**
+  * Proposes integrating AI/LLM-based Network Management Agents (NMAs) into ACTN entities (CNC, MDSC, PNC) for autonomous closed-loop operation without altering underlying ACTN control roles.
+  * Introduces an Agent Proxy for capability aggregation/registration across multiple agents, logical Agent-to-Agent (A2A) interactions, and extended MPI capabilities.
+  * **Security & Control:** Reuses ACTN security primitives; requires manual approval/human-in-the-loop for high-risk changes; mandates that configuration changes be executed through predefined templates rather than direct LLM command generation.
+  * **Comments:** Daniel King highlighted potential issues regarding race conditions, state divergence, and agent conflicts, recommending coordination with the ICON (Control and Intervention) group on observability and control primitives.
+  * Authors requested WG adoption.
+
+---
+
+### 8. SLA Assurance Management in Optical Transport Networks
+* **Presentation:** [07 - A YANG Data Model for Service Level Agreement (SLA) Assurance Management in Optical Transport Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-07-a-yang-data-model-for-service-level-agreement-sla-assurance-management-in-optical-transport-networks-00)
+* **Presenter:** Henry Yu
+* **Discussion:**
+  * Refined the definition of "Service Assurance Issue" as a detected optical network condition (e.g., shared trench) affecting SLA fulfillment that may exist without immediate customer-visible impact or associated incidents.
+  * Clarified distinction from SAIN (Service Assurance for Intent-based Networking): SAIN models service health, whereas this model provides optical-specific physical dependency data.
+  * Clarified protection path latency issues: specified that latency degradation stems from physical protection path distance rather than switching operation latency.
+  * Detailed ACTN interworking (PNC reporting domain-level observations to MDSC).
+  * Section 4.4.6 outlines open issues for community input: issue-to-service correlation, issue type classifications, statistical semantics, SFP export definitions, and resolution capabilities.
+
+---
+
+### 9. Fine-Grain OTN (fgOTN) YANG Data Models
+* **Presentation:** [08 - YANG Data Models for fine grain Optical Transport Network](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccamp-08-yang-data-models-for-fine-grain-optical-transport-network-01)
+* **Presenter:** Yan Xia
+* **Draft:** `draft-ietf-ccamp-fgotn-yang`
+* **Discussion:**
+  * Updated to revision 03 following adoption as `draft-ietf-ccamp-fgotn-yang`.
+  * **Topology Model:** Removed custom FGOTN bandwidth lists; reused IETF OTN `odu-list` structures from `draft-ietf-ccamp-otn-tunnel-model` and introduced `fg-odu-flex` in fgOTN types. Provided a step-by-step bandwidth allocation example in Appendix B.
+  * **Label Restrictions:** Replaced integer string definitions with strong data types (`uint8`/`uint16`) and added a `when` clause restricting label restrictions to tributary slot (TS) ranges.
+  * **Tunnel & Types Models:** Set `fg-odu-flex` bandwidth type to `uint8` (1 to 192) per ITU-T G.709; split TS types into `ts-list` (for tunnel hop) and `ts-list-or-empty` (for topology range); encapsulated TS numbers into `fg-ts-number-grouping`.
+  * Next steps include addressing GitHub open issues, completing management considerations, and adding tunnel JSON examples.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-ccamp-dwdm-if-param-yang`:** Authors will finalize minor edits following the TCA model update to `instance-identifier` and prepare the document for Working Group Last Call.
+2. **`draft-ietf-ccamp-flexgrid-yang`:** Daniel King and Italo Busi to meet during IETF 127 week to resolve outstanding AD evaluation comments (import checks, media channel definitions).
+3. **CMIS Access & Control:** Authors to evaluate splitting the document into a problem statement draft and a solution draft, with plans to share the problem statement with OIF.
+4. **AUTH48 Approvals:** Authors with documents in the RFC Editor queue are requested to expedite final approvals to clear pending clusters.
+
+---
+
+## Next Steps
+
+* **Microwave Radio Link (`draft-ietf-ccamp-rfc8561bis`):** Finalize pull requests for band/carrier aggregation and space diversity, and review receiver control use cases with operators/vendors.
+* **Fine-Grain OTN (`draft-ietf-ccamp-fgotn-yang`):** Address remaining GitHub issues, update management considerations, and supply JSON tunnel examples.
+* **SLA Assurance & NMA Integration:** Authors invite mailing list review on SLA semantic definitions, open issues in section 4.4.6, and agent interaction control models.

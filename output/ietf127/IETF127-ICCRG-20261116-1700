@@ -1,0 +1,95 @@
+# [ICCRG](../wg/iccrg.html)
+
+## Summary
+
+The Internet Congestion Control Research Group (ICCRG) held its session during IETF 127. The agenda included working group administration, an update on the Hackathon congestion control activities, and four technical presentations covering:
+1. Frameworks for evaluating heterogeneous congestion control algorithm (CCA) interactions and relative harm.
+2. Extending L4S (Low Latency, Low Loss, and Scalable throughput) service end-to-end across internet backbone and transit domains.
+3. Passive measurement of residential access network congestion, flow sharing, and application-informed video pacing.
+4. Implementing hardware-assisted TCP Segmentation Offload (TSO) pacing on network interface cards (NICs) to eliminate microbursts.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Hackathon Update
+* **Presenter:** Reese Enghardt
+* **Slides:** [Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-iccrg-chair-slides-05)
+* **Overview:**
+  * Co-chair Reese Enghardt welcomed participants, reviewed IRTF administrative procedures, IPR policies, code of conduct, and noted RFC 7418 for IRTF operations.
+  * Active documents update: The pacing draft has completed RG Last Call and is progressing toward IRSG review (shepherd: Mohit P. Tahiliani). LEDBAT++ (`draft-ietf-tsvwg-lebatplusplus` / RFC publication queue) is moving towards publication.
+  * **Hackathon Report:** Mohit P. Tahiliani led a congestion control table at the weekend Hackathon. Work included testing integration of picoquic, quiche, and neqo with the NS-3 simulator, evaluating rate-limited senders in MsQuic, and running various simulation experiments.
+
+---
+
+### Improving the Evaluation of Heterogenous Congestion Control Algorithm Interactions
+* **Presenter:** Roni "Ray" Sharayha
+* **Slides:** [Improving the Evaluation of Heterogenous Congestion Control Algorithm Interactions](https://datatracker.ietf.org/meeting/127/materials/slides-127-iccrg-improving-the-evaluation-of-heterogenous-congestion-control-algorithm-interactions-00)
+* **Discussion:**
+  * Ray Sharayha presented a principled framework to evaluate how new CCAs (referred to as "Taco") interact with legacy CCAs (referred to as "Pear", e.g., Cubic or Reno).
+  * **Relative Harm vs. Fairness:** Jain's Fairness Index (JFI) often scores drastically different outcomes identically. Sharayha highlighted RFC 9743 ("Executive Summary of the IETF Workshop on Congestion Control for Overhead and Low Latency Applications") and advocated for measuring *harm* rather than classic fairness. Relative harm compares the impact of a new CCA on a legacy CCA against the impact of the legacy CCA on itself.
+  * **Convergence Time:** Long-running flow evaluation requires calculating metrics after the interaction reaches a converged state (stable variance), which is detected using the proposed `PACE` tool.
+  * **Automated Parameter Exploration:** Because network setting spaces are vast, the authors introduced `HarmGen` (a genetic algorithm) and extended `Mahuika` (active learning) to discover network parameters that maximize relative harm.
+  * **Case Studies:**
+    * *BBRv3 vs. Cubic:* BBRv3 improves fairness over BBRv1 across many settings, but harm remains higher at high bandwidth-delay products.
+    * *L4S Queue Isolation:* Prague vs. Cubic evaluations showed DualQ AQM limits harm, but short-flow interactions still reveal measurable impact.
+* **Q&A and Chat Highlights:**
+  * *Metrics beyond throughput:* Te-Yuan, Lars Eggert, and Christian Huitema noted that modern internet applications (video streaming, short web assets, real-time communications) care deeply about latency, first-contentful paint, or startup time rather than just throughput. Sharayha agreed relative harm can be extended to latency or custom application metrics.
+  * *Application-level flows & short flows:* Stefan Kerschbaumer raised concerns regarding matching lab environments with production traffic patterns (varying connection arrival rates).
+  * *L4S interaction specifics:* In the chat, Greg White noted Cubic startup spikes can trigger high drop probabilities in Classic AQMs, leading to DualQ coupling CE-marking spikes that impact TCP Prague. Ingemar Johansson, Sebastian Moeller, and Ranysha Ware discussed pacing differences, separate 5G Data Radio Bearers (DRBs) vs. DualQ (RFC 9332), and L4S-on-L4S flow dynamics.
+
+---
+
+### Extending Low Latency Service Across the Internet
+* **Presenter:** Fatih Berkay Sarke
+* **Slides:** [Extending Low Latency Service Across the Internet](https://datatracker.ietf.org/meeting/127/materials/slides-127-iccrg-extending-low-latency-service-across-the-internet-00)
+* **Discussion:**
+  * Fatih Berkay Sarke presented work addressing L4S performance degradation when transient bottlenecks occur outside the customer access link (e.g., in transit networks or peering points).
+  * Analysis of CAIDA backbone traces (100 Gbps links) showed sharp packet inter-arrival clustering at serialization times, indicating transient upstream queuing even at moderate average utilization.
+  * **Proposed Architecture:**
+    * *Intra-domain:* Uses SRv6 (Segment Routing over IPv6) and local DSCP markings to steer L4S traffic onto isolated low-latency paths within a domain.
+    * *Inter-domain:* Uses BGP Community signaling to advertise L4S support across transit ASes, allowing senders to select end-to-end L4S-capable paths.
+    * *Co-existence Bottlenecks:* Replaces complex DualQ AQMs in high-speed core routers with rate-capped priority queues to protect L4S flows without heavy per-flow state.
+* **Q&A and Chat Highlights:**
+  * *Deployability & Scope:* Lars Eggert asked whether moving beyond the access link bottleneck assumption undermines the simplicity of L4S. Vidhi Goel noted that while access networks yield the primary L4S gains today, core handling provides additional protection against transient core queues.
+  * *Path stability and BGP signaling:* Stefan Kerschbaumer questioned the frequency and convergence of BGP Community updates under route churn.
+  * *L4S in Core Networks:* In chat, Sebastian Moeller and Martin Duke discussed whether priority queuing without DualQ queue-coupling in transit networks could be abused, while Ingemar Johansson noted transit networks typically have high bandwidth and shallow time-buffers.
+
+---
+
+### Measuring Service Congestion, Sharing, and Pacing in a Residential Access Network
+* **Presenter:** Bruce Spang
+* **Slides:** [Measuring Service Congestion, Sharing, and Pacing in a Residential Access Network](https://datatracker.ietf.org/meeting/127/materials/slides-127-iccrg-measuring-service-congestion-sharing-and-pacing-in-a-residential-access-network-00)
+* **Discussion:**
+  * Bruce Spang presented passive measurement data collected via an aggregation switch tap across 33 Columbia University residential buildings (~1,500 units).
+  * **Congestion Findings:** Despite low average building link utilization (95th percentile ~13%), individual units experienced high 90th-percentile weekly loss (>2%) and significant access RTT delay (>30 ms added delay). Sub-second analysis revealed extreme microburstiness (1-10 ms intervals exceeding 1 Gbps capacity).
+  * **Queue Sharing:** Using an *overlapping packets* metric (packets whose round-trip window overlaps in time), the study found that 60% of packets only overlap with packets from the same TCP flow, 80% overlap only with the same service, and only 4% experience cross-service queue sharing.
+  * **Application-Informed Pacing (SAMI Experiment):** Applied pacing to YouTube and Netflix video streams (comprising ~20% of network volume) over a multi-week toggled deployment.
+  * **Results:** Video pacing reduced overall residential access network packet loss by ~50% and access RTT by 30–40% for paced flows, with zero negative impact on video quality or stall metrics. Overlapping non-video traffic also saw a ~29% loss reduction and ~36% latency reduction.
+* **Q&A Highlights:**
+  * *Seasonality & Traffic Patterns:* Stefan Kerschbaumer asked about academic calendar biases. Spang clarified October data was chosen due to stable student populations and consistent hourly traffic distributions.
+  * *Application Metrics:* Martin Duke and Vidhi Goel asked if application-layer metrics (re-buffers/stalls) were impacted. Spang confirmed Netflix internal metrics showed uncompromised video quality with significant retransmission drops.
+
+---
+
+### TCP Segmentation Offload Without Microbursts
+* **Presenter:** Sebastian Rust
+* **Slides:** [TCP Segmentation Offload Without Microbursts](https://datatracker.ietf.org/meeting/127/materials/slides-127-iccrg-tcp-segmentation-offload-without-microbursts-01)
+* **Discussion:**
+  * Sebastian Rust presented a hybrid host-NIC pacing mechanism designed to eliminate microbursts caused by TCP Segmentation Offload (TSO).
+  * **Problem:** Software pacing operating above TSO outputs "super-packets" (up to 64 KB). When passed to the NIC, the NIC transmits the constituent segments back-to-back at full line rate, creating microbursts of up to 45 packets that induce queue jitter and packet drops on shallow-buffer switches.
+  * **Solution:** The host retains congestion rate calculation and coarse super-packet pacing, appending two metadata fields (Flow ID and Inter-Departure Time) to the TX descriptors. A firmware-based timing wheel on the NIC paces individual segments post-segmentation.
+  * **Evaluation:** Implemented on a Netronome Agilio CX 10GbE NIC using ~200 lines of driver/firmware code. Microbursts were eliminated, achieving segment inter-departure times within nanoseconds/microseconds of target rates, saving host CPU compared to software-only segment pacing, and significantly increasing the slow-start exit threshold on shallow queues.
+* **Q&A Highlights:**
+  * *Extending to QUIC/UDP:* Lars Eggert asked about applying this to UDP/GSO for QUIC. Rust confirmed the NIC-based timing wheel concept applies directly to UDP Generic Segmentation Offload (GSO).
+  * *NIC Firmware Accessibility:* Vidhi Goel inquired about hardware support across commercial NICs. Rust noted open firmware accessibility (e.g., Netronome or SmartNICs) is required to program the timing wheel.
+
+---
+
+## Next Steps
+
+* **Pacing Draft:** Chairs and authors will transition the updated document to IRSG review following RG Last Call completion.
+* **Research Collaboration:** Continued research and mailing list discussion on:
+  * Incorporating delay/latency metrics into the relative harm framework (`HarmGen` / `PACE`).
+  * End-to-end L4S co-existence and core network transit behavior.
+  * Hardware-assisted pacing for QUIC/GSO offloads.

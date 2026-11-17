@@ -1,0 +1,133 @@
+# [IPSECME](../wg/ipsecme.html)
+
+## Summary
+The IP Security Maintenance and Extensions (IPSECME) Working Group met at IETF 127. The session covered working group administration and document status updates, implementation and interoperability reports, proposals for post-quantum cryptographic extensions (large KEM embedding, fragmentation optimizations, Merkle Tree Certificates, and KEM-based authentication), updates to symmetric algorithms (AES-GCM-SIV for IPsec), protocol deprecations (AH and IPCOMP), and operational challenges in Non-Terrestrial Networks (NTN).
+
+---
+
+## Key Discussion Points
+
+### Working Group Administration and Document Status
+- **Chairs**: Tero Kivinen
+- **Note Taker**: Scott Fluhrer
+- **Document Status**:
+  - Three documents are in the RFC Editor queue, and one is in AD evaluation.
+  - `draft-ietf-ipsecme-ikev2-prf-plus` (Use of Variable-Length Output Pseudo-Random Functions (PRFs) in the Internet Key Exchange Protocol Version 2 (IKEv2)): Valery Smyslov stated that the draft has been stable without changes and is ready for Working Group Last Call (WGLC).
+  - `draft-ietf-ipsecme-ikev2-beet-mode` and `draft-ietf-ipsecme-rfc7402-beet-update` (A Bound End-to-End Tunnel (BEET) mode for ESP): Antony Antony reported administrative confusion regarding three drafts in DataTracker. Tero Kivinen approved the draft replacement/renaming request during the meeting to consolidate entries down to two drafts so both can proceed to WGLC together.
+
+---
+
+### Document Updates & Implementation Reports
+
+#### ESP Echo Protocol
+- **Presentation**: [ESP Ping](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-esp-ping-00)
+- **Presenter**: Antony Antony
+- **Draft**: `draft-ietf-ipsecme-encrypted-esp-ping` (ESP Echo Protocol)
+- **Discussion**:
+  - Versions 03 through 05 merged the encrypted and unencrypted variants into a single draft so both use the same wire packet format.
+  - The ping packet format is now fixed-size and includes a flag indicating whether a return SPI is present (set to 0 if absent).
+  - Antony presented a Linux proof-of-concept implementation using `ipsec-tools` and StrongSwan based on a ping socket model. Interoperability testing is ongoing.
+
+#### Implementation and Interoperability Updates
+- **Presentation**: [Update on various drafts implementation / interop](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-update-on-various-drafts-implementation-interop-01)
+- **Presenter**: Paul Wouters
+- **Draft Updates**:
+  - `draft-ietf-ipsecme-child-pfs-info` (IKEv2 Support for Child SA PFS Policy Information): Successfully interop-tested between Libreswan and elvis-plus (Valery Smyslov) for both hybrid and pure PFS (as well as addKE). IANA code points are registered. Implementers agreed no extra text is needed regarding handling key exchange changes in Create Child SA exchanges.
+  - `draft-ietf-ipsecme-ikev2-sa-ts-payloads-opt` (Optimized Rekeys in the Internet Key Exchange Protocol Version 2 (IKEv2)): Interop verified between Libreswan and elvis-plus. IANA values registered. Regarding misimplementations that send both the optimized rekey notify and the SA payload, consensus favored treating this as an `INVALID_SYNTAX` error per RFC 7296.
+  - **Downgrade Prevention**: Interop verified between Libreswan and elvis-plus; currently in the RFC Editor queue.
+  - **IPsec Delete Info**: Discussion remains regarding an optional text field without language tags. The chairs agreed to initiate a Working Group adoption call.
+  - `draft-ietf-ipsecme-ikev2-mlkem` (ML-KEM in IKEv2): Interop verified across Libreswan, strongSwan, elvis-plus, Apple, and Cloudflare. Currently in the RFC Editor queue.
+  - **RFC 9593** (Multiple Support Authentication Methods): Interop verified across implementations with and without `IKE_INTERMEDIATE`.
+
+---
+
+### Symmetric Algorithms & Post-Quantum Extensions
+
+#### AES-GCM-SIV for IPsec
+- **Presentation**: [AES-GCM-SIV for IPsec](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-aes-gcm-siv-for-ipsec-00)
+- **Presenter**: Casey Nguyen
+- **Discussion**:
+  - Proposed integrating AES-GCM-SIV (RFC 8452) into IKEv2 and ESP to provide inherent nonce misuse resistance.
+  - Unlike AES-GCM, AES-GCM-SIV uses Polyval and requires a full pass over the plaintext to calculate the authentication tag before beginning counter-mode encryption.
+  - The draft recommends transmitting a randomly generated 96-bit nonce and placing the authentication tag at the end of the Ciphertext field, leaving an empty ICV field.
+  - Scott Fluhrer and chat participants noted that AES-NI / PCLMULQDQ hardware instructions handle Polyval and AES-GCM-SIV efficiently.
+  - Tero Kivinen raised whether updating AES-GCM (RFC 4106) format definitions in parallel would be useful. Authors requested Working Group adoption.
+
+#### Embedding Large PQC KEMs in IKEv2
+- **Presentation**: [Embedding Large PQC KEMs in IKEv2](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-embedding-large-pqc-kems-in-ikev2-00)
+- **Presenter**: Daniel Harkins
+- **Discussion**:
+  - Evaluated eight transport and fragmentation mechanisms for large KEMs (ML-KEM, FrodoKEM, Classic McEliece) on OpenIKEv2 in a hardware testbed.
+  - Standard RFC 9370 (`IKE_INTERMEDIATE`) and IKE fragmentation struggle with large keys (e.g., Classic McEliece > 1 MB) over lossy links due to static timers.
+  - Results showed QUIC composite exchange and status-based selective acknowledgments perform best under high packet loss. Forward Error Correction (FEC via Raptor+/RaptorQ codes) effectively mitigates loss for medium/large KEMs without extra round trips.
+  - For Classic McEliece, datagram approaches cause severe link congestion on 1 Mbps links, while TCP/QUIC throttle themselves due to loss being interpreted as congestion. Paul Wouters and Daniel Harkins noted that Classic McEliece is no longer prioritized by cryptographers, but serves as a useful benchmark data point.
+
+#### IKE Fragmentation for Large Messages
+- **Presentation**: [IKE Fragmentation for Large Messages](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-ike-fragmentation-for-large-messages-00)
+- **Presenter**: Valery Smyslov
+- **Draft**: `draft-smyslov-ipsecme-ike2-fragment-ack`
+- **Discussion**:
+  - Consolidates two previous proposals into a single joint specification to address fragmentation inefficiencies when transmitting large post-quantum signatures or KEM payloads (10+ KB) over standard IKE fragmentation (RFC 7383).
+  - Version 02 introduces explicit negotiation using a new notification `FRAGMENT_ACK_SUPPORTED`. The receiver uses bitmaps or lists to report missing fragments so the sender only retransmits missing ones, reducing network congestion.
+  - Valery requested Working Group adoption for the draft.
+
+#### Merkle Tree Certificates in IKEv2
+- **Presentation**: [Merkle Tree Certificates in the IKEv2](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-merkle-tree-certificates-in-the-ikev2-00)
+- **Presenter**: Valery Smyslov
+- **Draft**: `draft-smyslov-ipsecme-ikev2-mtc`
+- **Discussion**:
+  - Proposed using Merkle Tree Certificates (MTC) to reduce authentication payload sizes by replacing public key signatures in identity certificates with CA log inclusion proofs.
+  - Requires relying parties to periodically download updated landmark state.
+  - Panos Kampanakis questioned the trade-off between periodic landmark retrieval overhead and sending 5 KB PQ certificates once per tunnel setup.
+  - Tom Mijnbeek and John Gray noted that work in the PLANTS Working Group (`draft-gray-plants-mtc-ldp`) provides efficient subtree proof mechanisms so relying parties do not need full hourly fetches.
+  - Christopher Patton and Paul Wouters noted that IPsec typically relies on private PKIs with 1–2 CAs rather than WebPKI with Certificate Transparency logs.
+
+#### KEM-based Authentication for IKEv2
+- **Presentation**: [KEM-based Authentication for IKEv2](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-kem-based-authentication-for-ikev2-00)
+- **Presenter**: Valery Smyslov (on behalf of Guilin Wang)
+- **Discussion**:
+  - Replaces ML-DSA signatures with ML-KEM key encapsulation for peer authentication in IKEv2.
+  - Updated draft (-02) adds initiator identity protection against active attacks using derived keys and introduces an `Encrypted Certificate` (`E_CERT`) payload.
+  - Quantitative analysis performed by Uri Blumenthal showed a 63% reduction in handshake computation work and a 44–64% reduction in wire byte size compared to ML-DSA.
+
+---
+
+### Deprecation & Operational Topics
+
+#### Deprecation of AH and IPCOMP
+- **Presentation**: [Deprecation of AH and IPCOMP](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-deprecation-of-ah-and-ipcomp-00)
+- **Presenter**: Paul Wouters
+- **Discussion**:
+  - **IPCOMP**: Broad agreement to deprecate IP Payload Compression (RFC 3173) due to lack of deployment, kernel maintenance burden, and compression-side-channel security risks.
+  - **AH**: Proposal to deprecate Authentication Header (AH, RFC 4302) due to unmaintained/bit-rotting code in kernel implementations (Linux, BSDs) creating security vulnerabilities.
+  - Ran Atkinson strongly objected to deprecating AH, highlighting critical non-VPN use cases where ESP cannot replace AH. Specifically, AH protects outer IPv6 extension headers, hop-by-hop options, and sensitivity security labels (RFC 5570 CALYPSO) used in government, enterprise, and service provider infrastructure protection. Saleem Bhatti added that ILNP (RFC 6741) mandates AH.
+  - **Outcome**: The WG agreed not to obsolete AH entirely. Instead, the WG will publish a Best Current Practice (BCP) document outlining the narrow, valid use cases where AH remains necessary (e.g., protecting IPv6 options and sensitivity labels) while discouraging its use in standard VPN deployments. Derrell Piper volunteered to author the BCP document.
+
+#### IPsec Challenges in Non-Terrestrial Networks (NTN)
+- **Presentation**: [IPsec Challenges in Non-Terrestrial Networks (NTN)](https://datatracker.ietf.org/meeting/127/materials/slides-127-ipsecme-ipsec-challenges-in-non-terrestrial-networks-ntn-00)
+- **Presenter**: Minchen Zhang
+- **Discussion**:
+  - Highlighted operational challenges stemming from 3GPP Release 19 mandating IPsec on critical satellite interfaces (N2, N3, N4, N9).
+  - Identified four primary issues: high dynamic latency triggering premature IKEv2 retransmissions, satellite mobility causing endpoint IP changes (where MOBIKE's single-fixed-endpoint assumption fails), out-of-order packet delivery exceeding standard replay window sizes (16–128), and link outages vs. SA lifetime settings.
+  - Paul Wouters suggested disabling replay protection if lower layers ensure delivery order and recommended evaluating BEET mode (`draft-ietf-ipsecme-ikev2-beet-mode`) for endpoint IP mobility.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **`draft-ietf-ipsecme-ikev2-sa-ts-payloads-opt`**: Clarifying text will be added specifying that returning an `INVALID_SYNTAX` notify payload is the required behavior when receiving both an optimized rekey notify and an SA payload.
+2. **BEET Mode Consolidation**: Naming/replacement requests were approved to consolidate DataTracker entries into two drafts (`draft-ietf-ipsecme-ikev2-beet-mode` and `draft-ietf-ipsecme-rfc7402-beet-update`) prior to moving both forward to Working Group Last Call.
+3. **Deprecation Strategy**: IPCOMP will be deprecated. AH will not be obsoleted; a Best Current Practice (BCP) document will be authored to restrict AH usage to specific IPv6 option/label protection scenarios.
+
+### Action Items
+- **Paul Wouters**: Confirm the `INVALID_SYNTAX` consensus for `draft-ietf-ipsecme-ikev2-sa-ts-payloads-opt` on the mailing list and incorporate the text.
+- **Tero Kivinen / Chairs**: Issue a Working Group Last Call for `draft-ietf-ipsecme-ikev2-prf-plus`.
+- **Tero Kivinen / Chairs**: Issue a Working Group adoption call for the IPsec Delete Info draft.
+- **Derrell Piper & Ran Atkinson**: Draft the Best Current Practice (BCP) document defining acceptable use cases for AH.
+
+---
+
+## Next Steps
+- Conduct Working Group adoption calls for AES-GCM-SIV for IPsec, `draft-smyslov-ipsecme-ike2-fragment-ack`, and IPsec Delete Info.
+- Continue discussion on NTN operational adaptations and KEM-based authentication on the IPSECME mailing list.

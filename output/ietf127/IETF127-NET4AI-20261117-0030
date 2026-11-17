@@ -1,0 +1,56 @@
+# [NET4AI](../wg/net4ai.html)
+
+## Summary
+
+The proposed Networking for AI (NET4AI) Research Group held its inaugural session at IETF 127. The session was co-chaired by Dirk Kutscher (in-person) and Antoine Fressancourt (remote), with Siddhant Ray taking notes. NET4AI aims to bring together researchers and the Internet community to investigate the networking conditions, transport protocols, architectures, and semantic foundations of distributed AI systems spanning multiple stakeholders and wide-area networks.
+
+The meeting featured three technical presentations exploring software transport and compression for ML workloads, distributed key-value (KV) cache architectures for LLM inference, and semantic foundations and namespaces for autonomous multi-agent systems.
+
+## Key Discussion Points
+
+### Group Scope and Administration
+* **Presentation**: [Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-net4ai-chair-slides-01)
+* Antoine Fressancourt presented the Note Well, IRTF code of conduct, and group objectives. 
+* NET4AI is designed to conduct long-term architectural research bridging academic researchers with the broader IETF/IRTF community.
+* The research group doubles as an academic workshop co-located with ACM CoNEXT in December in Utrecht, Netherlands.
+
+### The UCCL Project: UCCL-tran and UCCL-Zip
+* **Presentation**: [The UCCL project - UCCL-Zip and UCCL-tran - Yang Zhou](https://datatracker.ietf.org/meeting/127/materials/slides-127-net4ai-the-uccl-project-uccl-zip-and-uccl-tran-yang-zhou-01)
+* **Presenter**: Young Su (UC Davis)
+* **Technical Details**:
+  * Distributed AI model training and serving are increasingly spanning across data centers due to power limits and stranded GPU resources.
+  * Hardware-baked single-path RDMA transport protocols evolve slowly and suffer from severe flow collisions and backoffs in large ML workloads.
+  * **UCCL-tran**: A software-based transport mechanism decoupling control logic (handled in software on host CPUs) from bulk GPU data transfers (using Unreliable Connection / UC QPs and `RDMA WRITE WITH IMMEDIATE`). It provides multi-pathing with load-aware chunk scheduling across up to 256 QPs and custom loss recovery, requiring only ~2 CPU cores for dual-directional 400G traffic.
+  * **UCCL-Zip**: A pipeline for lossless compression of floating-point ML tensors. Because tensor exponent bits are highly skewed, UCCL-Zip compresses exponent bits while overlapping GPU compression kernels with RDMA transmission of uncompressed sign/fraction bits, overcoming physical network bandwidth limits.
+* **Discussion**:
+  * Antoine Fressancourt inquired about WAN testbed experiments. Young Su explained that cross-datacenter RDMA is restricted by public clouds, but CloudLab experiments using UC over WAN demonstrated promising bandwidth gains.
+  * A participant asked whether resource allocation could be done via pre-admission control rather than dynamic congestion management. Young Su responded that UCCL supports receiver-driven credit-based transport (e.g., EQDS), which outperforms InfiniBand in incast scenarios.
+
+### An Internet for the KV Cache
+* **Presentation**: [An Internet for the KV Cache - Siddhant Ray](https://datatracker.ietf.org/meeting/127/materials/slides-127-net4ai-an-internet-for-the-kv-cache-siddhant-ray-00)
+* **Presenter**: Siddhant Ray (University of Chicago)
+* **Technical Details**:
+  * LLM inference contexts often repeat across pipeline stages and multi-agent interactions. Recomputing the prefill state for large contexts (e.g., 100k tokens) can take ~15 seconds, whereas transferring the corresponding 1 GB KV cache over a 10 Gbps network takes ~0.8 seconds.
+  * Evaluated trade-offs between recomputing vs. reusing/transferring KV caches using unified metrics ($m$ for model compute work per byte, and $r$ for relative infrastructure/storage cost).
+  * Proposed an "Internet for KV Cache" architecture, replacing isolated cloud storage silos with a global KV cache control plane that manages discovery, placement, lookup, prefetching, and updates across cloud providers and storage tiers.
+* **Discussion and Chat Context**:
+  * In the session chat, Anh Vo asked about multi-cloud use cases. Siddhant Ray responded that application developers and infrastructure providers benefit from pricing flexibility and vendor lock-in reduction, while single-cloud multi-region transfer is an immediate deployment target.
+  * Antoine Fressancourt asked how this compares to Information-Centric Networking (ICN). Siddhant Ray clarified that unlike traditional static content in ICN, KV caches can be dynamically recomputed or partially reconstructed locally if transfer is delayed or costly.
+  * Wei Chang (China Mobile) asked whether real-time transfer of large KV caches poses a major challenge to the Internet. Siddhant Ray noted that compressed KV caches for typical contexts are small (kilobytes to megabytes) and agent reaction horizons (seconds to minutes) provide sufficient slack for network transfer.
+
+### Net4AI Semantic Foundation
+* **Presentation**: [Net4AI_semantic_foundation](https://datatracker.ietf.org/meeting/127/materials/slides-127-net4ai-net4ai-semantic-foundation-00)
+* **Presenter**: Lixia Zhang (UCLA)
+* **Technical Details**:
+  * High-level "blue-sky" research addressable by the IRTF on defining a common semantic foundation for autonomous multi-agent systems.
+  * Autonomous agents differ fundamentally from traditional Internet applications: inputs are open-ended natural language, decisions/outputs are chosen at runtime, and execution occurs autonomously at machine speed.
+  * Existing frameworks (MCP, A2A, ADI, SLIP) rely on fragmented identifiers, creating fragile mapping joins across identity, storage, and security layers.
+  * Proposed a unified namespace (utilizing DNS structures) for naming entities, information, and actions ("Global names, local trust").
+  * Emphasized that global identifiers and security mechanisms do not define *meaning*. Bounded, safe AI execution requires standard, immutable semantic contexts (input constraints, object/attribute definitions, output validation conditions).
+* **Discussion**:
+  * A participant asked about handling authorization narrowing and context expiry when delegating tasks to sub-agents. Lixia Zhang emphasized that agents do not act independently of human or organizational ownership; owners retain full responsibility, and delegating sub-tasks requires rigorously defined semantic scopes.
+
+## Next Steps
+
+* **Mailing List Engagement**: Participants and researchers are encouraged to join the NET4AI mailing list to drive discussion on problem statements, transport requirements, and semantic architectures.
+* **ACM CoNEXT Workshop**: Information regarding the co-located research group workshop at ACM CoNEXT (December in Utrecht) will be shared on the list.

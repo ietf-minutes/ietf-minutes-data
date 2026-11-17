@@ -1,0 +1,83 @@
+# [SAVNET](../wg/savnet.html)
+
+## Summary
+
+The SAVNET working group met at IETF 127 to review progress on its core architectural drafts, receive updates on proposed intra-domain and inter-domain solution approaches, and discuss SAV monitoring mechanisms using IPFIX as well as working group terminology. Key topics included updates to the inter-domain and intra-domain architecture specifications, solution proposals (IntraSAV and Bicone), vendor implementation experience exporting SAV telemetry via IPFIX, and how best to manage SAV terminology across working group documents.
+
+## Key Discussion Points
+
+### Session Intro & Administration
+- **Chairs**: Joel Halpern, Ron Bonica
+- **Slide Deck**: [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-chair-slides-00)
+- Joel Halpern reminded participants of the Note Well, conduct guidelines, IPR policies, and meeting logistics.
+
+### Inter-Domain SAV Architecture
+- **Presenter**: Liutao
+- **Slide Deck**: [The Updates on the Inter-domain Source Address Validation Architecture](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-the-updates-on-the-inter-domain-source-address-validation-architecture-01)
+- **Draft Reference**: [`draft-ietf-savnet-inter-domain-architecture`](https://datatracker.ietf.org/doc/draft-ietf-savnet-inter-domain-architecture/)
+- Liutao presented updates in version 04 of `draft-ietf-savnet-inter-domain-architecture`. The draft has been refocused to emphasize information requirements, distinguish valid/invalid/unknown directions, separate evidence storage (SAVE) from rule generation (SIB), and provide guidance for different interface types (provider-facing vs. customer/peer-facing).
+- **Discussion**:
+  - Kotikalapudi Sriram emphasized that for provider-facing interfaces, avoiding improper blocks must remain a primary requirement alongside reducing improper permits.
+  - Michael commented on practical deployment scenarios involving new cRPF mechanisms and handling legitimate traffic paths.
+  - Mengxiao Chen suggested refining the operator configuration terms to clarify SAV-specific operator configuration versus general routing configuration.
+
+### Intra-Domain SAV Architecture
+- **Presenter**: Lancheng Qin
+- **Slide Deck**: [Updates on Intra-Domain Source Address Validation Architecture](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-updates-on-intra-domain-source-address-validation-architecture-00)
+- **Draft Reference**: [`draft-ietf-savnet-intra-domain-architecture`](https://datatracker.ietf.org/doc/draft-ietf-savnet-intra-domain-architecture/)
+- Lancheng Qin summarized changes in version 05 of `draft-ietf-savnet-intra-domain-architecture`, which clarify input sources (configuration vs. routing protocols within the AS) and add an example demonstrating how different solution approaches arrive at the same allowlist for multi-homed customer scenarios.
+- **Discussion**:
+  - Kotikalapudi Sriram pointed out that routing messages do not contain customer interface IDs, which can lead to scenarios where a routing-based approach allows prefixes across both interfaces when an operator intended interface-specific restrictions.
+  - Jim Guichard noted that if SAV rules block source addresses on customer-facing interfaces, those rules must be synchronized with routing to prevent improper packet drops.
+  - Sriram requested deferring Working Group Last Call until these considerations are fully resolved on the mailing list.
+
+### IntraSAV: Intra-Domain SAV Solution
+- **Presenter**: Kotikalapudi Sriram
+- **Slide Deck**: [IntraSAV - A Solution for Intra-Domain Source Address Validation](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-intrasav-a-solution-for-intra-domain-source-address-validation-01)
+- Kotikalapudi Sriram introduced IntraSAV, a configuration/provisioning-driven solution for intra-domain SAV. Customers register both routed prefixes and source-only prefixes (e.g., for DSR/Anycast). ROAs are not directly used to build intra-domain SAV tables due to the lack of customer interface identifiers, but comparing configuration state against ROA records can help detect anomalous or unconfigured ROAs.
+- **Discussion**:
+  - Lancheng Qin noted that customer provisioning must include mechanisms to verify prefix ownership/authorization, which should be reflected in security considerations.
+  - Jeff Haas noted that differences between BGP/ROA abstractions and forwarding plane structures (e.g., wildcard ACL matches vs. longest prefix match) complicate translating inter-domain constructs to internal enforcement.
+  - Liutao asked about the operational overhead of configuration-based management and how completeness is validated. Sriram replied that customer registration is already a standard operational requirement for customer provisioning.
+
+### Bicone Source Address Validation
+- **Presenter**: Lancheng Qin
+- **Slide Deck**: [Updates on Bicone Source Address Validation](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-updates-on-bicone-source-address-validation-00)
+- Lancheng Qin detailed Bicone, a mechanism for inter-domain SAV that combines an allowlist and a blocklist when the allowlist may be incomplete (e.g., due to `no-export` communities or hidden prefixes). Blocklists are derived from provider cone exclusivity checks.
+- **Discussion**:
+  - Kotikalapudi Sriram asked how Bicone interacts with scenarios where customer ASPAs or BAR-SAV ([`draft-ietf-sidrops-bar-sav`](https://datatracker.ietf.org/doc/draft-ietf-sidrops-bar-sav/)) are unavailable.
+  - Mengxiao Chen inquired whether loose uRPF can be combined with allowlists and blocklists on customer interfaces.
+
+### Export of SAV Information in IPFIX
+- **Presenter**: Tian Chao
+- **Slide Deck**: [Export of SAV Information in IPFIX](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-export-of-sav-information-in-ipfix-00)
+- Tian Chao presented the IPFIX SAV export draft, which was transferred to SAVNET from OPSAWG. The draft defines four IPFIX Information Elements (IEs) to report data-plane SAV enforcement events. Recent updates include adding zero-value representations for unassigned fields, expanding security considerations (mitigating rule/state disclosure and export amplification via TLS/DTLS and rate limiting), and operational guidance (sampling, rate limiting, aggregation).
+- **Discussion**:
+  - The presenter asked for WG feedback on whether to use "all of" versus "none of" to represent allowlist non-matches in data records.
+  - Mengxiao Chen asked about the function of the SAV rule type and target type IEs; Tian Chao clarified that they are used in combination to represent the four validation modes.
+
+### HPE IPFIX Behavior for SAV
+- **Presenter**: Jeff Haas
+- **Slide Deck**: [HPE IPFIX behavior for SAV](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-hpe-ipfix-behavior-for-sav-00)
+- Jeff Haas shared implementation experience from HPE regarding data-plane SAV enforcement and IPFIX export. The implementation uses a VRF table model (LPM on source addresses) programmed via gRPC (capable of ~20k entries/sec), differing from [`draft-ietf-savnet-general-sav-capabilities`](https://datatracker.ietf.org/doc/draft-ietf-savnet-general-sav-capabilities/). For IPFIX, HPE extends inline sampling mechanisms using IE 315 (packet header snapshot) plus IE 137 enterprise-specific metadata to report RPF drop reasons, highlighting the performance tradeoffs between sampling dropped packets versus sampling permitted traffic.
+- **Discussion**:
+  - Participants asked how operators can monitor SAV activity without actively dropping traffic; Jeff explained that non-dropping pass/sample rules can send telemetry over a dedicated IPFIX stream.
+
+### Currently Used Terminology Related to SAV
+- **Presenter**: Mengxiao Chen
+- **Slide Deck**: [Currently Used Terminology Related to Source Address Validation](https://datatracker.ietf.org/meeting/127/materials/slides-127-savnet-currently-used-terminology-related-to-source-address-validation-00)
+- Mengxiao Chen introduced an informational draft consolidating SAV terminology across various deployment domains, scenarios, and mechanisms to foster consistent language across working group documents.
+- **Discussion**:
+  - Ron Bonica (Co-Chair) suggested integrating key terminology definitions directly into the working group's foundational architecture documents rather than maintaining a separate terminology draft, ensuring alignment with previously published RFCs.
+  - Jim Guichard (AD) agreed, cautioning against retroactively changing terms used in published RFCs, and suggested further discussion on the mailing list to handle terminology consistency cleanly.
+
+## Decisions and Action Items
+
+- **Mailing List Discussion on Intra-Domain Architecture**: Discussion regarding customer interface handling, synchronization with routing, and readiness for Working Group Last Call on [`draft-ietf-savnet-intra-domain-architecture`](https://datatracker.ietf.org/doc/draft-ietf-savnet-intra-domain-architecture/) will continue on the mailing list (initiated by Kotikalapudi Sriram and Lancheng Qin).
+- **Terminology Draft Strategy**: The working group will discuss on the mailing list whether to incorporate terminology definitions into core architectural drafts rather than publishing a separate terminology document, identifying any specific inconsistencies across active drafts.
+
+## Next Steps
+
+- Refine [`draft-ietf-savnet-inter-domain-architecture`](https://datatracker.ietf.org/doc/draft-ietf-savnet-inter-domain-architecture/) and [`draft-ietf-savnet-intra-domain-architecture`](https://datatracker.ietf.org/doc/draft-ietf-savnet-intra-domain-architecture/) based on session feedback.
+- Collect feedback on the mailing list regarding the IPFIX SAV export draft's query on allowlist non-match representation ("all of" vs. "none of").
+- Receive future vendor presentation on SAV programming models and APIs (expected at a future IETF meeting).

@@ -1,0 +1,51 @@
+# [ICNRG](../wg/icnrg.html)
+
+## Summary
+
+The Information-Centric Networking Research Group (ICNRG) met at IETF 127. The session covered working group document status updates, technical presentations on name-based quality of service (QoS), multipath adaptive data transfers (MARS), integration of ICN with SCION inter-domain routing, security bootstrapping in Named Data Networks (NDN), and a focused discussion on the impact and integration of Post-Quantum Cryptography (PQC) in ICN architectures.
+
+## Key Discussion Points
+
+### Active Drafts & RG Status Updates
+- **Chunking Draft:** The CCNx chunking specification has entered IRSG Last Call.
+- **FLIC Manifest Draft (`draft-ietf-icnrg-flic`):** Work on the FLIC specification remains paused. Chairs requested further reviews and contributions from the community.
+- **CCNx Versioning Draft:** Toshio Koide reported that the core design is stable. Recent edits focus on refining normative language (SHOULD/MAY/MUST). Further reviews were requested.
+
+### Name-based Quality for Name-based Networks
+- **Presentation:** Ryo Yanagida presented research on name-prefix-based QoS in ICN without requiring explicit packet marking or bleaching ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-icnrg-name-based-quality-for-name-based-networks-01)).
+- **Technical Details:** The approach configures forwarders with policy tables mapping prefixes to DiffServ-style code points (e.g., Expedited Forwarding) and reuses existing Priority Queue scheduling mechanisms in the underlying stack. Evaluation via NDNSIM 2.9 demonstrated prioritized latency treatment during network saturation.
+- **Discussion:** Yitong Li asked whether queuing is applied to Interest or Data packets. Ryo Yanagida clarified that forwarding behaviors apply to both, but packet suppression and choking have the most significant impact on the larger Data packets.
+
+### MARS - Multipath Adaptive Reliable Service
+- **Presentation:** Yitong Li presented MARS, a UDP overlay-based multipath data transfer framework for ICN ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-icnrg-mars-multipath-adaptive-reliable-service-00)).
+- **Technical Details:** MARS performs safe path discovery by probing shorter paths first and recording ingress interfaces at forwarders to avoid Interest loops. Forwarders embed in-band queue feedback into returning Data packets, enabling pacing of Interest packets away from congested links. Evaluation on Mininet demonstrated resilience under loss (up to 1%) and rapid recovery (<250 ms) after link failures compared to MPTCP and MP-QUIC.
+- **Discussion:** Kathy Nichols asked how Interest loops could occur. Yitong Li explained that without ingress tracking, forwarders using multipath routing choices might forward Interests back to upstream nodes, creating loops that MARS explicitly filters out during discovery rounds.
+
+### Post-Quantum Cryptography and Information-Centric Networking
+- **Presentation:** Kathy Nichols introduced a discussion on transitioning ICN architectures to Post-Quantum Cryptography (PQC) standards, specifically NIST ML-DSA ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-icnrg-post-quantum-cryptography-and-information-centric-networking-00)).
+- **Technical Details:** Highlighted the substantial increase in public key and signature sizes (e.g., ML-DSA signatures of ~3–4 KB compared to 64 bytes for ECC), which creates significant overhead for per-packet signing in ICN. Detailed a prototype implementing a hybrid Key Encapsulation Mechanism (KEM) using `liboqs`/`libsodium` for periodic group key distribution in trust domains.
+- **Discussion:**
+  - Dave Oran highlighted the risk of downgrade attacks when designing crypto-agile mechanisms. He emphasized that large signature overhead increases the reliance on Merkle tree manifest structures (such as `draft-ietf-icnrg-flic`), where only the manifest root requires a PQC signature rather than every individual data chunk.
+  - Tim Shang noted comparisons with Message Layer Security (MLS, RFC 9420) for group communication key exchange.
+  - Scott Fluhrer suggested monitoring FN-DSA (FIPS 206) for applications requiring smaller signature footprints than ML-DSA.
+
+### ICN + SCION
+- **Presentation:** Jeremiah Davis updated the RG on combining CCNx (C4 implementation) with SCION inter-domain routing over the Fabric testbed ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-icnrg-icnscion-00)).
+- **Technical Details:** The system utilizes dual-stack ICN/SCION border routers and gateways that map ICN prefixes to SCION Autonomous System (AS) numbers. Producer prefix announcements require validation via RHINE (a DNSSEC-like name resolution system). Introduced layer-2 ICN socket bindings to remove global IP dependencies and leveraged C4 reflexive forwarding for session-like exchanges between gateways and border routers.
+- **Discussion:** Dave Oran inquired how SCION multipath capabilities are exposed. Jeremiah Davis explained that while border routers currently handle default path selections, running local gateways at endpoints would allow applications to manage multipath congestion and failover directly.
+
+### Bootstrapping in Named Data Networks
+- **Presentation:** Adam Timi presented security bootstrapping mechanisms to provision new NDN nodes with a Trust Anchor, Trust Schema, and initial Certificate ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-icnrg-bootstrapping-in-named-data-networks-01)).
+- **Technical Details:** Detailed two operational trust initialization patterns:
+  1. *Local Bootstrapping (e.g., Home IoT):* Out-of-band trust via hardware QR/barcodes containing device public keys/encryption parameters to secure the initial certificate exchange.
+  2. *Remote Bootstrapping (e.g., Remote Chat):* Out-of-band channels (e.g., email) carrying temporary key pairs that act as single-use authorization tokens to request and validate initial certificates under the domain trust schema.
+
+## Decisions and Action Items
+
+- **PQC Discussion:** Group participants are encouraged to continue discussions on Post-Quantum Cryptography adaptation, signature overhead mitigation, and crypto-agility on the ICNRG mailing list.
+- **Document Reviews:** Community members were requested to review `draft-ietf-icnrg-flic` (FLIC manifest) and the CCNx Versioning draft.
+
+## Next Steps
+
+- Continue mailing list discussions on PQC adaptation strategies for ICN signatures and manifests.
+- Progress the CCNx versioning draft towards publication readiness.

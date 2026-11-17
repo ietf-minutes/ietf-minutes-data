@@ -1,0 +1,72 @@
+# [MTAHOOKS](../wg/mtahooks.html)
+
+## Summary
+
+The MTAHOOKS Birds of a Feather (BOF) session at IETF 127 was chaired by Bernie Hoeneisen and Lisa Dusseault. The session evaluated proposals to form a working group focused on standardizing an HTTP-based protocol ([draft-degennaro-mta-hooks](https://datatracker.ietf.org/doc/draft-degennaro-mta-hooks/)) that allows Mail Transfer Agents (MTAs) to delegate processing, routing, delivery, and notification decisions to external policy engines, filters, and scanners.
+
+The agenda included two technical presentations covering the protocol proposal and operational experiences from production environments, followed by charter bashing and formal polls. The discussion centered on protocol scope, the necessity of an architecture document, security and attack surface concerns, interaction with MTA queue transactionality, HTTP/JSON/CBOR serialization choices, and historical context from OPES (RFC 4496).
+
+---
+
+## Key Discussion Points
+
+### Presentations
+
+- **MTA Hooks Presentation** ([slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mtahooks-mta-hooks-presentation-00)) — *Mauro De Gennaro*
+  - Mauro De Gennaro presented [draft-degennaro-mta-hooks](https://datatracker.ietf.org/doc/draft-degennaro-mta-hooks/), describing an HTTP/JSON/CBOR-based protocol to unify MTA event handling across the entire delivery lifecycle (connect, hello, mail, rcpt, data, route, transmit, delivery, DSN).
+  - Highlighted limitations in existing tools (Milter, static lookup tables, log parsing) when implementing modern specifications like DKIM2 (e.g., handling blind copies, signing envelope addresses, post-delivery DSN generation).
+  - Outlined the architecture: the MTA acts as an HTTP client making POST requests containing a JSON document representing message state. The filter server responds with a JSON Patch (RFC 6902) describing requested state modifications or action results. Security, capabilities, and permitted modifications ("grants") are negotiated during registration.
+
+- **Stories from production** ([slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mtahooks-stories-from-production-00)) — *Manuel Kasper and Karsten Otto*
+  - Manuel Kasper and Karsten Otto presented operational challenges from managing enterprise and public-sector MTA setups.
+  - Detailed current workarounds required in Postfix environments: inability to pass full message context to routing tables, difficulty routing single recipients over specific paths (e.g., VPNs or domain encryption gateways) without causing queue ID proliferation and message loops, lack of standard delivery rejection feedback into central policy engines without parsing logs, and challenges integrating external SaaS filters securely.
+
+- **Chair slides & charter** ([slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mtahooks-chair-slides-charter-00)) — *Bernie Hoeneisen and Lisa Dusseault*
+  - Lisa Dusseault presented the proposed working group charter, goals, scope, and initial milestones.
+
+### Discussion Highlights
+
+- **Historical Context (OPES & SIEVE)**: Barry Leiba referenced historical work from the OPES Working Group, specifically RFC 4496 (SMTP use cases for OPES), emphasizing the need to understand why OPES did not achieve widespread adoption for mail. Mauro De Gennaro noted OPES was a generic intermediary framework without an SMTP-specific binding or decision model. Jim Fenton and Mauro De Gennaro clarified that MTA Hooks is distinct from SIEVE, which operates per-recipient at local delivery time, whereas MTA Hooks acts across all SMTP transaction stages.
+- **Interoperability and MTA Gateways**: John Levine noted that creating gateways between MTA Hooks and existing Milter interfaces would enable deployment without requiring every MTA maintainer to build an HTTP client natively. Jim Fenton raised questions regarding multi-MTA adoption beyond Postfix. Mauro De Gennaro and Bron Gondwana noted existing implementations in Stalwart and production usage scenarios.
+- **Routing & MTA Concurrency**: Victor Dukhovni expressed concern over delegating real-time routing to external network callouts, noting that MTA routing engines (e.g., Postfix queue manager) require deterministic, low-latency execution to maintain throughput. Bron Gondwana countered that operators currently use complex re-injection loops to express business logic routing (such as directing traffic to low-priority IP pools or specific encryption hops), which MTA Hooks could streamline into stateless policy calls.
+- **Architecture Document Requirement**: Victor Dukhovni, Pete Resnick, John Klensin, and Area Director Andy Newton advocated for writing an Architecture Document as a primary initial milestone before finalizing wire specifications. They emphasized that high-level concepts, state flow, transactionality (e.g., atomic queue commits under RFC 5321 bis), and decision boundaries must be formally agreed upon.
+- **Security & Attack Surface**: John Klensin, Tero Kivinen, and Andy Newton stressed that expanding MTA callout hooks across all processing stages significantly increases the attack surface. Mutual TLS, authentication, authorization, and structural validation of patches returned by external filters must be designed upfront. Bron Gondwana noted that local deployments often run over Unix domain sockets where environment isolation provides security, but agreed external channels require robust TLS/OAuth mechanisms.
+- **Transport & Encoding**: Christopher Wood questioned constraining the charter to HTTP. Lisa Dusseault and Neil Jenkins argued that HTTP provides standard microservices tooling, debugging, and authorization frameworks. Mauro De Gennaro explained that supporting both JSON and CBOR allows simple JMAP-style JSON patches while permitting binary-heavy filters (e.g., rspamd) to process raw message bodies without escaping overhead. Mauro De Gennaro and Bron Gondwana confirmed full willingness to grant IETF change control over the protocol design.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **Charter Amendment — Architecture Document**: The charter will be updated to explicitly mandate a separate **Architecture Document** as an initial deliverable to define system interaction, security boundaries, and transaction semantics prior to/alongside wire protocol standardization.
+2. **Charter Amendment — Routing Scope**: Delegation of MTA routing decisions will be changed from a required deliverable to an optional/work-in-progress scope item for the WG to evaluate.
+
+### Session Polls
+
+The following authoritative polls were taken during the session (Total participants: 48):
+
+1. **Do you think that the problem statement is well-understood, solvable, and useful to solve?**  
+   - **Yes:** 23 | **No:** 4 | **No Opinion:** 3 (Total: 48)
+
+2. **Do you think the IETF is the right place to do this work?**  
+   - **Yes:** 23 | **No:** 0 | **No Opinion:** 4 (Total: 48)
+
+3. **Do you tihnk the initial scope from the charter we just discussed is correct?**  
+   - **Yes:** 16 | **No:** 2 | **No Opinion:** 11 (Total: 48)
+
+4. **Do you think the initial deliverables [-routing, +architecture document] from the charter we just discussed are correct?**  
+   - **Yes:** 16 | **No:** 5 | **No Opinion:** 7 (Total: 48)
+
+5. **Do you think a WG should be formed on this topic, with a charter based on the [amended] draft charter we just discussed?**  
+   - **Yes:** 21 | **No:** 4 | **No Opinion:** 4 (Total: 48)
+
+6. **Are you willing to help write and/or review drafts in this potential WG?**  
+   - **Yes:** 16 | **No:** 6 | **No Opinion:** 7 (Total: 48)
+
+---
+
+## Next Steps
+
+- The chairs (Bernie Hoeneisen and Lisa Dusseault) and AD Andy Newton will update the draft charter text to reflect the agreed amendments (adding the Architecture Document deliverable and refining the routing scope).
+- Continued discussion on architectural boundaries and draft text will take place on the MTAHOOKS mailing list.
+- The Responsible Area Director will evaluate the poll results and session feedback to determine next steps for working group formation.

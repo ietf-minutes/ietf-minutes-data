@@ -1,0 +1,87 @@
+# [HAPPY](../wg/happy.html)
+
+## Summary
+
+The HAPPY Working Group met at IETF 127. The session focused on the primary working group document [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/), reviewing updates in version -05 and preparing for Working Group Last Call (WGLC). Implementers presented deployment experience and field data from Firefox, Chromium, and Swift stacks. The working group also discussed considerations for Happy Eyeballs error reporting and diagnostics, weighing passive network observation and local client logging (e.g., QLOG) against privacy risks of active telemetry.
+
+## Key Discussion Points
+
+### Working Group Document: draft-ietf-happy-happyeyeballs-v3
+
+Tommy Pauly and Nidhi Tiwari presented updates on [draft-ietf-happy-happyeyeballs-v3](https://datatracker.ietf.org/doc/draft-ietf-happy-happyeyeballs-v3/) (slides: [Happy Eyeballs v3](https://datatracker.ietf.org/meeting/127/materials/slides-127-happy-happy-eyeballs-v3-01)). Key changes in draft revision -05 include:
+- **Resolution Delay Recommendation:** Updated recommended wait time for AAAA/HTTPS records to 25 ms based on empirical implementation data.
+- **Exponential Backoff:** Incorporated Firefox implementation experience allowing exponential backoff for connection attempt delays starting from an aggressive base delay.
+- **Connection Attempt Independence:** Clarified that attempts are independent connections and must not reuse TLS key shares, QUIC initial packets, or connection IDs.
+- **Multiple Networks & Provisioning Domains (PVDs):** Added Section 6 to clarify behavior across multiple networks, referencing the abstract Provisioning Domain concept (RFC 7556) without requiring explicit PVD discovery (RFC 8801). State must not be shared across network changes.
+- **Connection Escalator / Pooling:** Softened connection cancellation requirements to permit keeping attempts for preferred protocols (e.g., QUIC/HTTP/3) open for future pool reuse even if a fallback connection wins the initial race.
+
+**Discussion:**
+- Mirja Kühlewind, Eric Nygren, Lorenzo Colitti, and Gorry Fairhurst raised concerns regarding keeping un-used QUIC connections open due to short NAT timeouts, battery drain from keepalives, and server resource limits.
+- Ben Schwartz noted that keeping QUIC connections alive after a TCP win works well in practice for recurring request patterns until idle timeouts clean them up.
+- Ben Schwartz requested an editorial pass to make the draft structure more modular for application in custom racing engines.
+- Eric Kinnear and Tommy Pauly noted that all technical open issues are resolved and suggested proceeding to Working Group Last Call.
+
+**Session Poll:**
+- **Question:** "I have read a recent version of the HEv3 draft"
+- **Results:** yes: 11, no: 16, no_opinion: 1 (total: 44)
+
+---
+
+### Implementation Reports
+
+#### Firefox Partial Rollout Report
+Max Inden presented deployment data from Firefox's partial rollout of Happy Eyeballs v3 (slides: [Firefox Partial Rollout Report](https://datatracker.ietf.org/meeting/127/materials/slides-127-happy-firefox-partial-rollout-report-01)).
+- **Rollout Status:** Enabled in Nightly and expanded to a 50% release population rollout with a 10% A/B release experiment (5% v3 vs. 5% control).
+- **DNS Resolution Timing:** 92% of positive DNS responses arrive within the 25 ms resolution delay window.
+- **Performance Data:** Showed a ~5% increase in HTTP/3 connection adoption (shifting primarily from HTTP/2). First Contentful Paint (FCP) improved across all percentiles (0.6% to 3.6% improvement, saving ~400 ms at P99).
+- **Optimistic DNS:** Extended optimistic DNS handling to negative cached DNS entries (60s TTL + 600s stale grace period).
+
+**Discussion:**
+- Philipp Tiemann asked whether HTTP/3 FCP gains were causal or correlated with HTTP/3-enabled sites; Max Inden clarified that the A/B test randomized client populations across identical sites.
+- Ben Schwartz cautioned against long optimistic DNS stale grace periods (TTL stretching), noting operational issues for server operators trying to drain clusters or balance traffic.
+- Lorenzo Colitti, John Carismo, and Stuart Cheshire discussed DNS cache hit behaviors and server shutdown strategies.
+
+#### Update on Chromium Implementation
+Keiichi Ishiguro presented the status of Chromium’s staged Happy Eyeballs v3 implementation (slides: [Update on Chromium Implementation](https://datatracker.ietf.org/meeting/127/materials/slides-127-happy-update-on-chromium-implementation-00)).
+- **Implementation Stages:** Stage 1 (TCP happy eyeballs) is enabled in stable release. Stage 2 (QUIC racing across address families) is currently in field testing. Stage 3 (unified TCP and QUIC racing algorithm) is upcoming.
+- **QUIC Field Data:** On Android, 6.5% of successful QUIC connections started early on partial DNS results. Fallback timers won the race in 2% of successful QUIC connections.
+- **Metric Insights:** Highlighted that measuring QUIC latency alone creates statistical selection bias (tail latency appears slower because previously failing slow paths now succeed on QUIC). Operators should evaluate combined H2+H3 overall latency.
+- **DNS Cache Behavior:** Implemented Section 6.6 recommendations to let DNS queries remain in flight briefly after connection completion to ensure the DNS cache is populated.
+- **Field Tests:** Currently testing optimistic DNS (restricted to TLS and QUIC) and RTT-based dynamic fallback timers for mobile networks.
+
+#### Happy Eyeballs v3 in Swift
+Gautam Akiwate presented the open-source Swift implementation of Happy Eyeballs v3 (slides: [Happy Eyeballs v3 in Swift](https://datatracker.ietf.org/meeting/127/materials/slides-127-happy-happy-eyeballs-v3-in-swift-00)).
+- **Architecture:** Structured around `OrderedEndpointGroups` (Section 5.1 security/protocol properties like ECH and HTTP/3) and `OrderEndpoints` (Sections 5.2–5.4 candidate endpoint attempt ordering).
+- **Connection Pool Integration:** Raised the question of whether active pooled connections should be integrated into endpoint attempt ordering or kept strictly separate prior to invoking Happy Eyeballs.
+
+**Discussion:**
+- Ben Schwartz, Tommy Pauly, and Mirja Kühlewind confirmed that Happy Eyeballs is intended specifically for establishing new connections. Connection pool management and reuse occur prior to triggering Happy Eyeballs.
+- Stuart Cheshire reiterated that Happy Eyeballs was originally designed to prevent long timeouts on broken IPv6 paths rather than optimize path selection for future performance.
+
+---
+
+### Considerations for Happy Eyeballs Error Reporting
+
+Philipp Tiemann presented considerations for error reporting in Happy Eyeballs (slides: [Considerations for Happy Eyeballs Error Reporting](https://datatracker.ietf.org/meeting/127/materials/slides-127-happy-considerations-for-happy-eyeballs-error-reporting-00)).
+- Examined operator and enterprise requirements for identifying broken IPv6 connectivity or performance degradation hidden by silent Happy Eyeballs fallbacks.
+- Discussed potential reporting models for managed clients, content providers, and network operators.
+
+**Discussion:**
+- Lars Eggert, Daniel Gillmor (in chat), and Stephen Farrell expressed strong privacy and security concerns regarding sending client-side resolution data or telemetry to external networks.
+- Tommy Pauly suggested network operators utilize passive wire image monitoring (e.g., observing TCP FINs, resets, and connection timing patterns across candidate server IP ranges) rather than requiring explicit client signaling.
+- Ben Schwartz, Philipp Tiemann, and Mirja Kühlewind suggested that local logging standards (such as QLOG formatting for Happy Eyeballs state machines) represent the most feasible and privacy-preserving path forward for client implementers.
+
+---
+
+## Decisions and Action Items
+
+1. **Working Group Last Call:** The chairs will initiate an extended Working Group Last Call for `draft-ietf-happy-happyeyeballs-v3` on the mailing list.
+2. **Editorial Feedback:** Participants (including Ben Schwartz) will submit specific structural and editorial comments on `draft-ietf-happy-happyeyeballs-v3` during WGLC.
+3. **Error Reporting Scope:** The working group will refine the scope of error reporting work on the mailing list, focusing on local logging formats (e.g., QLOG) for an informational document.
+
+---
+
+## Next Steps
+
+- Publish WGLC announcement for `draft-ietf-happy-happyeyeballs-v3`.
+- Discuss scoped informational proposals for Happy Eyeballs QLOG/local logging on the list.

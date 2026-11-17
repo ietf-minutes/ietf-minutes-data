@@ -1,0 +1,157 @@
+# [DNSOP](../wg/dnsop.html)
+
+## Summary
+
+The DNSOP working group met at IETF 127. The session covered administration and draft status updates, a DNS Hackathon debrief, discussions on working group last call (WGLC) procedures, presentations on private top-level domain documentation, resolver caching optimizations, DNSSEC wildcard validation vulnerabilities, post-quantum cryptography (PQC) signature reduction schemes, zone digest extensions, and an extensive discussion regarding a proposed split of the working group into separate operational and protocol-maintenance working groups.
+
+---
+
+## Key Discussion Points
+
+### Administration and Working Group Status Update
+**Presenter:** Benno Overeinder  
+**Slides:** [DNSOP Chairs Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-dnsop-chairs-slides-00)
+
+* **Published Documents:**
+  * RFC 10026 (BCP 246): Operational Recommendation for DNSSEC Delegation Signer
+  * RFC 10001: Operational Guidelines for DNS Transport Mix (IPv4/IPv6)
+* **Publication Pipeline:**
+  * Structured error data for filtered DNS is currently in the RFC Editor Queue.
+  * Consensus was reached for `draft-ietf-dnsop-integration` (Integration of DNS Domain Names into Application Environments: Motivations and Considerations); an updated revision incorporate community feedback will be forwarded to the IESG along with the Shepherd write-up.
+* **Working Group Last Calls (WGLC):**
+  * `draft-ietf-dnsop-delext` (DNS Protocol Modifications for Delegation Extensions) was evaluated in a joint WGLC and will be discussed in the DELEXT WG session.
+  * `draft-ietf-dnsop-delegation-mgmt-via-ddns` (Automating DNS Delegation Management via DDNS) completed WGLC but received minimal feedback, prompting a dedicated session discussion.
+  * Upcoming WGLCs will be issued for `draft-ietf-dnsop-domain-verification-techniques` (Domain Control Validation using DNS), `draft-ietf-dnsop-ns-revalidation` (Delegation Revalidation by DNS Resolvers), `draft-ietf-dnsop-dnssec-keyrestore` (DNSSEC Key Restore), and `draft-ietf-dnsop-dnssec-automation` (DNSSEC automation).
+* **Active Working Group Drafts:**
+  * Progress updates were noted for `draft-ietf-dnsop-zone-cut-to-nowhere`, `draft-ietf-dnsop-grease`, `draft-ietf-dnsop-filtering-transparency`, `draft-ietf-dnsop-dry-run-dnssec`, `draft-ietf-dnsop-multi-alg-rules`, `draft-ietf-dnsop-rfc9364bis`, and `draft-ietf-dnsop-ede-nta`.
+  * One expired draft will be followed up by the chairs.
+
+---
+
+### DNS Hackathon Summary
+**Presenter:** Shumon Huque  
+**Slides:** [DNS Hackathon Summary](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-dns-hackathon-summary-00)
+
+Shumon Huque summarized the project outcomes from the IETF 127 Hackathon DNS table:
+* **ML-DSA-44 in Java:** David Blacka integrated MLDSA-44 PQC DNSSEC signature support into `jdnssec-tools` and established test zones verified by other participants.
+* **DANE Client Auth:** Shumon Huque prototyped Go client support for TLS client authentication via DANE (`draft-ietf-dane-client-auth`).
+* **ZoneMD in BIND:** Mark Andrews and Evan Hunt refined BIND’s ZONEMD implementation to meet root zone requirements and general-purpose use.
+* **Opportunistic Transport Signaling (OOTS):** Johan Stenstam, Peter Thomassen, and Vicky Risk developed and updated the specification and implementations for authoritative servers signaling support for DoT and DoQUIC.
+* **DNSSEC Algorithm Visualization:** Dan York developed a web utility visualizing DNSSEC algorithm usage and observed signature sizes.
+* **Merkle Tree Ladders (MTL):** Joe Harvey, Swapneel Sheth, Andrew Kaiser, and Hong Ying benchmarked packet size reductions using SIG tag elicited optimized responses with PQC DNSSEC signatures.
+
+---
+
+### WGLC Feedback Discussion: draft-ietf-dnsop-delegation-mgmt-via-ddns
+**Discussion Lead:** Benno Overeinder, Johan Stenstam  
+
+The chairs highlighted that `draft-ietf-dnsop-delegation-mgmt-via-ddns` received only one feedback message during its WGLC.
+* **Johan Stenstam** argued that exit criteria (WGLC completion) should evaluate the absence of technical objections rather than requiring high ongoing engagement, provided the document met entry filters and addressed all working group comments.
+* **Wes Hardaker** countered that explicit working group review during WGLC is vital to ensure completeness and technical quality, noting that the working group is heavily overloaded.
+* **Ralph Dolmans** suggested reopening the last call briefly, attributing low engagement to timing around CVE responses and WG restructuring discussions.
+* **Jim Reid** supported advancing the document on technical merit while setting a firm deadline for final comments.
+* **Paul Hoffman** referenced RFC 7282, emphasizing that standard IETF rough consensus rules apply and cannot be redefined per working group.
+* **Ondřej Surý** noted that specialized domain management drafts might benefit from focused execution environments to avoid losing visibility.
+
+---
+
+### A Top-Level Domain for Private Use (.internal)
+**Presenter:** Kim Davies  
+**Slides:** [A Top-Level Domain for Private Use (.internal)](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-a-top-level-domain-for-private-use-internal-00)
+
+* **Overview:** Kim Davies presented the updated draft documenting `.internal` for private and isolated network environments, following ICANN's reservation policy request.
+* **Draft Updates:** Removed specific text on insecure delegation and special-use domain name (RFC 6761) classifications to focus strictly on usage guidance, security considerations, and recommending the use of controlled domain names where possible.
+* **Discussion:**
+  * **Stuart Cheshire** emphasized the utility of evaluating the domain against the seven questions of RFC 6761 to clarify expected behaviors for software developers and registrars, even if answers are negative. He encouraged adding `.internal` to the Special-Use Domain Names registry for documentation purposes.
+  * **Kim Davies** and **Peter Thomassen** noted that special-use designation had been omitted during an earlier evaluation of the independent submission stream, but agreed to re-evaluate it within DNSOP.
+
+---
+
+### Optimistic DNS Updates
+**Presenter:** Swapneel Sheth  
+**Slides:** [Optimistic DNS Updates](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-optimistic-dns-updates-00)
+
+* **Overview:** The draft specifies a client stub resolver mechanism to serve expired cached DNS records immediately while initiating an asynchronous network refresh, using Happy Eyeballs mechanisms to prevent fatal connection attempts.
+* **Implementations:** Currently implemented in Firefox, Android, and Apple's mDNSResponder.
+* **Discussion:**
+  * **Ben Schwartz** suggested the mechanism belongs in application-level HTTP/Happy Eyeballs logic rather than general DNS stub resolvers, warning of breakage with rapid DNS load balancing changes.
+  * **Lorenzo Colitti** and **Eric Kinnear** argued for an explicit opt-in API in system resolvers, noting that mobile OS boundaries prevent applications from managing network-state-aware DNS caches directly.
+  * **Stuart Cheshire** and **Eric Nygren** discussed historical operational parameters and race conditions during pre-fetching, agreeing that protocol coordination between DNSOP and the HAPPY WG is appropriate.
+
+---
+
+### Signer-Zone Containment for DNSSEC Wildcard Validation
+**Presenter:** Tifa  
+**Slides:** [Signer-Zone Containment for DNSSEC Wildcard Validation](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-signer-zone-containment-for-dnssec-wildcard-validation-00)
+
+* **Vulnerability Overview:** Tifa presented research demonstrating a cross-zone contamination attack where a child zone response utilizing wildcards and underflowed `RRSIG` label counts causes validating resolvers to synthesize fake records inside parent or sibling zones.
+* **Tested Resolvers:** BIND, Unbound, PowerDNS Recursor, and Knot Resolver were shown to be vulnerable under aggressive caching conditions.
+* **Proposed Remediation:** Updates to RFC 4035 (preventing `RRSIG` label underflow by verifying signature owner names match the zone) and RFC 8198 (enforcing zone authority boundaries during wildcard synthesis).
+* **Discussion:**
+  * **Paul Hoffman** and **Roy Arends** clarified that this vulnerability fix constitutes a protocol change rather than an erratum, requiring a standalone updating draft.
+  * **Felix Linker** explored whether updating RFC 4035 alone provides sufficient protection or if RFC 8198 updates are necessary for defense-in-depth.
+
+---
+
+### Update on Merkle Tree Ladders for PQC DNSSEC
+**Presenter:** Andrew Kaiser  
+**Slides:** [Update on Merkle Tree Ladders for PQC DNSSEC](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-update-on-merkle-tree-ladders-for-pqc-dnssec-00)
+
+* **Overview:** Andrew Kaiser presented updates on Merkle Tree Ladders (MTL) designed to reduce storage, memory, and packet size overhead for Post-Quantum Cryptography (PQC) algorithms (ML-DSA-44, ML-DSA-87, SLH-DSA) by replacing individual `RRSIG` signatures with a single PQC tree signature and short Merkle proofs.
+* **Structural Division:** The specification has been split into a core MTL base draft and a second opt-in EDNS extension draft (`draft-ietf-dnsop-sig-tag` equivalent concept) for tag-elicited optimized deduplication.
+* **Benchmarks:** Benchmarks across 11 TLD zones demonstrated signature signing time for SLH-DSA dropped from 90 minutes to 3 seconds using MTL, with zone sizes staying comparable to ECDSA.
+* **Discussion:**
+  * **Ben Schwartz** raised concerns regarding algorithm proliferation without clear single-standard selection and suggested exploring transport-level compression (such as gzip over EDNS/HTTP) as an alternative.
+  * **Joe Abley** noted a preference for enabling large response transport natively rather than adding resolver validation paths, while seeking clarification on dynamic online signing.
+  * **Felix Linker** noted that Merkle trees provide logarithmic proof size and fast verification that transport-layer compression cannot match for subset verification.
+  * **John Todd** expressed strong operator interest from Quad9 due to memory and wire-format savings in bandwidth-constrained resolver locations.
+
+---
+
+### The MERKLE3 Incremental Scheme for ZONEMD
+**Presenter:** Duane Wessels  
+**Slides:** [The MERKLE3 Incremental Scheme for ZONEMD](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-the-merkle3-incremental-scheme-for-zonemd-00)
+
+* **Overview:** Duane Wessels presented a draft introducing MERKLE3, a 4-layer fixed Merkle tree scheme for RFC 8976 (ZoneMD) to enable efficient, incremental recomputation of zone digests and parallel processing in large or dynamic zones.
+* **Tree Structure:** Comprises a root node, up to 256 Level-1 nodes, 65,536 Level-2 nodes, and leaf nodes containing hashes of canonical RRsets.
+* **Status:** Dual prototype implementations completed in Knot DNS and Python with matching test results.
+* **Discussion:**
+  * **Ray Bellis** queried the selection of default hash algorithms and requested explicit step-by-step intermediate calculation examples in the document text.
+  * **Ben Schwartz** suggested seeking alignment across various Merkle tree structures proposed across DNS specifications.
+  * **Ondřej Surý** expressed support for the performance benefits in authoritative server implementations.
+
+---
+
+### WG Split Charter Discussion
+**Presenter:** Jim Reid, Peter Thomassen  
+**Slides:** [WG Split Charter Discussion](https://datatracker.ietf.org/meeting/127/materials/slides-127-dnsop-sessa-wg-split-charter-discussion-03)
+
+* **Proposal Overview:** To address working group overload, Jim Reid presented a draft charter to split DNSOP into two groups:
+  1. **DNSOP:** Focused strictly on operational practices, deployment, and operational maintenance.
+  2. **New Protocol Maintenance WG (DNS-EMU / DNSNG / similar):** Focused on core protocol updates, extensions, and protocol maintenance.
+* **Draft Allocation Proposal:**
+  * **DNSOP:** `draft-ietf-dnsop-ns-revalidation`, `draft-ietf-dnsop-filtering-transparency`, `draft-ietf-dnsop-ede-nta`, `draft-ietf-dnsop-delegation-mgmt-via-ddns`.
+  * **New WG:** `draft-ietf-dnsop-dry-run-dnssec`, `draft-ietf-dnsop-zone-cut-to-nowhere`, `draft-ietf-dnsop-multi-alg-rules`, `draft-ietf-dnsop-grease`, `draft-ietf-dnsop-rfc9364bis`.
+* **Discussion:**
+  * **Lorenzo Colitti** and **Jen Linkova** supported the structure, referencing the successful separation model between 6MAN (protocol) and V6OPS (operations), while requesting explicit boundary definitions regarding resolver behavioral requirements.
+  * **Wes Hardaker** and **Jody Kolker** cautioned against potential friction between protocol design and operational realities, emphasizing the need for cross-group coordination.
+  * **Éric Vyncke (AD)** supported the split and suggested explicitly excluding routine RRtype allocation requests from the new group's scope to avoid unvetted proposals dumping onto the WG.
+  * **Paul Hoffman** and **Jim Reid** discussed registry policies and recommended clarifying pathways for simple code point allocations vs. protocol updates.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-dnsop-delegation-mgmt-via-ddns`:** The chairs and Responsible AD will establish a firm review timeline on the mailing list to confirm consensus before advancing the document.
+* **`draft-ietf-dnsop-integration`:** The Shepherd write-up and updated draft revision will be submitted to the IESG.
+* **Upcoming WGLCs:** Chairs will issue Working Group Last Calls for `draft-ietf-dnsop-domain-verification-techniques`, `draft-ietf-dnsop-ns-revalidation`, `draft-ietf-dnsop-dnssec-keyrestore`, and `draft-ietf-dnsop-dnssec-automation`.
+* **DNSSEC Wildcard Validation Attack:** Author Tifa will prepare a standalone Internet-Draft updating RFC 4035 and RFC 8198 rather than filing errata.
+* **WG Split Charter:** Jim Reid and the chairs will update the proposed charter text based on feedback (refining boundary language and removing redundant paragraphs) for further review with the ADs and the working group.
+
+---
+
+## Next Steps
+
+* Continue mailing list discussions on `.internal` guidance and RFC 6761 alignment.
+* Coordinate protocol boundaries between DNSOP and HAPPY regarding optimistic DNS client caching behaviors.
+* Advance charter split discussion on the mailing list toward formal IESG chartering submission.

@@ -1,0 +1,50 @@
+# [RTGAREA](../wg/rtgarea.html)
+
+## Summary
+
+The Routing Area (RTGAREA) working group met to discuss YANG module versioning practices for module authors and to review real-world measurement findings regarding Route Origin Validation (ROV) and Autonomous System Provider Authorization (ASPA) enforcement on production routers. Due to initial remote audio connectivity issues, the presentation order was adjusted to accommodate the speakers.
+
+## Key Discussion Points
+
+### Session Introduction & Chair Updates
+* **Slides**: [RTGAREA Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-rtgarea-rtgarea-chair-slides-00)
+* Gunter Van de Velde opened the session and noted an agenda adjustment due to remote audio configuration.
+* Reminders were given regarding the IETF Note Well and conduct guidelines. Authors were reminded that YANG models progressing through the Routing Area are expected to conform to established YANG guidelines (such as RFC 9907).
+
+### YANG Versioning and SemVer: Impacts on YANG Authors
+* **Slides**: [YANG Versioning and Semver: Impacts on YANG authors](https://datatracker.ietf.org/meeting/127/materials/slides-127-rtgarea-yang-versioning-and-semver-impacts-on-yang-authors-00)
+* **Presenter**: Joe Clarke
+* **Discussion**:
+  * Joe Clarke outlined the updates to YANG versioning stemming from three drafts in the RFC Editor queue covering YANG module versioning, semantic versioning (SemVer), and file naming.
+  * Authors are requested to minimize non-backwards-compatible (NBC) changes. When NBC changes occur, authors must append the `non-backwards-compatible` extension to the published revision statement.
+  * Status changes (e.g., moving nodes from current/deprecated to obsolete per RFC 7950) are treated as NBC changes.
+  * Authors must assign appropriate semantic version tags (`YANG Semantic Version` or `YSV version`) to module revisions, starting at `1.0.0` for initial releases. Module authors can also use extensions such as `recommended-min-version` and `recommended-min-date` to manage imports.
+  * Tooling availability was demonstrated:
+    * **Pyang**: Fork updated to support checking SemVer updates (`--check-update-semver`), flags potential semantic changes in descriptions/references, and suggests appropriate version increments.
+    * **Libyang / YangLint**: Full support included in upstream release 2.1.148 for schema comparison and automated module auditing.
+    * **XIM & RFCStrip**: Updated to handle SemVer extraction for filenames.
+  * In the Q&A and chat:
+    * AC Lindem asked whether fixes can be applied to YANG modules without going through the full RFC publication process. Joe Clarke pointed to ongoing work in the OPSAWG regarding publication velocity (Veloce) and IANA errata handling.
+    * John Scudder raised a concern regarding the ambiguity of the acronym "NBC" (Non-Backwards-Compatible vs. Non-Breaking Change). Joe Clarke confirmed that NBC specifically denotes "non-backwards-compatible" in this context.
+    * Kesara Rathnayake noted in chat that the IETF author tools site (`author-tools.ietf.org/yang`) includes an experimental Pyang checker with plans to integrate YangLint and formatting support.
+
+### What ROV and ASPA Enforcement Would Actually Drop on a Production Router
+* **Slides**: [What ROV and ASPA Enforcement Would Actually Drop on a Production Router](https://datatracker.ietf.org/meeting/127/materials/slides-127-rtgarea-what-rov-and-aspa-enforcement-would-actually-drop-on-a-production-router-00)
+* **Presenter**: Ritesh Mukherjee
+* **Discussion**:
+  * Ritesh Mukherjee presented findings from measurements taken on a production edge network (AS38016, 115 BGP sessions, 4.5 million paths) using the open-source BSD-3-licensed tool "Raven" to simulate ROV (RFC 6811) and ASPA enforcement pre-policy.
+  * **ROV Findings**:
+    * Overall, 0.42% of paths failed either ROV or ASPA checks.
+    * 86% of paths that ROV marked as invalid were legitimate BGP Blackhole requests (RFC 7999 host routes, typically `/32`s) sent by the address space owner. Because the origin's covering Route Origin Authorization (ROA) limited the prefix length per BCP 185 (RFC 9319) recommendations, the host route failed the ROV `max-length` check.
+    * Only a small fraction of invalid paths were actual origin mismatches or unauthorized origins.
+  * **ASPA Findings**:
+    * 2.2% of total paths were verified against ASPA objects; 79% of paths marked as "secured" were valid by definition due to short path lengths (length 1 or 2) without requiring explicit object lookups.
+    * Over 59% of failing ASPA paths were concentrated within just 10 customer-to-provider relationships where a provider AS was missing from the customer's ASPA object declaration.
+  * **Open Questions & Feedback**:
+    * Sriram Sriram noted that Flowspec v2 documents account for liberal `max-length` checks for blackhole routes and suggested that transit providers should proactively alert customers to missing or erroneous ASPA declarations.
+    * John Scudder and Jeffrey Haas discussed SIDROPS object structures regarding host/blackhole routes; Bryton Herdes shared draft-spaghetti-grow-rpki-doa in chat as a related effort for defining such objects.
+
+## Decisions and Action Items
+
+* **YANG Module Authors**: Prepare to incorporate semantic versioning extensions (`YSV version`) into published and revised modules as the NetMod versioning specifications exit the RFC Editor queue.
+* **Topic Submissions**: Area Directors requested that participants submit Routing Area topics at least 3–4 weeks in advance of future IETF meetings.

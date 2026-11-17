@@ -1,0 +1,92 @@
+# [SQUAD](../wg/squad.html)
+
+## Summary
+
+The SQUAD (Scalable QUIC Applications and Delivery) session at IETF 127 was a non-working-group-forming Birds of a Feather (BOF) session chaired by Lucas Pardue and Lenny Giuliani. The primary goal of the BOF was to explore whether there is community interest in addressing application delivery scalability by combining QUIC with IP multicast (or multicast routing architectures generally), to examine relevant deployment scenarios and technical challenges, and to collect feedback on potential next steps (such as dispatching work to existing working groups, creating a dedicated mailing list, or holding a working-group-forming BOF in the future).
+
+The session featured six presentations covering the problem statement and boundaries, deployment scenarios (multicast ABR and 5G MBS), modern multicast routing developments (SSM, AMT, BIER), transport and congestion control considerations, implementation experience (Flexicast QUIC and MC-QUIC prototypes), and the integration of Media over QUIC (MoQ) over Multicast QUIC. An open discussion followed, focusing on wireless/Wi-Fi constraints, unicast vs. multicast capacity limits, application-transport boundaries, and whether the problem scope should be broadened beyond QUIC and IP multicast.
+
+---
+
+## Key Discussion Points
+
+### Chair Introduction and Agenda
+* Presented slides: [Agenda](https://datatracker.ietf.org/meeting/127/materials/slides-127-squad-agenda-05)
+* Lucas Pardue and Lenny Giuliani presented the Note Well, meeting rules, and agenda, emphasizing that SQUAD is a non-working-group-forming BOF intended to assess problem statements and use cases rather than select a final solution.
+
+### Problem Statement and Boundaries
+* Presented slides: [Problem Statement and Scope](https://datatracker.ietf.org/meeting/127/materials/slides-127-squad-problem-statement-and-scope-00)
+* Speaker: Max Franke
+* Max Franke outlined the central problem: while IP multicast is highly bandwidth-efficient for mass media and live streams, applications lack a standard, easy-to-use transport-layer interface.
+* The proposed model combines a standard unicast QUIC connection (for control, feedback, authentication, and unicast fallback) with an opportunistic multicast channel for bulk data delivery using Source-Specific Multicast (SSM).
+* In-scope items: Protection/encryption, congestion response, loss detection/repair, pacing, and operational failure migration. Out-of-scope items: Any-Source Multicast (ASM), new IP multicast routing protocols, browser APIs, and application-layer protocols.
+* Discussion:
+  * Jana Iyengar asked about the separation between unicast and multicast responsibilities and how congestion avoidance functions in a 1-to-N model.
+  * Martin Duke asked whether changing keying protocols (e.g., MLS for group keys) would require a new QUIC version.
+
+### Deployment Scenarios and Use Cases
+* Presented slides: [Deployment scenarios and use cases](https://datatracker.ietf.org/meeting/127/materials/slides-127-squad-deployment-scenarios-and-use-cases-00)
+* Speaker: Mark PJS
+* Mark PJS shared insights from production Multicast ABR (mABR) deployments serving tens of millions of subscribers and handling terabit-scale peak events (such as World Cup matches) with 80–90% network traffic savings.
+* The primary barrier to wider mABR adoption is integration complexity across gateways, operators, and player SDKs. Standardizing a transport-layer approach (e.g., QUIC extended with multicast, supporting MoQ on top) would significantly ease integration.
+* Emerging transport environments include 5G MBS (Multicast/Broadcast Services) transport-only mode and satellite distribution.
+* Discussion: Wei Zhang asked how mABR handles personalized ad insertion (switching back to unicast or using city/cohort-specific multicast channels).
+
+### Existing Standards and Solution Approaches for Multicast Routing
+* Presented slides: [Existing Standards and Solution Approaches for Multicast Routing](https://datatracker.ietf.org/meeting/127/materials/slides-127-squad-existing-standards-and-solution-approaches-for-multicast-routing-00)
+* Speaker: Greg Shepherd
+* Greg Shepherd provided historical context, highlighting that inter-domain Any-Source Multicast (ASM) and its associated complexity (Rendezvous Points, MSDP) have been deprecated.
+* Modern multicast routing is simplified through Source-Specific Multicast (SSM), Automatic Multicast Tunneling (AMT) for over-the-top reachability without global multicast enablement, and Bit Index Explicit Replication (BIER), which eliminates per-flow state in intermediate routers and leverages unicast FIB topologies.
+* Highlighted real-world deployments including live weather data delivery over AMT/multicast on GEANT and Flexicast demos over live networks.
+
+### Transport, Congestion, and Operational Considerations
+* Presented slides: [Transport, Congestion, and Operational Considerations](https://datatracker.ietf.org/meeting/127/materials/slides-127-squad-transport-congestion-and-operational-considerations-01)
+* Speaker: Kyle Rose
+* Kyle Rose detailed key technical challenges that any multicast transport solution must solve:
+  * **Congestion Control:** Multicast congestion is not additive like unicast; dropping bitrate for a single receiver may create a new stream on a bottleneck link rather than relieving load.
+  * **Unicast Recovery Stampedes:** Degraded multicast quality could cause thousands of receivers to request unicast repairs simultaneously, overloading origins and bottleneck links.
+  * **Network Protection & Feedback:** Raw multicast lacks ACKs; server feedback mechanisms or network element circuit breakers are required.
+  * **Privacy:** Multicast changes receiver privacy dynamics compared to pairwise unicast QUIC.
+  * **Operational Visibility & QoS:** Commercial distributors require telemetry, quality metrics, and SLA guarantees equivalent to unicast CDNs.
+* Discussion:
+  * Martin Duke asked about the maturity of solutions to these challenges. Kyle Rose and Max Franke replied that candidate solutions exist in drafts and prototype code, but consensus on optimal approaches remains an open task.
+  * Jana Iyengar noted that Kyle Rose's draft on security and privacy considerations provides further depth on these topics.
+
+### Implementation and Deployment Experience
+* Presented slides: [Implementation and deployment experience](https://datatracker.ietf.org/meeting/127/materials/slides-127-squad-implementation-and-deployment-experience-00)
+* Speakers: Louis De Smet and Max Franke
+* Louis De Smet presented Flexicast QUIC (implemented in Cloudflare quiche using Multipath QUIC semantics), showing significant sender CPU/encryption savings, file distribution testing (game updates), Wi-Fi multicast-to-unicast conversion, and a lightweight prototype built during the IETF hackathon.
+* Max Franke demonstrated MC-QUIC integrated with Media over QUIC (MoQ) running natively inside a modified Firefox Nightly browser over the IETF hotel Wi-Fi via an AMT tunnel, achieving ~80% egress bandwidth reduction with ~60 ms added latency.
+
+### Benefits and Challenges of MOQ over Multicast QUIC
+* Presented slides: [Benefits and Challenges of MOQ over Multicast QUIC](https://datatracker.ietf.org/meeting/127/materials/slides-127-squad-benefits-and-challenges-of-moq-over-multicast-quic-00)
+* Speaker: Magnus Westerlund
+* Magnus Westerlund presented an architectural analysis of delivering MoQ over Multicast QUIC.
+* Key trade-offs and open technical questions include:
+  * Mapping MoQ's object/track hierarchy onto QUIC packet numbers across multiple relays and multicast groups.
+  * Retransmission priority, local loss repair, and handling integrity verification frames.
+  * Rate adaptation strategies (switching tracks vs. dropping multicast groups).
+  * Reconciling MoQ relay topologies with packet-level IP multicast replication.
+
+### Open Discussion
+* **Wireless/Wi-Fi Performance:** Mo Zanaty noted that wireless access is increasingly spatial (MIMO, beamforming) and fundamentally challenging for multicast. Mark PJS, Watson Ladd, and François Michel pointed out that layer-2 multicast-to-unicast conversion, fixed wireless access, 5G MBS, and device-to-device local relaying mitigate these issues.
+* **Capacity and CDN Reachability:** Watson Ladd and Mark Watson noted that content providers face scenario boundaries where unicast CDN capacity cannot meet peak demand, making point-to-multipoint architectures necessary even if reachability across all subscriber networks is incomplete.
+* **Application Coupling:** Mark Watson, Martin Thomson, Tommy Pauly, and Jana Iyengar noted that congestion response and rate adaptation are inherently application-dependent (e.g., switching video renditions). They cautioned against decoupling the application layer entirely or prescribing QUIC + IP multicast as the single static abstraction.
+* **QUIC Extension vs. Separate Architecture:** Martin Thomson and Tommy Pauly questioned whether multicast belongs directly inside QUIC as an extension or if it should be structured as a separate protocol or broader transport abstraction.
+* **Proponent Guidance:** Lars Eggert and Martin Thomson advised proponents to return to future BOFs with concrete data proving that the identified congestion, repair, and operational visibility problems have feasible solutions.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+* **No Working Group Formed:** As announced, this non-working-group-forming BOF did not create a new working group.
+* **Problem Recognition:** The audience broadly recognized that network capacity during peak live events is a significant operational challenge, though consensus was not established on whether QUIC extended with IP multicast is the best approach to solve it.
+
+---
+
+## Next Steps
+
+1. **Mailing List Discussion:** Initial follow-up discussions will continue on the existing QUIC working group mailing list, with the potential creation of a dedicated mailing list if topic-specific discussion demands it.
+2. **Scoping and Problem Definition:** Proponents were encouraged to "zoom out" to clearly define the broader transport/application problem space, while also "zooming in" to gather empirical data addressing congestion control, loss repair, and client interface requirements.
+3. **Cross-Group Coordination:** Proponents will continue coordinating with related working groups, including MoQ (discussing multicast extensions during IETF 127) and MOPS (engaging network operators on live streaming delivery requirements).

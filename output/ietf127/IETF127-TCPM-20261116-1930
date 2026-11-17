@@ -1,0 +1,64 @@
+# [TCPM](../wg/tcpm.html)
+
+## Summary
+
+The TCP Maintenance and Minor Extensions (TCPM) Working Group met to discuss working group document status, resolve unresolved Working Group Last Call (WGLC) issues, and evaluate proposals related to TCP-AO algorithms, session header updates, session recovery, and explicit loss notification via packet trimming.
+
+## Key Discussion Points
+
+### Working Group Status & WGLC Issues
+* **Chair Slides**: Presented by Yoshiifumi Nishida ([chair slide](https://datatracker.ietf.org/meeting/127/materials/slides-127-tcpm-chair-slide-02)).
+  * Target milestone dates were presented for active drafts, including `draft-ietf-tcpm-tcp-ghost-acks`, `draft-ietf-tcpm-tcp-ao-algs`, `draft-ietf-tcpm-rst-diagnostic-payload`, `draft-ietf-tcpm-ack-rate-request`, and TCP Generalized ECN.
+* **`draft-ietf-tcpm-tcp-ghost-acks` Issues**: Presented by Michael Tuexen ([Ghost ACK Issues](https://datatracker.ietf.org/meeting/127/materials/slides-127-tcpm-ghost-ack-issues-01)).
+  * **Off-by-one issue in `ackmin` calculation (Appendix A/B)**: A commenter suggested that `ISS + 1` was incorrect based on Linux stack behavior. Michael Tuexen clarified that ACKs preceding `ISS + 1` acknowledge sequence numbers prior to the SYN and should be treated as ghost ACKs rather than valid duplicate ACKs. Grahame Fairhurst (AD), Ron Bonica, and Yoshiifumi Nishida supported retaining the draft's definition over altering the specification to match a potential Linux bug.
+  * **TCP MIB dependency**: Addressing a comment regarding requiring full TCP MIB (RFC 4898) implementation for a single counter, the working group agreed to define a standalone counter directly in the draft while adding a note that existing MIB counters can be reused.
+
+### Cryptographic Algorithms and Option Space for TCP-AO
+Presented by Ron Bonica ([TCP-AO Future: Three Drafts](https://datatracker.ietf.org/meeting/127/materials/slides-127-tcpm-tcp-ao-future-three-drafts-00)).
+
+* **`draft-ietf-tcpm-tcp-ao-algs` (128-bit MACs for TCP-AO)**:
+  * Generates 128-bit (16-byte) MACs, resulting in a 20-byte TCP-AO option length.
+  * Interoperability confirmed across three independent implementations.
+  * *Option Space Constraint*: Combining a 20-byte TCP-AO option with SACK and Timestamps exceeds the 40-byte TCP options space. The WG agreed to add an operational considerations section warning operators of options space limits and the need to choose between option combinations.
+  * *Author Count*: The draft currently lists seven authors due to implementation contributions. Grahame Fairhurst recommended designating one or two primary editors and moving remaining contributors to an Acknowledgments or Contributors section.
+* **TCP-AO Long Algorithms (256-bit MACs)**:
+  * Proposes non-truncated 256-bit MACs using SHA-2, consuming 36 bytes of options space.
+  * The WG noted the benefit of separating the cryptographic algorithm specification from header extension mechanisms. Ron Bonica requested a call for adoption to encourage independent verification of appendix test vectors.
+* **Upgraded TCP Session Type (`session u`)**:
+  * Addresses the 40-byte options limit by introducing an updated session format (`session u`) where the Data Offset field in the main TCP header is set to zero, and the option payload length is stored within an internal options header.
+  * Legacy sessions (`session o`) and `session u` are intentionally mutually incompatible and drop each other's segments.
+  * Janum confirmed an experimental Python implementation exists alongside Ron Bonica's prototype.
+  * *Document Status*: Magnus Westerlund suggested publishing as a Proposed Standard with a limited scope (e.g., controlled environments/router control planes) rather than Experimental. Bill Fender asked about assigning a new IP protocol number; Ron Bonica clarified that remaining within TCP allows the protocol to leverage future TCP developments.
+
+### Session Recovery
+Presented by Xiaoyu ([The Session Recovery (SR) Option](https://datatracker.ietf.org/meeting/127/materials/slides-127-tcpm-the-session-recovery-sr-option-01)).
+
+* Proposes a Session Recovery (SR) option and Session Identifier (SIO) carrying a 4-byte identifier (Local ID and Peer ID) to allow load balancers to recover session state from endpoints after state table loss.
+* Yoshiifumi Nishida noted that full session recovery relies on the broader Application Session Recovery Protocol (ASRP) submitted to TSVWG. The authors agreed to update the draft text to clarify standalone use cases outside of ASRP.
+
+### TCP Packet Trimming Extension
+Presented by Flapm-tcpm-aselo ([TCP Packet Trimming](https://datatracker.ietf.org/meeting/127/materials/slides-127-tcpm-tcp-packet-trimming-00)).
+
+* Proposes explicit loss notification using data center switch packet trimming (payload removal and DSCP re-marking on congestion) paired with a receiver NACK option.
+* **Updates & Alternatives**:
+  * Combined capability negotiation and NACK signaling into a single TCP option differentiated by length (suggested by Michael Tuexen).
+  * Added in-band DSCP negotiation during the handshake (suggested by Richard).
+  * Documented explicit incompatibility with TCP-AO, as payload trimming invalidates the MAC.
+* **Performance Evaluation**: Linux prototype results demonstrate flow completion times over 2x faster for tail losses compared to RACK TLP. Yoshiifumi Nishida inquired whether trimmed packets required high-priority queues; the presenter confirmed gains are achieved even when trimmed packets share normal queue priority.
+
+## Decisions and Action Items
+
+* **`draft-ietf-tcpm-tcp-ghost-acks`**:
+  * Michael Tuexen will send a clarification query to the mailing list regarding the `ISS + 1` acknowledgment logic before finalizing the text.
+  * Update Appendix A/B to define an internal byte counter, eliminating the strict dependency on RFC 4898 TCP MIB.
+  * Issue a updated draft revision followed by a 2-week Working Group Last Call (WGLC).
+* **`draft-ietf-tcpm-tcp-ao-algs`**:
+  * Add an operational considerations section detailing TCP option space limits when combining 128-bit MACs with SACK/Timestamps.
+  * Adjust author/editor attribution to align with IETF guidelines (reducing primary editors on the front page).
+  * Issue Working Group Last Call (WGLC) following the structural update.
+
+## Next Steps
+
+* **TCP-AO Extensions**: Initiate a call for adoption on the TCP-AO Long Algorithms draft on the mailing list. Continue discussions regarding the deployment scope and standardization track for the `session u` header extension.
+* **Session Recovery Option**: Authors will update the draft to detail deployment models and use cases independent of ASRP.
+* **TCP Packet Trimming**: Continue evaluating protocol behavior, including performance testing under heavy packet reordering conditions.

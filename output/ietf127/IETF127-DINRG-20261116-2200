@@ -1,0 +1,104 @@
+# [DINRG](../wg/dinrg.html)
+
+## Summary
+
+The Decentralized Internet Infrastructure Research Group (DINRG) met to discuss ongoing research into Internet consolidation, centralization, and architectural countermeasures. The session featured presentations on Encrypted Client Hello (ECH) deployment and its privacy vs. consolidation tradeoffs, platform dependencies and centralization risks in Passkeys, practical architecture for decentralized end-to-end collaborative applications, security vulnerabilities in early attestation protocols for confidential computing, and a general discussion on tracking global cloud outage incidents as indicators of infrastructure centralization.
+
+---
+
+## Key Discussion Points
+
+### 1. Chairs Opening
+- **Presenter:** Dirk Kutscher
+- **Slides:** [Chairs Opening](https://datatracker.ietf.org/meeting/127/materials/slides-127-dinrg-chairs-opening-00)
+- Dirk Kutscher opened the session, noted the IETF IPR, privacy, and research code of conduct policies, and reminded attendees that IRTF work is research-oriented rather than standards-defining. Matthias Wählisch acted as the minute taker.
+
+---
+
+### 2. ECH at Scale: Centralization and Privileged Linkability
+- **Presenter:** Gianpaolo Scalone
+- **Slides:** [ECH at Scale: Centralization and Privileged Linkability](https://datatracker.ietf.org/meeting/127/materials/slides-127-dinrg-ech-at-scale-centralization-and-privileged-linkability-00)
+- **Technical Content:**
+  - Analysis of Encrypted Client Hello (ECH) deployment over 10 million domain names. ECH obscures SNI from intermediate observers but exposes source IP and full target destination to the ECH "front-door" (client-facing server).
+  - Introduced two metrics: **Privileged Linkability** (ability of a single front door operator to link user source IP to visited destinations) and **Federated Profiling Coverage** (potential joint profiling capacity if major CDN operators share logs).
+  - Findings: Over 1.9 million probed domains (18%) deploy ECH. 99.9% of ECH-enabled domains reside on a single Autonomous System Number (Cloudflare ASN).
+  - Proposed mitigations: Making ECH front-doors explicit to users, shortening IP address/CGNAT persistence, frequency rotation of IPv6 prefixes, user consent mechanisms, and potential regulatory oversight treating front-door operators similarly to ISPs under data protection laws.
+- **Discussion:**
+  - **Andrew Campling:** Noted that while ECH was designed as a pro-privacy protocol against network observers, its unintended consequence is consolidating visibility and reducing privacy relative to large CDN operators.
+  - **Lixia Zhang:** Emphasized that DINRG's role is to report empirical findings and facts to raise awareness across the broader community.
+  - **Dirk Kutscher:** Discussed capturing these metrics and measurement experiments in an experimental or informational research draft.
+
+---
+
+### 3. Discovering Encrypted Client Hello Deployments by Active ECH Probing
+- **Presenter:** Matthias Wählisch
+- **Slides:** [Discovering Encrypted Client Hello Deployments by Active ECH Probing](https://datatracker.ietf.org/meeting/127/materials/slides-127-dinrg-discovering-encrypted-client-hello-deployments-by-active-ech-probing-00)
+- **Technical Content:**
+  - Presented findings from an IMC paper on active ECH probing across 37 million domains without relying on DNS ECH service records (`HTTPS` records).
+  - Leveraged the ECH retry/GREASE mechanism (sending random ECH configurations and detecting server retry responses).
+  - Found over 5 million ECH-capable domains; 32% do not advertise ECH via DNS. Meta deploys ECH out-of-band for mobile applications without DNS configuration.
+  - Key rotation for ECH keys is rare across operators; ECH connection latency overhead is negligible.
+  - Cloudflare validates and filters outer ECH public SNI names, whereas other implementations accept arbitrary outer SNIs.
+  - Results and measurement tools are publicly available at `ech.understandingquic.net`.
+- **Discussion:**
+  - **Andrew Campling:** Pointed out proposals to dynamically randomize outer public ECH names, which could complicate future active probing.
+  - **Geoff Huston:** Noted that ECH originally assumed edge-to-edge DNSSEC validation for authenticating ECH keys. Because DNSSEC validation fails to reach the true edge/client, trust was exported to major CDNs.
+  - **Lixia Zhang & Matthias Wählisch:** Discussed how security and privacy protocols often inadvertently drive consolidation toward centralized service providers.
+
+---
+
+### 4. The Platform Dependencies of Passkeys: Catalyst or Compromise?
+- **Presenter:** Fei Yu
+- **Slides:** [The Platform Dependencies of Passkeys: Catalyst or Compromise?](https://datatracker.ietf.org/meeting/127/materials/slides-127-dinrg-the-platform-dependencies-of-passkeys-catalyst-or-compromise-00)
+- **Technical Content:**
+  - Analyzed FIDO/W3C WebAuthn Passkeys adoption. Platform providers (Google, Apple, Microsoft) acted as catalysts for adoption, but default implementations create tight platform lock-in.
+  - Differentiated **synced passkeys** (stored in ecosystem cloud managers such as Google Password Manager or iCloud Keychain) vs. **device-bound passkeys** (stored in hardware/TPMs). Default user flows strongly favor platform-synced passkeys.
+  - Three key observations:
+    1. *Decentralized in principle does not mean decentralized in practice/politics.*
+    2. *Interoperability does not mean openness* (walled gardens exploit standards for stickiness).
+    3. *High adoption success does not guarantee an ideal architectural foundation.*
+  - Recommended facilitating cross-platform passkey migration, expanding device-bound passkey usage, and restricting identity data usage strictly to authentication purposes.
+- **Discussion:**
+  - **Jim Taft (via Chat/Relayed by Dirk Kutscher):** Highlighted that 3rd-party password managers (e.g., 1Password) support passkeys, offering portability. Fei Yu noted 3rd-party tools incur higher user friction and financial cost compared to OS defaults.
+  - **Vittorio Bertola & Rüdiger Volk:** Discussed whether platform lock-in is a technical standardization issue or a regulatory/policy issue (e.g., EU Digital Markets Act gatekeeper requirements).
+  - **Lixia Zhang, Junxiao Shi, Andrew Campling (in Chat & Mic):** Discussed provider-independent user identifiers, comparing email, DNS namespaces, and blockchain-based naming (e.g., ENS), noting centralization trends in email provision and top-level domain registries.
+
+---
+
+### 5. Architecting Decentralized End-to-End Applications: Reinstalling End-to-End Principles
+- **Presenter:** Tianyuan Yu
+- **Slides:** [Architecting Decentralized End-to-End Applications: Reinstalling End-to-End Principles](https://datatracker.ietf.org/meeting/127/materials/slides-127-dinrg-architecting-decentralized-end-to-end-applications-reinstalling-end-to-end-principles-00)
+- **Technical Content:**
+  - Introduced **ONLY** ("ON the THING"), a decentralized, in-browser collaborative document editor designed to eliminate reliance on central cloud providers (e.g., Google Docs).
+  - Uses DNS names and email addresses for user identity, browser local storage for document persistence, Conflict-free Replicated Data Types (CRDTs) for consistency, and Message Layer Security (MLS) for group key management and encryption.
+  - Relies on Named Data Networking (NDN) testbed nodes as a semantic overlay network for packet forwarding by content and schema names rather than IP addresses.
+  - Demonstrated the bootstrapping flow: domain controllers act as local trust anchors, issuing certificates and security schemas over NDN without centralized authorization servers.
+
+---
+
+### 6. EarlyAttestationBleed and EarlyAttestationTschüss
+- **Presenter:** Muhammad Usama Sardar
+- **Slides:** [EarlyAttestationBleed and EarlyAttestationTschüss](https://datatrestationbleed-and-earlyattestationtschuss-00)
+- **Technical Content:**
+  - Formal analysis of early attestation protocols used in confidential computing environments (such as Attested TLS deployments for European electronic health record systems).
+  - Contrasted early intra-handshake attestation with standard post-handshake attestation using RFC 9261 (Exported Authenticators for TLS).
+  - Identified critical architectural vulnerabilities resulting in 39 GitHub security advisories and 20+ CVEs (including CVSS scores up to 9.6). Main root causes: missing TLS connection binding (enabling relay attacks) and missing hardware binding (enabling host diversion attacks).
+  - Disclosed vulnerabilities to maintainers; open-source projects and vendor stacks (RustLS implementations, Go libraries, Cocos AI, Confidential Computing Consortium references) have archived or retired early attestation in favor of standard post-handshake attestation.
+  - Raised open research questions regarding how to decentralize confidential computing workloads (e.g., via federated learning) to avoid single-cloud provider lock-in.
+
+---
+
+### 7. Tracking Outages as Centralization Indicators
+- **Discussion Lead:** Andrew Campling
+- **Technical Content:**
+  - Suggested that DINRG track and catalog large-scale cloud infrastructure outages (such as recent global Microsoft service disruptions) over time to measure the real-world operational impacts of Internet centralization.
+  - **Lixia Zhang, Dirk Kutscher, & Matthias Wählisch:** Noted previous analytical work (e.g., paper/draft "The Internet runs on names") showing how the Internet shifted from IP-level path resilience to name-based application steering, increasing complexity and single-point-of-failure risks. Agreed that systematically documenting such incidents is valuable work for the group.
+
+---
+
+## Decisions and Action Items
+
+- **Documentation & Research Drafts:**
+  - Gianpaolo Scalone and interested group members to consider writing an informational/experimental draft formalizing metrics for ECH Privileged Linkability and Federated Profiling Coverage.
+- **Incident Cataloging:**
+  - Group participants were encouraged to contribute analytical write-ups and empirical data on major centralization-related network/cloud outages to DINRG.

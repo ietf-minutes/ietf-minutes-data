@@ -1,0 +1,187 @@
+# [LSR](../wg/lsr.html)
+
+## Summary
+
+The Link State Routing (LSR) Working Group met at IETF 127. The session was chaired by Yingzhen Qu and Acee Lindem (remote). The working group reviewed working group document status and discussed multiple technical proposals spanning OSPF and IS-IS protocol enhancements, performance optimizations, flooding improvements, capability signaling, and metric normalization.
+
+---
+
+## Key Discussion Points
+
+### Working Group Administration and Status
+- **Presentation**: [01-lsr-status](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-01-lsr-status-00)
+- **Presenters**: Acee Lindem, Yingzhen Qu
+
+Acee Lindem provided an overview of the working group document status:
+- Errata verified on the RFC regarding unreachable link infinity mode.
+- RFC Editor Queue updates: `draft-ietf-lsr-srv6-mirror-sid-igp-encoding` (IGP Encoding for SRv6 Mirror SID in Egress Protection) is waiting on dependent protection drafts in RTGWG.
+- `draft-ietf-lsr-pcpps` (IS-IS Support For The Power Conserving Path Placement Strategy (PCPPS)) was adopted by the working group and temporary code points were assigned.
+- Priority will be given to moving the IS-IS Protocol Implementation Conformance Statement (PICS) YANG drafts (`draft-ietf-lsr-isis-pics-yang`, `draft-ietf-lsr-isis-pics-l2member-attr-yang`, and `draft-ietf-lsr-isis-pics-srmpls-yang`) toward Working Group Last Call.
+
+---
+
+### IS-IS Support for Power Conserving Path Placement Strategy (PCPPS)
+- **Presentation**: [02-pcpps](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-02-pcpps-00)
+- **Presenter**: Colby Barth (on behalf of Ron Parker)
+- **Relevant Draft**: draft-ietf-lsr-pcpps
+
+Colby Barth presented an update on `draft-ietf-lsr-pcpps`:
+- Protocol encodings have been separated from operational motivation, referencing the companion TEAS power group document.
+- TLVs were optimized to carry multiple power groups per TLV, exception behaviors were documented, and temporary IANA code points were assigned.
+- **Discussion**: No questions were raised in the room. The authors requested implementer feedback and plan to move toward a joint Working Group Last Call with the TEAS document.
+
+---
+
+### Advertising Active Measurement Groups in IGPs
+- **Presentation**: [03-IGP Measurement Groups](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-igp-measurement-groups-01)
+- **Presenter**: Acee Lindem
+
+Acee Lindem presented updates on advertising active measurement groups in IGPs:
+- Extended scope beyond IS-IS to include OSPF and BGP-LS encodings.
+- Reduced flooding overhead by advertising only a 16-bit Active Measurement Group ID and endpoint address in the IGP, while protocol types (e.g., STAMP, TWAMP) and parameters are configured locally per Group ID.
+- In IS-IS, advertisements default to leaking between Level 1 and Level 2. In OSPFv2/OSPFv3, an AS-wide Router Information LSA is used.
+- **Discussion**:
+  - Tony Przygienda suggested handling IS-IS overload nodes similarly to unreachable nodes.
+  - Shraddha Hegde and Rakesh Gandhi clarified that this mechanism automates discovery of active measurement reflectors across a network to automatically bring up measurement sessions.
+  - Reshad Rahman highlighted that this auto-discovery eliminates heavy per-device manual configuration when onboarding new routers into full meshes.
+  - Christian Hopps noted that adding configuration features to IGPs requires strong protocol-level justification, such as interaction with Traffic Engineering (TE) path selection.
+
+---
+
+### Deprecating IPsec AH in OSPFv3
+- **Presentation**: [04-OSPFv3 Deprecate IPsec AH](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-ospfv3-deprecate-ipsec-ah-04)
+- **Presenter**: Acee Lindem
+
+Acee Lindem presented a proposal to deprecate RFC 4552 (IPsec Authentication Header (AH) usage for OSPFv3):
+- Recommends using IPsec ESP with null encryption or OSPFv3 authentication trailers instead of AH, as AH provides no distinct advantage for OSPFv3 link-local traffic.
+- **Discussion**:
+  - Christian Hopps inquired about operational deployments of AH. Acee noted Cisco IOS-XE supports both ESP and AH, but deprecating AH over time is acceptable.
+  - Les Ginsberg asked why formal deprecation is necessary instead of issuing an Informational RFC. Acee Lindem and Christian Hopps explained that the IPsec Working Group requires routing protocols to formally deprecate AH usage before IPsec specifications can deprecate AH globally.
+  - The authors requested Working Group adoption.
+
+---
+
+### IS-IS Hello Capability TLV
+- **Presentation**: [05-Hello Capability](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-05-hello-capability-00)
+- **Presenter**: Les Ginsberg
+
+Les Ginsberg presented a draft defining an interface-level Hello Capability TLV in IS-IS:
+- Modeled after the IS-IS Router Capability TLV, it allows nodes to advertise optional per-interface or per-neighbor capabilities using a variable-length bitmask and sub-TLVs inside IS-IS Hellos (IIHs).
+- Provides per-level support where applicable.
+- **Discussion**:
+  - Acee Lindem spoke in support of working group adoption.
+  - Martin supported the proposal from an operator perspective, confirming that different levels often run under different operational parameters.
+  - The authors requested Working Group adoption.
+
+---
+
+### Reliable CSNP Exchange & Optimized LSP Entry TLV
+- **Presentation**: [06-Reliable SNP](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-06-reliable-snp-00)
+- **Presenter**: Les Ginsberg
+
+Les Ginsberg presented two enhancements for IS-IS database synchronization over point-to-point (P2P) links:
+1. **Reliable CSNP Exchange**: Introduces a CSNP Entry TLV carried in PSNPs to acknowledge contiguous ranges of received system IDs and explicitly signal missing gaps. Holds back adjacency advertisement until database synchronization is confirmed.
+2. **Optimized LSP Entry TLV**: Reduces SNP entry size from 16 bytes to 8 bytes per LSP for multi-LSP nodes by omitting the lifetime field and using a checksum value of zero to signal purges (lifetime = 0).
+
+- **Discussion**:
+  - Tony Przygienda raised technical concerns regarding gap reporting vs. max ranges, safety across link flaps/restarts, interaction with RFC 8706 Graceful Restart (which relies on lifetime tracking), and noted that open-source implementations compute valid checksums on purges.
+  - Christian Hopps and Les Ginsberg clarified that ISO 10589 states payload checksums are ignored on purged LSPs; in the new SNP entry TLV format, encoding a zero in the entry checksum field simply signals a zero lifetime across the wire without modifying payload processing. Les agreed to clarify the draft text.
+
+---
+
+### Abstract Set Hashing (ASH) Update & ASH Graceful Restart
+- **Presentation**: [08-ASH Update/ASH GR](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-ash-updateash-gr-00)
+- **Presenter**: Tony Przygienda
+
+Tony Przygienda presented implementation results and protocol updates for Abstract Set Hashing (ASH):
+- **Performance Results**: Implementation tests showed a ~40% reduction in adjacency bring-up time, 70% CPU savings, and a 98–99% reduction in flooding/CSNP packet volume during link flaps on large link-state databases.
+- **Protocol Updates**: Added a 1-byte population count to hash ranges, introduced a cache gate mechanism to prevent patch amplification, and migrated capability signaling to the IS-IS Hello Capability TLV.
+- **Scalable Graceful Restart (SGR / ASH GR)**: Proposed a distributed Graceful Restart architecture where helper nodes freeze database snapshots locally and send hashes, allowing the restarter to pull only necessary data and avoid control-plane flooding meltdowns.
+- **Discussion**:
+  - Les Ginsberg questioned the necessity of separate Tx/Rx capability bits and advocated reusing existing CSNPs rather than defining new PDUs.
+  - Tony Przygienda defended the dedicated PDUs and separate Tx/Rx capability flags.
+  - The author requested Working Group adoption for ASH.
+
+---
+
+### Fast Flooding Retransmission Indication
+- **Presentation**: [07-Fast Flood RTX Indication](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-fast-flood-rtx-indication-00)
+- **Presenter**: Tony Przygienda
+
+Tony Przygienda presented additions to IS-IS Fast Flooding (RFC 9081):
+- Proposes explicit retransmission (RTX) indication to neighbors, allowing them to dynamically lower their advertised receive window (`rwin`) when loss/retransmission occurs.
+- Uses short bursts of IIHs when shrinking `rwin` and applies hysteresis when reopening windows.
+- Redefines `rwin` credit units per LSP fragment slot rather than raw bytes and couples Local Periodic Purge/Ack (LPP) directly to `rwin`.
+- Includes a fallback mechanism to standard LSP transmit intervals if fast flooding collapses.
+- **Discussion**:
+  - Acee Lindem asked about implementation complexity compared to standard RFC 9081 fast flooding.
+  - Tony Przygienda explained that without explicit RTX feedback, fast flooding window management collapses under high scale (e.g., hundreds of active peers competing for CPU/IO).
+
+---
+
+### IS-IS Originating Generation Identifier (OGID)
+- **Presentation**: [09-ISIS_OGID](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-09-isis-ogid-01)
+- **Presenter**: Shraddha Hegde
+
+Shraddha Hegde presented a proposal to address transient route flaps caused by LSP fragment repacking:
+- When new features (e.g., SRv6 SIDs) expand existing TLVs, descriptors can be pushed into adjacent fragments. Out-of-order reception of fragments by neighbors causes transient route flaps and traffic loss.
+- Introduces the OGID TLV, carrying a transaction-based OGID counter, Last Resolvable GID (LRGID), and fragment count to correlate multi-fragment updates.
+- Defines a "Soft Overload" bit for full repacking events to instruct receivers to hold SPF processing until repacking completes.
+- **Discussion**:
+  - Les Ginsberg and Acee Lindem voiced concern regarding implementation complexity (requiring nodes to track multiple database state copies) and questioned whether real-world gains justify the added state overhead compared to fast flooding and SPF hold-down timers.
+  - Shraddha Hegde and Tony Przygienda countered that fragment repacking is causing real production network flaps in dense feature environments, justifying an optional signaling mechanism.
+
+---
+
+### IS-IS Database Fingerprinting Update
+- **Presentation**: [10-DB Fingerprinting Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-db-fingerprinting-update-00)
+- **Presenter**: Tony Przygienda
+
+Tony Przygienda presented updates on calculating a 64-bit IS-IS database fingerprint per level:
+- Corrected hash logic to incorporate fragment numbers, added a timestamp indicating elapsed seconds since the last database change, added a YANG model, and clarified that purges (lifetime=0, checksum=0, length=0) are excluded from hash calculations.
+- Fingerprints can be carried in IIHs and CSNPs for fast operational diagnosis of database sync status.
+- **Discussion**:
+  - Les Ginsberg and Acee Lindem requested clarification that the fingerprint is strictly informational and does not modify core flooding or CSNP synchronization logic.
+  - Tony Przygienda agreed to remove text implying shortcutting standard flooding procedures.
+
+---
+
+### Detection of Router-ID Conflicts in IGPs
+- **Presentation**: [11-Detection of Router-ID Conflicts in IGPs](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-11-detection-of-router-id-conflicts-in-igps-00)
+- **Presenter**: Liyan Gong
+
+Liyan Gong presented a proposal to detect non-adjacent router-ID conflicts in IGPs:
+- Monitors update frequency of self-originated LSAs/LSPs and compares payload inconsistency ratios (e.g., >83% mismatch in advertised interfaces/neighbors) on intermediate nodes to detect duplicate Router-IDs and emit YANG notifications to operators.
+- **Discussion**:
+  - Les Ginsberg and Acee Lindem noted that duplicate Router-ID detection and resolution mechanisms are already specified in existing RFCs (e.g., RFC 7503 for OSPFv3 auto-configuration using fingerprint TLVs).
+  - Acee Lindem noted that standardizing YANG notifications for conflict detection could still be evaluated by the WG.
+
+---
+
+### Metric Normalization for IGP Flex-Algo
+- **Presentation**: [12-Metric Normalize for IGP Flex-Algo](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsr-12-metric-normalize-for-igp-flex-algo-00)
+- **Presenter**: Liyan Gong
+
+Liyan Gong presented a proposal to normalize link metrics in Flexible Algorithms to facilitate equal-cost multipath (ECMP) load balancing across links with minor metric variances:
+- Explored whether normalization parameters should be advertised in Flexible Algorithm Definition (FAD) sub-TLVs or configured link-locally.
+- **Discussion**:
+  - Peter Psenak (via queue), Tony Przygienda, Christian Hopps, and Acee Lindem questioned the need for protocol extensions. They argued that metric normalization should occur locally at the originating node or within vendor-specific local configuration rather than being flooded across the IGP domain.
+  - Chairs requested that the discussion be continued on the mailing list.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-lsr-pcpps`**: Solicit implementer feedback; prepare for joint WG Last Call alongside companion TEAS document.
+2. **IPsec AH Deprecation**: WG adoption call to be issued for the draft deprecating RFC 4552 (IPsec AH in OSPFv3).
+3. **Hello Capability TLV**: WG adoption call to be issued for the IS-IS Hello Capability draft.
+4. **Abstract Set Hashing (ASH)**: Authors requested WG adoption for the ASH specification.
+5. **IS-IS Database Fingerprinting**: Authors to remove text suggesting fingerprinting alters standard flooding/CSNP procedures to clarify its strictly informational nature.
+
+---
+
+## Next Steps
+
+- **Active Measurement Groups**: Authors to work with measurement protocol experts (STAMP/TWAMP) to refine session auto-discovery policies and text on mailing list.
+- **Reliable CSNP & Optimized SNP**: Author to clarify draft text regarding ISO 10589 checksum rules for purged LSPs in the optimized SNP TLV.
+- **IS-IS OGID & Flex-Algo Metric Normalization**: Continue technical discussions on the mailing list to evaluate real-world trade-offs and vendor/operator requirements.

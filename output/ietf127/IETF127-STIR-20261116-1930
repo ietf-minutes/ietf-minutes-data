@@ -1,0 +1,82 @@
+# [STIR](../wg/stir.html)
+
+## Summary
+
+The STIR Working Group met at IETF 127. The session included updates on document status, presentations on telephone number domain binding (`tn-domain-binding`) and Vesper, a strawman proposal for SIP/RTP certificates, and a new proposal for agent identification in STIR. A adoption poll was taken for `tn-domain-binding` and `vesper`, which will be taken to the mailing list for further discussion due to a high number of "no opinion" responses.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Chair Introduction
+* Presentation: [Chair Introduction](https://datatracker.ietf.org/meeting/127/materials/slides-127-stir-chair-introduction-00)
+* **Russ Housley** presented the Note Well and reviewed document status:
+  * Two documents were submitted to the RFC Editor.
+  * Two documents are with the IESG. Authors were reminded to respond promptly to IESG review comments to avoid delays.
+* The agenda was approved without modifications.
+
+---
+
+### STIR TN Domain Binding and Vesper
+* Presentation: [STIR tn-domain-binding and vesper](https://datatracker.ietf.org/meeting/127/materials/slides-127-stir-stir-tn-domain-binding-and-vesper-00)
+* **Chris Wendt** presented updates to the Telephone Number (TN) domain binding specification and the Vesper draft (`draft-ietf-stir-vesper`).
+  * **TN Domain Binding Highlights:**
+    * Validates domain associations for entities holding telephone numbers, primarily using delegate certificates.
+    * Integrates ACME-style challenges (DNS-01, HTTP-01, DNS persist), CAA records authorizing certificate issuance, and explicit DNS name bindings in the certificate SAN (no wildcards).
+    * Introduced an STI declaration record (`_sdi` TXT record) inspired by DMARC, providing public DNS policies (e.g., `quarantine`, `reject`, `never`, alignment parameters, SIP domain association).
+    * Clarified subdomain delegation rules, monitoring, and CAA `issue-sdi` extensions to prevent misuse across shared domains.
+  * **Vesper (v11) Updates:**
+    * Mandatory association with TN domain binding.
+    * References short-lived certificates, Certificate Transparency (CT), `x5u`, and RTU authority tokens.
+* **Discussion:**
+  * **John Peterson** questioned combining TN and domain data within a single certificate instrument versus separating authority credentials via cross-signature or nested objects. He noted potential friction regarding whether relying parties outside the IPNNI / STIR trust anchor (such as downstream consumers) could validate combined certificates.
+  * **Chris Wendt** noted that domain validation using standard web PKI / ACME tools provides an objective, globally accepted mechanism for linking digital domain presence with telephone numbers without imposing complex KYC policy frameworks.
+  * **Russ Housley** and **John Peterson** discussed CA authority requirements, emphasizing that a issuing CA must be authoritative for all identifiers contained in the certificate.
+  * **Sean Turner** raised long-term concerns regarding Certificate Transparency (CT) models in light of post-quantum signature size growth and the shift toward CA-maintained logs (Merkle tree certificates).
+  * **Ben Campbell** asked if Vesper depends on the TN domain binding document. Chris Wendt confirmed Vesper is currently dependent on TN domain binding.
+
+#### Session Poll
+* **Question:** "Are these documents ready for a STIR WG call for adoption?"
+* **Results:** yes: 5, no: 1, no_opinion: 7 (total: 22)
+* **Outcome:** Due to the large proportion of "no opinion" responses, the chairs determined that the adoption call must be taken to the mailing list.
+
+---
+
+### STIR Certificates for SIP and RTP
+* Presentation: [STIR certificates for sip and rtp](https://datatracker.ietf.org/meeting/127/materials/slides-127-stir-stir-certificates-for-sip-and-rtp-00)
+* **Chris Wendt** presented strawman proposals across SIP Core and STIR to address secure agreementless interconnection.
+  * Proposed establishing mutual TLS profiles (TLS 1.3), post-quantum algorithm transition paths, and specific TLS certificates for Session Border Controllers (SBCs) using CAA checks to prevent spoofing.
+* **Discussion:**
+  * **John Peterson** strongly objected to referencing SDES for secure media key exchange, pointing out that plain-text SIP logging on SBCs compromises long-term confidentiality.
+  * **Jonathan Rosenberg** questioned the operational decoupling of SIP trunking SBCs from STIR signing entities and how certificates would be provisioned and managed across different operational roles.
+  * **Sean Turner** supported establishing clear mutual TLS profiles for gateways and phasing out SDES, noting relevant work in TLS regarding extended key usages and updates.
+  * **Jonathan Lennox** raised concerns regarding how DTLS-SRTP key fingerprints are bound to certificates to prevent tampering within SIP signaling unless additional binding mechanisms are applied.
+  * **Russ Housley** observed general agreement on the importance of solving secure agreementless interconnection, but noted that this specific draft requires further revision.
+
+---
+
+### STIR for Agents
+* Presentation: [STIR for Agents](https://datatracker.ietf.org/meeting/127/materials/slides-127-stir-stir-for-agents-00)
+* **John Peterson** presented a proposal to enable AI/LLM agents to self-identify in STIR PASSPorTs.
+  * **Context & Motivation:** Rapid growth of AI agents placing and receiving calls over the PSTN, along with emerging EU disclosure regulations.
+  * **Approach:** Acknowledged that STIR cannot enforce an "evil bit" for malicious bots. Instead, the proposal provides an opt-in code point for legitimate agents to self-identify, convey call intent, and generate audit trails.
+  * **Technical Details:**
+    * Utilizes OAuth claims (such as the `act` claim from RFC 8693) to distinguish between explicit delegation and impersonation.
+    * Enforces agent disclosure policies using JWT claim constraints in delegate certificates.
+    * Uses dynamic, agent-specific keys separated from central STIR signing credentials.
+    * Explores carrying signed intent mandates (referencing frameworks like FIDO AP2, MasterCard Verifiable Intent, and OAuth RAR) within PASSPorTs.
+* **Discussion:**
+  * **Al Anhai** emphasized the need to handle complex call scenarios including nested agents, mid-call human handovers, and transfers smoothly during call setup.
+  * **Jonathan Rosenberg** supported the work and highlighted the importance of presenting human-readable call reasons to end users alongside machine-readable intent objects.
+  * **Kaliya Young** noted relevant ongoing work regarding agent identity from recent industry workshops.
+  * **Jonathan Lennox** expressed skepticism about maintaining standard taxonomies for calling purposes and noted prompt injection risks if LLMs parse unvalidated context strings directly.
+  * **John Peterson** clarified that intent mandates rely on external verification mechanisms outside the LLM prompt context, and that STIR's role is to provide the security plumbing to transport these signed objects.
+  * **Scope and Charter:** **Ben Campbell**, **Russ Housley**, **John Peterson**, and the Area Director discussed whether agent identification falls within the current STIR charter or requires charter clarification/rechartering. The work was acknowledged as focused specifically on PSTN telephone number identity contexts.
+
+---
+
+## Decisions and Action Items
+
+* **TN Domain Binding & Vesper Adoption:** The call for adoption of `tn-domain-binding` and `draft-ietf-stir-vesper` will be brought to the working group mailing list for further discussion due to the poll results.
+* **SIP/RTP Certificates:** Chris Wendt will refine the strawman proposal based on feedback (specifically removing SDES and addressing DTLS-SRTP fingerprint binding) for further collaboration on the list.
+* **STIR for Agents:** Discussion will continue on the mailing list to refine the draft scope and determine if charter updates are necessary.

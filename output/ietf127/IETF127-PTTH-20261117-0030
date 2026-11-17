@@ -1,0 +1,62 @@
+# [PTTH](../wg/ptth.html)
+
+## Summary
+
+The PTTH working group held its first session, chaired by David Schinazi and Hannes Tschofenig. The group discussed reverse HTTP proposals to allow endpoints behind firewalls or NATs (TCP clients) to serve HTTP requests coming from upstream entities (TCP servers). Two main design approaches were presented and debated: a non-tunneled, role-reversing protocol (`draft-thomson-ptth-potato`) and an HTTP Extended CONNECT tunneling mechanism (`draft-kazuho-ptth-ptth`). The working group reached consensus on adopting standardized HTTP terminology (**Gateway** and **Origin Server**) and agreed to hold interim sessions and gather implementation experience before taking formal adoption calls on mailing list specifications.
+
+## Key Discussion Points
+
+### Architectural Approaches
+
+#### 1. Non-Tunneled Reverse HTTP Protocol
+Martin Thomson presented [draft-thomson-ptth-potato](https://datatracker.ietf.org/meeting/127/materials/slides-127-ptth-draft-thomson-ptth-potato-00), detailing design choices around directionality, tunneling, and authentication:
+* **Directionality:** Reversing roles at the transport layer is simpler than attempting bidirectional HTTP requests over a single connection, which introduces complexity in HTTP/2 stream state machines and HTTP/3 quarter stream ID mappings.
+* **Tunneling Overhead:** Non-tunneled protocols avoid encapsulation overhead and can be wrapped inside an Extended CONNECT tunnel if bidirectional exchanges are required.
+* **Authentication:** Gateway authentication relies on standard server certificates. For origin server authentication, the proposal supports challenge-response mechanisms prior to serving requests, eliminating the double round-trip drawback of traditional HTTP Authentication.
+
+#### 2. Extended CONNECT Tunneling
+Kazuho Oku presented [draft-kazuho-ptth-ptth](https://datatracker.ietf.org/meeting/127/materials/slides-127-ptth-draft-kazuho-ptth-ptth-00), focusing on leveraging HTTP Extended CONNECT to establish reversed channels:
+* **Protocol Setup:** The worker connects via TLS, authenticates the proxy, and issues an Extended CONNECT request using HTTP/1.1 Upgrade or HTTP/2/3 pseudo-headers specifying the requested origin scope URI and bearer tokens for authorization.
+* **Stream & Framing Reuse:** Running cleartext HTTP inside the established tunnel avoids modifying HTTP/2 and HTTP/3 stream ID rules.
+* **HTTP/3 Overhead:** Running HTTP/3 over the tunnel requires QUIC over DATAGRAMs, introducing nested encryption and loss recovery overhead, though this can be mitigated using QUIC-aware proxying extensions.
+
+### Use Cases & Technical Trade-Offs
+
+* **Bidirectional Requirements:** Yaroslav Rosomakho highlighted use cases (e.g., remote management via VNC/RDP/SSH, Zero Trust Network Access app connectors, firmware updates, and DPI/ossification resistance) requiring bidirectional request capability on a single connection to maintain load balancer affinity and reduce connection state.
+* **Constrained Devices:** Nikhil Bajaj noted home automation and constrained IoT devices could initiate outgoing transport connections to notify gateways of available state without holding long-lived idle connections or implementing full client/server stacks.
+* **Protocol Complexity:** Mark Nottingham cautioned against repeating past HTTP complexity issues (such as server push) and advocated for minimal core specifications. Lucas Pardue suggested building prototype implementations to evaluate real-world trade-offs between tunneling and native role reversal.
+
+### Terminology
+
+The working group discussed resolving ambiguity surrounding terms like "client", "server", "proxy", and "worker" when transport and application roles are inverted.
+* Martin Thomson proposed adopting standard HTTP architecture terms: **Gateway** (for the TCP server / HTTP client, formerly proxy) and **Origin Server** / **Origin** (for the TCP client / HTTP server, formerly worker).
+* The room expressed broad support for adopting **Gateway** and **Origin Server**.
+
+## Decisions and Action Items
+
+### Decisions
+* Adopt **Gateway** and **Origin Server** as the standard terminology for PTTH specifications to eliminate role confusion between TCP and HTTP layers.
+
+### Session Polls
+
+The chairs ran two room polls to gauge sentiment on document adoption directions:
+
+1. **Should we adopt the non tunnelled version?**
+   * Yes: 10
+   * No: 2
+   * No Opinion: 6
+   * Total Voters: 36
+
+2. **Should we adopt the tunnelled version?**
+   * Yes: 7
+   * No: 7
+   * No Opinion: 6
+   * Total Voters: 37
+
+*Note: Ted Hardie and Lucas Pardue noted that formal adoption is premature until the working group further clarifies optimization goals and gathers implementation experience.*
+
+## Next Steps
+
+* Confirm the agreed terminology (**Gateway** and **Origin Server**) on the working group mailing list.
+* Schedule virtual interim meetings to refine protocol details and discuss potential modularization (e.g., separating core reverse HTTP from optional tunneling/bidirectional extensions).
+* Encourage proponents and working group members to develop prototype implementations of both non-tunneled (`draft-thomson-ptth-potato`) and tunneled (`draft-kazuho-ptth-ptth`) approaches to inform future design decisions.

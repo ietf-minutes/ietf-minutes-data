@@ -1,0 +1,80 @@
+# [AIPREF](../wg/aipref.html)
+
+## Summary
+
+The AIPREF working group met at IETF 127 to discuss mechanisms for attaching AI usage preferences to web content, focusing on [`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/). The chairs opened the meeting with an agenda review and a triage of open GitHub issues. Kevin Kelly presented a proposal and pull request (#260) suggesting syntactic changes to how preferences are expressed in `robots.txt` via cross-vendor policy tokens, citing compatibility edge cases in existing `robots.txt` parsers. The working group discussed the trade-offs of overloading the `User-Agent` field versus adding new line types, the extent of potential parser breakage, and alternative options such as defining a new structured format. A design team was agreed upon to analyze parser behavior and evaluate attachment options ahead of an interim meeting planned for February.
+
+---
+
+## Key Discussion Points
+
+### Chair Introduction & Agenda Review
+- **Chairs**: Mark Nottingham, Suresh Krishnan
+- **Slides**: [Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-aipref-chair-slides-00)
+- The chairs reminded participants of the IETF Note Well guidelines and noted that the Monday session focused exclusively on preference attachment ([`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/)), while the Thursday session would cover vocabulary ([`draft-ietf-aipref-vocab`](https://datatracker.ietf.org/doc/draft-ietf-aipref-vocab/)).
+
+### Issue Triage ([`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/))
+
+- **Issue #223 (Propagation of preferences input)**:
+  - Raised by Eric Rescorla regarding text governing how servers retain and propagate preferences across state-changing HTTP requests (e.g., `PUT` requests answering subsequent `GET` requests).
+  - Martin Thompson noted that recent draft updates softened the text from rigid requirements to permissive guidance regarding server capabilities.
+  - Eric Rescorla agreed that the updated text was acceptable. The issue was closed.
+
+- **Issue #193 (Carrying preferences with assets)**:
+  - Martin Thompson explained that the core language for tracking preferences alongside assets during processing and training is primarily being refined in [`draft-ietf-aipref-vocab`](https://datatracker.ietf.org/doc/draft-ietf-aipref-vocab/). Once that text stabilizes, alignment with [`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/) will be re-evaluated.
+
+- **Issue #166 (Non-enforceability provision alignment)**:
+  - Joe Salowey and Mark Nottingham reviewed the status of enforceability statements across the two core drafts. Section 3.2 of [`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/) contains the current preferences application guidance. The issue was closed with the understanding that document alignment will continue to be monitored.
+
+- **Issue #103 (Content-Usage in `robots.txt` structured field format)**:
+  - Discussion deferred due to author absence and overlap with the subsequent presentation on `robots.txt` parsing.
+
+---
+
+### Presentation: Attaching Preferences with Cross-Vendor Policy Tokens
+
+- **Presenter**: Kevin Kelly
+- **Slides**: [Attaching Preferences with Cross-Vendor Policy Tokens](https://datatracker.ietf.org/meeting/127/materials/slides-127-aipref-sessa-attaching-preferences-with-cross-vendor-policy-tokens-00)
+- **Overview & Motivation**:
+  - Kevin Kelly detailed empirical testing across real-world `robots.txt` files and open-source/proprietary parser implementations.
+  - Highlighted parser discrepancies under RFC 9309 rules: when encountering unknown line types (such as a hypothetical `Content-Usage:` header) or empty group definitions, deployed parsers behave inconsistently. Some parsers break group scoping, alter fallback behavior, or silently change access controls for traffic management.
+- **Proposed Approach (PR #260 / `rep-namespaces`)**:
+  - Proposes carrying preferences using reserved namespace-label pairs within the `User-Agent` record line (e.g., `User-Agent: __usage_ai-train`), avoiding the introduction of new top-level `robots.txt` line types.
+  - Reserves the `__` prefix to prevent collisions with valid user-agent product tokens.
+  - Defines explicit rules for unmatched paths, wildcard fallbacks, and precedence to prevent site operators from unintentionally opting into positive training preferences.
+  - Mentioned a potential alternative (`rep2` / `ai.txt` format): defining a clean, structured JSON equivalent to `robots.txt` to bypass legacy parsing bugs entirely, though acknowledging higher deployment friction.
+
+---
+
+### Technical Discussion on the Proposal
+
+- **User-Agent Overloading vs. Semantics**:
+  - Ted Hardie and Nick Doty raised concerns about using the `User-Agent` position for policy tokens. Overloading `User-Agent` could lead site operators to confuse preference policy tokens with actual request user-agent headers, complicating per-vendor configuration and logging.
+  - Will Hawkins and Watson Ladd noted that repurposing the `User-Agent` field creates semantic confusion for human operators reading `robots.txt` files, even if it avoids parser errors for automated tools.
+- **Parser Failure Modes & Empirical Risk**:
+  - Eric Rescorla emphasized the need to quantify how many unmodified, deployed parsers actually break or misbehave when encountering the existing [`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/) mechanism (e.g., `Content-Usage:` lines). If the failure rate is low or easily mitigated via authoring guidelines, complex syntactic workarounds may be unnecessary.
+  - Tess Rinearson supported making architectural decisions based on empirical data regarding common parser failures rather than theoretical edge cases.
+- **Simplification & Compatibility**:
+  - Martin Thompson noted that Kevin Kelly’s findings highlight real parsing risks. However, he suggested investigating whether strict authoring guidance for `robots.txt` could achieve the same compatibility goals without introducing full cross-vendor policy token syntax.
+- **Vocabulary Scope**:
+  - Rüdiger Martin confirmed that any chosen attachment mechanism must fully express all preference categories defined in [`draft-ietf-aipref-vocab`](https://datatracker.ietf.org/doc/draft-ietf-aipref-vocab/). Kevin Kelly confirmed the proposed namespace syntax maps directly to the working group's vocabulary draft.
+
+---
+
+## Decisions and Action Items
+
+1. **Closed Issues**:
+   - Issue #223 on [`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/) closed following document updates.
+   - Issue #166 on [`draft-ietf-aipref-attach`](https://datatracker.ietf.org/doc/draft-ietf-aipref-attach/) closed.
+
+2. **Design Team Formation**:
+   - A design team was established to analyze deployed `robots.txt` parser behavior, assess potential failure modes of preference attachment mechanisms, and evaluate proposed solutions (including PR #260 and potential alternative formats).
+   - **Coordinator**: Kevin Kelly.
+
+---
+
+## Next Steps
+
+- **Design Team Execution**: Kevin Kelly will gather interested participants to collect empirical parser data and evaluate attachment options.
+- **Interim Reporting**: The design team will present its findings and recommendations prior to or during the planned working group interim meeting in February.
+- **Upcoming Session**: The Thursday session at IETF 127 will be devoted to [`draft-ietf-aipref-vocab`](https://datatracker.ietf.org/doc/draft-ietf-aipref-vocab/).
