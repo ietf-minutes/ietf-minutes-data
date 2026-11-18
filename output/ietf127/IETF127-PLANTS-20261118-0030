@@ -1,0 +1,106 @@
+# [PLANTS](../wg/plants.html)
+
+## Summary
+
+The PLANTS Working Group met at IETF 127 to discuss progress on core Merkle Tree Certificates (MTC) specifications, deployment use cases, landmark distribution, revocation models, and MTC architecture. The core document `draft-ietf-plants-merkle-tree-certs` is nearing completion with stable OIDs assigned and target deployments planned for 2027. The newly adopted deployment use cases draft (`draft-ietf-plants-mtc-deploy-use-cases`) has been streamlined, splitting technical mechanisms like Landmark Distribution Points (LDP) into `draft-gray-plants-mtc-ldp`. The working group also reviewed proposals for MTC revocation mechanisms and discussed a new formal guarantees-based MTC architecture draft (`draft-kanjalkar-plants-mtc-arch`).
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Chair Update
+- **Chairs**: Tom Ritter, Russ Housley
+- **Slides**: [chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-plants-chair-slides-00)
+- The chairs reviewed administrative procedures, Note Well guidelines, and the agenda.
+- Active WG documents include `draft-ietf-plants-merkle-tree-certs` and the newly adopted `draft-ietf-plants-mtc-deploy-use-cases`.
+
+---
+
+### Merkle Tree Certificates Update
+- **Presenter**: David Benjamin
+- **Slides**: [Merkle Tree Certificates Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-plants-merkle-tree-certificates-update-00)
+- **Draft**: `draft-ietf-plants-merkle-tree-certs`
+
+- **Technical Updates**:
+  - Official OIDs have been assigned (replacing Cloudflare's experimental arc), establishing a stable target for 2027 post-quantum deployments.
+  - Wire format adjustments include changing length prefixes to 24-bit to accommodate multiple SLH-DSA co-signatures, updating name formats, and embedding hash algorithm encodings implicitly into extension types.
+  - Initial IANA considerations were added for three registries using "Specification Required" with private use ranges. David Benjamin will add expert reviewer guidance to verify stable public specifications.
+  - Test vectors have been added to the draft, and log serving API specifications were updated in C2SP.
+  - Implementation progress includes updates in Chrome (targeting 2027 MTC application acceptance), pending OpenSSL feature branch PRs, proof-of-concept web server patches by Bob Beck, and draft root program policy updates (Chrome policy RC 0.04 and upcoming Apple policies).
+
+- **Discussion**:
+  - **ACME Integration**: Mike Ounsworth raised questions regarding ACME certificate provisioning (Section 9). Amir Ghani noted that fetching standalone MTCs via ACME works out-of-the-box for clients supporting CSRs and profiles, while landmark-relative certificates will require additional client scheduling work.
+  - **WGLC Readiness**: Dennis Jackson recommended taking time to bake the draft or utilizing Working Group Last Call (WGLC) to catch edge cases without needing a future bis draft. Amir Ghani offered text updates to clarify subtree hash operations relative to RFC 9162.
+
+---
+
+### MTC Deployment Use Cases & Landmark Distribution Point (LDP)
+- **Presenter**: John Gray
+- **Slides**: [MTC Deployment Use Cases updates with slides for draft-gray-plants-mtc-ldp](https://datatracker.ietf.org/meeting/127/materials/slides-127-plants-mtc-deployment-use-cases-updates-with-slides-for-draft-gray-plants-mtc-ldp-00)
+- **Drafts**: `draft-ietf-plants-mtc-deploy-use-cases`, `draft-gray-plants-mtc-ldp`
+
+- **Use Cases Update (`draft-ietf-plants-mtc-deploy-use-cases`)**:
+  - The document was adopted and expanded with a section titled "To MTC or not to MTC" evaluating trade-offs.
+  - Detailed technical mechanisms were pruned from the high-level use cases draft into separate standalone drafts, including the LDP mechanism. Additional use cases (e.g., IKEv2, firmware batch signing) are under consideration.
+
+- **Landmark Distribution Point (`draft-gray-plants-mtc-ldp`)**:
+  - Introduces an X.509 extension and query/response format to fetch landmark subtrees and co-signatures for non-Web PKI / private PKI environments that do not utilize public transparency logs.
+  - Future revisions (v01) will detail LDP operator requirements, asynchronous landmark fetching, advertisement of landmark update frequencies, media types, and error structures.
+
+- **Discussion**:
+  - **Private PKI Justification**: Panos Kampanakis requested that the use cases draft provide concrete, specific justifications for where MTCs provide clear value over traditional X.509 in private PKIs.
+  - **Security Concerns**: Andrei Popov and Dennis Jackson pointed out security risks regarding fetching URLs provided in unauthenticated certificates (isomorphic to AIA issues). John Gray noted that authenticated channels, local policy, or protocols like EST will be specified to address this.
+
+---
+
+### Merkle Tree Revocation
+- **Presenter**: Rich Salz
+- **Slides**: [Merkle Tree Revocation](https://datatracker.ietf.org/meeting/127/materials/slides-127-plants-merkle-tree-revocation-01)
+
+- **Overview**:
+  - Explored options for embedding revocation entries directly into Merkle trees or auxiliary logs, covering OCSP-like individual status, CRL-like lists leveraging dense serial numbers, and Rob Stradling's hash-chain proposal (suited for short-lived certificate renewals).
+  - To avoid delaying the core MTC draft, the group agreed that revocation mechanisms should be developed in a separate specification rather than incorporated into `draft-ietf-plants-merkle-tree-certs`.
+
+- **Discussion**:
+  - Amir Ghani and Rich Salz emphasized avoiding schemes that recreate OCSP stapling pitfalls or require regular server pings to the CA.
+  - Michael Slaughter and Brendan McMillion expressed support for defining formal MTC revocation mechanisms for enterprise and cloud environments.
+  - Bob Beck highlighted that `draft-ietf-plants-merkle-tree-certs` already supports standard CRLs and revoked ranges (similar to SCT not-after revocation).
+
+---
+
+### MTC Architecture
+- **Presenter**: Sanket Kanjalkar
+- **Slides**: [MTC architecture](https://datatracker.ietf.org/meeting/127/materials/slides-127-plants-mtc-architecture-00)
+- **Draft**: `draft-kanjalkar-plants-mtc-arch`
+
+- **Overview**:
+  - Presented a formal guarantees-based architectural framework for Web PKI MTC implementations (analyzing CAs, co-signers, mirrors, update services like uPKI, and relying parties).
+  - Outlined five explicit security guarantees based on key and state trust assumptions, verifiable using symbolic tools like Tamarin.
+  - Asked the WG whether to keep the rigorous guarantees-focused structure or simplify it into a pure components-and-flows description.
+
+- **Discussion**:
+  - Joe Salowey, Dennis Jackson, and Rich Salz supported retaining the formal security guarantees model, noting that describing guarantees naturally defines the required components and flows. Rich Salz volunteered to co-author the document.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-plants-merkle-tree-certs`**:
+   - David Benjamin to update IANA considerations with guidance for expert reviewers (checking for stable public specifications) and incorporate editorial clarifications for Merkle subtree hash definitions (with Amir Ghani).
+   - Document will be prepared for Working Group Last Call (WGLC) following these updates.
+
+2. **`draft-gray-plants-mtc-ldp`**:
+   - As the LDP mechanism text was split out from the adopted deployment use cases draft (`draft-ietf-plants-mtc-deploy-use-cases`), `draft-gray-plants-mtc-ldp` will be recognized and moved forward as WG work.
+
+3. **Revocation**:
+   - MTC revocation mechanisms will be developed in a dedicated standalone document rather than added to `draft-ietf-plants-merkle-tree-certs`.
+
+4. **`draft-kanjalkar-plants-mtc-arch`**:
+   - Sanket Kanjalkar (with co-author Rich Salz) will update the draft to incorporate feedback and prepare for a WG adoption call.
+
+---
+
+## Next Steps
+
+- Initiate Working Group Last Call for `draft-ietf-plants-merkle-tree-certs` after draft-09 is published with IANA and subtree hash updates.
+- Issue a Call for Adoption for `draft-kanjalkar-plants-mtc-arch` following its next revision.

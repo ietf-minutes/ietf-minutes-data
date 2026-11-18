@@ -1,0 +1,111 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The Media over QUIC (MOQ) Working Group met at IETF 127 in San Francisco. The session focused on adopted working group specifications beyond the core transport, including low-overhead container formats, authorization mechanisms, denial-of-service (DoS) resource protection, and object acknowledgment feedback mechanisms. Key technical discussions covered the MPEG liaison regarding LOCMAF, recent design updates to [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/), DoS protection around fill fetches and redirects, authorization patterns in [draft-ietf-moq-c4m](https://datatracker.ietf.org/doc/draft-ietf-moq-c4m/), property registration in [draft-ietf-moq-loc](https://datatracker.ietf.org/doc/draft-ietf-moq-loc/), and application-level object feedback.
+
+---
+
+## Key Discussion Points
+
+### Administrative and Working Group Status
+* **Speakers**: Martin Duke, Magnus Westerlund
+* **Slides**: [Chair Slides Session 1](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-sessa-chair-slides-session-1-01)
+* **Discussion**:
+  * Note Well and attendance registration procedures were highlighted.
+  * Upcoming virtual interims and the hybrid European interim (February 8–11) were outlined. The first two days of the February interim will focus on interop testing, followed by two days of issue resolution.
+
+### Liaison Response from MPEG Systems on LOCMAF
+* **Speaker**: Magnus Westerlund
+* **Slides**: [Liaison Response from MPEG Systems on LOCMAF](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-sessa-liaison-response-from-mpeg-systems-on-locmaf-00)
+* **Discussion**:
+  * MPEG Systems sent a liaison response regarding low-overhead CMAF (LOCMAF) optimizations for [draft-ietf-moq-cmsf](https://datatracker.ietf.org/doc/draft-ietf-moq-cmsf/). MPEG invited interested parties to contribute within MPEG and expressed concerns regarding potential divergence if LOCMAF were defined as a distinct storage format rather than an on-the-wire transformation.
+  * Participants (Jonathan Lennox, Suhas Nandakumar, Alex, Rowan Naylor, Cullen Jennings, Mo Zanaty) discussed whether LOCMAF in IETF should be strictly scoped as an on-the-wire framing format for MOQT (similar to an RTP payload format) to prevent divergence from MPEG specs.
+  * The working group polled participants to determine interest and venue preference for LOCMAF work:
+    * **Poll 1**: "Do you intend to contribute on LOCMAF?"
+      * **Results**: yes: 5, no: 21, no_opinion: 11 (total: 70)
+    * **Poll 2**: "I'm willing to go do the work in MPEG if that's where it is (if not contributing, say No Opinion)"
+      * **Results**: yes: 2, no: 3, no_opinion: 9 (total: 73)
+  * The chairs paused further adoption decisions to confer offline and bring recommendations to the mailing list.
+
+### MOQT Updates Since IETF 126
+* **Speaker**: Alan Frindell
+* **Draft**: [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/)
+* **Slides**: [MOQT Updates Since IETF 126](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-moqt-updates-since-ietf-126-00)
+* **Discussion**:
+  * *Draft progression*: Draft -21 performed editorial reorganization (verified with sentence generation tools to ensure no normative changes). Draft -22 served as the October interop target, and draft -23 was published at the draft deadline.
+  * *Fetch and Subscribe*: Removed `joining_fetch` in favor of adding `fill_parameters` on `SUBSCRIBE`. Unified `FETCH_OK` into `REQUEST_OK` and aligned location filters. Delta-encoded end-of-range markers in fetch streams.
+  * *Namespace/Track Overlaps*: Permitted overlapping subscribed track prefixes and duplicate published namespaces.
+  * *Cache and State*: Added the `GONE` state for cache tracking to align with HTTP representations.
+  * *Errors and Control Plane*: Split error codes into 300-level (control plane) and 400-level (data plane) classes. Increased control message size limits (64KB+) to accommodate post-quantum authentication tokens.
+  * *Parameters*: Renamed `forward` parameter to `paused`. Clarified that `REQUEST_UPDATE` messages must be processed in order, and subscriptions do not close automatically when largest object passes filter boundaries.
+  * *Issue Tracking*: 83 open issues remain, with over 30 being editorial and 15 flagged as requiring substantial discussion prior to Working Group Last Call.
+
+### Relay DoS Update
+* **Speaker**: Mike English
+* **Draft**: [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/)
+* **Slides**: [Relay DoS update](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-sessa-relay-dos-update-00)
+* **Discussion**:
+  * Reviewed resource protection tracking, including unknown track aliases, paused subscriptions, slow subscribers, and `GOAWAY` redirect safety.
+  * Raised concerns about fill fetches allowing subscribers to rapidly spawn high-cost unidirectional streams (similar to rapid reset vulnerabilities).
+  * Discussed whether subscriptions should restrict fill fetches to a single outstanding fill per track/subscription or allow concurrent fills.
+  * Participants (Ian Swett, Cullen Jennings, Mo Zanaty, Alan Frindell, Suhas Nandakumar, Martin Duke) debated whether new fill requests should automatically cancel prior fills versus forcing clients to use standalone fetches for non-joining history requests.
+
+### AUTH Design Team Update
+* **Speaker**: Mike English
+* **Draft**: [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/)
+* **Slides**: [AUTH design team update](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-sessa-auth-design-team-update-00)
+* **Discussion**:
+  * Renamed `authorization_token` to `authorization_payload` in the core transport to create a generic extension point for token formats, DPoP proofs, and challenge-response mechanisms.
+  * Introduced structured error details to transport control messages to convey authentication challenges.
+  * Outlined ongoing design work on session-level token renewal (e.g., in `SETUP`), publisher authorization edge cases, multi-token handling, cross-relay authorization, and namespace prefix scoping.
+
+### Low Overhead Media Container (LOC)
+* **Speaker**: Mo Zanaty
+* **Draft**: [draft-ietf-moq-loc](https://datatracker.ietf.org/doc/draft-ietf-moq-loc/)
+* **Slides**: [LOC](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-loc-00)
+* **Discussion**:
+  * Version -05 added the `codec_string` object/track property (code point 11 in MOQT) using standard CMAF / WebCodecs string representations.
+  * Presented three options for managing public property registrations:
+    1. Register properties individually as demand arises.
+    2. Perform an exhaustive pre-registration of common media properties.
+    3. Coalesce metadata fields into a single serialized property blob (e.g., an RTP header extension blob or WebCodecs dictionary blob).
+  * Participants (Alan Frindell, Will Hawkins, Cullen Jennings, Jonathan Lennox, Suhas Nandakumar) expressed strong opposition to Option 3 and unreflective importing of RTP header extensions, emphasizing that property registrations must be thoughtful and tailored to relay filtering needs.
+
+### Common Access Token For MOQ Over QUIC (C4M)
+* **Speaker**: Chris Lemmons
+* **Draft**: [draft-ietf-moq-c4m](https://datatracker.ietf.org/doc/draft-ietf-moq-c4m/)
+* **Slides**: [Common Access Token For MOQ Over Quic](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-sessa-common-access-token-for-moq-over-quic-00)
+* **Discussion**:
+  * *Draft Updates (-02)*: Added a versioning map inside the `moq` claim to handle backwards compatibility. Moved token replay guidance to security considerations (default allows token reuse across relays).
+  * *Directionless SETUP*: Tokens now authorize actions regardless of connection direction, simplifying relay-to-relay authorization.
+  * *Revalidation and Scope*: Discussed revalidating tokens when a `REQUEST_UPDATE` broadens the requested namespace/track scope. Participants (Alan Frindell, Assad, Suhas Nandakumar, Cullen Jennings, Rowan Naylor) agreed that authorization updates or scope-broadening requests must not be coalesced.
+  * *Thumbprints*: Discussed JSON Key Thumbprint (JKT) vs. COSE Key Thumbprint (CKT) support. The group expressed clear consensus to require support for both JKT and CKT.
+  * *Encoding*: Agreed on using Base64URL encoding for URLs.
+
+### MOQT Object Acks
+* **Speaker**: Victor Vasiliev
+* **Draft**: [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/)
+* **Slides**: [MOQT Object Acks](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-moqt-object-acks-00)
+* **Discussion**:
+  * Presented an informational proposal documenting Google's implementation of application-level object acknowledgments sent on the subscription bidirectional stream.
+  * The feedback mechanism reports the delta between object arrival time and playout deadline to inform publisher rate adaptation in 1-to-1 streaming scenarios.
+  * Participants (Mo Zanaty, LongHua, Assad, Suhas Nandakumar, Cullen Jennings) questioned whether application ACKs scale to 1-to-many topologies due to feedback implosion, noting that QUIC transport-level ACKs or dedicated feedback tracks (such as `draft-liu-moq-feedback-01`) may offer a more scalable approach.
+
+---
+
+## Decisions and Action Items
+
+1. **[draft-ietf-moq-c4m](https://datatracker.ietf.org/doc/draft-ietf-moq-c4m/) Key Thumbprints**: `draft-ietf-moq-c4m` will require support for both JSON Key Thumbprint (JKT) and COSE Key Thumbprint (CKT).
+2. **[draft-ietf-moq-c4m](https://datatracker.ietf.org/doc/draft-ietf-moq-c4m/) Coalescing**: Request updates that alter authorization parameters or broaden scope must not be coalesced.
+3. **[draft-ietf-moq-loc](https://datatracker.ietf.org/doc/draft-ietf-moq-loc/) Property Registrations**: Reject bulk importing of RTP header extensions or WebCodecs dictionaries as opaque blobs; properties will continue to be evaluated and mapped individually for relay compatibility.
+4. **LOCMAF Work**: Working group chairs will discuss the MPEG liaison response offline and determine next steps on the mailing list.
+
+---
+
+## Next Steps
+
+* **Interim Meetings**:
+  * Virtual interims scheduled through January (17:30–19:00 UTC).
+  * Hybrid European Interim: February 8–11 (February 8–9 for interop; February 10–11 for issue resolution).
+* **Issue Processing**: Editors and contributors to focus on resolving the remaining high-priority discussion issues in [draft-ietf-moq-transport](https://datatracker.ietf.org/doc/draft-ietf-moq-transport/) to prepare for Working Group Last Call.

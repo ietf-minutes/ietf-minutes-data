@@ -1,0 +1,106 @@
+# [AVTCORE](../wg/avtcore.html)
+
+## Summary
+
+The Audio/Video Transport Core Maintenance and Extensions (AVTCORE) Working Group met at IETF 127. The session covered working group administration, updates on published RFCs and draft status, publication progress for active drafts, and technical presentations on payload formats, SFrame transport, Opus multistream SDP signaling, frame-level acknowledgements, and future payload format work for AV2.
+
+## Key Discussion Points
+
+### Administration and Working Group Status
+- **Chairs:** Jonathan Lennox, Marius Curelea
+- **Presentation:** [AVTCore IETF 127 Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-avtcore-ietf-127-chair-slides-00)
+- **Status:**
+  - Published RFC 10034 (V3C Payload Format).
+  - JPEG XS and Green Metadata payload formats are currently in the RFC Editor Queue.
+  - The working group discussed the status of `draft-ietf-avtcore-abs-capture-time` (Absolute Capture Time RTP Header Extension). Aaron Rosenberg explained that it adds an NTP capture timestamp per frame into an RTP header extension for playback synchronization. Jonathan Lennox noted that work stalled after the original author stepped away. The chairs will ask the mailing list whether there is interest to continue or park the document.
+
+### H.265 Profile for WebRTC (`draft-ietf-avtcore-hevc-webrtc`)
+- **Presentation:** [HEVC WebRTC](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-hevc-webrtc-00)
+- **Presenter:** Jonathan Lennox (on behalf of Philip JDF)
+- **Discussion:**
+  - The introduction was updated to reflect present-day implementation status rather than future expectations.
+  - Dependency Descriptor (DD) support was changed to informative as it is not strictly mandatory.
+  - Bernard Aboba's in-memoriam acknowledgement text was updated.
+  - The chairs confirmed the draft is ready for a Publication Request to the IESG.
+
+### RTP Payload Format for V-DMC (`draft-ietf-avtcore-rtp-vdmc`)
+- **Presentation:** [V-DMC Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-v-dmc-slides-00)
+- **Presenter:** Hyunseok Yang
+- **Discussion:**
+  - Updates were made following Working Group Last Call (WGLC) based on shepherd review, including refinement of V3C SDP `fmtp` parameters.
+  - The separate V-DMC group type was removed in favor of reusing the V3C group type.
+  - Additional registration information was added based on feedback from the MEDIA working group review.
+  - The spec is stable, and MPEG's underlying specification has reached Final Draft International Standard (FDIS) status.
+
+### RTP Payload Format for ARF Animation Stream (`draft-ietf-avtcore-rtp-avatar`)
+- **Presentation:** [RTP Payload format for ARF Animation Stream](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-rtp-payload-format-for-arf-animation-stream-00)
+- **Presenter:** Hyunseok Yang
+- **Discussion:**
+  - Payload layout updated to align with the latest MPEG specifications. Removed the LD field dependency and added an Avatar flag bit (`A`) indicating the presence of an Avatar ID.
+  - Extended the unit type field from 4 bits to 6 bits by removing reserved header bits in the FPU header.
+  - Updated aggregation rules for identical avatars and added unit type support for silent Access Units (AUs).
+  - MPEG standard is at FDIS stage with expected publication in Q1 2025. Authors requested further working group review before initiating WGLC.
+
+### RTP Payload Format for SFrame (`draft-ietf-avtcore-rtp-sframe`)
+- **Presentation:** [SFrame RTP](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-sframe-rtp-00)
+- **Presenter:** Aaron Rosenberg
+- **Discussion:**
+  - Core SFrame base (RFC 9605) is published; companion RFC 10079 was published adding AES-256 cipher suites.
+  - Updates in draft -03:
+    - Introduced the `T` bit in the 1-byte header (`S`, `E`, `T`) to explicitly signal per-frame vs. per-packet packetization modes on a frame-by-frame basis.
+    - Added optional per-SSRC key derivation via HKDF-Expand with fixed salt string and 32-bit SSRC for isolated stream key management and CTR counter space decoupling.
+    - Added optional time-based key ratcheting to prevent backward-looking decryption for late-joining participants.
+    - Updated Security Considerations regarding unencrypted RTP headers/extensions, SDP downgrade attacks, and resource exhaustion.
+    - Added comprehensive test vectors covering all 8 cipher suites and defined the IANA `a=sframe` SDP attribute.
+  - **Technical Discussion:**
+    - Mo Zanaty and Jonathan Lennox questioned how per-frame mode interacts with codec-specific bitstream serialization versus RTP packetization. They noted per-frame mode relies on W3C WebRTC Encoded Transform definitions. Jonathan Lennox suggested clarifying or normatively referencing W3C WebRTC Encoded Transform.
+    - Magnus Westerlund raised SDP attribute scoping for non-audio/video media (e.g., text, application streams). Aaron Rosenberg agreed to follow up and expand media type coverage where applicable.
+    - SSRC rewriting interactions: If an SFU rewrites SSRCs, per-SSRC key derivation requires application key distribution updates; draft will add guidance recommending standard SFrame without per-SSRC derivation when SFU SSRC rewriting is used.
+  - Interop/Implementation: Interoperable implementations exist in Rust reference code, WebDataChannel, Apple OS platforms, and ongoing Chromium/WebRTC work targeting Browser Interop 2025.
+
+### RTP SDP Signaling for Opus Multistream
+- **Presentation:** [RTP SDP Signaling for Opus Multistream](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-rtp-sdp-signaling-for-opus-multistream-00)
+- **Presenter:** Son Yin
+- **Discussion:**
+  - Addresses the need for standardized SDP offer/answer signaling for surround sound (5.1 / 7.1) Opus audio streams in WebRTC applications (e.g., cloud gaming).
+  - Updated approach following previous working group guidance: changed MIME subtype from `multiopus` back to standard `opus` with channel count parameters (e.g., `opus/48000/6`, `opus/48000/8`) and mapping parameters referencing RFC 7845, RFC 6716, and RFC 7587.
+  - Mo Zanaty inquired whether existing endpoints choke on channel counts > 2 or if SDP FMTP parameters could convey channel mappings under `opus/48000/2`. Jonathan Lennox explained that LibOpus requires a distinct multichannel decoder initialization structure, making separate SDP payload types necessary for correct offer/answer negotiation.
+  - Zaheduzzaman Sarker clarified working group boundaries: AVTCORE defines the SDP signaling and RTP payload parameters, while W3C WebRTC handles JavaScript APIs.
+
+### RTCP Feedback for Frame-level Acknowledgement (`draft-ietf-avtcore-frame-acknowledgement`)
+- **Presentation:** [RTP Frame Acknowledgement](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-rtp-frame-acknowledgement-00)
+- **Presenter:** Erik Sprung
+- **Discussion:**
+  - Mechanism allows receivers to send RTCP feedback acknowledging frame arrival and decode commitment, enabling senders to select acknowledged frames as long-term reference (LTR) frames.
+  - **Definition of Frame:** Refined to include any independently decodable unit updating codec reference state. Covers sub-picture/tiling schemes (e.g., HEVC MCTS, VVC, AV2) where independent tile streams operate as independent codec instances.
+  - **LTR Dependency Signaling:** Discussed how receivers identify dependency structures for fast-forwarding to LTRs. Options include Dependency Descriptors (RFC 9626) or simpler header extension schemes. Mo Zanaty and Erik Sprung discussed trade-offs for simple IPPP codecs. Jonathan Lennox suggested keeping this draft focused and proposing simplified dependency extensions in a separate document if needed.
+  - **Implementation Feedback:** Hackathon testing highlighted the need to explicitly specify receiver behavior when dependencies are missing or broken (reporting immediate failure vs. deferred acknowledgement upon decode).
+
+### AV2 RTP Payload Format
+- **Presentation:** [AV2 RTP Profile](https://datatracker.ietf.org/meeting/127/materials/slides-127-avtcore-av2-rtp-profile-00)
+- **Presenter:** Erik Sprung
+- **Discussion:**
+  - Proposed starting work on an RTP payload format for the AV2 video codec (AOMedia next-generation codec providing ~30% coding gain over AV1).
+  - AV2 includes new features such as native sub-pictures, embedded layers (alpha, depth, spatial scaling), and extended layer tiling.
+  - **Venue Discussion:** Erik Sprung asked whether AV2 payload format work should occur in IETF AVTCORE or AOMedia.
+    - Magnus Westerlund noted payload formats can be published outside IETF, but IETF publication provides broader review and official media type registration.
+    - Mo Zanaty strongly advocated doing the work in AVTCORE, noting previous delays with AV1 in AOMedia and pointing out that IETF brings valuable expertise on complex video features (depth, alpha, metadata) and transport bindings.
+    - Jonathan Lennox confirmed AVTCORE welcomes payload format work if authors choose to bring it to the IETF.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-avtcore-hevc-webrtc`**: Submit Publication Request to the IESG.
+2. **`draft-ietf-avtcore-rtp-vdmc`**: Submit Publication Request to the IESG without a second WGLC.
+3. **Opus Multistream SDP Signaling**: Working group chairs will launch a second Call for Adoption on the revised draft (`opus/48000/X` syntax).
+4. **Absolute Capture Time**: Chairs will send a query to the mailing list to determine whether to park `draft-ietf-avtcore-abs-capture-time` or seek a new editor.
+
+---
+
+## Next Steps
+
+- **`draft-ietf-avtcore-rtp-avatar`**: Solicit broader working group reviews prior to requesting WGLC.
+- **`draft-ietf-avtcore-rtp-sframe`**: Resolve open GitHub issues (Red interaction, SSRC rewriting guidance, WebRTC Encoded Transform clarifications) ahead of WGLC.
+- **`draft-ietf-avtcore-frame-acknowledgement`**: Address un-decodable frame feedback behavior and finalize text for upcoming WGLC.
+- **Interim Meeting:** Chairs will survey the working group list to assess interest in holding a virtual interim meeting prior to IETF 128 (Kuala Lumpur).

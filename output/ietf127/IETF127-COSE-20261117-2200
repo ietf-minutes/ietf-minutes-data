@@ -1,0 +1,101 @@
+# [COSE](../wg/cose.html)
+
+## Summary
+
+The CBOR Object Signing and Encryption (COSE) Working Group met at IETF 127. The session covered working group document updates, progress on post-quantum cryptography (PQC) integration, C509 test vectors, split signing, composite claims for CWTs/JWTs, CBOR-encoded certificate revocation, ASCON lightweight cryptography, and deterministic encodings.
+
+---
+
+## Key Discussion Points
+
+### 1. Working Group Status and Administration
+- **Presentation:** [`cose-chair-slides-127`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-cose-chair-slides-127-04) by Mike Jones and Ivaylo Petrov.
+- **Document Progress:**
+  - `draft-ietf-cose-c509` (CBOR Encoded X.509 Certificates) is currently in the RFC Editor queue.
+  - `draft-ietf-cose-hpke-pq-pqt` is with the IESG/AD. AD Deb Cooley noted small comments and IANA fixes are pending.
+  - `draft-ietf-cose-falcon` (FN-DSA for JOSE and COSE) is awaiting AD evaluation.
+  - `draft-ietf-cose-pqc-kem` (PQ KEMs for COSE) was adopted following a lateral transfer from the JOSE WG. Authors are addressing recent list reviews, after which chairs will consider Working Group Last Call (WGLC).
+  - BLS key representations are waiting on BLS signature dependencies to mature.
+
+### 2. AES-CMAC for COSE
+- **Presentation:** [`AES-CMAC for COSE`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-aes-cmac-for-cose-00) by Brian Sipos.
+- **Discussion:**
+  - Brian Sipos presented updates in `draft-ietf-cose-cmac` version -01, including proposed algorithm code points, typo fixes, implementation examples in Appendix A, and implementation status links.
+  - The document is stable. Brian Sipos inquired about early IANA allocations.
+  - Mike Jones suggested proceeding directly to Working Group Last Call (WGLC) first to ensure stability before issuing early allocations.
+
+### 3. Split Signing Algorithms for COSE
+- **Presentation:** [`Split Signing Algorithms for COSE`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-split-signing-algorithms-for-cose-00) by Mike Jones.
+- **Discussion:**
+  - Mike Jones presented version -02 of `draft-ietf-cose-split-signing-algs`, which incorporates feedback from Alari and adds descriptive text for OpenPGP treatment of EdDSA signatures in split mode.
+  - No normative changes were made and no open issues remain.
+  - Ivaylo Petrov confirmed the draft is ready for WGLC.
+
+### 4. C509 and Test Vectors
+- **Presentation:** [`C509 and test vectors`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-c509-and-test-vectors-00) by Göran Selander.
+- **Discussion:**
+  - Göran Selander reported that `draft-ietf-cose-c509` (version -21) addressed implementer feedback (Bouncy Castle, Alibaba Cloud). The `subjectDirectoryAttributes` extension CBOR encoding was moved to a separate draft due to alignment issues with TCG specifications.
+  - `draft-ietf-cose-c509-test-vectors` (version -01) was updated to remove test vectors for the removed extension, add test vectors with large integers, improve annotated hex formatting, and align Autonomous System (AS) identifier ranges with RFC 3779.
+  - Active implementations include Rise, GitHub COSE repo, and CA software vendors.
+
+### 5. Composite Claims for [CJ]WTs
+- **Presentation:** [`Composite Claims for [CJ]WTs`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-composite-claims-for-cjwts-00) by Chris Lemmons.
+- **Discussion:**
+  - Chris Lemmons outlined the need for composite logical claims (`or`, `nor`, `and`, `crit`) in CWTs and JWTs for applications such as Media over QUIC (MoQ) / Common Access Token (CAT).
+  - Version -04 clarified nested validation, processing limits (processing up to a depth of four required), and alignment of `crit` claim behavior with OpenID Federation definitions.
+  - Filip Skokan raised questions regarding nested `crit` claim evaluation and how multiple `or` conditions interact in JSON; Chris Lemmons clarified that `and` clauses group multiple disjunctions.
+  - Jonathan Hammell asked whether nested logical claims introduce NP-hard evaluation issues (3-SAT). Chris Lemmons explained that verifiers evaluate concrete values in a bounded token rather than solving satisfiability.
+  - The draft is driven by an external normative dependency in the MoQ WG.
+
+### 6. HQC for COSE HPKE
+- **Presentation:** [`HQC for COSE HPKE`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-hqc-for-cose-hpke-00) by Hannes Tschofenig.
+- **Discussion:**
+  - Hannes Tschofenig introduced post-quantum Hamming Quasi-Cyclic (HQC) KEM registrations for COSE HPKE, defining six KEM modes (3 standalone, 3 PQ/T hybrid with P-256, X25519, P-384) and 12 total COSE algorithm registrations.
+  - Due to network connectivity issues, the presentation was cut short on slide 8. Discussion continued in the chat regarding NIST draft timelines and hybrid choices (Deirdre Connolly, Orie Steele, Quynh Dang).
+
+### 7. CBOR Encoded Certificate Revocation
+- **Presentation:** [`IETF 127 CBOR Encoded Certificate Revocation slides v1`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-ietf-127-cbor-encoded-certificate-revocation-slides-v1-00) by Rikard Höglund.
+- **Discussion:**
+  - Rikard Höglund presented version -01 of the native CBOR-encoded CRL and OCSP specification.
+  - Updates include comparative analysis showing 18%–52% size reductions over X.509 CRLs, utilization of COSE algorithm registries for hash algorithms, defined media types, and implementations in Rust (Rise) and Java (NIO).
+  - Open issue #1: Using raw certificate serial numbers vs. truncated HashID 20 in OCSP requests/responses. Industry feedback favored raw serial numbers to avoid database schema updates for legacy OCSP databases. Jonathan Hammell noted potential collision concerns if matching only on serial numbers.
+  - Open issue #2: Resolving name encoding ambiguities between CBOR RDN attribute arrays and DER-encoded X.509 names.
+  - Chairs noted that list reviews are needed before initiating a call for adoption.
+
+### 8. Ascon-AEAD128 and Ascon-Hash256 for COSE
+- **Presentation:** [`Ascon-AEAD128 and Ascon-Hash256 for COSE`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-ascon-aead128-and-ascon-hash256-for-cose-00) by Dmytro Kucherawy.
+- **Discussion:**
+  - Dmytro Kucherawy presented version -05 of the draft integrating NIST ASCON lightweight cryptography into COSE, with input from Infineon, Subsea Pulse, and Zephyr OS contributors.
+  - The document roadmap now includes ECDH with ASCON MAC/KDF and ASCON hash operations.
+  - Scott Fluhrer confirmed that OpenSSL currently supports ASCON.
+  - Reviews were provided by Marco Tiloca and Christian Amsüss. Chairs will assess reviews on list to evaluate readiness for adoption.
+
+### 9. Deterministic Encodings for COSE
+- **Presentation:** [`Deterministic Encodings for COSE`](https://datatracker.ietf.org/meeting/127/materials/slides-127-cose-deterministic-encodings-for-cose-01) by Steven Mi and Anton Sokolov.
+- **Discussion:**
+  - Steven Mi and Anton Sokolov proposed a protected header parameter to explicitly signal the deterministic encoding format (e.g., CBOR DTRM) applied to payload data prior to hashing when using hash envelopes (RFC 9995).
+  - Lawrence Lundblade and Mike Jones questioned why multiple deterministic encodings would be allowed or signaled, emphasizing that interoperability relies on protocol profiles specifying a single, mandatory canonical encoding (such as DTRM).
+  - Orie Steele pointed out that hash envelopes operate on arbitrary media types and are not specific to CBOR.
+  - Lawrence Lundblade suggested that defining rules for deterministic encodings belongs in the CBOR WG rather than COSE.
+  - Chairs requested that the authors address these architectural questions on the mailing list and engage the CBOR WG.
+
+### 10. Other Business / Open Mic
+- **Key Set Greasing:** Orie Steele brought up key set greasing considerations for COSE Key Sets, drawing parallels to JOSE discussions. Implementations should gracefully ignore unrecognized key types (including upcoming PQC keys) without crashing. Mike Jones supported this observation.
+- **PKIX Key Extraction:** Brian Sipos raised a question regarding best practices for extracting public keys from X.509/PKIX certificates for mapping to COSE algorithm identifiers across diverse crypto libraries.
+
+---
+
+## Decisions and Action Items
+
+- **`draft-ietf-cose-split-signing-algs`**: Chairs to initiate Working Group Last Call (WGLC).
+- **`draft-ietf-cose-cmac`**: Chairs to initiate Working Group Last Call (WGLC), after which early IANA allocations will be considered.
+- **`draft-inacio-json-composite-claims`**: Chairs to issue a call for WG adoption on the mailing list.
+
+---
+
+## Next Steps
+
+- **`draft-ietf-cose-pqc-kem`**: Authors to incorporate recent review feedback on list; chairs to evaluate for WGLC.
+- **CBOR Encoded Certificate Revocation**: Authors to solicit further list reviews and resolve open issues (serial number vs. hash ID; name encoding ambiguity) prior to an adoption call.
+- **ASCON for COSE**: Authors to update the draft based on reviews from Marco Tiloca and Christian Amsüss; chairs to assess list support for adoption.
+- **Deterministic Encodings**: Authors to take the discussion regarding single vs. multiple canonical encodings and WG scope to the COSE and CBOR mailing lists.

@@ -1,0 +1,85 @@
+# [FANN](../wg/fann.html)
+
+## Summary
+
+The Fast Network Notifications (FANN) Working Group met at IETF 127. The session included status updates on the adopted problem statement draft (`draft-ietf-fann-problem-statement`), discussion of the framework adoption candidate (`draft-song-fann-framework-03`), invited presentations on related industry technologies from OpenAI (MRC) and the Ultra Ethernet Consortium (C-SIG), and presentations on several individual proposal submissions. A poll confirmed strong support for launching a Working Group adoption call for the framework document.
+
+## Key Discussion Points
+
+### Chairs' Introduction and Working Group Status
+- **Presenter:** Carlos Pignataro ([Chairs' slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-chairs-slides-00))
+- Carlos Pignataro presented the Note Well, meeting logistics, and charter milestones.
+- Interims will be scheduled approximately every three weeks, rotating time slots between US/Europe-friendly and Asia-friendly times.
+- Mike McBride noted a preference for keeping use cases in a separate draft to prevent `draft-ietf-fann-problem-statement` from becoming too large. Carlos Pignataro stressed that requirements work needs to progress quickly to avoid delaying the framework and protocol specification milestones.
+
+### [Fast Network Notifications Problem Statement](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-fast-network-notifications-problem-statement-00)
+- **Presenter:** Jian Dong
+- Jian Dong presented an update on `draft-ietf-fann-problem-statement`, addressing feedback from the adoption call.
+- Key revisions include:
+  - Explicitly distinguishing DC and DCI scenarios in the introduction.
+  - Clarifying differences between link/node failures and congestion/degradation events.
+  - Adding considerations for correlated origination to prevent notification storms.
+  - Introducing action coordination considerations and the "adjust sending rate" action for sending nodes (covering both end hosts and network elements).
+  - Addressing notification reliability and in-band vs. out-of-band transport options.
+- Carlos Pignataro asked how action coordination is framed without dipping into solution-space protocol design; Jian Dong explained it is included as a high-level operational consideration.
+- Editing and issue tracking for the draft will transition to the working group GitHub repository.
+
+### [A Framework for Fast Network Notifications](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-a-framework-for-fast-network-notifications-00)
+- **Presenter:** Haoyu Song
+- Haoyu Song presented `draft-song-fann-framework-03`, outlining the reference architecture (originator, relay, consumer, optional notification controller), information model components, delivery modes, candidate realization approaches, operational considerations, and security boundaries.
+- **Discussion:**
+  - Greg Mirsky noted that delivery options (unicast vs. multicast) are transport-level details and argued that the framework should emphasize registering interest for notifications. He also urged keeping performance measurement/OAM functions separate from fast notification mechanisms. Haoyu Song agreed that the framework focuses on notifications.
+  - Rip Sohan asked about loop prevention, filtering, and aggregation. Haoyu Song explained that on-path nodes could filter or aggregate redundant notifications (e.g., selecting maximum congestion nodes) to save bandwidth.
+  - In chat, Antoine Fressancourt, Jie Dong, and János Farkas discussed notification aggregation vs. filtering and noted relevant IEEE 802.1EH telemetry tagging work.
+- **Session Polls:**
+  - *Have you read draft-song-fann-framework-03 (or a previous version)?* — yes: 16, no: 12, no_opinion: 0 (total: 64)
+  - *Do you think draft-song-fann-framework-03 is a good basis for adoption as WG doc?* — yes: 15, no: 3, no_opinion: 9 (total: 64)
+
+### [Multipath Reliable Connection (MRC): notification-related primitives and design principles](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-multipath-reliable-connection-mrc-notification-related-primitives-and-design-principles-00)
+- **Presenter:** Mark Handley
+- Mark Handley presented operational experiences from OpenAI's deployment of MRC for synchronous AI pre-training over multi-plane Clos networks.
+- Technical highlights:
+  - Synchronous AI training performance is limited by 100th-percentile tail latency across all parallel flows.
+  - MRC uses sender-side packet spraying over 256 static SRv6 paths to achieve high load balancing without dynamic switch routing.
+  - Packet trimming truncates dropped payloads into high-priority header notifications, allowing receivers to notify senders for rapid retransmission while distinguishing congestive loss from link failures.
+  - Senders reroute around link failures in ~2 RTTs without waiting for control-plane BGP convergence.
+  - Open questions for FANN: distinguishing early fabric load-balancing congestion from last-hop receiver congestion, acquiring multi-bit leading congestion metrics, and finding productive uses for unused SRv6 header bits.
+
+### [Congestion signaling in Ultra Ethernet 1.1](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-congestion-signaling-in-ultra-ethernet-transport-01)
+- **Presenter:** Rip Sohan
+- Rip Sohan presented In-Fabric Congestion Signaling (C-SIG) introduced in Ultra Ethernet Consortium (UEC) specification v1.1.
+- C-SIG provides fine-grained, in-band L2 telemetry using fixed 4-byte or 8-byte tags updated statelssly by switches at line rate.
+- Mandatory signals include minimum absolute available bandwidth, minimum normalized available bandwidth, and maximum absolute per-hop queuing delay (optional: maximum normalized queue depth).
+- **Discussion:**
+  - Jeff Tantsura asked if C-SIG's reduced tag size provides sufficient metadata compared to richer in-band telemetry solutions (e.g., HPCC/IFA) and how normalization behaves across heterogeneous switch buffers. Mark Handley and Rip Sohan noted C-SIG offers a pragmatic balance for hardware realization and provides critical leading availability indicators.
+  - In chat, János Farkas referenced the IEEE P802.1EH project (Telemetry Tagging of Data Frames) based on C-SIG concepts.
+
+### [Link Quality Telemetry: an information model for congestion notifications](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-link-quality-telemetry-an-information-model-for-congestion-notifications-00)
+- **Presenter:** Praveen
+- Praveen presented individual proposals defining a YANG information model and UDP transport binding for Link Quality Telemetry (LQT).
+- Spines (originators) sample counters every 2ms and send link quality scores, available bandwidth, and congestion levels via link-local UDP multicast (every 20ms or on score change) to downstream leaves (consumers) to adjust ECMP routing weights.
+- Praveen demonstrated how LQT maps to the FANN framework architecture.
+- Jeff Tantsura commented that a 20ms notification interval is too slow to address microbursts effectively.
+
+### [LightSpeed Notification (LSN)](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-lightspeed-notification-lsn-01)
+- **Presenter:** Pablo Camarillo
+- Pablo Camarillo presented LightSpeed Notification (LSN), a hardware-processed forwarding-plane notification mechanism targeting sub-100 microsecond reaction times.
+- LSN operates alongside BGP routing protocols (paths must be BGP-installed and LSN-healthy).
+- Features a dense bitmap encoding for data center fabrics (achieving 10 microsecond remote reaction times on Cisco Silicon One) and a sparse SRv6-based encoding for DCI networks.
+- Allows hardware MPUs to dynamically disable ECMP members, adjust weights, or activate precomputed backup paths upon receiving a signal.
+
+### [Fast network notification for plane protection in multi-plane networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-fann-fast-network-notification-for-plane-protection-in-multi-plane-networks-00)
+- **Presenter:** Yi
+- Yi presented notification requirements for multi-plane data center fabrics where link/plane failures are isolated to a single plane.
+- The presentation mapped multi-plane protection requirements to the FANN framework, highlighting plane-scoped vs. destination-scoped notifications and cross-plane message relaying.
+- Jeff Tantsura noted that notifying thousands of senders from a switch upon remote failure poses severe scalability and feasibility challenges due to lack of connection context at transit switches.
+
+## Decisions and Action Items
+
+- **Framework Adoption:** Based on the poll results (15 Yes, 3 No, 9 No Opinion), the chairs will issue an official Working Group Adoption Call for `draft-song-fann-framework-03` on the mailing list.
+- **Problem Statement & Requirements:** Editing of `draft-ietf-fann-problem-statement` will move to the working group GitHub repository. Authors and contributors will prepare consolidated requirements text prior to the next interim.
+
+## Next Steps
+
+- **Interim Meetings:** The chairs will schedule virtual interims roughly every three weeks, rotating meeting times between Asia-friendly and US/Europe-friendly slots.
+- **Document Progress:** Work towards adopting framework and requirements deliverables ahead of mid-2026 protocol specification milestones.
