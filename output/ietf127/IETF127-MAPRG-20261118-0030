@@ -1,0 +1,136 @@
+# [MAPRG](../wg/maprg.html)
+
+## Summary
+
+The Measurement and Analysis for Protocols Research Group (MAPRG) met at IETF 127. The session was chaired by Dave Plonka and Mirja Kühlewind. The meeting covered a range of topics, including email security protocols (SPF/DMARC/DKIM), network research measurement data disclosure constraints, Starlink Direct-to-Cell measurements, DANE for web performance, speed test optimization via machine learning (TurboTest), SCONE evaluation for video streaming over satellite, website privacy practice auditing under the CCPA (PrivAudit), and mitigating SPF vulnerabilities using DMARC split alignment.
+
+---
+
+## Key Discussion Points
+
+### 1. Intro & Administrivia
+* **Speakers:** Dave Plonka, Mirja Kühlewind
+* **Slides:** [Intro - Mirja/Dave](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-intro-mirjadave-00)
+* Co-chairs welcomed participants to MAPRG at IETF 127, reviewed the IRTF IPR rules, code of conduct, privacy policies, and outlined the agenda for the meeting.
+
+---
+
+### 2. Email Security in Practice and Provider Dependencies
+* **Speaker:** Dave Plonka
+* **Slides:** [Email Security in Practice and Provider Dependencies](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-email-security-in-practice-and-provider-dependencies-03)
+* Dave Plonka presented joint research with Marquette University alongside a complementary study by Bischoff et al. examining SPF, DMARC, and DKIM adoption across government, educational, and municipal email domains in the US and Europe.
+* Key findings show significant variance in SPF and DMARC adoption across different regions and types of institutions (e.g., K-12 vs. higher education), as well as widespread dependence on major US cloud email providers.
+* Discussed potential collaboration opportunities to improve adoption and leverage hackathon activities to move the needle on email security.
+
+---
+
+### 3. Specifying and Managing Disclosure Constraints on Network Research Measurements
+* **Speaker:** Nick Sultana
+* **Slides:** [Specifying and Managing Disclosure Constraints on Network Research Measurements](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-specifying-and-managing-disclosure-constraints-on-network-research-measurements-00)
+* Nick Sultana presented ongoing work on managing data disclosure constraints for testbeds (such as FABRIC) and network research datasets (e.g., the Patchwork project).
+* Summarized insights from two Birds of a Feather (BoF) sessions held at the NSF Cybersecurity Summit and with network operators regarding best practices, policy friction, and privacy-preserving data sharing.
+* Dave Plonka inquired about the status of the survey being conducted to capture researcher and operator perspectives; Nick noted that feedback from initial runs is being incorporated to refine and scale the survey online.
+
+---
+
+### 4. Ookla: Measuring Starlink Direct to Cell on ordinary phones in the wild
+* **Speaker:** Luke Kehoe
+* **Slides:** [Ookla: Measuring Starlink Direct to Cell on ordinary phones in the wild](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-ookla-measuring-starlink-direct-to-cell-on-ordinary-phones-in-the-wild-01)
+* Luke Kehoe presented Ookla's analysis combining controlled drive/walk testing with crowdsourced passive telemetry to reconstruct and evaluate SpaceX's Starlink Direct-to-Cell (D2C) constellation performance on unmodified mobile devices.
+* Key observations include:
+  * Spatial clustering of usage in mountainous regions, national parks, and during summer months.
+  * Rapid handoffs with devices connecting to a new satellite roughly every 45 seconds and new beams every 10–15 seconds.
+  * Controlled testing showed an 86% SMS delivery success rate inside moving vehicles (compared to 98% on terrestrial networks), with longer transmission delays.
+  * High uplink transmit power impacts battery life since phones operate at maximum power regardless of signal level.
+  * Observed a 15-second reporting pattern concentrated in Samsung devices, which is under further investigation.
+* Geoff Huston commented on latency jitter and packet loss during satellite handovers observed on fixed Dishy terminals, asking if alternative flow control algorithms like BBR were evaluated. Luke noted current D2C applications are low-bandwidth/emergency text-focused, with capacity traded for link reliability via lower coding rates.
+* Mohit Bajpai asked about data collection ethics, user consent, and battery impact; Luke clarified data comes from foreground application sessions with explicit user opt-in and anonymized telemetry.
+
+---
+
+### 5. Revisit DANE for the Web: A Performance Perspective
+* **Speaker:** Yixin Sun
+* **Slides:** [Revisit DANE for the Web: A Performance Perspective](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-revisit-dane-for-the-web-a-performance-perspective-00)
+* Yixin Sun presented a study evaluating the performance latency of DANE (DNS-based Authentication of Named Entities) for HTTPS on web servers.
+* Measurement framework utilized a custom DANE proxy and local recursive resolver across US and European vantage points:
+  * Uncached TLSA lookups introduce noticeable latency overhead due to DNSSEC validation and multi-RTT lookups.
+  * TLSA configurations containing full certificates (usage types 0 and 2) often trigger TCP fallback due to UDP payload size limits.
+  * Scanned top domain lists and found ~8,000 domains publishing TLSA records on port 443, with over 4,000 actively responding to TLS handshakes.
+  * Recent middlebox measurements showed no specific targeting/tampering of TLSA records compared to standard A records.
+* Lorenzo Colitti noted that caching and parallelizing TLSA lookups alongside A/AAAA queries would significantly reduce real-world user latency, and suggested testing over encrypted DNS (DoT/DoQ).
+* Ben Schwartz suggested applying comparative framework models and evaluating DANE in the context of `DELEG` records.
+* Viktor Dukhovni asked about the characteristics of web servers publishing TLSA records and whether browser vendors show renewed interest.
+
+---
+
+### 6. TurboTest: Learning When Less Is Enough Through Early Termination of Internet Speed Tests
+* **Speaker:** Arika Sharma
+* **Slides:** [TurboTest: Learning When Less Is Enough Through Early Termination of Internet Speed Tests](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-turbotest-learning-when-less-is-enough-through-early-termination-of-internet-speed-tests-03)
+* Arika Sharma presented TurboTest (published at NSDI 2024), a machine learning framework designed to terminate speed tests early while maintaining throughput estimation accuracy.
+* Analysis of M-Lab data showed that 10% of high-throughput tests generate 46% of total transferred data.
+* TurboTest uses a two-stage architecture:
+  1. An XGBoost regressor predicting final throughput using kernel TCP telemetry.
+  2. A transformer-based classifier determining the optimal stopping timestamp given an operator-defined error tolerance ($\epsilon$).
+* Evaluation on 800k real-world tests demonstrated a data reduction of up to 92% (reducing M-Lab data volume from 12 PB to under 1 PB) within a 15% relative error margin, outperforming BBR-based heuristic stopping criteria.
+* Tommy Pauly pointed to `draft-ietf-ippm-responsiveness` (work in IPPM/BPM) as another candidate framework where early termination and ML prediction could reduce network test overhead.
+* Alan Frindell (via chat) and Warren Kumari expressed interest in the deployment progress; Arika noted server-side prototypes exist and a client-side implementation is under development.
+
+---
+
+### 7. Evaluating SCONE for Adaptive Bitrate Video Streaming over Satellite Networks
+* **Speaker:** Raghav Kejriwal
+* **Slides:** [Evaluating SCONE for Adaptive Bitrate Video Streaming over Satellite Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-evaluating-scone-for-adaptive-bitrate-video-streaming-over-satellite-networks-01)
+* Raghav Kejriwal presented an evaluation of SCONE (Throughput Advice for Adaptive Bitrate Video) over emulated and real satellite links (GEO and Starlink LEO).
+* Using a modified `mvfst` QUIC stack, Proxygen HQ server, Firefox with SCONE API, and Dash.js, the study evaluated single-flow and multi-flow ABR streaming scenarios.
+* Findings indicated:
+  * Enabling SCONE advice significantly reduces video rebuffering time and quality switches across satellite links.
+  * In multi-flow scenarios, SCONE prevents throughput estimation overshoot.
+  * Non-conforming ("cheating") or un-managed flows primarily degrade their own performance while SCONE-conforming flows maintain stable playback metrics.
+* Stuart Cheshire raised that comparing SCONE against a FIFO Drop-Tail queue bottleneck represents a worst-case baseline and suggested benchmarking against active queue management (AQM) such as FQ-CoDel or L4S. Raghav acknowledged in chat that Starlink relies on flow-queuing in practice.
+* Stefano Cerasuolo offered collaboration on alternative open-source QUIC stacks.
+* Yoshifumi Nishida asked how SCONE advice interacts with congestion control; Raghav clarified that SCONE advice is used exclusively by the ABR application layer to trim the bitrate ladder, not to modify transport congestion control logic.
+
+---
+
+### 8. PrivAudit: A Dual-Lens Auditing Framework for Website Privacy Practices under the CCPA
+* **Speaker:** Mohammad Mustafa Daud
+* **Slides:** [PrivAudit: A Dual-Lens Auditing Framework for Website Privacy Practices under the CCPA](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-privaudit-a-dual-lens-auditing-framework-for-website-privacy-practices-under-the-ccpa-01)
+* Mohammad Mustafa Daud presented PrivAudit (CCS 2024), a framework combining LLM-based privacy policy analysis with browser-based script/cookie tracking analysis to audit compliance under the California Consumer Privacy Act (CCPA).
+* Key findings:
+  * Script-based cookie attribution revealed that up to 40% of third-party trackers write cookies as first-party in the cookie jar.
+  * Global Privacy Control (GPC, `Sec-GPC`) header handling: Enforcing GPC reduced third-party targeting cookies by 41% on CCPA-subject sites, but up to 40% of sites claiming to honor GPC showed zero reduction in targeting cookies when GPC was enabled.
+  * 50% of sites stating they do not sell personal data still set third-party targeting cookies on the initial landing page.
+* PrivAudit serves as an automated auditing tool for regulatory agencies (such as the CPPA) to detect disclosure-behavior discrepancies at scale.
+
+---
+
+### 9. Split Alignment: Diffusing SPF Vulnerabilities with DMARC
+* **Speaker:** Hamza
+* **Slides:** [Split Alignment: Diffusing SPF Vulnerabilities with DMARC](https://datatracker.ietf.org/meeting/127/materials/slides-127-maprg-split-alignment-diffusing-spf-vulnerabilities-with-dmarc-00)
+* Hamza presented research on email authentication protocol interaction vulnerabilities (IMC 2024).
+* The study analyzed 34.6M subdomains across 3.2M organizational domains:
+  * Over 90% of DMARC policies use relaxed alignment (mostly implicitly by omitting explicit alignment tags).
+  * 500,000 subdomains had vulnerable SPF records (e.g., stale IP references, overly broad CIDR blocks, loose `all` rules).
+  * Under relaxed DMARC alignment, an attacker exploiting a single vulnerable subdomain can pass DMARC checks for the entire domain hierarchy, including the Apex domain.
+* Proposed Solution: **Split Alignment**
+  * Configure DMARC alignment mode to strict (`aspf=s; adkim=s`).
+  * Move the functional SPF policy to a dedicated subdomain, while publishing a restrictive SPF record (`v=spf1 -all`) at the visible/Apex domain.
+  * Require DKIM signing aligned strictly to the visible domain.
+* Empirical testing across major email receivers confirmed that Split Alignment preserves email deliverability while effectively neutralizing SPF-based subdomain takeover attacks.
+* Ben Schwartz asked about the prevalence of stale IP addresses in SPF records; Hamza noted broad CIDR blocks and IP reassignment in cloud environments remain significant contributors.
+* Erik Nygren commented on how SPF breaks email forwarding whereas DKIM does not.
+
+---
+
+## Decisions and Action Items
+
+* **Data Sharing & Survey:** Researchers and operators interested in network measurement privacy and data disclosure policies are encouraged to participate in Nick Sultana's ongoing survey.
+* **Email Security Collaboration:** Participants interested in expanding domain security measurements (SPF/DMARC/DKIM) or participating in hackathon activities are encouraged to connect with Dave Plonka.
+
+---
+
+## Next Steps
+
+* **Responsiveness & Speed Tests:** Explore applying TurboTest early-termination ML techniques to the IPPM responsiveness measurement framework (`draft-ietf-ippm-responsiveness`).
+* **SCONE Testing:** Further evaluate SCONE over satellite topologies with active queue management (AQM) mechanisms (e.g., FQ-CoDel, L4S).
+* **DMARC & Email Security:** Share Split Alignment findings with the email administration and DMARC communities to encourage safer default configurations.

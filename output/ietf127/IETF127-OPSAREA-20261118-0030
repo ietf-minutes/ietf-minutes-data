@@ -1,0 +1,128 @@
+# [OPSAREA](../wg/opsarea.html)
+
+## Summary
+
+The Operations Area (OPSAREA) meeting at IETF 127 covered Area updates, reports on newly formed groups and directorates, proposals for acceptable protocol use policies, reports from co-located workshops, and operational guidance for YANG module authors and protocol designers using QUIC.
+
+Key topics included:
+* Operational updates on the newly established **Benchmarking and Performance Measurement (BPM)** Working Group, **NETMOD** activities around YANG Next, and the launch of the **RPKI Doctors** review team.
+* A proposal to establish a Best Current Practice (BCP) on **ICMP Acceptable Use Policy**.
+* Workshop reports covering **IP Geolocation** and **BGP Communities in the Wild**.
+* Author tooling and guidance for **YANG Versioning and SemVer**.
+* Transport guidance and operational considerations for applications layering over **QUIC**.
+
+---
+
+## Key Discussion Points
+
+### 1. Technology Deep Dive (TDD) Announcements & Area Updates
+* **TDD Session (IETF 127):** Thomas Graf highlighted the upcoming session on network analytics covering IPFIX, BMP, and YANG Push integration, including real-world operational postmortems.
+* **TDD Session (IETF 128 - Malaysia):** Paolo Volpato announced the planned session focusing on AI Data Center technologies and operational perspectives (with presentations from Huawei and Alibaba) and called for community topic proposals for future sessions.
+* **Working Group & Review Directorate Updates:** Mohamed Boucadair noted the conclusion of the IPPM and BMWG working groups and the creation of the BPM Working Group and the RPKI Doctors review team.
+
+### 2. BPM Working Group Status
+* **Presentation:** [Chairs Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-1-chairs-slides-01) by Thomas Graf.
+* **Charter & Scope:** Following joint IPPM/BMWG work starting at IETF 123, the BPM Working Group was chartered on October 29. The WG covers metrics, methodologies, and protocols for production and lab environments across IP, upper layers, Layer 2, and M+ data planes.
+* **Operations:** Mailing lists have been transitioned, and GitHub repositories have been set up under the `ietf-wg-bpm` organization. Session planning will target two sessions per meeting (a 2-hour and a 1-hour slot) with dedicated interims for focused topics. Active coordination is underway with MPLS, Spring, CCAMP, MAPRG, and the Net4AI Research Group.
+* **Discussion:** Mahesh Jethanandani queried GitHub repository naming alignment; Mohamed Boucadair confirmed guidelines are being followed.
+
+### 3. NETMOD & YANG Next Update
+* **Presentation:** [Chairs Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-1-chairs-slides-01) by Lou Berger and Rob Wilton.
+* **YANG Versioning Status:** Initial module versioning specification documents are wrapping up in the RFC Editor queue.
+* **YANG Next / YANG 2.0:** With YANG turning 10 years old, NETMOD is initiating work on YANG Next to address language limitations that cannot be fixed within YANG 1.1 (e.g., removing unused constructs like `anyxml` which was replaced by `anydata`).
+* **Process & Tooling:** Rob Wilton described the classification effort for ~150 open GitHub issues. Bi-weekly meetings will utilize a custom GitHub-authenticated consensus tracking tool to classify issues before presenting proposals to the full WG.
+* **Discussion:** Wes Hardaker cautioned against tooling breakage and inquired about splitting updates into YANG 1.2 vs 2.0. Lou Berger and Rob Wilton clarified that version numbering will be finalized after resolving the scope of breaking changes, estimating a 2 to 4-year timeline.
+
+### 4. Introduction to RPKI Doctors
+* **Presentation:** [3. Introduction to RPKI Doctors](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-3-introduction-to-rpki-doctors-00) by Job Snijders.
+* **Motivation:** RPKI usage has grown rapidly, covering the majority of global routing table prefixes and traffic. Multiple working groups outside SIDROPS are creating drafts referencing RPKI (e.g., geofeed validation, Source Address Validation). Because SIDROPS has a narrow chartered focus, an ad-hoc review process risks architectural mismatches.
+* **Directorate Scope & Checklist:** RPKI Doctors provides solicited and unsolicited architectural reviews to ensure proper usage of RPKI. Key technical checks include:
+  * Proper alignment with the RPKI authorization hierarchy (e.g., AS vs IP delegation extensions).
+  * Canonicalized, deterministic ordering of prefixes and signed object contents.
+  * Strict file naming rules: Signed object file names **MUST NOT** be recycled across versions; high-entropy file names must be used to prevent propagation race conditions.
+* **Team:** Volunteer experts (Job Snijders, Rob Wilton, Reshad Rahman, and others with implementation/ops background). Available as a free review resource for any WG.
+
+### 5. Update on ICMP Use Policy
+* **Presentation:** [4. Update on ICMP Use Policy](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-4-update-on-icmp-use-policy-01) by Ron Bonica.
+* **Problem Statement:** ICMP (RFC 792) lacked an acceptable use policy. Subsequent extensions (RFC 4884 extensible ICMP, RFC 8335 PROBE) allow arbitrary data transfer via generic extensions. However, ICMP suffers from reliability issues (unreliable, rate-limited), lack of authentication, and poor access control. Standard management protocols (Netconf, YANG, telemetry) or routing protocols are far better suited for general data transfer.
+* **Proposed Acceptable Use Policy:**
+  * **MUST use ICMP for:** Forwarding plane error signaling (e.g., Destination Unreachable, Time Exceeded) and node bootstrapping (e.g., IPv6 Neighbor Discovery). Payload must be restricted to root-cause error information.
+  * **MUST NOT use ICMP for:** Querying node configuration parameters (e.g., MTU) or general network monitoring where better protocols exist.
+  * **Grandfather Clause:** Existing deployed RFC specifications remain grandfathered.
+* **Discussion:**
+  * Wes Hardaker supported establishing architectural BCP guidance, while pointing out that ICMP is uniquely useful for unauthenticated measurements across third-party networks (e.g., root server vantage points).
+  * Rob Wilton and John Scudder (in chat referencing `draft-halpern-rtgwg-not-a-dump-truck-00`) noted that the IETF often lacks generic state distribution protocols, leading to protocol overloading.
+  * Joe Clarke emphasized security risks where unauthenticated ICMP extension queries cause node crashes or information disclosure.
+  * Joel Jaeggli noted that legacy mechanisms like Packet Too Big (PTB) carry forwarding plane management info in-band and cannot be easily replaced.
+  * Jainam Parekh offered to help structure the draft and guidance on extension formats.
+
+### 6. New Directions in IP Geolocation Workshop Report
+* **Presentation:** [5. New Directions in IP Geolocation workshop report](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-5-new-directions-in-ip-geolocation-workshop-report-00) by Oliver Gasser.
+* **Context:** Summarized findings from the ACM IMC 2026 workshop (co-organized with Robert Beverly), building on the IAB IP Geolocation Workshop report (`draft-iab-ip-geo-workshop-report`).
+* **Key Findings:**
+  * *Looking Glass Data:* 50% of looking glass providers had at least one incorrect mapping between host IP address and advertised location.
+  * *IPv6 vs IPv4:* IPv6 geolocation accuracy lags behind IPv4 by 13-19 percentage points in latency consistency.
+  * *Ground Truth:* Unbiased ground truth remains an open challenge. Latency constraints can rule out invalid locations but cannot confirm exact locations.
+  * *Starlink Study:* 10% discrepancy observed between standard RFC 8805 (`feed.csv`) files and egress POP files (`pops.csv`). Updates occur faster than every two days, while feeds lack TTLs or refresh fields.
+* **Standardization Gaps:** Need for TTL/refresh mechanisms in RFC 8805 geofeeds, standardizing egress POP mapping files, distinguishing infrastructure/egress locations from user locations, and addressing non-standard city name spellings.
+* **Discussion:**
+  * Joe Clarke questioned whether downstream consumption services (e.g., video streaming providers) are committed to implementing refreshed RFC 8805 standards. Oliver Gasser confirmed IPInfo's commitment.
+  * Diego Lopez noted related work in the RATS WG regarding attesting geographical properties.
+  * Joel Jaeggli highlighted that Anycast prefixes inherently force published geofeed inaccuracies because an Anycast prefix cannot simultaneously map to multiple geographic locations in single-location feed schemas.
+
+### 7. BGP Communities in the Wild Workshop Report
+* **Presentation:** [6. BGP Communities in the Wild workshop report](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-6-bgp-communities-in-the-wild-workshop-report-02) by Thomas Krentz.
+* **Context:** Summarized findings from the ACM IMC 2026 workshop (co-organized with Robert Beverly).
+* **Data & Survey Insights:**
+  * 98.5% of analyzed BGP routes contain at least one community; over 185,000 unique communities were observed globally.
+  * Survey of 55 operators showed widespread multipurpose usage (84% use communities for >=4 distinct use cases).
+  * 40% of exported communities have no public documentation. 60% of networks keep >=50% of their communities internal-only. A single major CDN reported using 40,000 internal communities.
+  * Standard, extended, and large communities are used complementarily, though some networks filter strictly by community type.
+* **Standardization Needs:**
+  * Machine-readable community dictionaries (ongoing work in the GROW WG on YANG models).
+  * Standardized operational guidance for documenting community *handling* and propagation policies (e.g., selective export, stripping across boundaries), rather than just community semantics.
+* **Discussion:** Job Snijders invited Thomas Krentz to collaborate on updated operational guidance for community propagation (referencing previous work transitioning IXP route servers from extended communities to large communities).
+
+### 8. YANG Versioning and Semver: Impacts on YANG Authors
+* **Presentation:** [7. YANG Versioning and Semver: Impacts on YANG Authors](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-7-yang-versioning-and-semver-impacts-on-yang-authors-00) by Joe Clarke.
+* **Overview:** Summarized the framework defined across the NETMOD versioning specification drafts (`draft-ietf-netmod-yang-versioning-reqs`, `draft-ietf-netmod-yang-module-versioning`, `draft-ietf-netmod-yang-semver`, `draft-ietf-netmod-yang-schema-version-selection`, and `draft-ietf-netmod-iana-bound-yang-module-versioning`).
+* **Key Versioning Rules for Authors:**
+  * Non-backwards-compatible (NBC) changes are permitted but MUST be explicitly signaled using the `rev:non-backwards-compatible` extension in the revision block.
+  * Revisions must include the `ysv:version` extension (`x.y.z`).
+  * Changing status to `obsolete` is formally classified as an NBC change.
+  * Filename conventions are updated to support `@version` syntax.
+  * Authors may use `recommended-min-version` for module imports.
+* **Tooling Support:**
+  * `xzim`: Updated to extract modules using SemVer filenames.
+  * `pyang`: Updated fork includes `--check-update-semver` to compare module revisions, flag NBC/minor/patch changes, warn on description updates, and calculate recommended SemVer numbers.
+  * `libyang` / `yanglint`: Support integrated in release 6.4.13 (integrated into DataTracker).
+  * A complete audit site for existing IETF/IANA YANG modules is available to assist authors in establishing baseline version strings.
+
+### 9. QUIC Guidance (Follow-up)
+* **Presentation:** [8. QUIC Guidance (Follow-up)](https://datatracker.ietf.org/meeting/127/materials/slides-127-opsarea-8-quic-guidance-follow-up-00) by Gorry Fairhurst.
+* **Transport & Operational Considerations:**
+  * QUIC is encrypted (TLS 1.3), asymmetric (client-server, not peer-to-peer), and supports stream multiplexing and datagrams.
+  * **Path Capability:** QUIC is not guaranteed to work across all network paths (middleboxes/firewalls may block UDP/QUIC). Protocol designs using QUIC **MUST** define fallbacks (e.g., to TCP).
+  * **API & Layering:** QUIC lacks a standard Sockets API. Applications layering directly over QUIC must implement stream scheduling, ALPN identification, flow control credit handling, and resets.
+  * **Layering Recommendation:** Protocol designers are strongly encouraged to layer over HTTP/3 or established higher-level frameworks rather than mapping directly to raw QUIC.
+  * **Implementations:** Drafts specifying QUIC transports must have multiple interoperable client/server implementations prior to publication.
+  * **Review Wiki:** Transport area chairs and experts maintain a wiki of common review questions for WGs specifying protocols over QUIC.
+* **Discussion:**
+  * Lucas Pardue highlighted the importance of exercising extension points early and applying greasing (referencing `draft-edm-protocol-greasing`) to prevent middlebox ossification.
+  * Dhruv Dhody inquired about operational guidance for transitioning control plane protocols (e.g., BGP, Netconf, PCEP) to QUIC. Gorry Fairhurst advised evaluating whether QUIC's operational complexity, middlebox issues, and fallback requirements are justified for control-plane use cases.
+
+---
+
+## Decisions and Action Items
+
+* **ICMP Acceptable Use Policy:** Ron Bonica will draft a skeleton Internet-Draft for a Best Current Practice (BCP) on ICMP acceptable use and post it for community discussion in the OPS area / OPSAWG.
+* **RPKI Doctors:** Review team is operational and open for review requests from any working group incorporating RPKI constructs.
+* **YANG Versioning Tooling:** Joe Clarke and tools maintainers will push Pyang and DataTracker updates upstream once RFC numbers are assigned to the NETMOD versioning draft bundle.
+
+---
+
+## Next Steps
+
+* **YANG Next:** NETMOD will continue bi-weekly issue classification meetings led by Rob Wilton, Kent Watsen, and Lou Berger to refine the scope of YANG 2.0 / YANG Next.
+* **BGP Communities Guidance:** Job Snijders and Thomas Krentz will collaborate outside the meeting to progress guidance on BGP community propagation and handling rules.
+* **QUIC Protocol Guidance:** Authors proposing QUIC-based protocols are directed to consult the Transport/QUIC common issues wiki early in the draft development process.

@@ -1,0 +1,114 @@
+# [MBONED](../wg/mboned.html)
+
+## Summary
+The MBONED Working Group met at IETF 127. The session covered status updates on active working group documents, industry operational reports on Multicast Adaptive Bit-Rate (MABR) deployments, distribution of AI model weights using IP multicast, proposals for native browser multicast APIs, enhancements to the Linux kernel Automatic Multicast Tunneling (AMT) relay, BGP-based dynamic multicast tunneling, Forward Error Correction (FEC) over Media over QUIC (MoQ), and a summary of the SQUAD BoF.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status and Document Updates
+*Presented by Mike McBride*  
+*Slides:* [Agenda](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-agenda-01)
+
+* **AMT YANG Model:** The document (`draft-ietf-mboned-amt-yang-model`) is in the final stages of the RFC Editor queue and publication is expected soon.
+* **draft-ietf-mboned-non-source-routed-sr-mcast:** Passed Working Group Last Call (WGLC) and is ready for advancement. The chairs are seeking a document shepherd volunteer.
+* **draft-ietf-mboned-multicast-yang-model:** Currently in WGLC. Additional reviews and support from non-authors are needed before advancing.
+* **draft-ietf-mboned-redundant-ingress-failover:** Underwent WGLC earlier in the year; additional revisions were made, and chairs will coordinate with co-authors on next steps.
+* **draft-ietf-mboned-multicast-security:** Kyle Rose noted the document date was updated. Further development is linked to ongoing work on multicast QUIC / SQUAD.
+
+---
+
+### Multicast Adaptive Bit-Rate (MABR): Solution, Footprint, Facts, Hurdles and Evolution
+*Presented by Guillaume Bichot*  
+*Slides:* [Multicast Adaptive Bit-Rate (MABR): solution, footprint, facts, hurdles and evolution](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-multicast-adaptive-bit-rate-mabr-solution-footprint-facts-hurdles-and-evolution-02)
+
+* **Architecture & Standards:** MABR leverages DVB-MABR standards using transport protocols such as mSync, FLUTE, ROUTE, and NORM. A multicast server fetches HTTP ABR segments (HLS/DASH) and sends them to an agent in a set-top box or CPE, which acts as a local HTTP proxy/cache for player endpoints.
+* **Operational Scale:** Over 25 commercial deployments reaching ~25 million viewers globally. During major events (e.g., FIFA World Cup), MABR offloads over 80% of video delivery traffic from unicast to multicast.
+* **Operational Hurdles:** Challenges include CPE integration, low-latency CMAF tuning, and operator constraints (e.g., ISP restrictions on IPv6 or number of multicast groups). Guillaume noted an incident where a post-match surge of users synchronously switching back to unicast web platforms overwhelmed CMS/F5 middleboxes.
+* **Evolution:** Ongoing work includes MoDE (Multicast-assisted Unicast Delivery) using edge/host proxies, Open MABR (exposing APIs to allow 3rd-party CDNs to utilize operator multicast networks), and DVB file casting specifications.
+* **Discussion:**
+  * Jake Holland asked about Wi-Fi delivery; Guillaume clarified MABR is primarily deployed over dedicated managed links to set-top boxes, avoiding Wi-Fi multicast issues.
+  * Max Franke inquired about the 80% offload metric; Guillaume confirmed 80% represents a typical average offload efficiency across deployments.
+  * Omar Ramadan asked about TR-069 configuration and AMT. Guillaume explained AMT is rarely adopted by ISPs for MABR because operators limit multicast delivery strictly to their own subscribers within walled-garden networks.
+  * Mike McBride asked about Source-Specific Multicast (SSM) vs. Any-Source Multicast (ASM) and ad insertion handling. Guillaume confirmed SSM is preferred, and Server-Side Ad Insertion (SSAI) is typically handled on the unicast manifest side.
+
+---
+
+### AI Model Weights over IP Multicast
+*Presented by Ead and Omar Ramadan*  
+*Slides:* [AI model weights over IP multicast](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-ai-model-weights-over-ip-multicast-00)
+
+* **Use Case:** Transferring large AI model weights (e.g., Qwen2.5-3B, ~6.18 GB) across edge cache nodes and compute clusters.
+* **Implementation:** Uses IP multicast combined with Reed-Solomon Forward Error Correction (10 data + 2 parity packets = 20% parity block overhead) and in-band range NACK retries.
+* **Results:** Multicast outperformed unicast across all bandwidth caps (450 Mbps to 1 Gbps). Multicast total egress bandwidth remained constant regardless of receiver node count.
+* **Discussion:**
+  * Jake Holland drew parallels to NORM; Omar noted similarities to MoDE with in-band NACKs.
+  * Toerless Eckert discussed cloud and data center economics, highlighting how multicasting model updates reduces compute worker idle time during model distribution.
+  * Mike McBride encouraged the authors to submit their findings as an MBONED Internet-Draft.
+
+---
+
+### Native Multicast Reception for the Open Web & Scaling the Linux Kernel AMT Relay
+*Presented by Omar Ramadan*  
+*Slides:* [Native Multicast Reception for the Open Web](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-native-multicast-reception-for-the-open-web-00) & [Scaling the Linux Kernel AMT Relay and Adding IPv6](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-scaling-the-linux-kernel-amt-relay-and-adding-ipv6-00)
+
+* **Open Web Multicast API:**
+  * Direct Sockets in Chrome currently require isolated web apps or extensions. The proposed W3C/IETF initiative aims to provide web pages with an API to receive authenticated UDP multicast streams directly.
+  * Addressing security concerns: Classical TLS pairwise confidentiality does not apply directly to multicast. The proposal focuses on source authentication (DNSSEC, asymmetric signatures) and user consent mechanisms while addressing privacy considerations outlined in `draft-ietf-mboned-multicast-security`.
+  * Kyle Rose, Toerless Eckert, and Jake Holland discussed security trade-offs, group keying (GDOI), and k-anonymity models for user privacy.
+* **Linux Kernel AMT Relay Scaling:**
+  * Recent kernel contributions added hardening, performance optimizations, and initial IPv6 support.
+  * Resolved a NAT bug where tunnel sessions were improperly keyed on client IP alone rather than IP and port.
+  * Achieved a 30% performance boost by eliminating unnecessary payload copying, successfully scaling to 100,000 concurrent tunnels and maxing out a 100 Gbps interface in testing.
+
+---
+
+### Dynamic Internet Multicast Tunneling
+*Presented by Mike McBride*  
+*Slides:* [Dynamic Internet Multicast Tunneling](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-dynamic-internet-multicast-tunneling-00)
+
+* **Concept:** Provides zero-configuration, dynamic middle-mile tunneling (e.g., AMT or GRE) across non-multicast transit networks between autonomous systems.
+* **Updates:** 
+  * Replaced the previously proposed BGP Extended Community with a new BGP Attribute to carry AMT relay discovery information without risk of BGP filtering across inter-domain boundaries.
+  * Routers perform Reverse Path Forwarding (RPF) lookups on the source IP, discover the relay address in the BGP attribute, and dynamically establish an AMT tunnel.
+* **Discussion:**
+  * In chat, Jake Holland noted similarities to `draft-jholland-idr-mcast-source-nexthop-over-amt`. Lenny Giuliano and Greg Shepherd noted that extending BGP attributes will require coordination with the IDR working group.
+  * The authors plan to update the draft after the IETF submission blackout lifts.
+
+---
+
+### FEC with MoQ (over Multicast)
+*Presented by Dirk Trossen*  
+*Slides:* [FEC with MoQ (over multicast)](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-fec-with-moq-over-multicast-00)
+
+* **Architecture:** Applies receiver-driven layered multicast FEC concepts to Media over QUIC (MoQ). Repair tracks are published as distinct MoQ tracks.
+* **Operation:** Subscribers choose how many FEC repair tracks to join based on local path loss. Relays remain entirely FEC-agnostic, keeping middleboxes simple.
+* **Implementation:** Tested on Unicast MoQ and ported to PicoQUIC / QUICcast as part of an open-source initiative.
+* **Discussion:**
+  * Francois Michel and Jake Holland noted that application-layer FEC in MoQ provides significant delay advantages over lossy or bursty networks without requiring modifications to the core QUIC transport.
+
+---
+
+### SQUAD BoF Recap
+*Presented by Max Franke*  
+*Slides:* [SQUAD recap](https://datatracker.ietf.org/meeting/127/materials/slides-127-mboned-squad-recap-00)
+
+* **Overview:** Summarized discussions from the SQUAD (Secure QUIC Any-source/Source-specific Delivery) BoF.
+* **Key Points:** Strong engagement from the transport community. Discussions centered around whether one-to-many distribution should be integrated into QUIC core transport or handled at higher layers, and whether the scope should expand beyond IP multicast to include generic one-to-many mechanisms (e.g., BIER, packet replication, Flexicast).
+* **Next Steps:** Working group chairs and ADs will establish a dedicated `squad` mailing list to continue technical discussion.
+
+---
+
+## Decisions and Action Items
+
+* **Document Shepherd:** Volunteer needed for `draft-ietf-mboned-non-source-routed-sr-mcast` to progress the document to the IESG.
+* **WGLC Reviews:** Working Group members are requested to review `draft-ietf-mboned-multicast-yang-model` to ensure sufficient non-author consensus for advancement.
+
+---
+
+## Next Steps
+
+1. **AI Model Weights / Browser Multicast:** Authors (Omar Ramadan, Ead) to draft MBONED Internet-Drafts documenting operational findings and API requirements.
+2. **Dynamic Internet Multicast Tunneling:** Update the draft with the BGP Attribute proposal and coordinate with the IDR working group.
+3. **SQUAD Effort:** Participants encouraged to join the forthcoming `squad` mailing list to engage in multicast QUIC transport discussions.

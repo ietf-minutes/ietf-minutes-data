@@ -1,0 +1,79 @@
+# [RATS](../wg/rats.html)
+
+## Summary
+
+The Remote Attestation Procedures (RATS) Working Group held its second session. The meeting addressed updates to active working group documents and individual proposals, focusing on key attestation for hardware security modules, trustworthy credential acquisition, and transparency metadata interchange formats.
+
+## Key Discussion Points
+
+### Chair Slides and Agenda Bashing
+- **Presenter**: Ned Smith
+- **Slides**: [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-rats-chair-slides-05)
+- Ned Smith opened the session and reminded participants of the Note Well guidelines and the IETF Code of Conduct (RFC 7154).
+- Ionuț Mihalcea and Mike Ounsworth volunteered as note-takers.
+- The agenda was agreed upon with minor timing adjustments.
+
+### Evidence Encoding for Hardware Security Modules
+- **Presenter**: Jean Pierre Fizet
+- **Document**: [draft-ietf-rats-pkix-key-attestation](https://datatracker.ietf.org/doc/draft-ietf-rats-pkix-key-attestation/)
+- **Discussion**:
+  - Jean Pierre Fizet presented updates to draft-ietf-rats-pkix-key-attestation (formerly known as PKIX key attestation).
+  - Recent updates include:
+    - Moving the evidence request structure out of the ASN.1 encoding while retaining the "presenter" role in terminology.
+    - Removing detachable signature concepts.
+    - Updating FIPS 140 references and adding Common Criteria claims.
+    - Adding a `device-bound` key claim.
+    - Updating reference code and sample data to match ASN.1 changes.
+  - A central topic of discussion was whether to use Cryptographic Message Syntax (CMS):
+    - Carl Wallace (in chat) and others suggested profiling CMS rather than defining a custom ASN.1 signing envelope.
+    - Jean Pierre Fizet and Mike Ounsworth explained that HSMs frequently act as both attestation producers and verifiers/relying parties (e.g., when releasing keys during migration protocols such as Platform-Agnostic Cryptographic Key Migration / PACM). Embedded HSM environments have strict constraint boundaries, making complete CMS parsing difficult and risking forward-compatibility issues if unrecognized `SignerInfo` attributes are introduced in the future.
+    - Daniel Van Geest recommended ensuring that if custom ASN.1 structures are retained, they provide equivalent security commitments to CMS (such as explicitly committing to the signature algorithm in addition to the public key).
+    - Carsten Bormann and Thomas Fossati discussed forward-compatibility patterns and safe-to-ignore attribute semantics.
+
+### Trajectory-based Recognition of Identity Proof (TRIP)
+- The scheduled presenter was unable to attend; the presentation was skipped.
+
+### Trustworthy Acquisition of Credentials via Remote Attestation (TACRA)
+- **Presenter**: Mark Novak
+- **Discussion**:
+  - Mark Novak presented an update on the TACRA framework for workload identity.
+  - TACRA aims to lower enterprise adoption barriers for confidential computing by establishing a cryptographic binding between workload credentials and remote attestation results.
+  - The architecture provides an `acquireCredentials` API (implemented as a sidecar or library in the attestation environment) that abstracts evidence collection, freshness, and credential procurement without requiring changes to non-RATS relying parties, certificate authorities, or client applications.
+  - Integrates with standard credential acquisition protocols (such as EST and SPIRE) via a pluggable Credential Acquisition Protocol (CAPI) client.
+  - Muhammad Usama Sardar asked how the initial bootstrapping phase works. Mark Novak explained that initial target parameters are provisioned out-of-band to the execution environment, after which CAPI manages evidence exchange and credential retrieval.
+  - Dick Brooks inquired about performance overhead. Mark Novak noted that additional evidence packaging adds minimal overhead (milliseconds) relative to standard EST or SPIRE flows.
+
+### Open Mic
+- Dick Brooks asked about alignment between draft-ietf-rats-pkix-key-attestation and the PKI Consortium's PACM work. Mike Ounsworth confirmed that lead author Jean Pierre Fizet is involved in both efforts, ensuring design alignment.
+
+### Transparency Metadata Interchange Format (TMIF)
+- **Presenter**: Ankur Mathur
+- **Discussion**:
+  - Ankur Mathur presented a proposal for a Transparency Metadata Interchange Format.
+  - The format addresses scenarios where TEE hardware binary measurements (e.g., AMD, Intel, ARM digests) do not communicate mitigated threat vectors, source code availability, or governance controls to relying parties.
+  - The draft introduces a 5-tier transparency model ranging from binary digests with append-only logs (Level 1) to formal verification (Level 5).
+  - Version 2 additions include CDDL grammars for JSON and CBOR, formal proof scope, governance parameters, nonces, valid-until timestamps, channel binding, physical threat disclosures, and IANA registrations.
+  - **WG Feedback & Architectural Placement**:
+    - Yogesh Deshpande, Thomas Fossati, Jon Geater, Mike Ounsworth, and Muhammad Usama Sardar discussed scope. Thomas Fossati and Yogesh Deshpande observed that attestation transparency claims could be modeled as endorsements or attestation results within [draft-ietf-rats-corim](https://datatracker.ietf.org/doc/draft-ietf-rats-corim/) or [draft-ietf-rats-ar4si](https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/).
+    - Jon Geater (SCITT WG Chair) and Mike Ounsworth noted that defining transparency log architectures and operations belongs in SCITT or dedicated transparency groups, whereas RATS should focus on attestation result claims and data formats.
+    - Ned Smith noted that CoRIM phases 5–7 leave post-appraisal evaluation open for consuming such transparency metadata.
+    - Muhammad Usama Sardar, Jon Geater, and Daniel Masny discussed how the 5-tier model maps to existing frameworks such as Common Criteria (7 EAL levels) and security maturity models, noting that formal verification and reproducible builds may be orthogonal characteristics rather than a linear hierarchy.
+    - Shalini raised scenarios involving vendor-hosted vs. third-party witnessed logs. Tom Sattel noted overlap with draft-sattel-rats-source-cap and offered to collaborate.
+  - **Session Polls**:
+    - *Poll 1*: who has read the draft? — yes: 5, no: 11, no_opinion: 0 (total: 48)
+    - *Poll 2*: should RATS adopt draft as is — yes: 7, no: 10, no_opinion: 3 (total: 47)
+    - *Poll 3*: should draft be divided into multiple drafts — yes: 13, no: 1, no_opinion: 6 (total: 47)
+
+## Decisions and Action Items
+
+- **draft-ietf-rats-pkix-key-attestation**:
+  - The author team will evaluate CMS profiling proposals on the mailing list to determine if CMS can provide acceptable forward compatibility without creating parsing complexity risks for embedded HSM parsers.
+  - Working group participants are asked to review the newly added Common Criteria claims.
+- **Transparency Metadata Interchange Format (TMIF)**:
+  - RATS will **not** adopt the draft in its current form (Poll 2: Yes 7, No 10).
+  - Based on WG consensus (Poll 3: Yes 13, No 1), author Ankur Mathur will refactor the proposal into separate drafts, decoupling RATS-specific attestation metadata claims from transparency log infrastructure.
+
+## Next Steps
+
+- Continue the CMS vs. custom ASN.1 structure discussion for draft-ietf-rats-pkix-key-attestation on the RATS mailing list.
+- Ankur Mathur to submit refactored drafts separating transparency claims/data formats from log infrastructure for further WG review.

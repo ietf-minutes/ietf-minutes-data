@@ -1,0 +1,87 @@
+# [DKIM](../wg/dkim.html)
+
+## Summary
+
+The DKIM working group met to review progress on the core DKIM2 specifications: `draft-ietf-dkim-dkim2-spec` and `draft-ietf-dkim-dkim2-dns`. Key discussions focused on finalizing algorithmic agility, handling subdomain signing via domain policy records, mandatory `From` header field rewriting when body modifications occur, evaluation of proposed benign modification rules ("DoNotModify"), tag deprecation in DNS records, and potential charter implications as the DMARC working group prepares to conclude.
+
+## Key Discussion Points
+
+### 1. Main Document Update (`draft-ietf-dkim-dkim2-spec`)
+Richard Clayton presented updates from draft version -07 to -09 based on the [DKIM2 IETF 127 - Main doc author slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-dkim-dkim2-ietf-127-main-doc-author-slides-00).
+
+*   **Document Status**: The spec is internally consistent and all known loose ends have been addressed. The draft formalizes validation logic, including explicit verifier error messages and handling of edge cases (e.g., null `MAIL FROM`).
+*   **Terminology**: Introduced the standardized term "fully verified DKIM2 message" for validated, unmodified messages.
+*   **Cryptographic Algorithms**: Switched the primary post-quantum algorithm specification from a hybrid construct to ML-DSA-44.
+*   **Algorithmic Agility and Signature Combinations**:
+    *   Verification yields a strictly boolean (`true`/`false`) result per signature. Signatures using unknown algorithms evaluate to `false`.
+    *   Senders can specify boolean logic (`AND` / `OR`) for combining multiple signatures. `OR` allows smooth migration between old and new algorithms. `AND` allows combining classical and post-quantum signatures (e.g., PQ + non-PQ) without requiring hybrid algorithm definitions.
+
+### 2. Subdomain Signing and Domain Policy Record (`draft-ietf-dkim-dkim2-spec`)
+Richard Clayton detailed how `draft-ietf-dkim-dkim2-spec` handles relaxed domain matching and Email Service Provider (ESP) delegated subdomains.
+
+*   **Two-Way Relaxed Domain Match**: To accommodate widespread legacy ESP deployment patterns where an ESP signs using a key placed on a subdomain (e.g., `esp.example.com`) for a parent domain `From` address (`example.com`), DKIM2 runs relaxed domain matching both downward and upward for authentic `From` verification.
+*   **Domain Policy Record**: To prevent compromised subdomains from signing for parent domains, domain owners can publish a policy record at `_domainkeys.example.com` to disable upward matching.
+*   **Default Behavior Debate**:
+    *   Jim Fenton and Tero Kivinen questioned defaulting to allowing upward matching in a new protocol, arguing that domain policy changes or new records should be required rather than failing open by default.
+    *   Richard Clayton and Bron Gondwana explained that requiring DNS changes for basic DKIM2 operation creates an unacceptable adoption barrier due to organizational segregation between DNS administrators and mail operators.
+    *   Andrew Newton noted the work in the DCONN WG regarding automated DNS updates for service providers.
+    *   Viktor Dukhovni raised DNS lookup failure behavior; Richard Clayton confirmed a temporary failure (`TEMPFAIL`) on the policy record lookup results in a verification temporary failure.
+
+### 3. Body Modifications, From-Field Rewriting, and "DoNotModify"
+The working group discussed how DKIM2 balances signature preservation against transit modifications.
+
+*   **From Field Rewriting ("From Munging")**:
+    *   In `draft-ietf-dkim-dkim2-spec`, if an intermediary modifies the message body, it must rewrite the RFC 5322 `From` header field to a domain it controls/signs and include both the body recipe and `From` rewrite within the same message instance header field.
+    *   Neil Jenkins and Phillip Tao expressed concerns regarding client display complexity, search index integrity, and address book mismatches if `From` headers are routinely rewritten.
+    *   Bron Gondwana presented the [From Munging](https://datatracker.ietf.org/meeting/127/materials/slides-127-dkim-from-munging-00) slides, emphasizing that structured DKIM2 recipes allow DKIM2-aware MUAs to cleanly reverse `From` modifications while preventing naive clients from being spoofed. Bron argued that even null body recipes should require `From` rewriting when body content is altered.
+    *   Viktor Dukhovni noted that historical protocols intended the `Sender` header for this purpose, but MUA support has been inconsistent.
+*   **Clayton DoNotModify**:
+    *   Richard Clayton presented [Clayton DoNotModify](https://datatracker.ietf.org/meeting/127/materials/slides-127-dkim-clayton-donotmodify-00) as a strawman proposal to define specific benign modifications (e.g., subject prefixes under 32/60 characters, MIME body wrapping with headers/footers) that wouldn't trigger `From` rewriting.
+    *   Alan and Wei Chuan highlighted technical edge cases with subject prefixes (Unicode hacks/RTL issues) and body wrapping across complex `multipart/alternative` structure.
+    *   Pete Resnick polled the room for implementation intent. Bron Gondwana, Richard Clayton, and others agreed that defining standardized benign modifications or reinstating `DoNotModify` flags adds unnecessary complexity without sufficient adoption interest.
+
+### 4. Domain Name Specification Update (`draft-ietf-dkim-dkim2-dns`)
+Richard Clayton presented version -03 of `draft-ietf-dkim-dkim2-dns`.
+
+*   The draft refactors DNS key representation rules to supersede key handling sections of RFC 6376.
+*   **Tag Simplification**: DKIM2 relies exclusively on three tags: `v` (version, optional), `k` (key type), and `p` (public key).
+*   **Tag Deprecations**: The spec explicitly deprecates several legacy DKIM1 tags in DKIM2 contexts:
+    *   `h` (acceptable hashes): Redundant, as hash selection is tied to algorithm choice.
+    *   `n` (notes): Deprecated in favor of out-of-band administrative documentation (though John Levine noted minor administrative utility for indicating key revocation/poisoning).
+    *   `s` (service type): Unused in practice.
+    *   `t` (testing flag): Deprecated due to misuse and common misconfiguration leading to mail rejection by major receivers.
+
+### 5. DMARC and Authentication-Results Integration
+*   **Authentication Results**: Bron Gondwana's draft specifying Authentication-Results updates for DKIM2 is pending formal Working Group adoption.
+*   **DMARC Integration**: Richard Clayton proposed drafting a specification for an `auth=dkim2` tag in DMARC records to allow domain owners to instruct legacy DKIM1 verifiers to reject messages that rely exclusively on DKIM2.
+*   **DMARC WG Wind-Down & Rechartering**:
+    *   Wei Chuan and Pete Resnick discussed handling DMARC touchpoints as the DMARC WG closes.
+    *   Pete Resnick noted the current DKIM charter permits coordinating directly with ADs to update DMARC authentication mechanisms if the DMARC WG is closed.
+    *   Andrew Newton confirmed that larger additions (such as adopting ARC work) would require a straightforward recharter process.
+
+### 6. Replay Protection, Bounces, and Re-Architecting Discussions
+*   The room briefly discussed a mailing list thread initiated by Viktor Dukhovni regarding message replay, BCC signing, and bounce message routing.
+*   Richard Clayton and Bron Gondwana emphasized that DKIM replay protection is a core design objective of DKIM2 due to widespread financial fraud.
+*   Bron Gondwana clarified that DKIM2 bounce routing must follow the verified message path back up the chain to prevent backscatter vulnerabilities and unauthenticated bounce loops.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1.  **DoNotModify / Benign Changes**: The WG decided not to incorporate specific benign modification rules or a `DoNotModify` flag deck ([Clayton DoNotModify](https://datatracker.ietf.org/meeting/127/materials/slides-127-dkim-clayton-donotmodify-00)) into `draft-ietf-dkim-dkim2-spec` due to lack of implementation interest and high specification complexity.
+2.  **DNS Tag Deprecation**: Deprecated the `h`, `n`, `s`, and `t` tags for DKIM2 keys within `draft-ietf-dkim-dkim2-dns`.
+
+### Action Items
+*   **Richard Clayton**: Publish list analysis comparing DMARC record lookups versus the proposed `_domainkeys` domain policy record for controlling upward domain matching.
+*   **Richard Clayton**: Draft a specification for the `auth=dkim2` tag in DMARC policy records.
+*   **Chairs (Murray Kucherawy / Pete Resnick)**: Issue a Call for Adoption (CFA) on the mailing list for Bron Gondwana's Authentication-Results draft.
+*   **Chairs**: Schedule the next virtual interim meeting for December 9, 2024.
+
+---
+
+## Next Steps
+
+*   Continue mailing list discussion on default behaviors for upward domain matching policy lookups.
+*   Resolve outstanding list threads regarding replay protection constraints and bounce path mechanisms.
+*   Prepare `draft-ietf-dkim-dkim2-spec` for Working Group Last Call (WGLC) once mailing list discussion on architectural assumptions concludes.

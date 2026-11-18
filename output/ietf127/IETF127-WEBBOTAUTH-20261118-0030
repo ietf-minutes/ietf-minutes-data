@@ -1,0 +1,124 @@
+# [WEBBOTAUTH](../wg/webbotauth.html)
+
+## Summary
+
+The WEBBOTAUTH working group met at IETF 127 to review progress on its adopted document, [`draft-ietf-webbotauth-httpsig-protocol`](https://datatracker.ietf.org/doc/draft-ietf-webbotauth-httpsig-protocol/), examine implementer feedback, and evaluate several non-adopted proposals. Key technical topics included refining HTTP message signature parameters, establishing minimal signature component baselines, standardizing error reporting, and addressing ecosystem centralization risks for independent crawlers. The working group also held extensive scope discussions around proposals for IP range discovery, granular sub-agent metadata, and privacy-preserving rate limiting, confirming that tracking or assigning reputation to individual users or sub-agent sessions remains out of scope under the current charter.
+
+---
+
+## Key Discussion Points
+
+### 1. Administration and Mailing List Policy
+- **Chairs**: David Schinazi, Rifat
+- **Slides**: [Chairs](https://datatracker.ietf.org/meeting/127/materials/slides-127-webbotauth-chairs-00)
+- The Chairs presented the Note Well and code of conduct.
+- **Mailing List Etiquette**: The Chairs addressed recent disruptive automated traffic on the working group mailing list. While translation and drafting tools are acceptable, submitting unvalidated AI-generated text or deploying automated posting bots is strictly prohibited. Posting privileges will be suspended for repeat violators.
+- **Agenda Bashing**: 
+  - Alissa Cooper suggested presenting the non-adopted metadata proposals together before taking queue comments.
+  - Eric Rescorla requested prioritizing adopted working group deliverables and implementer feedback before evaluating new proposals. The agenda was approved maintaining standard priority order.
+
+---
+
+### 2. HTTP Message Signatures for Automated Traffic
+- **Presenter**: Alex, Thibault Meunier
+- **Slides**: [HTTP Message Signatures for automated traffic](https://datatracker.ietf.org/meeting/127/materials/slides-127-webbotauth-http-message-signatures-for-automated-traffic-00)
+- **Draft**: [`draft-ietf-webbotauth-httpsig-protocol`](https://datatracker.ietf.org/doc/draft-ietf-webbotauth-httpsig-protocol/)
+
+#### Protocol Changes & Updates
+The presenters summarized updates made since IETF 126:
+- Clarified identity model: the signature agent URL serves as the primary identifier, with domain binding established via a well-known resource.
+- Simplified key discovery to direct fetching of digestible URIs specified in the `signature-agent` header.
+- Clarified cross-domain key reuse rules and multi-signature handling.
+- Deferred replay detection and nonce mechanisms to potential future extensions to maintain simplicity.
+
+#### Open Technical Issues
+
+##### Issue 1: Signature Scoping and Application Tagging
+- The current draft utilizes a `tag=webbotauth` parameter within [RFC 9421](https://www.rfc-editor.org/info/rfc9421) (HTTP Message Signatures).
+- **Justin Richer** recommended using the `tag` parameter as defined in RFC 9421 without creating an IANA registry, or defining an explicit Boolean parameter if unambiguous namespace isolation is required.
+- **Martin Thomson** and **Mark Nottingham** argued that because WebBotAuth operates between uncoordinated clients and origins without prior context, relying on an uncoordinated `tag` string introduces ambiguity. They favored defining a distinct Boolean signature parameter or specifying mandatory signed headers.
+- **Emerging Direction**: Define a explicit Boolean signature parameter or rely on compulsory signed header validation rather than uncoordinated tag parameters.
+
+##### Issue 2: Server Signaling and Minimum Signature Sets (`Accept-Signature`)
+- Using `Accept-Signature` (RFC 9421 Section 5.2) allows servers to dictate signed components, but strict matching can break client-side signature caching and replay efficiency.
+- **Mark Nottingham**, **Martin Thomson**, and **Eric Rescorla** emphasized that servers should not be permitted to arbitrarily force clients to sign dynamic per-request elements (such as paths or nonces) for basic bot authentication. They advocated defining a strict, minimal set of mandatory signed components (e.g., host/authority, `signature-agent`, freshness) to preserve performance.
+- **Martin Thomson** suggested using a dedicated opt-in header or a `robots.txt` directive for server signaling rather than complex `Accept-Signature` parameter negotiation.
+
+##### Issue 3: Error Reporting and Debugging
+- Implementers requested standardized error responses when signature verification fails.
+- **Julie Norton**, **Philippe Dellaert**, and **Eric Rescorla** supported defining standardized response headers to communicate signature failure reasons (e.g., key expired, invalid syntax, policy mismatch). Philippe Dellaert recommended making error signaling a `SHOULD` rather than a `MUST` to allow origin discretion.
+
+##### Consolidation and Centralization Risks
+- **Nick Doty** raised concerns that mandatory cryptographic signatures create gatekeeping risks, disadvantaging independent researchers and small crawler operators who cannot easily establish platform reputation or maintain extensive key infrastructure.
+- **Thibault Meunier** acknowledged the concern and invited Nick Doty to contribute text detailing ecosystem centralization risks for the Security Considerations section of [`draft-ietf-webbotauth-httpsig-protocol`](https://datatracker.ietf.org/doc/draft-ietf-webbotauth-httpsig-protocol/).
+
+---
+
+### 3. Implementers Feedback
+- **Presenters**: Alex, Thibault Meunier
+- **Slides**: [Implementers Feedback](https://datatracker.ietf.org/meeting/127/materials/slides-127-webbotauth-implementers-feedback-00)
+
+#### Common Deployment Pitfalls
+- **Header Syntax Errors**: Upgrading `signature-agent` from a simple string to a structured dictionary caused parsing failures across implementations. Missing quotation marks around structured field strings remains a frequent implementation bug.
+- **Key Rotation and Caching**: Inconsistent use of `Cache-Control` headers for key documents leads to verification failures during key rotation. **Pablo Gonzalez** noted that mismatches between verifier caching windows and signer key rotation schedules cause elevated error rates.
+- **Query Parameter Reordering**: Intermediaries (proxies and CDNs) frequently reorder URL query parameters, breaking signatures when query parameters are included in the signature base. The presenters recommended excluding query parameters from the default signature base.
+
+#### Implementation Edge Cases
+- **Identity Migration**: Renaming or splitting agent identities requires re-registering allowlists across multiple verifiers, creating operational friction.
+- **Key ID Calculation**: Requiring Key IDs (`keyid`) to match public key thumbprints adds runtime computation overhead for platforms fetching keys directly from HSMs or key vaults.
+- **User-Agent Takeover**: Questions were raised regarding how to handle automated agents when a human user manually takes control of a session. **Julie Norton** noted that user takeover is out of scope and cannot be reliably signalled via key-level adjustments.
+
+---
+
+### 4. Non-Adopted Draft Proposals
+
+#### A. SAIL: Source Address Identity List
+- **Presenter**: Kevin
+- **Slides**: [SAIL Source Address Identity List](https://datatracker.ietf.org/meeting/127/materials/slides-127-webbotauth-sail-source-address-identity-list-00)
+- **Summary**: Proposal to standardize machine-readable IP egress metadata via well-known URIs using TOML formatting, allowing platforms to declare explicit prefix sets (`exhaustive`, `exclusive`) per service.
+- **Discussion**:
+  - **Daniel Gillmor** drew parallels between IP-based publishing (SPF) and cryptographic message signing (DKIM), cautioning the group to apply lessons learned from email authentication.
+  - **Mark Nottingham**, **Watson Ladd**, and **Srinivasa** agreed that IP publishing formats are currently fragmented across non-standard JSON/HTML pages and that standardized discovery is valuable.
+  - **Charter Scope**: **Mark Nottingham** and the Chairs noted that non-cryptographic IP address publishing falls outside the current WebBotAuth charter. AD **Mike Bishop** noted that while retrieving bot metadata is mentioned in the charter, non-cryptographic IP lists might require a charter update or a separate venue.
+
+#### B. Signed Agent Metadata
+- **Presenters**: Rim Vogalene, Pablo Gonzalez
+- **Slides**: [Signed Agent Metadata](https://datatracker.ietf.org/meeting/127/materials/slides-127-webbotauth-signed-agent-metadata-01)
+- **Summary**: Proposal to attach granular sub-agent, product, session, or project identifiers to WBA signatures to enable WAFs and origins to perform fine-grained rate limiting and mitigate "shared fate" blocking across multi-tenant AI platforms.
+- **Discussion**:
+  - **Ted Hardie**, **Daniel Gillmor**, **Martin Thomson**, **Alissa Cooper**, **Eric Rescorla**, and **Samuel Schlesinger** strongly opposed the proposal, emphasizing that sub-agent and user session tracking is explicitly out of scope for WebBotAuth.
+  - **Ted Hardie** and **Alissa Cooper** stated that "shared fate" is an intentional security design property intended to force multi-tenant platform operators to police abuse on their own platforms rather than pushing user-level tracking onto origins.
+  - **Chair Clarification**: Chair David Schinazi confirmed that fine-grained user and session tracking is out of scope under the current working group charter.
+
+#### C. PACE: Capacity Management for Agents
+- **Presenter**: Thibault Meunier
+- **Slides**: [PACE Capacity management for agents](https://datatracker.ietf.org/meeting/127/materials/slides-127-webbotauth-pace-capacity-management-for-agents-00)
+- **Summary**: Proposal combining WebBotAuth with Masked Oblivious Light (MOL) tokens to enable privacy-preserving, anonymous rate-limiting and quota management for platform agents without exposing user or session identities to origins.
+- **Discussion**:
+  - **Chris Wood** clarified that PACE was submitted reactively as a privacy-preserving alternative to explicit sub-agent identification proposals.
+  - **Eric Rescorla**, **Watson Ladd**, and the Chairs noted that while privacy-preserving token mechanisms are technically superior to raw tracking headers, per-user/per-session capacity management remains out of scope for WebBotAuth.
+  - **Chair Guidance**: Chair David Schinazi encouraged participants interested in privacy-preserving tokens and anonymous capacity management to attend the MOL (Masked Oblivious Light) BoF session.
+
+---
+
+## Decisions and Action Items
+
+1. **Mailing List Policy**:
+   - Automated bot postings and unvalidated AI translation/copy-pasting on the working group mailing list are strictly prohibited. The Chairs will suspend posting privileges for accounts violating this policy.
+
+2. **`draft-ietf-webbotauth-httpsig-protocol`**:
+   - **Signature Parameters**: The authors will update the draft to replace uncoordinated tag usage with a defined signature parameter or compulsory header coverage requirement.
+   - **Minimal Signed Components**: The authors will specify a minimal baseline set of signed components (authority/host, `signature-agent`, freshness) to ensure signatures remain cacheable and reusable without server-imposed signature bloat.
+   - **Error Reporting**: The authors will draft standardized failure response headers for signature verification errors, using a `SHOULD` requirement level.
+   - **Centralization Considerations**: The authors will incorporate text detailing centralization risks, gatekeeping impacts, and considerations for independent crawlers in the Security/Privacy Considerations section (with input from Nick Doty).
+
+3. **Scope and Charter Alignment**:
+   - Sub-agent, session-level, and end-user tracking or reputation mechanisms (such as those described in *Signed Agent Metadata* and *PACE*) are re-confirmed as explicitly **out of scope** for the current WebBotAuth charter.
+   - Non-cryptographic IP range discovery (*SAIL*) is outside the current charter scope; Chairs will consult with the Area Director to determine if rechartering or alternative venues are appropriate.
+
+---
+
+## Next Steps
+
+- **Document Updates**: Authors to publish an updated revision of [`draft-ietf-webbotauth-httpsig-protocol`](https://datatracker.ietf.org/doc/draft-ietf-webbotauth-httpsig-protocol/) incorporating agreed changes for parameter tagging, baseline signed components, and error headers.
+- **Cross-Group Coordination**: Participants interested in privacy-preserving rate limiting and client token mechanisms directed to coordinate within the MOL venue.
