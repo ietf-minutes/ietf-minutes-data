@@ -1,0 +1,52 @@
+# [ACE](../wg/ace.html)
+
+## Summary
+
+The Authentication and Authorization for Constrained Environments (ACE) Working Group met during IETF 127. The session covered progress updates on two core working group drafts moving toward Working Group Last Call (WGLC), an individual proposal on KEM-based pairwise key establishment for the OSCORE Group Manager, and brief status updates on existing working group documents.
+
+## Key Discussion Points
+
+### LAKE and OSCORE Profile of ACE
+* **Presentation**: Rikard Höglund presented [Slides LAKE and OSCORE ACE profile IETF 127_v2](https://datatracker.ietf.org/meeting/127/materials/slides-127-ace-slides-lake-and-oscore-ace-profile-ietf-127-v2-00) covering `draft-ietf-ace-edhoc-oscore-profile` (version 12).
+* **Technical Details & Updates**:
+  * Terminology was updated from EDHOC to LAKE following decisions in the LAKE working group, while preserving literal protocol identifiers from RFC 9528 and IANA registry names.
+  * Initial authentication is restricted to public key-based methods (RFC 9528 Section 3.2 and O-KEM EDHOC). Pre-Shared Key (PSK) authentication is reserved strictly for session resumption.
+  * Added a dedicated resolution mechanism for handling conflicts between existing LAKE session states and parameters in the LAKE Information Object (e.g., URI path, method, cipher suite). Upon detecting a contradiction, the client must send a LAKE error message (error code 1) to the Resource Server (RS) to abort the current session and restart using the Authorization Server (AS) instructions.
+  * Improved JSON/CBOR examples, clarified Base64/Base64URL encoding rules for session IDs and CWT confirmation methods, updated privacy considerations for OSCORE plain-text identifiers, and added detailed procedures for PSK-based session resumption.
+* **Discussion**:
+  * In chat, Christian Amsüss, Göran Selander, and Rikard Höglund discussed post-quantum harvest-now-decrypt-later resilience via PSK secrets. They agreed this is worth pursuing in a separate companion document.
+  * The authors believe `draft-ietf-ace-edhoc-oscore-profile` is ready for Working Group Last Call (WGLC). Marco Tiloca suggested CC'ing the LAKE and CORE working groups during WGLC.
+
+### Short Distribution Chain (SDC) Workflow and New OAuth Parameters
+* **Presentation**: Marco Tiloca presented [draft-ietf-ace-workflow-and-params](https://datatracker.ietf.org/meeting/127/materials/slides-127-ace-draft-ietf-ace-workflow-and-params-00) covering `draft-ietf-ace-workflow-and-params` (version 09).
+* **Technical Details & Updates**:
+  * Updated terminology to reference LAKE rather than EDHOC.
+  * Clarified AS behavior when extending an existing token series using the SDC workflow: if an RS responds with a "missing old token" error, AS creation of a new token series on the fly is explicitly specified using normative language.
+  * Relaxed token upload failure behavior for group audiences: if token upload fails at one RS, the AS continues uploading to any remaining RSs, unless the failure was caused by a "missing old token" error (which requires starting a new token series entirely).
+  * Added normative guidelines for processing `anchor_cnf` when issued alongside group audiences (`aud2`), ensuring keys are only applied to verify servers explicitly listed in `aud2`.
+  * Expanded security considerations regarding RS token deletion and prevented potential state desynchronization between AS and RS.
+* **Discussion**:
+  * Dave Robin raised concerns regarding Section 10 (Operational Considerations / Logging), noting that generic logging recommendations without RFC 2119 normative language could attract unnecessary review friction during last call, and suggested moving it to a standalone document.
+  * Chris Inacio (Responsible AD) clarified that Operational Considerations sections are not mandatory unless specific operational guidance is strictly required for the protocol.
+  * Tim Carey and Christian Amsüss noted that operational considerations can either be informational or tightened with normative language. The issue will be resolved during the WGLC period.
+  * The draft was declared ready for Working Group Last Call.
+
+### KEM-based Pairwise Key Agreement for OSCORE Group Manager
+* **Presentation**: Marco Tiloca presented [draft-tiloca-ace-oscore-gm-kem](https://datatracker.ietf.org/meeting/127/materials/slides-127-ace-draft-tiloca-ace-oscore-gm-kem-00) covering `draft-tiloca-ace-oscore-gm-kem` (version 01).
+* **Technical Details & Updates**:
+  * The draft extends the ACE-based Group Manager interface defined in `draft-ietf-ace-oscore-group-mgr` to support post-quantum KEM-based pairwise key derivation for Group OSCORE.
+  * Generalized terminology from "KEM ciphertext" to "encapsulated KEM shared secret" to accommodate a broader range of KEM schemes (e.g., Diffie-Hellman KEMs / HPKE).
+  * Added text clarifying that existing active non-PQ groups should not be migrated on the fly, but rather terminated and re-created as PQ groups.
+  * Initiated Section 10 defining extended group configuration parameters for the Group Manager admin interface (`draft-ietf-ace-oscore-gm-admin-coral`).
+* **Discussion**:
+  * In response to a chat question from Xisen Tian (relayed by John Mattsson), Marco Tiloca clarified that the Group Manager acts as a repository/middleman for distributing KEM public keys and encapsulated shared secrets, but does not act as a middleman or relay for Group OSCORE application messages between members.
+
+### Status Updates / Any Other Business
+* **Protecting EST Payloads with OSCORE (`draft-ietf-ace-coap-est-oscore`)**: Mališa Vučinić provided a brief status update. Comments from WGLC (including feedback from Lijo Thomas) were incorporated into version 12. The authors plan to address remaining minor issues and submit for publication before the next IETF meeting.
+* **CoAP Publish-Subscribe Profile for ACE (`draft-ietf-ace-coap-pubsub-profile`)**: Marco Tiloca noted an update was recently published. Tim Carey confirmed he will complete the chair shepherd writeup.
+
+## Decisions and Action Items
+
+* **Action Item**: Tim Carey (Chair) to initiate Working Group Last Call for `draft-ietf-ace-edhoc-oscore-profile` and notify the LAKE and CORE WGs.
+* **Action Item**: Tim Carey (Chair) to initiate Working Group Last Call for `draft-ietf-ace-workflow-and-params`.
+* **Action Item**: Tim Carey (Chair) to complete the document shepherd writeup for `draft-ietf-ace-coap-pubsub-profile`.

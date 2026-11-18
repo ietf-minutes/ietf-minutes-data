@@ -1,0 +1,110 @@
+# [SRV6OPS](../wg/srv6ops.html)
+
+## Summary
+
+The SRV6OPS Working Group session featured three real-world operator presentations detailing SRv6 deployments in large-scale AI clusters and enterprise WAN backbones, followed by status updates and technical discussions on working group and individual drafts. Key focus areas included source routing for AI data center load balancing, static routing versus dynamic routing in massive supercomputing clusters, addressing recommendations, network protection mechanisms, BFD encapsulation, and gateway interworking options.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Administration
+- **Chairs Update**: Dhruv Dhody opened the meeting, reviewing the Note Well, meeting tips, and working group status.
+- **`draft-ietf-srv6ops-problem-summary`**: The chairs noted list feedback strongly favoring publishing the draft as an RFC rather than keeping it as a living document. The chairs will coordinate with the ADs and IESG to conclude on the publication path.
+- **Adoption Queue**: One document is in the adoption queue and will be processed shortly.
+
+---
+
+### Operator Presentations
+
+#### [2.1 Resilient AI Supercomputer Networking using MRC and SRv6](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-21-resilient-ai-supercomputer-networking-using-mrc-and-srv6-01)
+- **Presenter**: Mark Handley (OpenAI)
+- **Technical Overview**:
+  - OpenAI operates a large SRv6 deployment (approx. 10 million optical links routed with SRv6) for synchronous AI pretraining across clusters exceeding 100,000 GPUs.
+  - Objective is eliminating tail latency outliers (100th percentile flow completion times) rather than optimizing mean throughput.
+  - Employs a multi-plane 2-tier Claus topology using IPv6-in-IPv6 encapsulation with NEXT-C-SID (uN) micro-SIDs and static routing. No SRH is currently used.
+  - Network intelligence is moved to the edge using **MRC** (Multi-Path Reliable Connection), an OCP transport protocol developed with industry partners. Senders spray packets across 256 paths per flow using SRv6 source routing to achieve fine-grained load balancing.
+  - BGP is not used for production data traffic path selection (only retained for ICMP echo responses); transport layer handles active load balancing, probing, and sub-RTT link failure detection/rerouting.
+- **Q&A and Discussion**:
+  - *Yuya (SoftBank)* inquired about ASIC/NOS vendor diversity. Mark clarified that while single sites use a unified NOS/ASIC, the overall network runs across a heterogeneous mix of hardware/ASICs across sites.
+  - *Jimmy (Huawei)* asked about candidate path/policy management. Mark clarified that active/backup path selection logic resides entirely within the host NIC (MRC transport protocol layer) using static configuration maps, not on switches or centralized controllers.
+  - *Jeff Tantsura (NVIDIA)* asked about controller complexity. Mark noted that switch configurations are kept extremely simple (static routing tables loaded at commissioning).
+
+#### [2.2 SRv6 Powered Backbone Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-22-srv6-powered-backbone-networks-00)
+- **Presenter**: Jasmith Baga
+- **Technical Overview**:
+  - Detailed design and operational experience of building a multi-petabit regional backbone/WAN to interconnect collocated storage and compute regions within a strict 10ms latency bound.
+  - Chose shallow buffer data-center class switches (saving power/space over deep buffer WAN switches) combined with custom host congestion control and explicit traffic engineering.
+  - Selected SRv6 over MPLS to preserve 6 ECN traffic classes entering/exchanging between data centers and WAN, and to align with the broader SRv6 ASIC ecosystem.
+  - Stack uses dynamic traffic engineering per plane (up to 64 planes) with `NEXT-C-SID` (F3216 / USH) and Binding SIDs to overcome hardware hop limits without SRH (due to inconsistent hardware SRH support across vendors).
+- **Q&A and Discussion**:
+  - *Shraddha Hegde* asked about link vs. node protection and OAM probing. Jasmith noted the controller programs backup paths for protected long-haul links to guarantee latency bounds. Simple SRv6-aware source-routed pings are used for path monitoring.
+  - *Jeff Tantsura (NVIDIA)* commented on SID structure sizing (32/16 vs 16/16).
+
+#### [2.3 SRv6 for AI Backend](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-23-srv6-for-ai-backend-01)
+- **Presenter**: Abhishek Doshi (Microsoft)
+- **Technical Overview**:
+  - Discussed Azure's AI backend deployment using SRv6 within SONiC to interconnect massive GPU clusters across buildings/sites.
+  - Addressed traffic engineering and fast failover for bursty elephant flows. Uses 32-bit locator + 16-bit uN encoding (up to 6 hops per packet without SRH).
+  - Configured statically via central controller down to SONiC `ConfigDB` (`my_locator` and `my_sid` tables), mapping into FRR and SAI/ASIC without relying on BGP control plane complexity.
+  - Outlined ongoing efforts in SONiC to expand SRv6 features (uA forwarding, L3VPN, GRT routing table integration).
+  - *Related Draft*: `draft-filsfils-srv6ops-srv6-ai-backend` (noted in session chat).
+
+---
+
+### Working Group Drafts
+
+#### [3.1 Deployment Options](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-31-deployment-options-00)
+- **Draft**: `draft-ietf-srv6ops-srv6-deployment`
+- **Updates**: Incorporated feedback from BESS WG regarding EVPN-VXLAN to SRv6 migration, including details on BGP VPN control planes, local preference manipulation during migration steps, and service layer gateways.
+- **Status**: The authors consider the draft nearly ready for Working Group Last Call (WGLC).
+
+#### [3.2 Addressing Recommendations](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-32-addressing-recommendations-00)
+- **Draft**: `draft-ietf-srv6ops-srv6addressing`
+- **Presenter**: Martin Horneffer
+- **Updates**: Version -01 published post-adoption. Clarified subdomains as independent domains within an organization.
+- **Open Issues**: Resolving ULA prefix limitations (`/48` standard vs. `/32` or shorter SRv6 allocation needs), global uniqueness across organizations, and expansion strategies. Target WGLC by next IETF meeting.
+
+---
+
+### Individual Draft Presentations
+
+#### [3.3 Operational Guidance for Protection Mechanisms](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-33-operational-guidance-for-protection-mechanisms-00)
+- **Presenter**: Yisong Liu
+- **Updates**: Restricted scope strictly to SRv6 data plane (excluding SR-MPLS). Expanded details on egress protection using mirror SIDs, liveness checks, ingress switchover mechanisms, locator visibility considerations, and encapsulation/MSD checks.
+- **Status**: Authors requested WG adoption. Chairs noted this document is next in line for an adoption call following the current queue.
+
+#### [3.4 BFD Encapsulation in SRv6 Policy](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-34-bfd-encapsulation-in-srv6-policy-00)
+- **Presenter**: Shalvin
+- **Technical Details**: Evaluated insert mode vs. encapsulation mode for BFD in SRv6 policies across overhead, legacy hardware support, debugging ease, and greenfield/brownfield applicability. Recommended addressing selections and state explosion mitigations (binding BFD to candidate paths or using Seamless BFD).
+- **Feedback**: Chairs noted that the draft needs to focus strictly on operational guidance and trade-offs rather than protocol implementation instructions.
+
+#### [3.5 SRv6-based Rate Control](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-35-srv6-based-rate-control-00)
+- **Presenter**: Chen
+- **Technical Details**: Proposed operational considerations for dynamic CIR/PIR token-bucket rate enforcement at the SRv6 head-end for oversubscribed network slices.
+- **Feedback**: Chairs highlighted that protocol mechanisms for this work are not yet standardized in protocol WGs; operational guidance should be coordinated alongside standard protocol work.
+
+#### [3.6 VXLAN and SRv6 Gateway](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-36-vxlan-and-srv6-gateway-00)
+- **Presenter**: Xiaochu
+- **Technical Details**: Outlined deployment models for interworking data center VXLAN networks with SRv6 networks: Service Interworking (L3VPN / EVPN translation boundary) vs. VXLAN-over-SRv6 encapsulation.
+- **Discussion**: Jeff Tantsura noted that VXLAN-over-SRv6 encapsulated transit involves minimal processing overhead at line rate on modern ASICs, whereas service interworking requires VRF instantiation, decapsulation, and multi-lookup steps.
+
+#### [3.7 SRv6 SFC Deployment Options](https://datatracker.ietf.org/meeting/127/materials/slides-127-srv6ops-37-srv6-sfc-deployment-options-00)
+- **Presenter**: Jamie
+- **Technical Details**: Guidelines for deploying SRv6 Service Function Chaining (SFC) comparing SRv6-aware vs. SRv6-unaware (proxy-assisted) SFs across brownfield and greenfield environments, addressing multi-tenant SID allocation models and protection mechanisms.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-srv6ops-problem-summary`**: Chairs will confer with ADs/IESG regarding list consensus to publish as an RFC rather than maintaining as a living document.
+2. **`draft-ietf-srv6ops-srv6-deployment`**: Authors to prepare the draft for Working Group Last Call (WGLC).
+3. **`draft-ietf-srv6ops-srv6addressing`**: Authors to address prefix sizing (ULA `/48` vs `/32` requirements) and document expansion guidance.
+4. **Adoption Queue**: WG adoption call for protection guidance (`slides-127-srv6ops-33-operational-guidance-for-protection-mechanisms-00`) will follow the current pending adoption call.
+
+---
+
+## Next Steps
+
+- Continue mailing list discussions on BFD encapsulation operational guidance, VXLAN-SRv6 gateway trade-offs, and SRv6 rate control alignment with protocol working groups.
+- Encourage operators deploying SRv6 to share operational deployment experience and contribute to working group documents.

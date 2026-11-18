@@ -1,0 +1,92 @@
+# [MASQUE](../wg/masque.html)
+
+## Summary
+
+The MASQUE Working Group met at IETF 127 to review the status of its active documents, discuss updates to QUIC-aware proxying, evaluate coexistence between QUIC-aware proxying and SCONE, review updates to IP proxying DNS configuration and HTTP datagram compression, and consider qlog definitions for MASQUE protocols. 
+
+The working group has been rechartered to include QUIC-aware proxying (`draft-ietf-masque-quic-proxy`), architecture informational documentation, and qlog extensions within scope before eventually concluding the working group.
+
+---
+
+## Key Discussion Points
+
+### WG Status and Chair Updates
+* **Presentation:** [IETF 127 Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-masque-ietf-127-chair-slides-00)
+* **Presenter:** Martin Duke
+* **Details:**
+  * The approved charter allows for completing adopted documents, adopting David Schinazi’s informational architecture draft, adopting qlog event definition documents, and formally bringing QUIC-aware proxying into scope.
+  * *Connect-Ethernet* and *Connect-UDP Listen* are currently with the RFC Editor awaiting publication.
+  * `draft-ietf-masque-quic-proxy` and `draft-ietf-masque-connect-ip-dns` are approaching Working Group Last Call (WGLC).
+  * Implementation experience is actively requested for `draft-ietf-masque-connect-udp-ecn-dscp` and `draft-ietf-masque-http-datagram-compression`.
+
+### QUIC-Aware Proxying Using HTTP
+* **Presentation:** [QUIC-Aware Proxying Using HTTP](https://datatracker.ietf.org/meeting/127/materials/slides-127-masque-quic-aware-proxying-using-http-00)
+* **Presenter:** Eric Rosenberg
+* **Document:** `draft-ietf-masque-quic-proxy`
+* **Details:**
+  * Overview of changes in revision 03: Reworked connection ID (CID) registration to support client migration without temporarily reverting to tunneled mode.
+  * The proxy now issues multiple virtual connection IDs (VCIDs) per registered real CID and uses an explicit sequence number system.
+  * Added a `retire_prior_to` field to allow the proxy to retire VCIDs cleanly and prevent forwarding/stateless reset race conditions.
+  * Keith Allen noted that Apple completed an early client-side implementation according to the revised specification without encountering issues.
+
+### QUIC-Aware Proxying and SCONE Coexistence
+* **Presentation:** [QUIC-Aware Proxying and SCONE coexistence](https://datatracker.ietf.org/meeting/127/materials/slides-127-masque-quic-aware-proxying-and-scone-coexistence-00)
+* **Presenter:** Zaheduzzaman Sarker
+* **Details:**
+  * Discussion on how SCONE (which relies on long-header QUIC packets for network rate advice signals) interacts with QUIC-Aware Proxying (QAP), which tunnels long-header packets by default while forwarding short-header packets.
+  * Tunnels obscure SCONE signals from intermediate network elements close to access networks.
+  * Mike Bishop and Tommy Pauly emphasized that forwarding in QAP is an architectural optimization and semantically equivalent to tunneling; if SCONE signaling is required through a proxy, explicit coordination or proxy-level handling should be defined rather than treating QAP forwarding as a special network visibility tool.
+  * Mirja Kühlewind and Christian Huitema raised concerns about potential MTU/PMTU inconsistencies and reordering issues if flows alternate between tunneled long headers and forwarded short headers.
+  * Ted Hardie and Watson Ladd noted that tunnel handling for SCONE is a general manageability issue for SCONE across all tunnel protocols, rather than something specific to QAP.
+  * Ben Schwartz suggested adding clear text in `draft-ietf-masque-quic-proxy` emphasizing that forwarded mode is intended to be semantically equivalent to tunneled CONNECT-UDP mode.
+
+### DNS and PREF64 Configuration for Proxying IP in HTTP
+* **Presentation:** [DNS and PREF64 Configuration](https://datatracker.ietf.org/meeting/127/materials/slides-127-masque-dns-and-pref64-configuration-01)
+* **Presenter:** Yaroslav Rosomakho
+* **Document:** `draft-ietf-masque-connect-ip-dns`
+* **Details:**
+  * Closed issues: Prohibited empty nameserver lists in non-empty DNS capsules; corrected the consumer VPN example to omit default ALPN; specified omitting trailing dots for DNS FQDNs.
+  * Extension negotiation: Discussed whether a header or mandatory capsule response is required so clients do not time out waiting for DNS configuration from servers that do not support the extension. David Schinazi suggested requiring a server response to a DNS request capsule (even if empty) to give clients an explicit signal.
+  * Security considerations: Adding text regarding memory allocation limits when parsing large or numerous search domains.
+  * Interoperability: Basic interop testing was successfully completed between two independent implementations.
+
+### HTTP Datagram Compression
+* **Presentation:** [HTTP Datagram Compression](https://datatracker.ietf.org/meeting/127/materials/slides-127-masque-http-datagram-compression-00)
+* **Presenter:** Yaroslav Rosomakho
+* **Document:** `draft-ietf-masque-http-datagram-compression`
+* **Details:**
+  * Closed issues: Expanded text on applicability beyond CONNECT-IP (e.g., CONNECT-UDP); clarified the end of processing chains; prohibited multiple context IDs of the same derived type in a single processing chain; added PMTUD considerations regarding compression variability; restructured IPv4 and IPv6 derived field sections to reduce duplicate text.
+  * Additional guidance was added regarding UDP options affecting UDP length calculations and aligning variable-length integer structures with RFC 9000 Section 16 format.
+  * Lars Eggert and Gorry Fairhurst discussed kernel and socket API limitations regarding ICMP Packet Too Big signaling.
+
+### CONNECT-IP qlog
+* **Presentation:** [CONNECT-IP qlog](https://datatracker.ietf.org/meeting/127/materials/slides-127-masque-connect-ip-qlog-00)
+* **Presenter:** Martin Duke
+* **Details:**
+  * Martin Duke presented an individual proposal defining qlog schemas for logging CONNECT-IP capsules and IP packet processing decisions (forwarding, dropping reasons, ICMP responses).
+  * Discussed whether the working group should adopt qlog definitions for MASQUE protocols before shutting down.
+  * Lucas Pardue, Tommy Pauly, David Schinazi, and Mirja Kühlewind discussed registration mechanics. David Schinazi noted that publishing full RFCs for diagnostic qlog schemas might be unnecessarily heavyweight and recommended registering schemas via the Expert Review policy in the qlog IANA registry instead.
+  * The chairs concluded that work can proceed on individual drafts and discussions can continue on the working group mailing list without requiring formal working group adoption at this stage.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-masque-quic-proxy`:**
+  * Retain the existing forwarding model without architectural changes for SCONE.
+  * Ensure path MTU / PMTU consistency requirements between forwarded and tunneled packets are explicitly specified.
+  * Clarify in the draft that forwarded mode is intended to be semantically equivalent to tunneled CONNECT-UDP mode.
+  * Prepare for a Working Group Last Call (WGLC) once adoption and MTU updates are complete.
+
+* **`draft-ietf-masque-connect-ip-dns`:**
+  * Require servers to explicitly respond to DNS request capsules (sending an empty capsule if no DNS configuration is provided) to prevent client timeout issues.
+  * Address memory allocation security considerations.
+  * Prepare for WGLC once open issues are resolved.
+
+---
+
+## Next Steps
+
+* **Working Group Adoption Call:** Issue a formal Working Group adoption call for `draft-ietf-masque-quic-proxy`.
+* **Implementation & Interop:** Gather further implementation and interoperability feedback for `draft-ietf-masque-http-datagram-compression` and `draft-ietf-masque-connect-udp-ecn-dscp`.
+* **qlog Schemas:** Continue discussion on MASQUE qlog schemas on the mailing list and pursue IANA registry entries under the Expert Review process.

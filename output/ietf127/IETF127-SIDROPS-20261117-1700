@@ -1,0 +1,115 @@
+# [SIDROPS](../wg/sidrops.html)
+
+## Summary
+
+The SIDROPS Working Group met at IETF 127. The session covered working group document status updates, an introduction to the RPKI Doctors review team, an update on the RPKIViews SQLite database, experimental findings on Post-Quantum Cryptography (PQC) in RPKI, analysis against mixing certificate chains, and proposals regarding BGP Signed Origin Delegation Attestation (SODA) and information asymmetry in Route Origin Validation (ROV).
+
+---
+
+## Key Discussion Points
+
+### Working Group Administration & Document Status
+* **Slides**: [Chairs' Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-chairs-slides-00)
+* **Presenter**: Russ Housley
+* **Details**:
+  * Three working group documents are in the RFC Editor Queue, and two are with the IESG for evaluation.
+  * The ASPA suite (including draft-ietf-sidrops-bar-sav) received updates addressing Area Director comments and is prepared for IETF Last Call.
+  * An experiment was conducted using automated tooling (`ietfminutes.org`) to generate draft minutes from audio.
+  * **RPKI Terminology Draft Discussion**:
+    * Following list discussion on adopting the RPKI Terminology draft, the chairs determined there is no consensus to adopt the document at this time.
+    * Tim Bruijnzeels (co-author) requested to remove his name if the document moves forward, citing doubts about reaching consensus and lack of energy to continue.
+    * Job Snijders argued against adoption, stating that duplicating definitions across documents causes divergence and that terminology should remain defined in specification drafts.
+    * Further discussion will occur on the mailing list if contributors wish to evolve the document.
+  * **Agenda Discussion**: Job Snijders raised a concern regarding scheduling out-of-charter topics (e.g., blockchain schemes) over core chartered topics due to constrained meeting time. Luigi Iannone clarified that presentation slots do not imply document adoption but allow exposure to related industry work.
+
+---
+
+### Introduction to RPKI Doctors
+* **Slides**: [Introduction to RPKI Doctors](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-introduction-to-rpki-doctors-00)
+* **Presenter**: Job Snijders
+* **Details**:
+  * RPKI Doctors is a newly formed directorate chartered for a two-year experimental period to assist non-SIDROPS working groups (e.g., SAVNET, GROW) that are leveraging RPKI technology in their drafts.
+  * The team provides solicited and unsolicited reviews to maintain architectural alignment with RPKI, prevent duplicate extensions, and avoid architectural anti-patterns (such as assuming IP and AS holders use the same CA).
+  * A technical review checklist evaluates canonical eContent formatting, file naming schemes (to avoid race conditions), and relying party requirements.
+  * **Discussion**:
+    * Geoff Huston expressed skepticism regarding volunteer availability and high review standards, noting that traditional directorates conduct invited reviews. He cautioned against unsolicited reviews.
+    * Job Snijders noted that unsolicited feedback sent to authors in other working groups has been positively received, as authors appreciate architectural guidance on ASN.1 and X.509 structures.
+
+---
+
+### Introducing the RPKIViews SQLite Database
+* **Slides**: [Introducing the RPKIViews SQLite Database](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-introducing-the-rpkiviews-sqlite-database-00)
+* **Presenter**: Job Snijders
+* **Details**:
+  * RPKIViews collects global RPKI data across collectors in multiple regions. To solve scaling issues associated with raw tarball archives (exceeding 100 TB), a weekly consolidated SQLite database schema was developed.
+  * The single-file database (~800 GB, growing ~100s MB/day) contains historical RPKI objects, ROAs, CRLs, manifests, and certificates from late 2020 to present.
+  * Objects are stored with Cstandard compression, SHA-256 hashes, SKI/AKI pointers, and first-seen discovery timestamps (useful for detecting backdating or system clock skew).
+  * Job demonstrated a query analyzing a recent event where an RA reissued large CRLs every 10 minutes, generating 1.2 GB/day of validator traffic, which dropped significantly after a bug fix and key roll.
+  * **Discussion**:
+    * Eric questioned the selection of SQLite regarding lock constraints and concurrent writes. Job Snijders explained that a single-writer, multi-reader architecture fits global RPKI ingestion (~2 writes/sec) while maximizing read portability for researchers.
+
+---
+
+### Post-Quantum Cryptography for the RPKI
+* **Slides**: [Post-Quantum Cryptography for the RPKI](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-post-quantum-cryptography-for-the-rpki-01)
+* **Presenter**: Tomoki Yoshikawa
+* **Details**:
+  * Presented experimental results on PQC signatures and migration considerations for RPKI (draft-yoshikawa-sidrops-pqc-rpki).
+  * Evaluated four configurations: RSA-2048, pure ML-DSA-65, Composite (ML-DSA-65 + P-256), and Mixed-tree.
+  * Findings show composite signatures increase repository size and RRDP snapshot size by ~1.7x; RRDP deltas also increased ~1.7x (dominated by CRLs and manifests). Validation was tested using modified Rpki-client and Routinator backends.
+  * Requested working group adoption as an informational document to capture experimental evidence.
+  * **Discussion**:
+    * Russ Housley noted that in addition to object sizes, the document must integrate key rollover mechanisms defined in RFC 6916 to address full ecosystem transitions.
+    * Job Snijders supported adoption as an informational log of experimental observations to help quantify system growth.
+    * Tim Bruijnzeels highlighted that RRDP delta churn is heavily influenced by CA reissuance intervals (ranging from 16 hours to 2 days) and suggested that protocols like draft-ietf-sidrops-rpki-erik-protocol could enable slower reissuance strategies to mitigate size increases.
+
+---
+
+### Mixed Certificate Chains in the RPKI (actually, why not to mix)
+* **Slides**: [Mixed Certificate Chains in the RPKI (actually, why not to mix)](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-mixed-certificate-chains-in-the-rpki-actually-why-not-to-mix-01)
+* **Presenter**: Job Snijders
+* **Details**:
+  * Job reversed his previous position advocating for mixed algorithm certificate chains (RFC 9794) within the same RPKI tree, concluding that mixing algorithms is unviable.
+  * **Technical Reasons**:
+    1. *Security Downgrade*: Non-PQ/RSA certificates in a mixed chain remain vulnerable to quantum attack ("Q-Day").
+    2. *Cross-Signing & DoS Risks*: A recently reported DoS vulnerability demonstrated that cross-signing or multi-path certification paths enable denial-of-service attacks against relying party validators. Relying parties must strictly enforce a single issuer per subject to prevent path-building exhaustion attacks.
+  * Consequently, cross-signing across algorithms or trust anchors cannot be safely supported, making distinct, single-algorithm trees necessary.
+  * **Discussion**:
+    * Ties de Kock and Tim Bruijnzeels discussed the distinction between cross-signing and trust anchor key rollovers, noting that separate trees introduce operational complexity for delegated CAs.
+    * Bob Beck confirmed X.509 path-building complexities frequently lead to DoS vectors and implementation errors, strongly recommending distinct single-algorithm trees over mixed chains.
+
+---
+
+### BGP Signed Origin Delegation Attestation (SODA)
+* **Slides**: [BGP Signed Origin Delegation Attestation (SODA)](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-bgp-signed-origin-delegation-attestation-soda-00)
+* **Presenter**: Forest
+* **Details**:
+  * Proposed a new BGP optional transitive path attribute (SODA) to distinguish legitimate Multiple Origin AS (MOAS) operations (e.g., CDNs, DDoS mitigation) from route hijacking when ROV evaluates to "invalid".
+  * SODA carries a delegator-signed statement (prefix, delegated AS, expiration time) directly inside BGP UPDATE messages.
+  * If ROV returns invalid, a SODA-aware router validates the signature and delegation parameters to accept the route under local policy.
+  * **Discussion**:
+    * A participant queried whether SODA is attempting to work around slow RPKI propagation/dynamics, suggesting it would be preferable to address RPKI dynamic updates directly rather than adding BGP attributes.
+
+---
+
+### Information Asymmetry and Deployment Gaps in RPKI-based Route Origin Validation
+* **Slides**: [Information Asymmetry and Deployment Gaps in RPKI-based Route Origin Validation](https://datatracker.ietf.org/meeting/127/information-asymmetry-and-deployment-gaps-in-rpki-based-route-origin-validation-01)
+* **Presenter**: Presenter on behalf of authors
+* **Details**:
+  * Analyzed why small/long-tail ISPs hesitate to enforce strict ROV invalid dropping due to control plane asymmetry, configuration delays, and high operational risk of false positives.
+  * Proposed origin-side cross-validation where the origin AS checks announcements against its local RPKI cache prior to advertising.
+  * *Note*: Presentation was truncated as the session reached its time limit.
+
+---
+
+## Decisions and Action Items
+
+* **RPKI Terminology Draft**: The chairs determined there is currently no working group consensus to adopt the draft. Discussion remains open on the mailing list for further evolution.
+* **ASPA Suite**: The ASPA document suite (including draft-ietf-sidrops-bar-sav) will proceed to IETF Last Call following the latest updates.
+
+---
+
+## Next Steps
+
+* **PQC Draft**: Authors of draft-yoshikawa-sidrops-pqc-rpki will update the draft to incorporate RFC 6916 key rollover mechanisms before requesting working group adoption.
+* **Deferred Agenda Items**: The presentation *Source Pre-validation in RPKI-based ROV* was deferred to the first slot of the next SIDROPS session due to time constraints.

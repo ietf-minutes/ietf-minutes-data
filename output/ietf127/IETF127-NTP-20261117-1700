@@ -1,0 +1,80 @@
+# [NTP](../wg/ntp.html)
+
+## Summary
+
+The Network Time Protocol (NTP) Working Group met at IETF 127. The session covered working group draft updates including `draft-ietf-ntp-ntpv5`, `draft-ietf-ntp-nts-for-ptp`, and `draft-ietf-ntp-nts-keyexchange-pool`, as well as interoperability test results, an NTP server identification proposal, deep space time synchronization profiling, and the 2036/2038 timestamp rollover issues. 
+
+Jen Linkova was introduced as the incoming Area Director, replacing Tommy Jensen and Mahesh Jeth单位 (Mahesh). 
+
+## Key Discussion Points
+
+### Working Group Administration
+* Presented slides: [NTP WG @ IETF 127 -- Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-ntp-ntp-wg-ietf-127-chair-slides-01) (Karen O'Donoghue).
+* Jen Linkova (AD) cautioned participants regarding a potential bug in the online note-taking tool causing lost notes, advising local backups.
+
+### NTPv5 Update (`draft-ietf-ntp-ntpv5`)
+* Presented slides: [NTPv5 Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-ntp-ntpv5-update-00) (Tal Mizrahi on behalf of Miroslav Lichvar).
+* Major changes since draft version 9:
+  * Removed leap second support following BIPM's decision to pause leap second insertions.
+  * Replaced Bloom filters in the reference ID extension field with a weighted list of reference IDs to detect/prevent synchronization loops with lower complexity and better scalability.
+  * Added a Time Sources request/response extension field allowing clients to request server time sources (IPv4/IPv6 addresses or reference IDs).
+* Discussion:
+  * Danny Mayer queried how the 2036 and 2038 rollovers affect NTPv5 and NTS timestamps. Tal Mizrahi noted an action item to review if clarification text is needed. Watson Ladd and Karen O'Donoghue clarified that the packet format in `draft-ietf-ntp-ntpv5` handles rollovers properly via error fields, though general deployment/host guidance might be required separately.
+  * David Venhoek expressed caution regarding proceeding directly to Working Group Last Call (WGLC), recommending implementation experience with the newly added time sources list extension field first.
+  * Karen O'Donoghue concluded that WGLC readiness for `draft-ietf-ntp-ntpv5` will be taken to the mailing list.
+
+### NTS for PTP (`draft-ietf-ntp-nts-for-ptp`)
+* Status update presented by Martin Langer.
+* Progress on `draft-ietf-ntp-nts-for-ptp` was temporarily paused awaiting resolution of underlying security questions in IEEE 1588. Main questions are now resolved, and an update to the draft and reference implementation is planned for early next year ahead of IETF 128.
+* Karen O'Donoghue noted that IEEE 1588 working group balloting will begin soon, and draft access will be shared with interested reviewers in the NTP WG.
+
+### Roughtime and NTPv5 Interop Status
+* Presented slides: [Roughtime and NTPv5 Interop Status](https://datatracker.ietf.org/meeting/127/materials/slides-127-ntp-roughtime-and-ntpv5-interop-status-00) (Sarah Grant).
+* **Roughtime:** Implementations matching the published RFC interoperate without issues. An errata report for Annex B values was tested and confirmed correct.
+* **NTPv5 (`draft-ietf-ntp-ntpv5`):** Draft-10 changes caused interop regressions across distinct codebases. Specifically, an issue between `ntpd-rs` and `chrony` was observed: an upgrade request from NTPv4 transitions to NTPv5, but version mismatches cause subsequent NTPv5 responses to be dropped, black-holing the connection.
+* David Venhoek noted that production-grade NTPv5 servers (`chrony`, `ntpd-rs`) explicitly reply with NTPv4 responses to standard NTPv4 client requests.
+
+### NTS Key Exchange Pool (`draft-ietf-ntp-nts-keyexchange-pool`)
+* Status update presented by David Venhoek on `draft-ietf-ntp-nts-keyexchange-pool`.
+* The experimental pool operating at `seclamp.org` consists of ~15 servers across ~9 operators running various server software (`chrony`, `ntpd-rs`).
+* Servicing ~250 requests/sec. Standard NTS-capable NTP clients work with the pool without modifications.
+* Operational issue: Some ISPs drop packets based on intermediate packet sizes, breaking NTS packets exceeding the legacy 48-byte NTP size. Watson Ladd suggested padding extensions might eventually be necessary if ISP filtering persists.
+
+### NTP Server Identification Extension
+* Presented by Sarah Grant.
+* Proposal to standardise an extension field (~64 bytes) for NTPv4 and NTPv5 to allow servers to transmit operational/metadata identification without abusing reference IDs (a practice currently used by vendors like Google and Meta).
+* The working group will initiate a call for adoption on the mailing list.
+
+### Leap Second Resolution
+* Discussed by Karen O'Donoghue.
+* Following BIPM's resolution to stop leap second implementations for the foreseeable future, the NTP WG has already removed leap second fields from `draft-ietf-ntp-ntpv5`.
+
+### NTP Profile for Deep Space
+* Presented slides: [NTP Profile for Deep Space](https://datatracker.ietf.org/meeting/127/materials/slides-127-ntp-ntp-profile-for-deep-space-00) (Marc Blanchet).
+* Outlines an NTP profile for deep space IP nodes where PNT (Position, Navigation, and Timing) is unavailable or impractical.
+* Key findings and profile constraints:
+  * Single RTT time exchange works over long distances (up to light-hours) assuming symmetric path delays; delay asymmetry introduces half of the path delay difference as time error.
+  * Timeout values must be adjusted for space-scale delays.
+  * Root delay field 32-bit semantics differ between NTPv4 (up to ~18 hours) and NTPv5 (~16 seconds max precision allocation), causing NTPv5 root delay range issues for Stratum 2 relays over Mars-scale distances.
+  * Security: Full TLS handshakes are impractical in deep space; pre-provisioned NTS cookies/keys or symmetric MACs are required.
+  * Time scales: NTPv5 natively supports alternate time scales (e.g., Lunar Time / LTC).
+* Discussion:
+  * Ran Atkinson expressed concern regarding intermediate relay nodes claiming lower stratum numbers (e.g., Stratum 1) when they do not possess a direct primary reference clock.
+  * Marc Blanchet and Jen Linkova (AD) noted that coordination and joint reviews between the NTP and TIP-TOP working groups will be conducted to determine the proper document home and ensure protocol correctness.
+
+### The 2036 Rollover in Practice
+* Presented slides: [The 2036 rollover in practice](https://datatracker.ietf.org/meeting/127/materials/slides-127-ntp-the-2036-rollover-in-practice-00) (Trey Darley).
+* Addressed the upcoming 2036 NTPv4 timestamp rollover and 2038 32-bit Unix epoch rollover across the legacy installed base.
+* Highlighted recent real-world impacts, including the 2026 Telstra network outage caused by unpatched GPS card rollover failures.
+* Proposed a testing initiative utilizing a test harness (extending Sarah Grant's framework) to systematically analyze legacy client behaviors across rollover boundaries and cold-starts. Results will inform operational guidance and BCP work led by Danny Mayer.
+
+## Decisions and Action Items
+
+* **`draft-ietf-ntp-ntpv5` WGLC Check:** The chairs will issue a call on the mailing list to gauge working group readiness and implementation status before issuing Working Group Last Call.
+* **`draft-ietf-ntp-ntpv5` Rollover Text:** Authors (Tal Mizrahi / Miroslav Lichvar) to review whether explicit clarification text regarding 2036/2038 timestamp rollovers is required in the draft.
+* **NTP Server Identification Extension:** Chairs to initiate a Call for Adoption on the mailing list for Sarah Grant's server identification extension document.
+
+## Next Steps
+
+* **Virtual Interim:** A virtual interim meeting will be scheduled for mid-to-late January 2027 ahead of IETF 128.
+* **IEEE 1588 Coordination:** Karen O'Donoghue to notify the NTP WG mailing list when IEEE 1588 working group balloting opens for NTS over PTP cross-review.

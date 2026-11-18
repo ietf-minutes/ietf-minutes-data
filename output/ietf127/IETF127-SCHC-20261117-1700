@@ -1,0 +1,68 @@
+# [SCHC](../wg/schc.html)
+
+## Summary
+
+The SCHC (Static Context Header Compression) working group met at IETF 127 in San Francisco and online. The session focused on reviewing working group document statuses and milestones, discussing core updates to universal options, ICMPv6 compression, dynamic rule management, YANG data model evolution, SCHC fragmentation with ARQ/FEC capabilities, integration of SCHC into 6G cellular architectures, and the VOICI minimal multiplexer header.
+
+## Key Discussion Points
+
+### Working Group Administration & Document Status
+- **Presentation:** [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-schc-chair-slides-01) (Presented by Mario and Alexander Pelov)
+- **RFC 8724 Update (8724bis):** Marco Tiloca reported that the AD review by Éric Vyncke is complete. Pull Request #6 was prepared to address all comments, paving the way for version -11.
+- **`draft-ietf-schc-architecture`:** Updated to revision -07. Alexander Pelov outlined ongoing updates regarding deployment scenarios, guidelines for handling errors (critical non-recoverable vs. recoverable), and context lifecycle. Laurent Toutain suggested keeping the architecture document pragmatic by documenting existing solutions rather than specifying top-down theoretical mechanisms. Alejandro recommended keeping protocol implementation tutorials separate from the architecture scope.
+- **Expired Internet-Drafts:**
+  - `draft-ietf-schc-protocol-numbers`: Important draft allocating UDP ports and EtherTypes; requires a contributor/editor to complete the final editorial work.
+  - `draft-ietf-schc-over-ppp`: Pascal Thubert needs a co-author to help push the draft forward; otherwise, it will be dropped from the working group items.
+- **Milestone Review:**
+  - Standard Track Generic Header: Candidate draft is VOICI.
+  - Rules Provisioning: Laurent Toutain noted that the CORECONF management work and YANG data models address rule provisioning.
+  - ARQ/FEC Mode for Fragments: Candidate draft is `draft-munoz-schc-over-dts-iot`.
+- **Hackathon Summary:** Laurent Toutain demonstrated interop implementations. Alexander Pelov collaborated with Andrei Vladeanu on running SCHC NOAC fragmentation for VXLAN frames when overlay MTU exceeds underlay MTU, producing C and Rust implementations, Docker containers, and Wireshark decoders.
+
+### Universal Options, ICMPv6 Compression, Rule Management, and YANG Data Model
+- **Presentation:** [collapsed-slides-UO-ICMPv6-Mgmt-DM](https://datatracker.ietf.org/meeting/127/materials/slides-127-schc-collapsed-slides-uo-icmpv6-mgmt-dm-01) (Presented by Laurent Toutain)
+- **Universal Options (`draft-ietf-schc-universal-option`):**
+  - Introduces entry index keying to handle dynamic header options (such as CoAP/OSCORE options) while maintaining the strict header processing order required by RFC 8724.
+  - Quentin Lampin and Alexander Pelov discussed the structural changes and processing ordering. Laurent Toutain clarified that entry index numbers serve management access purposes without breaking rule processing logic.
+- **ICMPv6 Compression (`draft-ietf-schc-icmpv6-compression`):**
+  - Defines field IDs for ICMPv6 headers, unused fields, and inner packet payload compression for ICMP error messages (reversing header directions for inner IP/UDP headers).
+  - Re-introduces proxy behaviors (proxy ping, generating unreachable/packet-too-big ICMP messages). Alexander Pelov reminded the group that proxy actions were previously removed due to lack of consensus and need explicit discussion on the mailing list before being included again.
+  - Magnus Westerlund raised a caution regarding the use of `ignore` matching on fields declared as unused if checksum verification is involved.
+- **CORECONF Rule Management & RFC 9363bis:**
+  - Dynamic management prohibits in-place modification of active rules to prevent matching ambiguity; rules are added or deleted in full. Defines state transitions (`candidate`, `valid`, `free`, `invalid`), guard periods, and specific iPATCH/RPC operations.
+  - Proposed `RFC9363bis` draft consolidates models from `draft-ietf-schc-universal-option`, `draft-ietf-core-oscore-key-update`, `draft-ietf-schc-icmpv6-compression`, and management rules.
+  - Alexander Pelov cautioned against creating a monolithic `RFC9363bis` document that ties multiple draft dependencies together, favoring modular data models. Laurent Toutain emphasized the necessity of compact representations for delta management and SID allocation. Marion Dumay (via chat) suggested holding an interim meeting dedicated to data model evolution.
+
+### SCHC ARQ/FEC Mode over Disruptive Links
+- **Presentation:** [Static Context Header Compression and Fragmentation ARQ/FEC mode](https://datatracker.ietf.org/meeting/127/materials/slides-127-schc-static-context-header-compression-and-fragmentation-arqfec-mode-00) (Presented by Rodrigo Asensio and Javier Fernandez)
+- **Technical Overview:** Combines Forward Error Correction (FEC) and ARQ within the SCHC fragmentation layer (`draft-munoz-schc-over-dts-iot-02`) to support high-loss, long-delay satellite and constrained IoT links.
+- Defines two geometries: `SCHC-Matrix` (matrix-based) and `SCHC-Stream` (streaming-based). The receiver requires $K$ out of $N$ fragments to reconstruct the data unit.
+- **Experimental Evaluation:** 50 test runs comparing XOR and Reed-Solomon coding over a LoRaWAN setup with emulated satellite pass delays demonstrated predictable transfer delays and a significant reduction in downlink ACK retransmission requests under packet loss rates up to 40%.
+- **Session Poll:**
+  - *Question:* "Who has read the latest revision of the draft-munoz-schc-over-dts-iot-02 ?"
+  - *Result:* yes: 6, no: 5, no_opinion: 0 (total: 23)
+- Sandra Cespedes noted that `draft-ietf-schc-over-networks-prone-to-disruptions` depends on this work moving forward.
+
+### SCHC for 6G
+- **Presentation:** [SCHC for 6G](https://datatracker.ietf.org/meeting/127/materials/slides-127-schc-schc-for-6g-00) (Presented by Mario)
+- Explores SCHC deployment in 6G architectures to address ROHC limitations for sporadic and constrained IoT traffic.
+- Compares two architectural options:
+  - *Option 1:* Compression between UE and gNB at the PDCP layer.
+  - *Option 2:* Compression between UE and UPF across the N3 interface, supporting seamless mobility during handovers.
+- Proposes a Context Management Function (CMF) within the core network to manage context lifecycle, distribution, and synchronization.
+- **Discussion:** Magnus Westerlund opposed working group adoption, stating that defining cellular stack integration belongs in 3GPP. Mario, Alexander Pelov, and Éric Vyncke (via chat) clarified that any IETF publication on this topic would be Informational at most and should reflect ongoing 3GPP SA2/RAN2 evaluations.
+
+### VOICI: Minimal Multiplexer for SCHC
+- **Presentation:** [VOICI - a minimal multiplexer for SCHC](https://datatracker.ietf.org/meeting/127/materials/slides-127-schc-voici-a-minimal-multiplexer-for-schc-00) (Presented by Quentin Lampin)
+- Defines a minimal 1-byte control header containing a Session ID placed before the SCHC SDU to differentiate multiple SCHC instances running on a single link when lower layers cannot distinguish them.
+- Header fields can themselves be SCHC-compressed if byte overhead must be further minimized. Terminology has been aligned with `draft-ietf-schc-architecture`.
+- Alexander Pelov highlighted its value for Wireshark dissector support and high-speed processing (e.g., over Ethernet). Laurent Toutain noted its alignment with generic SCHC control header concepts in the architecture.
+
+## Decisions and Action Items
+- **Call for Adoption:** Chairs will initiate a two-week Working Group Call for Adoption on the mailing list for `draft-munoz-schc-over-dts-iot-02`.
+- **Call for Authors/Editors:** Chairs will issue a call for co-authors to take over `draft-ietf-schc-protocol-numbers` and `draft-ietf-schc-over-ppp`.
+- **ICMPv6 Proxy Actions:** The inclusion of proxy ping/actions in `draft-ietf-schc-icmpv6-compression` will be brought to the mailing list for discussion prior to WGLC.
+
+## Next Steps
+- Discuss YANG data model evolution strategies (RFC 9363bis vs. modular drafts) on the mailing list and consider scheduling an interim meeting.
+- Update WG milestones on Datatracker based on session discussions.

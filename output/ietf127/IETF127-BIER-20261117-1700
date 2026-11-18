@@ -1,0 +1,64 @@
+# [BIER](../wg/bier.html)
+
+## Summary
+
+The BIER working group met to review working group document progress and discuss technical updates on BIER BFD extensions, In-Network Computing (INC) for collective communications, adaptive routing in AI/ML fabrics, and general considerations for BIER deployment in AI data center environments.
+
+## Key Discussion Points
+
+### Working Group Document Status
+- **`draft-ietf-bier-prefix-redistribute`**: IPR and Working Group Last Calls have ended; the document is ready to move forward to the RFC Editor queue.
+- **`draft-ietf-bier-ospfv3-extensions`**: IPR call ended; awaiting resolution of a remaining issue before progressing.
+- **`draft-ietf-bier-bierin6`**: Last call completed, but progression is blocked waiting on missing IPR statements from some co-authors.
+- **`draft-ietf-bier-lsr-non-mpls-extensions`**: High-priority draft as multiple documents are gated on it; chairs need to follow up on its status.
+- **`draft-ietf-bier-bfd`**: Last call and IPR calls completed.
+- **`draft-ietf-bier-bgp-ls-bier-ext`**: Pending missing IPR responses from co-authors.
+
+### BIER BFD with Active Tails
+- **Presentation:** [01-BIER BFD with Active Tails](https://datatracker.ietf.org/meeting/127/materials/slides-127-bier-01-bier-bfd-with-active-tails-00)
+- **Presenter:** Greg Mirsky
+- **Document:** `draft-ietf-bier-bfd`
+- **Discussion:**
+  - Greg Mirsky summarized the application of BFD in BIER networks using multipoint BFD with active tails (RFC 8563) and head notifications without polling. This allows the root to monitor the status of the multicast distribution tree with significantly less control packet overhead and reduced state on the root compared to running individual point-to-point BFD sessions to each leaf.
+  - Hooman Rezaei questioned why end-to-end BFD over BIER is needed instead of hop-by-hop BFD or existing Unicast Fault Detection (UFD) / backup UMH failover mechanisms, raising concerns regarding the latency of failure localization and rerouting via unicast feedback to the root.
+  - Greg Mirsky and Jeffrey Zhang clarified that BFD encapsulated in BIER verifies the actual BIER forwarding path end-to-end to egress PEs. Detection intervals can be sub-second (e.g., 300 ms for 100 ms heartbeat intervals) while maintaining scalability over large leaf sets.
+  - The chairs noted that despite completing WGLC and IPR calls, additional mailing list discussion may be useful to ensure common understanding before submitting the draft to the IESG.
+
+### BIER In-Network Computing (INC)
+- **Presentation:** [02-1-BIER INC](https://datatracker.ietf.org/meeting/127/materials/slides-127-bier-02-1-bier-inc-00)
+- **Presenter:** Jeffrey Zhang
+- **Discussion:**
+  - Jeffrey Zhang presented a proposal to leverage BIER for In-Network Computing (INC) / collective communications (such as all-reduce operations) in AI/ML GPU clusters.
+  - While BIER handles forward broadcasting statelessly without pre-building trees, reduction in the reverse direction traditionally requires trees. The proposal uses BIER in the forward direction to establish data-driven INC reduction state strictly within the data plane on initial packets. Reverse reduction packets then traverse these data-driven trees back to the target node, updating bitstrings to track contributing GPUs.
+  - A distinct BIFT ID signals INC state setup, identified by a tuple of (BIFT ID, BFR-ID, communicator ID).
+  - Arco expressed concern over introducing data-driven state setup into the data plane and requested performance data demonstrating GPU job completion time improvements.
+  - Tianji Jiang inquired how reduction aggregation handles missing GPU responses when timers expire. Jeffrey Zhang noted this is a generic reduction problem common to existing tree-based schemes.
+  - Tony Przygienda highlighted that hardware implementations of in-network collectives (such as NVIDIA SHARP) show measurable reductions in job completion times, supporting the use case for BIER in high-performance fabrics.
+
+### BIER Adaptive Routing
+- **Presentation:** [02-2-BIER Adaptive Routing](https://datatracker.ietf.org/meeting/127/materials/slides-127-bier-02-2-bier-adaptive-routing-00)
+- **Presenter:** Jeffrey Zhang
+- **Discussion:**
+  - Jeffrey Zhang introduced an informational draft detailing how BIER can interoperate with adaptive routing algorithms in AI/ML leaf-spine networks featuring massive ECMP.
+  - Adaptive routing dynamically modifies BIER neighbor sets and Forwarding Bit Masks (FBM) within the BIFT based on path congestion metrics, steering traffic away from congested links without modifying core BIER forwarding logic.
+  - An algorithm for calculating congestion-aware FBMs (combining base reachability FBM0, congestion-adjusted FBM1, and non-congested destination mask FBM2) was presented.
+  - Arco noted that adaptive routing assumptions are heavily constrained to leaf-spine topologies to prevent loops and raised questions regarding packet reordering or transient duplication during FIB updates. Jeffrey Zhang agreed to explicitly note topology constraints in the draft.
+
+### BIER in AI Considerations
+- **Presentation:** [02-3-BIERinAI-consideration](https://datatracker.ietf.org/meeting/127/materials/slides-127-bier-02-3-bierinai-consideration-00)
+- **Presenter:** Tony Przygienda
+- **Discussion:**
+  - Tony Przygienda outlined high-level considerations for applying BIER within AI/ML cluster substrates, covering application-layer integration (e.g., CUDA/NCCL vs. switch offload vs. application access), RDMA memory address synchronization across multicast operations, inline telemetry (C-SIC), reliable multicast mechanisms (Trim), and scaling/encapsulation.
+  - Arco and Jeffrey Zhang discussed BIER encapsulation options in Ethernet data centers, referencing non-MPLS signaling specified in `draft-ietf-bier-lsr-non-mpls-extensions` as well as hardcoded/controller-provisioned BIFT IDs.
+
+## Decisions and Action Items
+
+- **`draft-ietf-bier-bierin6`**: Chairs will follow up directly with authors to collect missing IPR statements required to progress the document.
+- **`draft-ietf-bier-bgp-ls-bier-ext`**: Chairs will track down missing author IPR declarations.
+- **`draft-ietf-bier-lsr-non-mpls-extensions`**: Chairs will push progress on this draft as several dependent documents are gated by it.
+- **`draft-ietf-bier-bfd`**: Chairs will summarize meeting feedback on the mailing list to confirm working group alignment before advancing to the IESG queue.
+
+## Next Steps
+
+- Continue discussion on the mailing list regarding BIER enhancements for AI/ML substrates (INC, adaptive routing, and AI fabric considerations).
+- Refine the BIER adaptive routing draft to explicitly describe topology assumptions (leaf-spine deployments).
