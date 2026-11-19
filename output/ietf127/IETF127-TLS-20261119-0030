@@ -1,0 +1,64 @@
+# [TLS](../wg/tls.html)
+
+## Summary
+
+The TLS Working Group held its first session at IETF 127. The working group reviewed document status, addressed DTLS 1.3 `ClientHello` fragmentation issues for post-quantum key shares, evaluated updates to Trust Anchor Identifiers, received an update on the Password Authenticated Key Exchange (PAKE) extension, and debated a proposal for Workload Identifier origin hints in mTLS.
+
+## Key Discussion Points
+
+### Working Group Status
+- **Published / RFC Editor Queue:** The hybrid KEM document has been published as an RFC. The ML-KEM and ML-DSA drafts are currently in the RFC Editor queue.
+- **Near Last Call:** [draft-ietf-tls-extended-key-update](https://datatracker.ietf.org/doc/draft-ietf-tls-extended-key-update/) and [draft-ietf-tls-trust-anchor-ids](https://datatracker.ietf.org/doc/draft-ietf-tls-trust-anchor-ids/) are nearing Working Group Last Call (WGLC).
+- **FATT Review:** [draft-ietf-tls-pake](https://datatracker.ietf.org/doc/draft-ietf-tls-pake/) requires Formally Verified Automated Analysis and Testing (FATT) review before advancing.
+- Slide deck: [WG Status](https://datatracker.ietf.org/meeting/127/materials/slides-127-tls-wg-status-00)
+
+### DTLS 1.3 ClientHello Fragmentation
+- Presented by Eric Rescorla: [DTLS 1.3 ClientHello Fragmentation](https://datatracker.ietf.org/meeting/127/materials/slides-127-tls-dtls-13-clienthello-fragmentation-00) regarding [draft-ietf-tls-rfc9147bis](https://datatracker.ietf.org/doc/draft-ietf-tls-rfc9147bis/).
+- **Problem Statement:** Post-quantum key shares (e.g., ML-KEM) enlarge the DTLS 1.3 `ClientHello` beyond typical network MTU (~1200 bytes), causing UDP fragmentation. The server cannot perform stateless address verification via HelloRetryRequest (HRR) before reassembling the full `ClientHello` because key share selection, PSK binders, and Encrypted ClientHello (ECH) outer/inner transcripts depend on receiving the entire message. Maintaining state to reassemble unverified fragments exposes servers to amplification and DoS attacks.
+- **Proposed Options:**
+  - *Option 1 (HelloVerifyRequest / HVR):* Reintroduce a stateless `HelloVerifyRequest` outside the handshake transcript (similar to DTLS 1.2 or QUIC stateless retries), causing the client to resend `ClientHello` verbatim with a cookie in the legacy cookie field. Drawbacks include signaling mechanisms and ECH re-encryption/nonce state complexity.
+  - *Option 2 (Record-Layer Cookie):* Place the verification cookie directly within the DTLS record layer rather than inside the handshake payload. Because the record envelope is independent of ECH payload encryption, the client does not need to re-encrypt ECH payloads when echoing the cookie across fragments.
+- **Discussion:**
+  - David Benjamin noted challenges for dual-stack servers supporting both DTLS 1.2 and 1.3 when identifying client versions from partial/fragmented `ClientHello` messages.
+  - Martin Thompson and Jonathan Lennox discussed WebRTC use cases and alternative epoch/PSK handling.
+  - The working group generally favored pursuing the record-layer approach and attempting to incorporate the solution into [draft-ietf-tls-rfc9147bis](https://datatracker.ietf.org/doc/draft-ietf-tls-rfc9147bis/) rather than holding the bis document indefinitely.
+
+### Trust Anchor Identifiers (TAI)
+- Presented by David Benjamin: [Trust Anchor IDs](https://datatracker.ietf.org/meeting/127/materials/slides-127-tls-trust-anchor-ids-00) regarding [draft-ietf-tls-trust-anchor-ids](https://datatracker.ietf.org/doc/draft-ietf-tls-trust-anchor-ids/).
+- **Updates & Scope:**
+  - Described the end-to-end architecture across ACME servers, ACME clients, TLS servers, and relying parties.
+  - Introduced a PEM credential bundle specification to store multiple certificate chains alongside a `CertificatePropertyList` block while keeping private keys separate.
+  - Ilari Liusvaara suggested keeping the core TAI document focused tightly on trust anchor negotiation parameters and registering additional properties in separate specifications or IANA registries.
+- **In-Handshake Retry:**
+  - David Benjamin proposed punting in-handshake retry mechanisms for trust anchor selection, as connection retry overhead is rare and adding in-handshake retry introduces significant transcript complexity. Martin Thompson and Eric Rescorla supported avoiding complex in-handshake retry logic.
+- **Signature Algorithms Cert (`signature_algorithms_cert`):**
+  - Matching TLS signature algorithms against X.509 certificate chain algorithms is prone to ossification and implementation bugs. When trust anchors are negotiated directly, `signature_algorithms_cert` validation becomes redundant.
+  - Proposal: If a trust anchor matches, clients/servers should skip `signature_algorithms_cert` checks and path building.
+
+### Password Authenticated Key Exchange (PAKE) Extension
+- Presented by Laura: [A Password Authenticated Key Exchange Extension for TLS 1.3](https://datatracker.ietf.org/meeting/127/materials/slides-127-tls-a-password-authenticated-key-exchange-extension-for-tls-13-00) regarding [draft-ietf-tls-pake](https://datatracker.ietf.org/doc/draft-ietf-tls-pake/).
+- Document updates include minor idnits, reference updates, and IANA early review feedback. Prototype implementations have been created.
+- Formal security proofs exist; the draft is ready for Formal Analysis and Verification (FATT) review.
+
+### Workload Identifier Origin Hint
+- Presented by Yaroslav Rosomakho: [Workload Identifier Origin Hint](https://datatracker.ietf.org/meeting/127/materials/slides-127-tls-workload-identifier-origin-hint-00).
+- **Problem Statement:** In Mutual TLS (mTLS), sending an unexpected `CertificateRequest` to clients can cause legacy applications or browsers to crash or prompt users unexpectedly.
+- **Proposal:** Introduce a TLS `ClientHello` extension carrying WIMSE Workload Identifier origins (trust domains) or an empty extension to advertise client readiness to process `CertificateRequest` without error.
+- **Discussion:**
+  - Daniel Kahn Gilmore (dkg) and Eric Rescorla expressed privacy concerns, noting that transmitting trust domain identifiers unencrypted in cleartext `ClientHello` behaves like client-side SNI and leaks workload origin identity unless wrapped inside ECH.
+  - Yaroslav Rosomakho and John Holland clarified that the extension carries only the origin/trust domain (omitting specific paths) and can be sent empty or encapsulated in ECH for privacy-sensitive workloads.
+  - Victor Duchovni noted that for non-privacy-sensitive machine-to-machine workloads, forced privacy mechanisms should not block functional hints.
+
+## Decisions and Action Items
+
+- **[draft-ietf-tls-rfc9147bis](https://datatracker.ietf.org/doc/draft-ietf-tls-rfc9147bis/):** Workshop the record-layer cookie mechanism for fragmented `ClientHello` address verification and include it in the bis draft.
+- **[draft-ietf-tls-trust-anchor-ids](https://datatracker.ietf.org/doc/draft-ietf-tls-trust-anchor-ids/):**
+  - Omit in-handshake retry logic.
+  - Clarify that matching trust anchors bypasses `signature_algorithms_cert` verification and path building.
+  - Keep `CertificatePropertyList` focused on trust anchor identification, deferring arbitrary new properties to separate specifications.
+- **[draft-ietf-tls-pake](https://datatracker.ietf.org/doc/draft-ietf-tls-pake/):** Working group chairs to formally request FATT review with the submitted formal proofs.
+
+## Next Steps
+
+- Publish an informal deployment guide for ACME-to-TLS server credential bundle integration.
+- Continue discussion on Workload Identifier origin hints on the mailing list and during the remaining IETF 127 TLS session.

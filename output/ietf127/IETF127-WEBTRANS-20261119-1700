@@ -1,0 +1,58 @@
+# [WEBTRANS](../wg/webtrans.html)
+
+## Summary
+
+The WEBTRANS working group met at IETF 127 to review W3C WebTransport status and discuss updates to the core active drafts: [`draft-ietf-webtrans-overview`](https://datatracker.ietf.org/doc/draft-ietf-webtrans-overview/), [`draft-ietf-webtrans-http3`](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http3/), and [`draft-ietf-webtrans-http2`](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http2/). Discussions focused on error handling context, flow control behavior prior to receiving client settings, version negotiation, and removing outdated protocol examples from the HTTP/2 specification. Presentations during the session used the [ietf127-webtrans](https://datatracker.ietf.org/meeting/127/materials/slides-127-webtrans-ietf127-webtrans-01) slide deck.
+
+## Key Discussion Points
+
+### W3C WebTransport Update
+* **Youenn Fablet** provided an update on the W3C WebTransport specification status:
+  * The W3C charter has been extended through August 31, 2028. Scope has been expanded to explore peer-to-peer (P2P) WebTransport using WebRTC or QUIC-based mechanisms.
+  * WebTransport 1.0 Candidate Recommendation (CR) snapshot was published in July. Target completion for Proposed Recommendation (PR) review is Q2 2026, contingent on having two implementations for all features and RFC completion on the IETF side.
+  * **Lucas Pardue** noted that IETF document publication timelines depend on closing working group issues, completing Working Group Last Call (WGLC), and RFC Editor queue processing.
+  * **Mike Bishop** asked about potential work items coming from W3C P2P use cases. **Youenn Fablet** and **Lucas Pardue** clarified that P2P exploration is early and would involve dependencies across groups (such as QUIC).
+  * **Martin Thompson** and **Ted Hardie** (in chat) emphasized maintaining informal coordination between W3C and IETF rather than formal liaisons.
+  * WebTransport was selected for Interop 2026, achieving 100% pass rates for Web Platform Tests (WPT) up to February 2026. **Randell Jesup** noted in chat that Firefox is landing ~500 additional WPT tests.
+  * Recent W3C spec changes include: excluding counter-based stats from pooled connections, resolving datagram backpressure when sync queues have room, omitting empty datagrams on BYOB readers, erroring outgoing datagram writables on teardown, and defaulting `outgoingMaxAge` to infinity.
+
+### `draft-ietf-webtrans-overview`
+* **Alan Frindell** raised questions regarding application error spaces and error delivery:
+  * Clarified whether application error codes across session close, stream reset, and stop sending constitute a single 32-bit space or separate spaces requiring context.
+  * **Victor Vasiliev** and **Martin Thompson** supported delivering errors alongside context indicating the error source (session vs. stream).
+  * On whether to reserve application error code points for transport/protocol errors (e.g., HTTP/3 `buffered_stream_rejected`), **Marten Seemann** and **Ben Schwartz** spoke against carving out application error space for transport errors. **Martin Thompson** suggested addressing any specific W3C API surfacing attributes in the W3C WG.
+
+### `draft-ietf-webtrans-http3`
+* **Eric Kinnear** presented updates and open issues on HTTP/3 transport:
+  * Updates landed: flow control updates must be strictly greater than previous limits, and a warning note on potential deadlocks when HTTP requests share a session without WebTransport flow control was added.
+  * **Flow Control State and Settings Arrival:**
+    * When servers accept sessions before client SETTINGS frames arrive, uncertainty exists regarding whether flow control is enabled or disabled.
+    * Options discussed:
+      * **Option A:** Server must wait for client SETTINGS frame to arrive.
+      * **Option B:** Flow control starts at zero limit until SETTINGS frame arrives.
+      * **Option C:** Flow control is mandatory and enabled by default.
+    * **Marten Seemann**, **Martin Thompson**, and **Lucas Pardue** advocated for making flow control mandatory (Option C) to avoid dual-state implementation complexity and security edge cases. **Christian Huitema** noted that constrained servers (e.g., single-session embedded devices) benefit from avoiding dual-level flow control code complexity.
+    * Two formal polls were taken to test consensus:
+      * **Poll 1:** *Can you live with Option A? Option C is flow control is on all the time.* — yes: 9, no: 0, no_opinion: 5 (total: 60)
+      * **Poll 2:** *Can you live with Option C?* — yes: 13, no: 1, no_opinion: 7 (total: 59)
+    * Based on the poll results showing high tolerance for both options, chairs and authors agreed to select a preferred technical path in the text and issue a mailing list consensus call.
+
+  * **Version Negotiation:**
+    * **Eric Kinnear** and **Victor Vasiliev** discussed signaling support for draft versions alongside the published RFC version.
+    * **Kazuho Oku** and **Eric Kinnear** proposed minting a draft version code point for the final draft, allowing implementations supporting both drafts and the RFC to explicitly advertise draft code points while defaulting to the RFC version.
+
+### `draft-ietf-webtrans-http2`
+* **Eric Kinnear** noted updates aligning HTTP/2 capsules and enabled settings with HTTP/3.
+* **Examples Removal:** **Alan Frindell** and **Lucas Pardue** recommended removing protocol examples from `draft-ietf-webtrans-http2` as they were out of date and created maintenance risks. The working group agreed to remove them.
+
+## Decisions and Action Items
+
+* **`draft-ietf-webtrans-overview`:** Maintain application error code spaces as application-controlled; surface error context (session vs. stream) in APIs without reserving protocol-level error codes in the application error space.
+* **`draft-ietf-webtrans-http3`:** Authors will select a concrete proposal for flow control initialization (Option A vs. Option C) and propose it for working group consensus on the mailing list.
+* **`draft-ietf-webtrans-http3`:** Mint a draft code point to handle version negotiation when supporting both draft and published RFC versions.
+* **`draft-ietf-webtrans-http2`:** Remove static protocol examples from the specification.
+
+## Next Steps
+
+* Document authors will incorporate the agreed changes into updated revisions of [`draft-ietf-webtrans-overview`](https://datatracker.ietf.org/doc/draft-ietf-webtrans-overview/), [`draft-ietf-webtrans-http3`](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http3/), and [`draft-ietf-webtrans-http2`](https://datatracker.ietf.org/doc/draft-ietf-webtrans-http2/).
+* Chairs will initiate a Working Group Last Call (WGLC) on the document suite once the final draft updates land.

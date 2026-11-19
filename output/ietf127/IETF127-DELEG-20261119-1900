@@ -1,0 +1,57 @@
+# [DELEG](../wg/deleg.html)
+
+## Summary
+
+The DELEG Working Group met at IETF 127 to review the post-Working Group Last Call status of [draft-ietf-deleg](https://datatracker.ietf.org/doc/draft-ietf-deleg/) and its companion document on Delegation Extensions (Delext). Both documents are mature, with stable wire formats and active implementations. The session focused on resolving remaining editorial items, clarifying server name definitions (hostname vs. domain name), refining delegation type range definitions, and addressing compact denial of existence text prior to progressing both drafts together to IETF Last Call.
+
+## Key Discussion Points
+
+### Working Group Administrative & Agenda Review
+- Brian Haberman opened the session and reminded participants of the IETF Note Well.
+- The agenda was approved without modifications.
+
+### DELEG Specification Update
+- **Presentation**: [Deleg version 13 at IETF127](https://datatracker.ietf.org/meeting/127/materials/slides-127-deleg-deleg-version-13-at-ietf127-00) – *Ralph Dolmans*
+- **Status & Wire Format**:
+  - Version 13 includes editorial refinements, consistency updates, additional examples, and test vectors.
+  - The wire format has remained unchanged since version 8; existing implementations continue to function without wire-level changes.
+  - Test vectors provided by Peter Lexa (PowerDNS) cover binary and text parsing, resolving edge cases related to comma handling in string representations.
+  - Normative references were cleaned up to align with text moved to the Delext specification.
+  - Default behavior was clarified: a value of `0` indicates no action, and missing mandatory keys result in an empty DELEG info set (leading to resolution failure).
+- **Hostname vs. Domain Name Terminology (Section 3.4)**:
+  - John Levine questioned Section 3.4 regarding whether server names pointed to by DELEG must strictly be hostnames or can be general domain names, and requested clarification that the "no glue" requirement applies recursively down CNAME chains.
+  - Evan Hunt noted that in BIND and classic DNS syntax (RFC 1035), address records (A/AAAA) are expected to be LDH hostnames.
+  - Chat participants (Erik Nygren, Shumon Huque) noted that CA/Browser Forum rules and PKIX (RFC 5280) restrict SAN syntax to LDH hostnames if certificates are used for encrypted transports.
+  - Petr Špaček and Ray Bellis pointed out that protocol-level DNS specifications (RFC 1035/2181) do not restrict A/AAAA records to hostnames, and operational systems (e.g., Microsoft Active Directory) have used non-hostname domain names for address records for decades.
+  - Paul Hoffman and Evan Hunt agreed to review the draft text to determine whether loosening the restriction from hostname to domain name is appropriate or if it should be raised during IETF Last Call.
+
+### Delegation Extensions (Delext) Update
+- **Presentation**: [Delext version 13 at IETF127](https://datatracker.ietf.org/meeting/127/materials/slides-127-deleg-delext-version-13-at-ietf127-00) – *Roy Arends*
+- **Delegation Type Ranges**:
+  - Delext divides the delegation extension codepoint space into three functional ranges:
+    1. **NS-omitting** (e.g., DELEG): Suppresses NS records in responses when present.
+    2. **NS-preserving** (e.g., DEINFO, DS2): Coexists with NS records in responses.
+    3. **On-demand** (e.g., DHINT): Returned only when explicitly queried (similar to parent/child DS queries on co-located servers).
+  - Clarified that only NS-omitting and NS RRsets trigger a DNS delegation; NS-preserving and on-demand types do not create delegations by themselves.
+  - **Private Use Ranges**: Removed the single unified private use range and assigned dedicated private sub-ranges within each of the three functional categories (NS-omitting, NS-preserving, on-demand).
+- **QTYPE ANY Handling**:
+  - Clarified that DELEG extension types do not alter standard QTYPE ANY handling and will follow existing or updated DNSOP guidelines for ANY queries.
+- **Compact Denial of Existence (Section 8.4)**:
+  - Section 8.4 text regarding compact denial of existence attack scenarios required correction. Roy Arends is incorporating revised security text provided by Shumon Huque and Libor/Brie into version 14.
+
+### Implementation Status
+- **BIND 9**: Authoritative server support is merged (released in BIND 9.21.28); resolver support is active in a development branch (Evan Hunt, Petr Špaček).
+- **Akamai**: Both authoritative and recursive resolver implementations are operational (Ralph Dolmans).
+- **PowerDNS & NLnet Labs**: Parsing and test vector suites updated (Ralph Dolmans).
+
+## Decisions and Action Items
+
+- **Terminology Alignment**: Paul Hoffman and Evan Hunt will review the server name text in [draft-ietf-deleg](https://datatracker.ietf.org/doc/draft-ietf-deleg/) to ensure correct usage of "hostname" versus "domain name".
+- **DNS Directorate Review**: The chairs will submit [draft-ietf-deleg](https://datatracker.ietf.org/doc/draft-ietf-deleg/) to the DNS Directorate for review prior to advancing to IETF Last Call (Jim Reid / Brian Haberman).
+- **Delext Revision**: Roy Arends will publish version 14 of the Delext draft containing the updated compact denial text (Section 8.4) and the split private use ranges.
+- **Implementation Roster**: Paul Hoffman will post an updated summary of known DELEG implementations to the working group mailing list.
+
+## Next Steps
+
+- Roy Arends will publish Delext version 14 by late November 2024.
+- Once updated versions are published, the DELEG chairs will coordinate with the DNSOP chairs and Area Directors to advance [draft-ietf-deleg](https://datatracker.ietf.org/doc/draft-ietf-deleg/) and the Delext specification concurrently to IETF Last Call and IESG review.

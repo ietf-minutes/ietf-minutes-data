@@ -1,0 +1,82 @@
+# [ACME](../wg/acme.html)
+
+## Summary
+
+The Automated Certificate Management Environment (ACME) Working Group met during IETF 127. The session was co-chaired by Yoav Nir and Mike Ounsworth. Key agenda items included status updates on active working group documents, presentations on proof-of-possession, remote attestation challenges, persistent DNS validation, post-quantum readiness for ACME, and proposals for OIDC-based enterprise workload identity authentication.
+
+## Key Discussion Points
+
+### Working Group Administration & Document Status
+Mike Ounsworth presented the chairs' update using the [ACME 127 Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-acme-acme-127-chair-slides-00).
+- **Active Document Progress**:
+  - `draft-ietf-acme-integrations` has entered the RFC Editor queue.
+  - `draft-ietf-acme-device-attest` cleared IESG evaluation.
+  - The JWT claim constraints draft has completed working group processing and is awaiting AD evaluation by Deb Cooley.
+  - `draft-ietf-acme-dns-account-label` completed IETF Last Call.
+- **Expired Adopted Documents**:
+  - The chairs reviewed expired adopted drafts. Older drafts dating from 2017–2018 will be declared abandoned unless interest is expressed on the mailing list.
+  - `draft-ietf-acme-client` will remain active following updates from Tim Hollebeek regarding new Client Baseline Requirements (BRs) work at the CA/Browser Forum.
+  - `draft-ietf-acme-openid-federation` remains active; Stephanie noted potential interest in helping progress the work.
+- **Cross-Working Group Work**:
+  - `draft-ietf-plants-merkle-tree-certs` contains ACME extensions in Section 9 (handling immediate single certificate returns and delayed batch issuance with `202 Accepted` and `Retry-After` headers). The PLANTS WG will initiate a joint Working Group Last Call (WGLC) with ACME.
+
+### ACME Extension for Proof-of-Possession (`draft-ietf-acme-pop`)
+Grace presented updates on [draft-ietf-acme-pop](https://datatracker.ietf.org/meeting/127/materials/slides-127-acme-draft-ietf-acme-pop-ietf127-01).
+- The document defines a non-CSR certificate enrollment mechanism, primarily intended for KEM-only keys that cannot generate self-signed PKCS#10 CSRs.
+- The v01 architecture separates identifier authorization from proof-of-possession (POP). Once POP and identifier validations complete, the order enters the `ready` state, and finalization is executed with an empty JSON object.
+- Experimental implementations cover RSA, ECDSA, MLDSA signature keys, and ML-KEM keys.
+- Participants (including Bob Moskowitz and Mike Ounsworth) clarified that the mechanism is additive and does not deprecate or replace standard PKCS#10 CSR flows.
+- The chairs ran two formal session polls:
+  - **Poll 1**: *Have you read draft-ietf-acme-pop?* — yes: 7, no: 13, no_opinion: 0 (total: 51)
+  - **Poll 2**: *IS it mature enough for WGLC* — yes: 0, no: 4, no_opinion: 9 (total: 54)
+- Feedback from Peter and Bob Moskowitz indicated that the specification needs further soaking time, additional implementation experience, and detailed technical reviews before moving to WGLC.
+
+### ACME Remote Attestation Identifier and Challenge Type (`draft-ietf-acme-rats`)
+Peter presented updates on [acme-rats ietf127](https://datatracker.ietf.org/meeting/127/materials/slides-127-acme-acme-rats-ietf127-00) for `draft-ietf-acme-rats`.
+- Revisions in -03 include camelCase parameter formatting fixes and updating challenge fetching to use POST-as-GET instead of GET.
+- Comparative text was added detailing the relationship to `draft-ietf-acme-device-attest`: while `device-attest` focuses on vendor-specific webauthn bindings, `acme-rats` provides a generic, RATS-native trust and posture evaluation framework.
+- An open-source Go client and server-side integration (EJBCA) exist. The authors plan to organize hackathon interoperability testing in upcoming IETF cycles prior to requesting WGLC.
+
+### ACME Persistent DNS Challenge (`draft-ietf-acme-dns-persist`)
+Shiloh Heirich presented updates on [ACME Persistent DNS Challenge (draft-ietf-acme-dns-persist-03)](https://datatracker.ietf.org/meeting/127/materials/slides-127-acme-acme-persistent-dns-challenge-draft-ietf-acme-dns-persist-03-00) for `draft-ietf-acme-dns-persist`.
+- Recent updates (-02 and -03) introduced a hashed account URI with domain opt-out, persistent validation clamping linked to authorization expiration, subdomain validation with ancestor domain records, IPv4/IPv6 validation, and a `persistExpired` error type.
+- Implementations are available in Boulder, Pebble, and DigiCert.
+- **Discussion**: Ameer Ghani and Tim Hollebeek raised concerns regarding mandatory (`MUST`) requirements for CAs to store and validate historical account key hashes indefinitely across key rollovers due to storage overhead and potential denial-of-service risks. They recommended shifting historical account key depth to CA policy and Security Considerations. Ameer Ghani also questioned the naming of the account URI parameter and the necessity of a dedicated error type.
+
+### Post-Quantum Ready ACME Mechanism (`draft-ar-acme-pqc-tlsjws`)
+Aritra Banerjee presented [draft-ar-acme-pqc-tlsjws_IETF 127](https://datatracker.ietf.org/meeting/127/materials/slides-127-acme-draft-ar-acme-pqc-tlsjws-ietf-127-00).
+- The draft updates RFC 8555 to support post-quantum (PQ) and PQ/traditional hybrid algorithms in TLS and JWS/JOSE, removing the requirement that implementations `MUST support ES256`.
+- The chairs conducted a session poll regarding mandatory-to-implement (MTI) algorithms:
+  - **Poll 3**: *Do we want the doocument to specify MTIs? No means nothing in the doc and rely on TLS/JOSE* — yes: 0, no: 19, no_opinion: 4 (total: 60)
+- Based on the poll and discussion (Tim Hollebeek, Bob Moskowitz, Yoav Nir, Mike Ounsworth), there was clear consensus not to specify algorithm MTIs in ACME, deferring algorithm recommendations entirely to underlying JOSE and TLS specifications.
+
+### OIDC & Workload Identity Authentication (`draft-rasmussen-acme-wif` and `draft-geng-acme-idp`)
+Two related individual proposals addressing OIDC token authentication for enterprise workloads were presented:
+1. Scott Rasmussen presented [draft-rasmussen-acme-wif](https://datatracker.ietf.org/meeting/127/materials/slides-127-acme-draft-rasmussen-acme-wif-00), proposing OIDC token authentication at order creation as an alternative to static External Account Binding (EAB) secrets for enterprise Certificate Lifecycle Management (CLM).
+2. Grace presented [draft-geng-acme-idp IETF127](https://datatracker.ietf.org/meeting/127/materials/slides-127-acme-draft-geng-acme-idp-ietf127-00), proposing OIDC tokens as an Identifier Control Verification (ICV) challenge.
+
+- **Discussion**:
+  - Participants (Tim Hollebeek, Ameer Ghani, Deb Cooley, Mike Ounsworth, Joe Salowey, Peter) agreed that standardizing OIDC token authentication in ACME addresses a major enterprise pain point (avoiding proprietary vendor REST APIs and static secrets management).
+  - Ameer Ghani and Mike Ounsworth emphasized the importance of defining a clear, constrained security model to prevent complex misconfigurations.
+  - The working group agreed to step back from specific solution mechanics to first establish a clear problem statement and threat model on the mailing list.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **`draft-ar-acme-pqc-tlsjws`**: The document will not specify algorithm MTIs. It will update RFC 8555 solely by removing the mandatory ES256 requirement and pointing directly to TLS and JOSE specifications for algorithm guidance (unanimous poll outcome: 0 yes / 19 no).
+
+### Action Items
+1. **Expired Adopted Drafts**: Chairs to send a message to the ACME mailing list proposing to declare pre-2019 expired adopted drafts abandoned unless contributors step forward.
+2. **Workload Identity / OIDC**: Authors of `draft-rasmussen-acme-wif` and `draft-geng-acme-idp` (Scott Rasmussen and Grace) to start a focused mailing list thread to formulate a unified problem statement and security model for OIDC workload authentication.
+
+---
+
+## Next Steps
+
+- **`draft-ar-acme-pqc-tlsjws`**: Aritra Banerjee to issue revision -02 removing MTIs and simplifying text, targeting direct adoption and WGLC.
+- **`draft-ietf-acme-pop`**: Authors to incorporate review comments from Aaron and gather further implementation experience prior to WGLC.
+- **`draft-ietf-acme-rats`**: Authors to prepare interoperability testing for an upcoming hackathon ahead of requesting WGLC in 2–3 meeting cycles.
+- **`draft-ietf-acme-dns-persist`**: Authors to resolve account key rollover storage requirements and parameter naming feedback on the list before requesting WGLC.
+- **`draft-ietf-plants-merkle-tree-certs`**: ACME participants to review Section 9 in preparation for joint WGLC with the PLANTS WG.

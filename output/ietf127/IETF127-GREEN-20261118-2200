@@ -1,0 +1,139 @@
+# [GREEN](../wg/green.html)
+
+## Summary
+
+The GREEN Working Group met at IETF 127. The session covered progress on core WG deliverables, including framework, device, and controller YANG data models, capability discovery, provenance, API specifications, hackathon implementation results, and external proposals.
+
+Key highlights included:
+* Welcome to Marisol Palmero as the new Working Group Secretary.
+* Progress updates on active working group drafts: `draft-ietf-green-framework` and `draft-ietf-green-power-and-energy-yang`.
+* Presentation and updates on candidate individual drafts: `draft-swepcarl-green-controller-yang`, `draft-claise-green-capability-discovery`, `draft-madpr-green-provenance`, and `draft-petra-green-api-05`.
+* Results and live demonstration from the IETF 127 Hackathon testing device-level YANG models across use cases.
+* Presentation on `draft-cowlishaw-carbontxt` and discussion on its scope and potential home within the IETF.
+
+---
+
+## Key Discussion Points
+
+### 1. Administration and Working Group Status
+* **Presenters:** Rob Wilton, Diego Lopez
+* **Slides:** [1. GREEN Chair Slides - IETF 127](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-1-green-chair-slides-ietf-127-02)
+* **Discussion:**
+  * Marisol Palmero was welcomed as the new Working Group Secretary.
+  * Work on core deliverables (`draft-ietf-green-use-cases`, `draft-ietf-green-terminology`, `draft-ietf-green-framework`, and `draft-ietf-green-power-and-energy-yang`) is progressing steadily.
+  * `draft-ietf-green-use-cases` continues as an active working document used to inform modeling and hackathon efforts. `draft-ietf-green-terminology` will remain open and be published alongside the core YANG models.
+  * Virtual interims will be scheduled as needed by the modeling design team.
+
+### 2. GREEN Framework
+* **Presenter:** Marisol Palmero
+* **Slides:** [2. GREEN Framework slides IETF 127](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-2-green-framework-slides-ietf-127-03)
+* **Draft Reference:** `draft-ietf-green-framework`
+* **Discussion:**
+  * Key updates in version -03 include alignment with `draft-ietf-green-power-and-energy-yang`, clarification of the energy object ID/UUID (using RFC 8348 / IETF Hardware as the source of truth), standardization of milliwatts as the baseline unit (retaining watts for nameplate data), refined interface descriptions (Interfaces C, D, and G), and expanded operational considerations (accuracy inheritance, cumulative counters).
+  * Jan Lindblad raised that future iterations could consider using the YANG `decimal64` type with Watts for standard wire presentation.
+  * Publication timing: The chairs and authors agreed to hold framework publication until the device and controller YANG models stabilize further.
+
+### 3. Power and Energy YANG Data Model
+* **Presenter:** Benoit Claise
+* **Slides:** [3. draft-ietf-green-power-and-energy-yang](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-3-draft-ietf-green-power-and-energy-yang-01)
+* **Draft Reference:** `draft-ietf-green-power-and-energy-yang`
+* **Discussion:**
+  * Updates in version -06: Power and energy are now modeled as unsigned 64-bit integers with explicit directionality (`received` and `provided`) using milliwatts/milliwatt-hours. Discontinuity timestamps were added for `counter64` leaves per RFC 9911.
+  * Added power cap configuration attributes (`limit` and `limiting` leaves). Added accelerator identities (GPU, TPU, NPU) in the IANA Entity MIB (RFC 6393) for hardware entity classification.
+  * Refactored YANG groupings to facilitate reuse by the controller model (`draft-swepcarl-green-controller-yang`).
+  * Real-device implementation validation was conducted by Arcus on a power supply unit (PSU).
+  * Rob Wilton suggested evaluating a gauge type for instantaneous power and extracting groupings into a separate types module. Jan Lindblad noted a separate types module is already planned.
+
+### 4. GREEN Controller YANG Module
+* **Presenter:** Jan Lindblad
+* **Slides:** [4. draft-swepcarl-green-controller-yang](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-4-draft-swepcarl-green-controller-yang-00)
+* **Draft Reference:** `draft-swepcarl-green-controller-yang`
+* **Discussion:**
+  * Focuses on Work Package 1 (controller model) and Work Package 2 (device-controller interface, Interfaces D and E).
+  * Leverages IETF Network Topology models to define the network energy layer topology.
+  * Baseline telemetry ingestion supports YANG Push for native GREEN models and static configuration. Additional protocols (SNMP, Redfish) can be added via augmentations.
+  * Discussion on device naming/mapping across controller and local hardware levels. Mahesh Jethanandani inquired about string references versus `leafref`/`identityref` types and unit alignment across models.
+
+### 5. Capability Discovery
+* **Presenter:** Benoit Claise
+* **Slides:** [5. draft-claise-green-capability-discovery](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-5-draft-claise-green-capability-discovery-00)
+* **Draft Reference:** `draft-claise-green-capability-discovery`
+* **Discussion:**
+  * Introduces YANG discovery mechanisms for component power states, nominal/max power consumption per state, and entry/exit transition timing based on RFC 9196 / RFC 9195 system capability patterns.
+  * The group agreed that milliseconds are sufficient precision for transition timing attributes. Tony Lee supported this conclusion.
+  * Discussion regarding whether to model power state transition frequency/residency limits to protect hardware lifecycle.
+* **Polls Taken:**
+  * *Poll 1:* Do you think that we need to model power transition limits?
+    * **Results:** yes: 6, no: 5, no_opinion: 11 (total: 51)
+  * *Poll 2:* Have you read this draft (any version)?
+    * **Results:** yes: 11, no: 5, no_opinion: 0 (total: 51)
+  * *Poll 3:* Do you support the adoption of this as a WG draft?
+    * **Results:** yes: 19, no: 0, no_opinion: 0 (total: 51)
+
+### 6. GREEN Provenance
+* **Presenter:** Marisol Palmero
+* **Slides:** [6. draft-madpr-green-provenance](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-6-draft-madpr-green-provenance-01)
+* **Draft Reference:** `draft-madpr-green-provenance`
+* **Discussion:**
+  * Shifted provenance verification state augmentation from the individual device model to the controller model (`draft-swepcarl-green-controller-yang`).
+  * Signatures and verification leverage COSE-based signing mechanisms from OpsAWG YANG provenance specifications.
+  * Emile Stephan inquired about hardware-based attestation on devices.
+  * AD hat clarification from Mahesh Jethanandani (via chat): Verification state for energy telemetry in the controller model is within charter scope; regulatory, renewable-attribution, and carbon-accounting use cases are currently out of charter scope and would require rechartering.
+
+### 7. PETRA API
+* **Presenter:** Luis M. Contreras
+* **Slides:** [7. draft-petra-green-api-05](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-7-draft-petra-green-api-05-00)
+* **Draft Reference:** `draft-petra-green-api-05`
+* **Discussion:**
+  * Defines RESTCONF/YANG mechanisms for Interface G in the GREEN framework.
+  * Version -05 updates include operational considerations (addressing double counting, optional provenance integration), expanded security considerations (NACM, RESTCONF requirements), and updated normative references to YANG 1.1 (RFC 7950).
+  * Emile Stephan expressed concerns regarding whether underlying data models are sufficiently mature to standardize the top-level API.
+* **Polls Taken:**
+  * *Poll 4:* Do you think the petra proposal would be ready for an adoption call?
+    * **Results:** yes: 4, no: 2, no_opinion: 4 (total: 49)
+
+### 8. IETF 127 Hackathon Results
+* **Presenter:** Emile Stephan
+* **Slides:** [8. IETF 127 Hackathon results](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-8-ietf-127-hackathon-results-00)
+* **Draft References:** `draft-ietf-green-use-cases`, `draft-ietf-green-framework`, `draft-ietf-green-power-and-energy-yang`
+* **Discussion:**
+  * Validated device-level YANG modeling across defined use cases using an event catalog and device simulator.
+  * Evaluated 17 use cases against device-level YANG capabilities.
+  * Demonstrated dynamic visualization of framework interfaces developed by Marisol Palmero and live execution of simulated Netconf telemetry events.
+
+### 9. Carbon.txt
+* **Presenter:** Chris Adams
+* **Slides:** [9. draft-cowlishaw-carbontxt](https://datatracker.ietf.org/meeting/127/materials/slides-127-green-9-draft-cowlishaw-carbontxt-00)
+* **Draft Reference:** `draft-cowlishaw-carbontxt`
+* **Discussion:**
+  * Proposal for a structured TOML file hosted at a well-known URI to disclose clean energy purchases, carbon accounting disclosures, renewable energy certificates (RECs), and upstream infrastructure dependencies.
+  * Designed to facilitate domain-to-infrastructure carbon accounting verification.
+  * Tony Lee noted that while disclosures are useful, standardizing operational reporting mechanisms might belong in operator forums (e.g., NANOG, RIPE).
+* **Polls Taken:**
+  * *Poll 5:* Do you think that this work is of interest to the IETF, in any WG, not necessarily the GREEN WG?
+    * **Results:** yes: 9, no: 1, no_opinion: 4 (total: 46)
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-claise-green-capability-discovery` Adoption:**
+   * **Decision:** Strong poll support in the room for working group adoption (19 Yes, 0 No).
+   * **Action Item:** Chairs to issue a formal Working Group Adoption call on the mailing list.
+
+2. **`draft-petra-green-api-05` Adoption:**
+   * **Decision:** Mixed support in the room (4 Yes, 2 No, 4 No Opinion).
+   * **Action Item:** Chairs to issue a Working Group Adoption call on the mailing list to gauge broader consensus.
+
+3. **`draft-madpr-green-provenance` Charter Alignment:**
+   * **Action Item:** Authors to narrow the draft to focus strictly on controller telemetry verification state (in-scope) and remove carbon accounting / grid attribution use cases prior to any adoption call.
+
+4. **`draft-cowlishaw-carbontxt` Placement:**
+   * **Action Item:** Chairs and AD (Mahesh Jethanandani) to discuss the appropriate venue/working group within the IETF for carbon disclosure work.
+
+---
+
+## Next Steps
+
+* **Design Team Interims:** The core modeling design team will continue regular meetings and coordinate with chairs if formal virtual interims are required.
+* **Document Synchronization:** Maintain publication dependencies across `draft-ietf-green-framework`, `draft-ietf-green-power-and-energy-yang`, and `draft-swepcarl-green-controller-yang` to ensure schema alignment.

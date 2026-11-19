@@ -1,0 +1,92 @@
+# [CFRG](../wg/cfrg.html)
+
+## Summary
+
+The Crypto Forum Research Group (CFRG) met at IETF 127. The session covered working group document status updates, followed by three research presentation topics:
+1. Standardization updates and formal verification for Sigma protocols and the Fiat-Shamir transformation.
+2. Performance optimizations and formal proof updates for the Longfellow zero-knowledge argument system.
+3. A Schnorr-type zero-knowledge proof of possession mechanism for ECDSA device binding in privacy-preserving credentials.
+
+---
+
+## Key Discussion Points
+
+### Chairs' Update & Document Status
+*Slide Deck:* [Chairs' slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-cfrg-sessb-chairs-slides-00)
+* *Chairs:* Alexey Melnikov, Nick Sullivan (Stanislav remote)
+* *Notetakers:* Christopher Patton, Muhammad Usama Sardar
+* **Document Status Highlights:**
+  * 1 new RFC published since IETF 126.
+  * 2 drafts in the RFC Editor queue; `draft-ietf-cfrg-vdaf` in IRSG review; Pairing-Friendly Curves waiting for IRTF Chair progression.
+  * `draft-ietf-cfrg-hybrid-kems` is undergoing updates following Research Group Last Call (RGLC) comments (Deirdre Connolly noted in chat that updated test vectors and proofs are being prepared).
+  * Adoption of post-quantum KEM security considerations documents (including MLChem and FrodoChem) was confirmed.
+* **Discussion:**
+  * Watson Ladd raised concerns regarding distinguisher and key recovery attacks against published parameter sets of Classic McEliece, recommending that CFRG strongly discourage its use if referenced. Nick Sullivan noted that CFRG will re-evaluate if Classic McEliece is brought forward for standard protocol usage.
+
+---
+
+### Sigma Protocols and Fiat-Shamir
+*Slide Deck:* [Sigma protocols and Fiat-Shamir](https://datatracker.ietf.org/meeting/127/materials/slides-127-cfrg-sessb-sigma-protocols-and-fiat-shamir-04)
+* *Presenter:* Michele Orrù
+
+* **Presentation Highlights:**
+  * Michele Orrù presented an update on the two specifications: Sigma protocols and the Fiat-Shamir transformation.
+  * Scope clarification: Sigma protocols keep compositions and compressed proofs out of scope to maintain simplicity. The Fiat-Shamir specification supports one-round protocols (Sigma proofs) as well as multi-round interactive oracle proofs (IOPs).
+  * **Formal Verification:** In collaboration with Arqlib, a Lean formalization of the Fiat-Shamir draft was created, proving soundness/knowledge soundness, straight-line extractability, and zero-knowledge in the Random Oracle Model (ROM).
+  * **Security Analysis & Malleability:** Highlighted common implementation pitfalls in weak Fiat-Shamir transformations (e.g., LibSignal issues, point encoding malleability, non-prefix-free serializations) and provided adversarial test vectors.
+
+* **Discussion:**
+  * Christopher Patton asked if any issues affect `draft-ietf-cfrg-vdaf`. Michele Orrù indicated he would review the spec.
+  * Watson Ladd noted that the draft currently lacks an easy way to hook into serialization for OR compositions (e.g., in `draft-ladd-cfrg-ec-vrf` / ECI hat). Michele explained that codecs are modular and offered to coordinate offline on prefix-free encoding requirements.
+  * Shai Levin asked in chat if cut-and-choose techniques were considered for the Sigma standard. Michele clarified that while not in the Sigma protocol draft itself, the Fiat-Shamir transformation can support tree structures.
+
+---
+
+### Longfellow ZK
+*Slide Deck:* [Longfellow ZK](https://datatracker.ietf.org/meeting/127/materials/slides-127-cfrg-sessb-longfellow-zk-00)
+* *Presenter:* Abhi Shelat
+
+* **Presentation Highlights:**
+  * Abhi Shelat presented updates on `draft-ietf-cfrg-longfellow-zk`, a transparent hash-based zero-knowledge argument system used to prove statements about legacy algorithms (ECDSA and SHA) for digital identity protocols.
+  * **Formal Verification:** Security properties (knowledge soundness and zero-knowledge) have been formally proven in Lean.
+  * **Performance & Rust Rewrite:** Transitioned to Rust; the v2 implementation demonstrates ~4x faster prover time (~65 ms), ~3x smaller proofs (~136 KB), 40 MB memory usage, and 127 bits of soundness in GF($2^{128}$). Verified MLDSA-44 and MLDSA-65 benchmarks run in ~36–37 ms.
+  * **Proposed Draft Updates (-01 / -02):**
+    1. *Fiat-Shamir Query Structure:* Replaced classic transcript hashing with a directed graph structure for transcript nodes. This tightens the security reduction (eliminating union bound degradation to achieve 127-bit soundness) and enables parallelized multi-threaded provers (requested by Apple/Kathy).
+    2. *Circuit Representation:* Introduced grammar-based circuit compression to significantly reduce memory overhead without needing full circuit expansion in memory.
+
+* **Discussion:**
+  * Watson Ladd asked about straight-line extractability and whether avoiding rewinding carries a performance penalty. Abhi explained that Reed-Solomon encoding redundancy on the witness enables straight-line extraction without a forking lemma penalty.
+  * Michele Orrù suggested integrating the graph-based challenge derivation concept into the main Fiat-Shamir draft. Abhi agreed to submit a write-up alongside co-author Kathy.
+  * Michele Orrù asked if benchmark numbers were single-threaded. Abhi confirmed all reported benchmark numbers are single-core/single-threaded to match execution constraints on mobile platforms (e.g., Android).
+  * Christopher Patton and David Waite confirmed the open-source Rust implementation is available on GitHub under the Linux Foundation / Post-Quantum Cryptography Alliance (PQCA).
+
+---
+
+### Schnorr-Type Proofs of Possession for ECDSA Device Binding
+*Slide Deck:* [Schnorr-Type Proofs of Possession for ECDSA Device Binding](https://datatracker.ietf.org/meeting/127/materials/slides-127-cfrg-sessb-schnorr-type-proofs-of-possession-for-ecdsa-device-binding-00)
+* *Presenters:* Alexandros Zacharakis, Shai Levin
+
+* **Presentation Highlights:**
+  * Alexandros Zacharakis and Shai Levin presented a proposal for ECDSA device binding in privacy-preserving credentials (such as EU Digital Identity / EUDI Wallets) using existing hardware secure elements.
+  * Zero-knowledge proofs are used to demonstrate possession of an issuer-signed credential containing a hidden device public key and a signature on a verifier-supplied nonce under that key.
+  * **Construction:** Leverages the committee disclosure framework. Converts BLS commitments from BBS signatures to the Too (T256) curve, emulating P-256 scalar field arithmetic in T256 using Schnorr-type Sigma protocols without trusted setups or circuits.
+  * **Performance:** Execution takes <70 ms on newer devices and <300 ms on older hardware using multithreading, with proof sizes <100 KB.
+  * The draft aligns with the CFRG Sigma protocol specification for linear relations and requests Working Group adoption.
+
+* **Discussion:**
+  * Rowan asked whether the underlying technique would apply to Edwards curves. Shai Levin responded that while curve arithmetic differs, the conceptual framework should apply without fundamental obstructions.
+
+---
+
+## Decisions and Action Items
+
+* **Fiat-Shamir & Longfellow Alignment:** Abhi Shelat, Kathy, and Michele Orrù will collaborate on incorporating the graph-based challenge derivation mechanism into the main Fiat-Shamir draft.
+* **VDAF Review:** Michele Orrù to review `draft-ietf-cfrg-vdaf` to verify resistance against potential Fiat-Shamir encoding/malleability issues.
+
+---
+
+## Next Steps
+
+* **Hybrid KEMs:** Authors of `draft-ietf-cfrg-hybrid-kems` to submit updated drafts with revised test vectors and explicit rejection proof updates following RGLC feedback.
+* **Longfellow ZK:** Publish `draft-ietf-cfrg-longfellow-zk-01` incorporating the graph-based Fiat-Shamir challenge mechanism and grammar-compressed circuit format.
+* **ECDSA Device Binding:** Authors to continue data format integration with related BBS/Sigma drafts and call for Working Group adoption on the CFRG mailing list.

@@ -1,0 +1,53 @@
+# [JSONSCHEMA](../wg/jsonschema.html)
+
+## Summary
+
+The JSONSCHEMA Working Group met at IETF 127 to discuss updates to [draft-ietf-jsonschema-json-schema](https://datatracker.ietf.org/doc/draft-ietf-jsonschema-json-schema/). The meeting focused on the `format` keyword, addressing implementation inconsistencies across edge cases (date-time, email, URIs, hostnames), the creation of an IANA registry for format attributes, test vector management, regex interoperability, and the distinction between schema validation and data transformation/fixing.
+
+## Key Discussion Points
+
+### Draft -04 Progress & Format Keyword Enforcement
+Lisa presented [JSON Schema -04 progress: Format, format, format](https://datatracker.ietf.org/meeting/127/materials/slides-127-jsonschema-json-schema-04-progress-format-format-format-00) covering updates to [draft-ietf-jsonschema-json-schema](https://datatracker.ietf.org/doc/draft-ietf-jsonschema-json-schema/).
+
+* **Format Inconsistencies:** The current practice relying on general language standard libraries or RFC references (e.g., RFC 3339 for date-time, ABNF for email addresses, URIs, hostnames) leads to interoperability problems when API clients and servers use different validators.
+  * *Date-Time:* Handling of lowercase designators ('t'/'z'), timezone colons/offsets, leap seconds (60 seconds), and ISO 8601 vs. RFC 3339 differences varies across libraries.
+  * *Email Addresses:* Implementations range from naive `@` checks to strict ABNF parser implementations, handling edge cases like Mastodon handles, double quotes, or IP addresses inconsistently. Draft -04 proposes explicit regular expressions to improve consistency.
+  * *URIs & Hostnames:* Handling of backslashes, leading underscores, case folding, and IDNs differs across standard libraries (e.g., Python `datetime` / `urllib`), often conflating string format validation with parsing or object conversion.
+* **Validation Strictness vs. User Input:** Tension exists between machine-to-machine strict validation (contract enforcement) and user-friendly form input processing (lenient handling or user mapping).
+* **IANA Registry Proposal:** Draft -04 proposes establishing an IANA registry for `format` attributes operating under Specification Required / Expert Review to provide an extensible framework for format definitions.
+
+### Technical Discussion and Feedback
+
+* **Validation Models and Strictness:**
+  * **Carsten Bormann** noted that validation strictness depends on context (security vs. user utility) and suggested considering CDDL-like "features" where a validator can report features/formats used rather than binary pass/fail.
+  * **Andy Newton** argued for strict adherence to specification standards to ensure interoperability and cautioned against defining complex regular expressions for email in the spec ("there be dragons").
+  * **Tantek Çelik** highlighted distinctions between machine-to-machine, user-entered, and human-visible formats (e.g., HTML `<time>`), noting Unicode CLDR as a reference for locale-dependent formatting.
+
+* **Format Registry & OpenAPI Alignment:**
+  * **Henry Andrews** shared OpenAPI's experience maintaining its own format registry for code generation and API validation. He supported an IANA registry to provide a common extension point, noting OpenAPI would welcome aligning with an IANA-managed registry.
+  * **Henry Andrews** and **Daniel Gillmor** discussed allowing schema authors to mark formats as critical/required so implementations fail fast if an unsupported format is encountered, rather than silently ignoring it.
+  * **Ben Schwartz** and **Daniel Gillmor** emphasized clear guidance for Designated Experts (DEs) to prevent trivial or poorly specified format registrations.
+
+* **Test Vectors:**
+  * **Daniel Gillmor** recommended including a small set of positive test vectors directly in [draft-ietf-jsonschema-json-schema](https://datatracker.ietf.org/doc/draft-ietf-jsonschema-json-schema/) while placing negative test vectors in the Git repository to prevent specification bloat.
+  * **Andy Newton** supported capturing test vectors in GitHub and advised against letting test vector discussions block progress on the main draft.
+
+* **Schema Scope vs. Transformation ("Fixers"):**
+  * **Ben Schwartz** and **Austin** suggested defining the concept of a "JSON Schema fixer" to explicitly distinguish components that massage invalid input into valid schema instances from JSON Schema validation itself, which remains strictly out of scope.
+
+* **Regex Interoperability:**
+  * **Henry Andrews** and **Juan Viotti** noted that regular expression flavors vary across environments and called for renewed list discussion on regular expression interoperability, including I-Regexp (RFC 9485).
+
+## Decisions and Action Items
+
+### Decisions
+* Data transformation and fixing remain explicitly out of scope for JSON Schema validation.
+* Work will proceed on refining the `format` keyword rules and defining the proposed IANA format registry within [draft-ietf-jsonschema-json-schema](https://datatracker.ietf.org/doc/draft-ietf-jsonschema-json-schema/).
+
+## Next Steps
+
+Working group participants are encouraged to continue discussions on the mailing list regarding:
+* Designated Expert guidelines and policies for the proposed IANA `format` registry.
+* Structuring positive test vectors for the document and negative test vectors in the GitHub repository.
+* Regular expression interoperability (I-Regexp / RFC 9485).
+* Mechanism for schema authors to explicitly assert required format support.

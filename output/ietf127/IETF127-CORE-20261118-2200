@@ -1,0 +1,133 @@
+# [CORE](../wg/core.html)
+
+## Summary
+
+The Constrained RESTful Environments (CoRE) Working Group met at IETF 127. The session covered administration and document status updates, progress on core protocol extensions (CoAP over BP, CoRECONF/COMI, Observe Multicast Notifications, OSCORE key update and proxies), and several individual proposals addressing post-quantum security, OSCORE option obfuscation, Oblivious CoAP, a new 2.06 No Content response code, diagnostic message notation, and SID file extensions. Multiple active drafts are approaching Working Group Last Call (WGLC), and plans were made to stagger reviews to manage community bandwidth.
+
+---
+
+## Key Discussion Points
+
+### Administration and Document Status
+* **Presented by:** Marco Tiloca, Jaime Jiménez, Carsten Bormann
+* **Slides:** [Chairs' slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-chairs-slides-01)
+* RFC 9997 has been published as Proposed Standard. Several documents (`draft-ietf-core-href`, etc.) are in final RFC Editor review or blocked only by cluster references.
+* Post-WGLC documents (`draft-ietf-core-yang-cbor` and `draft-ietf-core-conditional-attributes`) are being prepared for publication requests by their respective shepherds.
+* A brief update was provided on hackathon projects covering CoAP over BP, Oblivious CoAP, and AI-agent-driven interoperability testing.
+
+### Constrained Application Protocol (CoAP) over Bundle Protocol (BP)
+* **Draft:** `draft-ietf-core-coap-bp`
+* **Presented by:** Anna Calveras
+* **Slides:** [CoAP over BP](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-coap-over-bp-00)
+* Changes in version -05 focus exclusively on the 3-element `ipn` URI scheme using `.ipn.alt` suffix, dropping the DTN scheme from scope to avoid DNS dependencies.
+* Corrected calculations for bundle lifetime during message aggregation ($bundle\_lifetime = change\_lifetime - max\_aggregation\_delay$) and noted that aggregation requires an increased `NSTART` value.
+* Updated block-wise non-timeout calculations following RFC 9177.
+* Practical implementations and hackathon demo results were reported; authors consider the draft approaching WGLC readiness.
+
+### CoAP Management Interface (CORECONF)
+* **Draft:** `draft-ietf-core-comi` (also addressing `draft-ietf-core-yang-metadata`)
+* **Presented by:** Carsten Bormann, Alexander Pelov
+* **Slides:** [CoRECONF](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-coreconf-00)
+* **YANG-CBOR SID Workflows:** Carsten Bormann reported on automated toolchains for designated expert and IANA interaction during SID allocations, processing batches of YANG modules using a `pyang 2.7.1` patch.
+* **Appendix D Resolution:**
+  1. *Mandatory-to-Implement (MTI) Security:* Agreed that no single MTI security mechanism (DTLS vs OSCORE vs Layer 2) fits all deployment models. The specification will describe available options without mandating a single MTI.
+  2. *SIDs in URI Paths:* Agreed to maintain the current separation (SIDs in fetch payloads) and defer mixing SIDs into URI path segments to future work.
+  3. *Resource Discovery:* Acknowledged as useful but deferred to separate mechanisms (e.g., link-format metadata).
+* The authors plan to submit draft `-23` before Thanksgiving to trigger a Working Group Last Call.
+
+### Observe Notifications as CoAP Multicast Responses
+* **Draft:** `draft-ietf-core-observe-multicast-notifications`
+* **Presented by:** Marco Tiloca
+* **Slides:** [Observe Notifications as CoAP Multicast Responses](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-observe-notifications-as-coap-multicast-responses-00)
+* Interoperability was validated between Java (Eclipse Californium) and C (libcoap) implementations across non-secure and secure (Group OSCORE) setups. An additional Python implementation was created during an AI-agent hackathon project and successfully interoperated with the C implementation.
+* Minor example corrections and definition clarifications were incorporated in version -17.
+* Authors consider the draft ready for WGLC once prerequisite downrefs complete RFC Editor processing.
+
+### Key Update for OSCORE (KUDOS)
+* **Draft:** `draft-ietf-core-oscore-key-update`
+* **Presented by:** Rikard Höglund
+* **Slides:** [Slides KUDOS CoRE IETF 127](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-slides-kudos-core-ietf-127-00)
+* Updated references from EDHOC to LAKE. Incorporated lessons learned from interop testing between RISE (Java) and University of Murcia (C) implementations, explicitly specifying short-lexicographic ordering in `update_ctx` and 1-byte length prefixes for variable-length fields in `KUDOS-Expand-Label`.
+* Extended interop testing was successfully completed for forward-secrecy (FS) and no-FS modes.
+* Relationship to `draft-ietf-core-oscore-id-update` was noted; KUDOS will undergo a minor editorial revision before requesting WGLC.
+
+### OSCORE-Capable Proxies
+* **Draft:** `draft-ietf-core-oscore-capable-proxies`
+* **Presented by:** Rikard Höglund
+* **Slides:** [Slides OSCORE Capable Proxies CoRE IETF 127](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-slides-oscore-capable-proxies-core-ietf-127-00)
+* Refined step 4 of the option protection escalation procedure (Class U to Class E) to prevent hiding necessary options from downstream proxies in a chain.
+* Added Section 2.7 defining replay protection and out-of-order response handling for proxy OSCORE legs.
+* Introduced two DNS SVCB/SVP SvcParamKeys (`oscore-with-proxy` and `nested-oscore`) for proxy capabilities discovery.
+* The draft is functionally complete; chairs noted that WGLC will be scheduled sequentially alongside other pending WGLCs.
+
+### Using KEMs in Group OSCORE
+* **Draft:** `draft-tiloca-core-oscore-zeroconf-pqc`
+* **Presented by:** Marco Tiloca
+* **Slides:** [Using KEMs in Group OSCORE](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-using-kems-in-group-oscore-00)
+* Addresses post-quantum security for pairwise key agreement in Group OSCORE (`draft-ietf-core-cacheable-oscore`) by replacing Diffie-Hellman static-static key agreement with Key Encapsulation Mechanisms (KEMs, e.g., ML-KEM).
+* The Group Manager acts as a relayer for uploading/retrieving KEM public keys and encapsulated shared secrets between group members.
+* Updated terminology to alignment with HPKE ("encapsulated shared secret"), added security considerations regarding randomness and ML-KEM, and outlined future post-quantum Diffie-Hellman primitive integration.
+* The author requested a Working Group Adoption Call.
+
+### Stand-in KID and Encrypted Partial IV in the OSCORE Option
+* **Draft:** `draft-tiloca-core-oscore-missing-security`
+* **Presented by:** Marco Tiloca
+* **Slides:** [Stand-in KID and Encrypted Partial IV in the OSCORE Option](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-stand-in-kid-and-encrypted-partial-iv-in-the-oscore-option-00)
+* Proposes lightweight obfuscation of Partial IV and KID fields in the OSCORE option to protect against traffic analysis and endpoint tracking without signaling on the wire.
+* Fixed the obfuscation key length to 16 bytes and generalized byte sampling from the COSE ciphertext payload.
+* Clarified recipient context exploration to minimize false positive overhead and addressed timing side-channel mitigations.
+
+### Oblivious CoAP
+* **Draft:** `draft-brachmann-core-oblivious-coap`
+* **Presented by:** Martina Brachmann
+* **Slides:** [Slides Oblivious CoAP IETF 127](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-slides-oblivious-coap-ietf-127-00)
+* Adapts Oblivious HTTP (RFC 9548) to CoAP using HPKE to decouple client identities from origin servers via forward proxies and gateway resources.
+* Defines an critical `O-CoAP` option, message format classifications (Class U/I/E), payload structures, and CBOR-based key configuration formats.
+* Proof-of-concept request/response, block-wise, and observe functionality were implemented during the hackathon.
+* **Discussion:** Christian Amsüss questioned whether Group OSCORE features could achieve similar decoupling with less code/concept duplication. Martina Brachmann and Mike Bishop noted that HPKE alignment with O-HTTP simplifies cross-protocol deployment and explicitly enforces server privacy policies.
+
+### 2.06 No Content
+* **Draft:** `draft-bormann-core-206-no-content` (related to `draft-ietf-core-responses`)
+* **Presented by:** Carsten Bormann
+* **Slides:** [2.06 No Content](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-206-no-content-00)
+* Introduces a `2.06 No Content` CoAP response code indicating that a target resource exists but currently lacks a representation, allowing Observe relationships to remain active (e.g., in CoAP PubSub brokers when topic data is cleared).
+* This work is an explicit dependency blocking CoAP PubSub, ACE, and LAKE specifications.
+* **Discussion:** Christian Amsüss recalled an alternative proposal (`accept-any` updated accept option) from 2019 and suggested evaluating if updating options is less invasive. Carsten Bormann noted both approaches have trade-offs and recommended progressing to an adoption call to resolve the approach.
+
+### CoAP Diagnostic Message Notation
+* **Draft:** `draft-bormann-core-coap-diag`
+* **Presented by:** Jaime Jiménez, Carsten Bormann
+* **Slides:** [CoAP Diagnostic Message Notation](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-coap-diagnostic-message-notation-01)
+* Standardizes human-readable and machine-parsable diagnostic notation for CoAP requests, responses, options, and payloads across specifications to enable automated syntax checking in toolchains.
+* Added support for hex payloads (DNS over CoAP), Observe notification streams, multipart messages, and OSCORE options.
+* Discussion focused on handling combined options (Location-Path/Query, Proxy-URI/Scheme) and standardizing hex string formatting (`0x` vs `h'...'` vs raw hex).
+
+### SID File Extensions
+* **Draft:** `draft-fernandez-core-sid-extension`
+* **Presented by:** Javier Fernández
+* **Slides:** [SID File Extensions](https://datatracker.ietf.org/meeting/127/materials/slides-127-core-sid-file-extensions-01)
+* Extends YANG SID files with YANG data type and list key metadata. This enables constrained CoRECONF nodes to parse and encode CBOR data without needing a full YANG data model parser on the constrained device.
+* Real-world trial results and interop experience with external implementations were presented.
+* **Poll:** A session poll was conducted on reading the document:
+  * **Question:** "Did you read the document?"
+  * **Results:** yes: 2, no: 6, no_opinion: 0 (total: 26)
+* Carsten Bormann expressed support for compiling YANG models into lightweight device representations and offered to review the document.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-core-comi`:** Authors (Alexander Pelov, Carsten Bormann) to submit draft `-23` resolving Appendix D open questions (specifying multiple security options without single MTI; deferring SIDs in URIs) prior to Thanksgiving, initiating WGLC.
+2. **`draft-ietf-core-observe-multicast-notifications`:** Chairs to initiate WGLC upon completion of reference updates.
+3. **`draft-ietf-core-oscore-key-update`:** Authors to publish a minor revision incorporating final interop testing feedback, followed by WGLC.
+4. **`draft-ietf-core-oscore-capable-proxies`:** Chairs to queue WGLC sequentially after managing concurrent review load.
+5. **`draft-tiloca-core-oscore-zeroconf-pqc`:** Chairs to initiate a Working Group Adoption Call.
+6. **`draft-bormann-core-206-no-content`:** Authors to publish draft `-01`; chairs to launch a Working Group Adoption Call.
+
+---
+
+## Next Steps
+
+* Stagger pending Working Group Last Calls (`draft-ietf-core-comi`, `draft-ietf-core-observe-multicast-notifications`, `draft-ietf-core-oscore-key-update`, `draft-ietf-core-oscore-capable-proxies`) across the upcoming weeks to avoid reviewer fatigue.
+* Run adoption calls on `draft-tiloca-core-oscore-zeroconf-pqc` and `draft-bormann-core-206-no-content`.
+* Continue community review and prototyping on individual drafts (`draft-brachmann-core-oblivious-coap`, `draft-bormann-core-coap-diag`, `draft-fernandez-core-sid-extension`).

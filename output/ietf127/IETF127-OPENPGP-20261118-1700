@@ -1,0 +1,135 @@
+# [OPENPGP](../wg/openpgp.html)
+
+## Summary
+
+The OpenPGP Working Group met to discuss active working group documents, protocol updates, interop testing, and potential work items. Key items addressed included multi-target 2nd-preimage attacks affecting post-quantum composite signatures, registry cleanups for external secret keys, update status for key replacement and HTTP Keyserver Protocol (HKP), command-line updates to Stateless OpenPGP (SOP), and persistent symmetric keys (PSK). The working group agreed to return the NIST and Brainpool composite document to working group last call (WGLC) following updates to digest size requirements.
+
+## Key Discussion Points
+
+### 1. Working Group Administration
+- **Presentation:** [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-openpgp-chair-slides-01)
+- **Presenter:** Daniel Kahn Gillmor
+
+Daniel Kahn Gillmor opened the session, reviewed the IETF Note Well, noted administrative procedures, and reviewed the agenda.
+
+---
+
+### 2. Multi-Target 2nd-Preimage Attacks in PQ/T Composite Schemes
+- **Presentation:** [Accounting for Multi-Target 2nd-Preimage Attacks in draft-ietf-openpgp-nist-bp-comp](https://datatracker.ietf.org/meeting/127/materials/slides-127-openpgp-accounting-for-multi-target-2nd-preimage-attacks-in-draft-ietf-openpgp-nist-bp-comp-00)
+- **Presenter:** Falko Strenzke
+- **Draft Reference:** `draft-ietf-openpgp-nist-bp-comp`
+
+Falko Strenzke presented on a security degradation identified in formal signature security models where an attacker records $2^{64}$ signatures. When using 256-bit digests (such as SHA-256) in v6 signatures, multi-target 2nd-preimage attacks reduce security by 64 bits (and up to 90 bits due to state-matching attacks on long messages in SHA-256).
+
+- **Proposed Solution:** Raise the minimum required digest size in `draft-ietf-openpgp-nist-bp-comp` to 384 bits (SHA-384) to eliminate multi-target degradations.
+- **Dishonest Signer Threat Model:** Raising the digest size to 384 bits does not cover the scenario where a dishonest signer generates two colliding messages. Precluding a dishonest signer would require 512-bit digests.
+- **Discussion:**
+  - Quinn Dang recommended discussing the dishonest signer threat model and non-repudiation requirements on the mailing list before committing to 512-bit digest requirements.
+  - Stephen Farrell noted that handling this issue for published RFCs (RFC 9580 and RFC 9980) via errata may not be appropriate since errata are intended for technical errors rather than new information, suggesting an updating RFC may eventually be preferable.
+  - A poll was conducted to confirm returning `draft-ietf-openpgp-nist-bp-comp` to the working group for another WGLC to incorporate the fix.
+
+#### Session Poll
+* **Question:** Are you OK with returning nist-bp-comp to the WG for another WGLC?
+* **Results:** yes: 7, no: 0, no_opinion: 2 (total: 17)
+
+---
+
+### 3. External Secret Keys Wire Format
+- **Presentation:** [Wire format for externally stored secret keys](https://datatracker.ietf.org/meeting/127/materials/slides-127-openpgp-wire-format-for-externally-stored-secret-keys-02)
+- **Presenter:** Heiko Schäfer
+- **Draft Reference:** `draft-ietf-openpgp-external-secrets`
+
+Heiko Schäfer summarized recent updates and proposed changes for `draft-ietf-openpgp-external-secrets`, which defines stub transferable secret keys (TSKs) pointing to external hardware (e.g., smart cards, TPMs):
+
+- **Recent Changes:** When no locator hint is present, the key material is explicitly defaulted to "unavailable".
+- **Proposed Registry Cleanup:**
+  - Decouple the S2K Usage registry from the Symmetric Key Algorithm registry, closing the open-ended mirroring after code points 1–13.
+  - Clarify the behavior of the legacy CFB S2K usage entry (verified against four interoperable implementations).
+- **Locator Hints:** Add an optional `device_name` field (up to 63 UTF-8 octets) for user-friendly UI prompts.
+- **Code Point Allocation:** Select a final S2K usage code point (currently using 252).
+- **Discussion:** Andrew Gallagher supported the proposed registry cleanup as a beneficial drive-by maintenance effort. Daniel Kahn Gillmor advised the authors to apply the proposed changes and report back to the mailing list.
+
+---
+
+### 4. Key Replacement
+- **Presentation:** [Key Replacement](https://datatracker.ietf.org/meeting/127/materials/slides-127-openpgp-key-replacement-00)
+- **Presenter:** Andrew Gallagher
+- **Draft Reference:** `draft-ietf-openpgp-replacementkey`
+
+Andrew Gallagher updated the group on `draft-ietf-openpgp-replacementkey`:
+
+- **Status:** Wire format has been stable for nearly a year. Test vectors and examples are complete. Interoperability between GoCrypto and RPGP low-level libraries has been verified ad hoc.
+- **Encryption Fallback:** Proposed separating deprecated keys into "encrypt to" and "do not encrypt to" lists via a stop record marker in the preferred key's replacement subpacket.
+- **Discussion:**
+  - Daniel Kahn Gillmor expressed concern that adding a stop marker adds unnecessary complexity compared to standard subkey revocation, though Andrew Gallagher noted it helps when secret key material for deprecated keys has been lost.
+  - The group concurred that complex encryption subkey selection logic can be deferred to a separate encryption selection document to keep `draft-ietf-openpgp-replacementkey` focused and ready for finalization.
+
+---
+
+### 5. HTTP Keyserver Protocol (HKP)
+- **Presentation:** [HKP](https://datatracker.ietf.org/meeting/127/materials/slides-127-openpgp-hkp-00)
+- **Presenter:** Andrew Gallagher
+- **Draft Reference:** `draft-ietf-openpgp-hkp`
+
+Andrew Gallagher highlighted changes and open questions in `draft-ietf-openpgp-hkp`:
+
+- **Recent Changes:** Added `Link: <...>; rel="next"` HTTP headers to support pagination on prefix log queries; updated v2 submission terminology to use "certs"; corrected IANA templates based on feedback from Songbo Peng.
+- **Open Architectural Questions:**
+  - Evaluation of `.well-known` paths versus legacy hardcoded paths.
+  - Grandfathering existing SRV record usage for keyserver discovery and round-robin lookups.
+  - **Canonical Bundles & Merge Policies:** Discussed the conflict between strict HTTP REST semantics (where `PUT` followed by `GET` returns exact uploaded bytes) versus keyserver merge policies (e.g., retaining existing revocations). Merge Request 10 proposes server-enforced merge policies, whereas Merge Request 12 (by Daniel Huigens) requires clients to resolve conflicts.
+- **Identity Equivalence Sets:** Andrew Gallagher raised the concept of treating bound v4 and v6 certificates as composite objects ("identity equivalence sets"). Daniel Kahn Gillmor cautioned against creating new abstract meta-certificates, emphasizing that key replacement is a transition mechanism and normal single-certificate semantics should remain the end goal. Heiko Schäfer noted that many users will maintain v4 and v6/PQC keys in parallel for an extended transition period.
+
+---
+
+### 6. Stateless OpenPGP (SOP)
+- **Presentation:** [Stateless OpenPGP (sop)](https://datatracker.ietf.org/meeting/127/materials/slides-127-openpgp-stateless-openpgp-sop-00)
+- **Presenter:** Daniel Kahn Gillmor
+
+Daniel Kahn Gillmor provided an update on the Stateless OpenPGP (SOP) CLI interface, which is actively used for automated OpenPGP interop testing across nine implementations (including a new Haskell implementation by Clint Adams):
+
+- **Pending Specification Updates:**
+  - `sop encrypt`: For each `--certs` argument provided, an implementation may skip individual certificates it cannot encrypt to, provided at least one certificate in that input can be encrypted to.
+  - `--keys` flag added to `sop encrypt` to allow encrypting directly to secret keys (mitigating K-OpenPGP key-swapping attacks).
+  - Profile support added to `sop update-key`.
+- **Working Group Adoption:** Stephen Farrell asked whether the working group should adopt SOP. Andrew Gallagher and Daniel Huigens strongly supported adoption due to its foundational role in testing OpenPGP implementations. Chairs agreed to take the adoption question to the mailing list.
+
+---
+
+### 7. Persistent Symmetric Keys
+- **Presentation:** [Persistent Symmetric Keys](https://datatracker.ietf.org/meeting/127/materials/slides-127-openpgp-persistent-symmetric-keys-00)
+- **Presenter:** Daniel Huigens
+- **Draft Reference:** `draft-ietf-openpgp-persistent-symmetric-keys`
+
+Daniel Huigens presented progress on `draft-ietf-openpgp-persistent-symmetric-keys`:
+
+- **Recent Updates:** Clarified usage scope, added signed/encrypted test vectors, provided key/IV derivation pseudo-code, and added deployment guidance (marking PSK certifications non-exportable and recommending deletion of PK-ESK packets when re-encrypting).
+- **Interop Testing & Packet Criticality:**
+  - Testing key bundles containing both a PSK and a v6 asymmetric key revealed that several implementations (Sequoia, pgp-less, rmp, GnuPG) fail when a PSK packet appears first because they do not handle unknown non-critical packets correctly per RFC 9580.
+  - Andrew Gallagher noted that GnuPG 2.5.24 has introduced preliminary support for v6 and ML-KEM.
+  - Heiko Schäfer and Daniel Kahn Gillmor reiterated that RFC 9580 requires compliant implementations to ignore unknown non-critical packets, and bugs should be filed against implementations failing on non-critical packets.
+- **WGLC Readiness:** The draft is close to WGLC; final consensus regarding packet criticality will be confirmed on the mailing list.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **`draft-ietf-openpgp-nist-bp-comp`:** Return the draft to the Working Group for another WGLC after the authors update the minimum required digest size to 384 bits (SHA-384) to defend against multi-target 2nd-preimage attacks.
+2. **`draft-ietf-openpgp-replacementkey`:** Omit complex stop-record markers and defer advanced encryption subkey selection logic to a future dedicated key selection document.
+
+### Action Items
+1. **Falko Strenzke / Authors:** Upload an updated version of `draft-ietf-openpgp-nist-bp-comp` specifying a minimum digest size of 384 bits and initiate mailing list discussion regarding the dishonest signer threat model.
+2. **Heiko Schäfer / Authors:** Apply the S2K Usage registry cleanup PRs and locator hint updates to `draft-ietf-openpgp-external-secrets`.
+3. **Daniel Huigens / Implementers:** File bug reports against implementations that fail to ignore non-critical PSK packets.
+4. **Chairs:** Initiate a mailing list thread regarding the potential adoption of Stateless OpenPGP (SOP) as a WG item.
+5. **Chairs / Authors:** Resolve the packet criticality discussion on the mailing list for `draft-ietf-openpgp-persistent-symmetric-keys` in preparation for WGLC.
+
+---
+
+## Next Steps
+
+- Perform another WGLC on `draft-ietf-openpgp-nist-bp-comp`.
+- Advance interop test coverage for `draft-ietf-openpgp-replacementkey` and `draft-ietf-openpgp-persistent-symmetric-keys` within the SOP test suite.
+- Address canonical bundle merge policies (`MR 10` vs. `MR 12`) for `draft-ietf-openpgp-hkp` on the mailing list.
+- Consider scheduling an interim virtual meeting prior to IETF 128.

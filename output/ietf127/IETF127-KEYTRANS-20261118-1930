@@ -1,0 +1,45 @@
+# [KEYTRANS](../wg/keytrans.html)
+
+## Summary
+
+The KEYTRANS Working Group met at IETF 127. The session covered working group updates, the status of the Key Transparency Architecture draft (queued for IESG telechat), and a detailed technical review of updates to [`draft-ietf-keytrans-protocol`](https://datatracker.ietf.org/doc/draft-ietf-keytrans-protocol/). Major technical outcomes included deciding to split the credentials specification out of the main protocol draft into a separate document, requiring normative TLS encoding for wire-format interoperability, addressing edge cases in third-party management and migration, and agreeing to simplify combined tree proof verification.
+
+## Key Discussion Points
+
+### Working Group Updates
+- **Chair Presentation**: Chairs Siobhan and Prachi presented the [Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-keytrans-chair-slides-01).
+- **Architecture Document**: The informational Architecture draft has passed IETF Last Call and is scheduled for IESG review on December 3, 2024. BCP 14 normative keywords (e.g., MUST/SHOULD) were removed to align with its informational track status, and a "Client Integrity" subsection was added to Security Considerations covering compute layers, binary transparency (SCITT), and time accuracy (Rough Time).
+
+### Protocol Updates (`draft-ietf-keytrans-protocol`)
+Brendan McMillion presented updates from [Protocol Updates](https://datatracker.ietf.org/meeting/127/materials/slides-127-keytrans-protocol-updates-00):
+- **Version Overflow Handling**: Binary ladder searches now explicitly cap queries at $2^{32} - 1$, returning a negative lookup result if a larger version is requested.
+- **Third-Party Management**: Addressed edge cases where submission from a service operator to a log manager fails. Service operators now increment their version counter every time a version is signed. Managers fill any version gaps in the prefix tree with all-zero commitment values ("skipped versions"). Wire structures were updated (`signed_version` in `ManagerUpdateRequest`, `skipped_versions` in `UpdateResponse`).
+- **Log Migration & Ownership**: Made `starting_position` optional in `OwnerInitRequest`. Omitting it allows ownership to begin at log entry zero, enabling gap-free migration from legacy logs.
+- **Vector Encoding**: Discussed encoding alternatives. Standard TLS encoding uses fixed-length byte prefixes, whereas MLS format uses variable-length integer prefixes.
+
+### Combined Tree Proof Serialization & Verification
+- **Felix Linker** raised implementation concerns regarding the combined tree proof parsing and validation logic. Interleaving structural tree parsing with cryptographic validation creates fragile implementations that are difficult to test and debug independently.
+- Felix suggested separating log tree proof parsing and verification, prefix tree proof parsing and verification, and logical queries into distinct phases.
+- **Brendan McMillion** acknowledged that the current design is fragile by design for security, but agreed to explore a proposal that provides a cleaner separation of proof data structure verification from logical tree checks.
+
+### Credential Specification & Draft Structure
+- **Discussion**: Participants discussed the complexity added by credentials and provisional credentials within `draft-ietf-keytrans-protocol`. While credentials enable offline verification required for group protocols like Messaging Layer Security (MLS), incorporating them into the core protocol draft complicates implementation and specification progress.
+- **Proposed Split**: Felix Linker, Thibault Meunier, Siobhan, and Orie Steele supported removing credentials from `draft-ietf-keytrans-protocol`. Brendan McMillion agreed with creating a separate credentials draft, which could also register necessary KT extensions/code points for MLS.
+- **AD Input**: Responsible AD Deb Cooley confirmed that splitting credentials into a standalone draft is fine, provided `draft-ietf-keytrans-protocol` does not have a normative dependency on it.
+
+### Encoding Format & Operational Parameters
+- **Thibault Meunier** and **Felix Linker** recommended making TLS encoding mandatory (MUST) in `draft-ietf-keytrans-protocol` rather than leaving it optional, ensuring full interoperability across independent implementations.
+- In response to Siobhan and Felix, Brendan agreed to replace arbitrary recommended limits (e.g., capping client storage at 10 recent Distinguished Log Entries) with text explaining the linear state trade-offs for client storage and network synchronization.
+
+## Decisions and Action Items
+
+### Decisions
+- **Credentials Draft Split**: Credentials and provisional credentials will be moved out of `draft-ietf-keytrans-protocol` into a separate draft, which will also cover MLS integration code points.
+- **Mandatory TLS Encoding**: `draft-ietf-keytrans-protocol` will require TLS format encoding as a normative requirement to guarantee interoperability.
+
+### Action Items
+- **Brendan McMillion**:
+  - Update `draft-ietf-keytrans-protocol` to remove the credential sections and author a new standalone credentials draft.
+  - Update `draft-ietf-keytrans-protocol` to make TLS format encoding normative.
+  - Re-evaluate the combined tree proof verification logic to separate structural proof parsing/verification from logical state checks based on feedback from Felix Linker.
+  - Replace hardcoded operational recommendations (e.g., 10 DLEs) with trade-off considerations regarding client storage and synchronization.

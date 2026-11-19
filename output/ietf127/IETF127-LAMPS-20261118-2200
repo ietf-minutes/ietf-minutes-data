@@ -1,0 +1,149 @@
+# [LAMPS](../wg/lamps.html)
+
+## Summary
+
+The Limited Additional Mechanisms for PKIX and S/MIME (LAMPS) Working Group met at IETF 127 to review document progress and discuss technical updates across several active drafts, proposed specifications, and post-quantum cryptography (PQC) transitions. 
+
+Key outcomes included progressing `draft-ietf-lamps-one-signature-certs` and `draft-ietf-lamps-attestation-freshness` toward Working Group Last Call, agreeing to remove `eFrodoKEM` from `draft-ietf-lamps-frodokem-certificates`, simplifying S/MIMEv5 requirements in `draft-ietf-lamps-rfc8550bis` and `draft-ietf-lamps-rfc8551bis` (including plans to drop CBC mode, legacy RSA PKCS#1 v1.5 where appropriate, and Zlib compression), and advancing security fixes for RFC 3161 timestamping to mitigate cross-protocol attacks. The working group also reviewed proposals for OpenID Connect authentication context types in certificates and Embedded Alternate Issuer Certificates ("Turducken / PQ Opt-Out Certificates") to facilitate WebPKI migration to PQC.
+
+---
+
+## Key Discussion Points
+
+### Administration and Status Updates
+- **Chairs**: Russ Housley, Deb Cooley
+- **Slides**: [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-chair-slides-00)
+- **Document Progress**:
+  - RFCs 9919 through 10082 have been published.
+  - The composite KEM drafts (cert and CMS) are in the RFC Editor queue. Mike Ounsworth noted a hackathon linting tool built by Corey Bonnell identified missing Subject Key Identifiers (SKID) and Authority Key Identifiers (AKID) in example end-entity certificates (RFC 5280 compliance). A PR is pending to resolve this before or during AUTH48.
+  - `draft-ietf-lamps-csr-attestation` is addressing IESG review comments.
+
+### One Signature Certificates
+- **Presenter**: Stefan Santesson
+- **Slides**: [One Signature Certificates](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-one-signature-certificates-00)
+- **Draft**: `draft-ietf-lamps-one-signature-certs`
+- **Discussion**:
+  - Stefan Santesson outlined updates to the specification for short-lived certificates where keys are generated for a single document signature and immediately destroyed. 
+  - Key Usage has been constrained to `digitalSignature` and `nonRepudiation` (plus key usage required for certificate request proof-of-possession). Binding type identifiers were converted from text strings to OIDs.
+  - Deb Cooley asked if key deletion is technically enforced or procedural. Stefan Santesson and Russ Housley clarified that while deletion relies on CA/RA operational assertions, the certificate explicitly includes an extension binding the certificate to the hash of the specific signed document, preventing any key reuse even if a private key were compromised or retained.
+  - Victor Kuarskey suggested recommending ordinary document signing Extended Key Usage (EKU) for compatibility with standard verifiers.
+- **Next Steps**: Add introductory text clarifying document signing EKU applicability, finalize OID assignments, and issue WG Last Call.
+
+### Attestation Freshness
+- **Presenter**: Hannes Tschofenig
+- **Slides**: [LAMPS Attestation Freshness](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-lamps-attestation-freshness-00)
+- **Draft**: `draft-ietf-lamps-attestation-freshness`
+- **Discussion**:
+  - Recent updates clarified nonce expiry semantics as cache hints/soft state to prevent state exhaustion. Protocol binding sections were refined for Enrollment over Secure Transport (EST), including adding an IANA registry for EST well-known URI path segments.
+  - Simple PKI Request was removed for CMC due to lacking transaction identifiers.
+  - Added informative text describing background check vs. passport model interactions and combined operational modes.
+- **Next Steps**: Resolve open PRs and prepare for WG Last Call.
+
+### Certificate Discovery
+- **Presenters**: Joe Mandel, John Gray
+- **Slides**: [Certificate Discovery](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-certificate-discovery-00)
+- **Draft**: `draft-ietf-lamps-certdiscovery`
+- **Discussion**:
+  - Updates include removing discovery intent IDs and use case enumerations, adding `certHash` (RFC 9763) to the related certificate descriptor, adding a `byOther` extensibility method, and adding a `self` location access method.
+  - Terminology updated from "primary/secondary" to "current/referenced" certificates.
+  - John Gray reported successful interop testing during the IETF 127 Hackathon between Carl Wallace’s test artifacts and Entrust's implementation.
+
+### FN-DSA Algorithm Identifiers
+- **Presenter**: Sean Turner
+- **Drafts**: `draft-ietf-lamps-fn-dsa-certificates`, `draft-ietf-lamps-cms-fn-dsa`
+- **Discussion**:
+  - Sean Turner reported that work on these drafts is paused pending the official NIST FIPS publication for FN-DSA. Participants in chat noted ongoing primitive spec work to convert FN-DSA to fixed-point arithmetic.
+
+### S/MIMEv5 Updates
+- **Presenter**: Sean Turner
+- **Slides**: [S/MIMEv5](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-smimev5-00)
+- **Drafts**: `draft-ietf-lamps-rfc8550bis`, `draft-ietf-lamps-rfc8551bis`
+- **Discussion**:
+  - **Structure & Modules**: Obsoleting v4; updating ASN.1 modules to 2021 standards; removing obsolete algorithms (e.g., RC2) from S/MIME capability sets.
+  - **Encrypted & Signed Data**: Proposed dropping EnvelopedData and CBC modes entirely, mandating AuthenticatedData / AuthEnvelopedData. Standardizing SignedData to mandate three core signed attributes and require checking recipient types.
+  - **Certificate Handling**: Adding requirements for clients to handle common certificate extensions (Certificate Policies, CRL Distribution Points) and reject hazardous configurations (e.g., `anyExtendedKeyUsage` in end-entity certs).
+  - **Obsolete Cleanup**: Dropping support for v1 certificates/CRLs, SHA-1 signing cert attributes, and legacy 8-character filename restrictions.
+  - **Unintrusive Signatures**: Daniel Kahn Gillmor presented the work ongoing in MAILMAINT/OpenPGP on unintrusive signatures (which includes header protection via RFC 9788). Sean Turner proposed referencing this as an alternative to legacy `multipart/signed`.
+  - **Compression**: Sean Turner questioned whether to update Zlib or drop compressed data entirely. Rich Salz, Daniel Kahn Gillmor, and Deb Cooley supported dropping compression from S/MIME to align with TLS, SSH, and IPsec deprecations and avoid compression side-channel risks.
+  - **Algorithm Selection & MTI**: Extensive discussion on mandatory-to-implement (MTI) algorithms for PQC and hybrid schemes. Participants (John Bradley, Daniel Kahn Gillmor, Deb Cooley, Hannes Tschofenig) strongly favored paring down algorithm choices, dropping P-521 and legacy RSA from MTI, and defining a tight set of MTI algorithms specific to S/MIME rather than trying to support all algorithm combinations.
+
+### Algorithm Identifiers for FrodoKEM in X.509
+- **Presenter**: Valery Smyslov
+- **Slides**: [X.509 - Algorithm Identifiers for FrodoKEM](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-x509-algorithm-identifiers-for-frodokem-00)
+- **Draft**: `draft-ietf-lamps-frodokem-certificates`
+- **Discussion**:
+  - Valery Smyslov raised the question of whether to retain `eFrodoKEM` (ephemeral parameter set with a hard key reuse limit of 256 uses) in X.509 certificates.
+  - Corey Bonnell, Scott Fluhrer, Thom Wiggers (in chat), and others strongly advocated for removing `eFrodoKEM`, stating that a 256-signature reuse limit makes no sense for certificates and the ~48–64 byte size savings are negligible compared to total public key sizes (9–13 KB).
+- **Next Steps**: Confirm removal of `eFrodoKEM` on the mailing list.
+
+### Use of FrodoKEM in CMS
+- **Presenter**: Milling Zhang
+- **Slides**: [Use of FrodoKEM in the Cryptographic Message Syntax](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-use-of-frodokem-in-the-cryptographic-message-syntax-00)
+- **Draft**: `draft-ietf-lamps-cms-frodokem`
+- **Discussion**:
+  - The document has been adopted as a working group draft. Added ASN.1 modules, IANA considerations, updated references to the ISO FrodoKEM standard, and cleaned up redundant identifiers.
+  - Michael StJohns noted a discrepancy in private key representation between the ISO standard and the CFRG draft that must be resolved. Scott Fluhrer recommended dropping `eFrodoKEM` and selecting either AES or SHAKE variants rather than keeping both.
+
+### RFC 3161 Update (Time-Stamp Protocol)
+- **Presenter**: Russ Housley
+- **Slides**: [RFC 3161 Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-rfc-3161-update-00)
+- **Discussion**:
+  - Addresses a cross-protocol attack between RFC 3161 timestamps and Microsoft Authenticode timestamps signed with the same key.
+  - Proposes updating RFC 3161 to:
+    1. Add security considerations detailing the cross-protocol attack.
+    2. Mandate that applications MUST reject a timestamp token if the `id-kp-timeStamping` extended key usage is missing from the TSA certificate.
+    3. Mandate that applications MUST reject a timestamp token if the content type is missing.
+- **Next Steps**: Complete the ongoing call for adoption and proceed directly to Working Group Last Call.
+
+### Certificate Authentication Context Type for OpenID Connect
+- **Presenter**: Stefan Santesson
+- **Slides**: [Certificate Authentication Context Type for OpenID Connect](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-certificate-authentication-context-type-for-openid-connect-00)
+- **Discussion**:
+  - Defines an OpenID Connect (OIDC) authentication context type extension for RFC 7773 to bridge identity claims from OIDC identity providers into short-lived/on-the-fly signature certificates.
+  - Specifies a JSON structure in `contextInfo` containing provider issuer, authentication time, ACR level, transaction ID, client ID, and claim-to-RDN mappings.
+  - Requests an IANA registry for context types and an IETF URN. Relaxes criticality rules in RFC 7773.
+- **Next Steps**: Russ Housley asked for objections to issuing a call for adoption; none were raised.
+
+### Composite FrodoKEM for X.509 and CMS
+- **Presenter**: Yubing Chen
+- **Slides**: [Composite FrodoKEM for X.509 and CMS](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-composite-frodokem-for-x509-and-cms-00)
+- **Discussion**:
+  - Proposed specifying composite FrodoKEM combinations with traditional algorithms (RSA-OAEP, ECDH P-256/P-384, X25519, X448) using the composite KEM framework.
+  - Panos Kampanakis, Vishmeet Sikka, and Scott Fluhrer questioned the security rationale, size overhead (15–26 KB), and deployment demand. Mike Ounsworth suggested merging hybrid/composite FrodoKEM parameters directly into `draft-ietf-lamps-frodokem-certificates` rather than maintaining separate drafts.
+
+### Embedded Alternate Issuer Certificates ("Turducken / PQ Opt-Out Certs")
+- **Presenter**: David Benjamin
+- **Slides**: [Embedded Alternate Issuer Certificates](https://datatracker.ietf.org/meeting/127/materials/slides-127-lamps-embedded-alternate-issuer-certificates-00)
+- **Discussion**:
+  - Addresses WebPKI migration to Post-Quantum CAs when legacy servers cannot be updated to support PQC certs or multi-cert negotiation. 
+  - Embeds an alternate PQ-rooted certificate ("opt-out certificate") inside a legacy certificate extension/SCT structure. Legacy clients validate the outer legacy cert while updated PQ clients extract and validate the embedded PQ cert.
+  - John Gray and Carl Wallace confirmed successful interoperability during the IETF 127 Hackathon.
+  - Sophie Schmieg and David Benjamin discussed certificate size bloat and backward compatibility risks.
+- **Next Steps**: Authors will request WG adoption on the mailing list.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-lamps-one-signature-certs`**:
+   - Add text to the introduction clarifying document signing EKU usage.
+   - Issue Working Group Last Call upon final OID assignment.
+2. **`draft-ietf-lamps-frodokem-certificates`**:
+   - Remove `eFrodoKEM` from the draft; confirm decision on the mailing list.
+3. **`draft-ietf-lamps-rfc8550bis` / `draft-ietf-lamps-rfc8551bis` (S/MIMEv5)**:
+   - Drop EnvelopedData and CBC modes; require AuthenticatedData / AuthEnvelopedData.
+   - Remove Zlib compression from S/MIMEv5.
+   - Drop obsolete v1 certs/CRLs, SHA-1 signing cert attributes, and 8-character filename limits.
+   - Form a design/tiger team to finalize a minimal MTI algorithm set for S/MIMEv5.
+4. **RFC 3161 Update**:
+   - Finish adoption call and move to Working Group Last Call.
+5. **Certificate Authentication Context Type for OpenID Connect**:
+   - Issue a formal call for Working Group adoption on the mailing list.
+
+---
+
+## Next Steps
+
+- **Attestation Freshness**: Complete PR updates for open issues and initiate WG Last Call on `draft-ietf-lamps-attestation-freshness`.
+- **Certificate Discovery**: Continue draft refinements following hackathon interop results for `draft-ietf-lamps-certdiscovery`.
+- **Embedded Alternate Issuer Certificates**: Initiate mailing list discussion for WG adoption.

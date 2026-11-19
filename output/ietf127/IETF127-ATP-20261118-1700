@@ -1,0 +1,84 @@
+# [ATP](../wg/atp.html)
+
+## Summary
+
+The Authenticated Transfer Protocol (ATP) Working Group met at IETF 127. The session focused on the working group adoption and status of the repository specification, revisions to the AT URI scheme syntax, and an update on supporting floating-point numbers in the repository data model. 
+
+The WG conducted a successful adoption poll for `draft-holmgren-at-repository`. The group also evaluated a proposed URI format revision (`at:global/...`) to address RFC 3986 compliance and extensibility for future protocol features such as AT Proto spaces.
+
+## Key Discussion Points
+
+### Working Group Administration
+- Chairs Mallory Knodel and Peng Shuping opened the session, reviewed the Note Well, and adjusted the agenda (removing the STAR presentation and adding extra discussion time for AT URIs and floating-point numbers).
+- Presentation: [Chair's Welcome Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-atp-chairs-welcome-slides-00)
+
+### Repository Document Status
+- Bryan Newbold presented the status of `draft-holmgren-at-repository` (which merges the repository data structure and synchronization specifications into a single draft).
+- Presentation: [Repository Document Status](https://datatracker.ietf.org/meeting/127/materials/slides-127-atp-repository-document-status-00)
+- **Scope & Changes:** The merged document covers Merkle tree structures, record encoding, CBOR serialization profiles, streaming synchronization, account status, full snapshot sync, and blobs. Since IETF 120 (Vienna), updates include added blob handling sections, refined CBOR RFC citations, privacy considerations, and editorial cleanups.
+- **Open Technical Issues:**
+  - *Scoping:* Clarifying account migration sequences, referencing elliptic curve DSA systems (P-256, secp256k1 with low-S signature variants), post-quantum signature considerations, and single-record inclusion proofs.
+  - *Updates & Features:* Repository version bump (v3 to v4), field deprecations/renames, introduction of `hash_cursor`, time-like cursors/timestamps, WebSocket subprotocol registration, and floating-point support.
+  - *Breaks/Framing:* Merging WebSocket CBOR event stream framing into single frames, and potential record versioning (multiple copies with identical URIs but different hashes).
+  - *Data Model & Parsing:* Depth-first vs. breadth-first serialization ordering, required blocks for Merkle tree verification, and UTF-8 normalization.
+- **Implementation & Test Vectors:** Discussed maintaining test vector suites and PDS acceptance tests in GitHub repositories alongside protocol drafts.
+
+### AT URIs Syntax
+- Daniel Holmgren presented proposed revisions to the AT URI scheme specified in `draft-newbold-atp-aturi`.
+- Presentation: [AT URIs](https://datatracker.ietf.org/meeting/127/materials/slides-127-atp-at-uris-01)
+- **Problem Statement:** The legacy syntax `at://[did]/[collection]/[rkey]` is invalid under RFC 3986 because the `//` authority section expects host/network authority syntax, which is violated by DID strings containing colons. The current syntax is also not extensible to non-repository resources.
+- **Evaluated Alternatives:**
+  - `at:///[did]/...` (empty authority; non-idiomatic)
+  - `at:/[did]/...` (no authority, hierarchical path)
+  - `at:[did]...` (opaque path without slashes; confusing syntax)
+  - Percent-encoding or replacing colons in DIDs (violates the principle of maintaining persistent account identifiers verbatim)
+- **Proposed Format:** `at:global/[did]/[collection]/[rkey]` (and `at:space/...` for access-controlled space records). The scheme is `at:`, followed by a subscheme/namespace prefix (`global`, `space`), eliminating `//` and network authority assumptions while maintaining unambiguous left-to-right parsing.
+- **Discussion:**
+  - *Migration & Legacy URIs:* Nick Gerakines raised questions regarding backward compatibility. Daniel Holmgren noted that existing content-addressed references cannot be retroactively modified without breaking cryptographic hash integrity; implementations will parse legacy URIs as v0 alongside the new syntax.
+  - *Namespaces:* Eli Mallon and Daniel Holmgren clarified that `global` was chosen over `public` because spaces can also contain public records.
+  - *Relative URL Parsing:* Emelia Smith noted that removing hierarchical slashes after the scheme breaks standard WHATWG URL relative resolution (`new URL(rel, base)`). Daniel Holmgren noted that relative URI resolution is rarely used in AT Proto due to strict triple record structures, but agreed to provide a written explainer on the mailing list.
+
+### Floating-Point Numbers
+- Bryan Newbold, Volker Mische, Eli Mallon, Jan Lindblad, Bumblefudge, Evelyn Osman, and Rowan May discussed adding float support to the repository CBOR data model.
+- **Current Approach:** Adopting a JSON number model where CBOR `float64` encoding is forbidden for integer values to eliminate ambiguity between integer `1` and float `1.0`.
+- **Implementation & Edge Cases:**
+  - Eli Mallon shared empirical data showing integral floats are negligible in production data, but questioned handling floats outside the JS safe integer range (`2^53`).
+  - Volker Mische outlined Rust implementation work restricting integers to signed 64-bit range and forbidding float representations of integer values above `2^64`.
+  - Jan Lindblad and Rowan May noted interoperability risks when mapping IEEE 754 floats and non-finite values (NaN, infinity) across standard JSON libraries.
+  - Bryan Newbold suggested supporting exact decimal representations via string formats in parallel for sensitive domains (such as monetary/financial values).
+
+## Decisions and Action Items
+
+### Decisions
+- **WG Adoption of Repository Draft:** The working group voted to adopt `draft-holmgren-at-repository`.
+- **AT URI Scheme Direction:** Broad support was expressed for the `at:global/...` URI format approach, pending resolution of relative URL resolution feedback on the mailing list.
+
+### Poll Results
+
+1. **WG adoption of draft-holmgren-at-repository**
+   - yes: 15
+   - no: 0
+   - no_opinion: 1
+   - total: 32
+
+2. **Are there blocking problems with this format?** *(regarding proposed `at:global/...` URI scheme)*
+   - yes: 2
+   - no: 14
+   - no_opinion: 5
+   - total: 38
+
+3. **Is there general support for this approach?** *(regarding proposed `at:global/...` URI scheme)*
+   - yes: 14
+   - no: 1
+   - no_opinion: 3
+   - total: 38
+
+### Action Items
+- **Daniel Holmgren / Authors:** Provide an explainer on the mailing list regarding relative URI resolution and WHATWG URL parser interactions with `at:global/...`.
+- **Chairs:** Confirm the working group adoption of `draft-holmgren-at-repository` on the mailing list.
+- **Bryan Newbold:** Prepare an initial draft for the Account Identifier System (`draft-ietf-atp-account-identifiers`).
+
+## Next Steps
+- **Q1 2025:** Authors to publish updated draft revisions for `draft-holmgren-at-repository` (incorporating float rules) and `draft-newbold-atp-aturi`, along with an initial draft for the Account Identifier System.
+- **March 2025 (IETF 128):** Target working group adoption for remaining milestone drafts (Account Identifier System, Operational Best Practices, and AT URIs).
+- **July 2027:** Target milestone for submitting `draft-holmgren-at-repository` to the IESG.

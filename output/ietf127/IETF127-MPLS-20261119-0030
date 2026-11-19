@@ -1,0 +1,86 @@
+# [MPLS](../wg/mpls.html)
+
+## Summary
+
+The MPLS Working Group met to discuss working group status, updates on active documents, and several technical presentations covering STAMP session bootstrapping via LSP ping, signaling RSVP-TE tunnels over an SR-MPLS forwarding plane using adjacency segment identifiers (SIDs), and supporting Explicit Congestion Notification (ECN) in MPLS using MPLS Network Actions (MNA). 
+
+Key developments include an upcoming Working Group Last Call for `draft-ietf-mpls-stamp`, plans for an interim meeting to address signaling RSVP-TE over SR-MPLS, and upcoming adoption requests for new MNA extensions.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status Update
+Presented by Tarek Saad ([1. WG Status Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-mpls-1wg-status-update-05))
+
+* **Errata:** An erratum for RFC 8029 requesting changes to IPv6 destination addresses for diagnostic packets was rejected by the Area Director (AD) due to a lack of consensus; it will be addressed in a future document update if needed.
+* **IESG Documents:** Progress continues on documents in the IESG pipeline. Jim Guichard noted that responses addressing AD discusses for the MLDP Yang draft have been submitted.
+* **Active Working Group Drafts:**
+  * `draft-ietf-mpls-algo-mt-oam` (LSP Ping/Traceroute for Prefix SID in Multi-Algorithm/Multi-Topology Networks): Revision 01 was refreshed; the chairs encourage working group review.
+  * `draft-ietf-mpls-frr-ext` (Signaling Optimization Objective and Bounded Metrics for MPLS Fast Reroute Backup LSP Tunnels): Authors are discussing path scope bound metrics and have requested an early IANA code point allocation.
+  * `draft-ietf-mpls-lsp-ping-ioam-conf-state` (LSP Ping/Traceroute for Enabled In-situ OAM Capabilities): Revision 02 is published with no open issues; waiting on author signal for Working Group Last Call.
+  * `draft-ietf-mpls-mna-detnet` (MPLS Network Action for Deterministic Networking): Revision published in June; authors are addressing remaining open issues prior to requesting Last Call.
+  * **MNA PSD and RP Selector Draft:** Needs an IANA section update to align with the MNA header draft before requesting Last Call.
+
+---
+
+### Bootstrap a STAMP Test Session With LSP Ping
+Presented by Greg Mirsky ([2. Bootstrap a STAMP Test Session With LSP Ping](https://datatracker.ietf.org/meeting/127/materials/slides-127-mpls-bootstrap-a-stamp-test-session-with-lsp-ping-00))
+
+* **Overview:** Covers `draft-ietf-mpls-stamp` (Simple Two-way Active Measurement Protocol (STAMP) for MPLS Label Switched Paths (LSPs)). The draft defines the "Stamp Session Bootstrap TLV" to dynamically bootstrap STAMP sessions out-of-band using LSP Ping without requiring manual configuration.
+* **Technical Details:**
+  * Uses a 16-bit STAMP Session Identifier matching the STAMP packet length.
+  * Supports dynamic UDP destination port allocation to reduce traceability by man-in-the-middle attacks.
+  * Defines IP/UDP encapsulation requirements over MPLS: IPv4 uses loopback range `127.0.0.0/8`; IPv6 uses the dummy IPv6 prefix range defined in RFC 9580 to prevent packet leakage outside the MPLS domain.
+  * The source IP address in the MPLS echo request must match the session sender IP to allow session reflectors to correctly demultiplex sessions.
+* **Discussion:**
+  * Rakesh Gandhi questioned why LSP Ping bootstrapping is needed instead of using STAMP TLVs directly within STAMP test packets. Greg Mirsky explained that out-of-band signaling with LSP Ping avoids manual configuration on stateful/stateless reflectors and resolves demultiplexing issues when multiple senders use identical session IDs. Rakesh Gandhi suggested summarizing why STAMP-native bootstrapping mechanisms are insufficient compared to this approach.
+* **Poll:**
+  * Question: "Have you read the latest version of draft-ietf-mpls-stamp?"
+  * Results: yes: 8, no: 11, no_opinion: 1 (total: 49).
+
+---
+
+### Signaling RSVP-TE Tunnels on an SR-MPLS Forwarding Plane Using Adjacency Segment Identifiers
+Presented by Pawan Pillamari ([3. Signaling RSVP-TE Tunnels on an SR-MPLS Forwarding Plane Using Adjacency Segment Identifiers](https://datatracker.ietf.org/meeting/127/materials/slides-127-mpls-3-signaling-rsvp-te-tunnels-on-an-sr-mpls-forwarding-plane-using-adjacency-segment-identifiers-01))
+
+* **Overview:** Target use case is for operators running SR-MPLS who require a distributed bandwidth engineering toolkit using RSVP-TE signaling. Replaces the tailing labels in RFC 8577 with IGP-advertised SR Adjacency SIDs.
+* **Technical Details:**
+  * Path computation occurs at the ingress node or PCE. Per-hop admission control and bandwidth reservations are signaled via RSVP-TE path/resv messages, maintaining RSVP control plane state without adding state to the forwarding plane.
+  * Employs automatic delegation and existing SR Adjacency SIDs/binding sets. Coexistence with SR native traffic is managed via static bandwidth partitioning (RFC 8426) or dedicated adjacency sets.
+  * Protection supports both signaled and non-signaled backup paths (e.g., TI-LFA).
+* **Discussion:**
+  * Andrew Stone requested a clear, overarching architecture document detailing how RSVP-TE interacts with SR across spring and MPLS drafts.
+  * Adrian Farrel noted that distributing bandwidth reservation control for both standard MPLS-TE and SR-MPLS over shared links offers significant efficiency over partitioning bandwidth between centralized and distributed control planes.
+  * Himanshu Shah and a Huawei representative asked about per-LSP state and bandwidth management at transit routers without dedicated data plane labels. Pawan Pillamari and Tony Przygienda clarified that bandwidth tracking and preemption occur strictly in the control plane per LSP, regardless of label aggregation in the data plane.
+  * Zafar Ali questioned the necessity of using SR data plane SIDs without local labels and stressed the importance of transit per-hop link accounting.
+
+---
+
+### Support ECN in MPLS Using MPLS Network Actions
+Presented by Joel Halpern ([4. Support ECN in MPLS Using MPLS Network Actions](https://datatracker.ietf.org/meeting/127/materials/slides-127-mpls-support-ecn-in-mpls-using-mpls-network-actions-00))
+
+* **Overview:** Proposes a mechanism using MPLS Network Actions (MNA) to allow simultaneous support for DiffServ, ECN, and MPLS without stealing DiffServ code points.
+* **Technical Details:**
+  * Defines a new MNA opcode carrying the 2-bit ECN field, supported in both in-stack and post-stack MNA formats.
+  * At ingress, ECN-capable IP packets are encapsulated with the MNA ECN opcode. Transit nodes detecting congestion set the ECN bits per RFC 6040 procedures. Egress nodes decapsulate the header and propagate the ECN marking to the inner IP packet.
+* **Discussion:**
+  * Tarek Saad asked how DiffServ and ECN interact. Joel Halpern clarified that DiffServ and ECN remain completely independent fields within the MNA structure.
+  * Li Zhang raised concerns regarding legacy routers that do not support MNA ECN. Joel Halpern explained that non-supporting nodes simply ignore the MNA opcode and forward the packet normally; congestion experienced at non-supporting nodes will not be marked, but overall forwarding remains unaffected. Operational considerations text will be added.
+  * Tony Przygienda noted that this capability is highly relevant for AI data center networks requiring urgent ECN support over MPLS.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-mpls-stamp`:**
+   * Working Group Last Call will be initiated shortly following the IETF session.
+2. **RSVP-TE over SR-MPLS:**
+   * The adoption poll has closed with mixed feedback. The chairs and AD will organize an interim meeting / joint session to discuss the overall architecture and next steps.
+
+---
+
+## Next Steps
+
+* **`draft-ietf-mpls-frr-ext`:** Chairs to evaluate working group consensus regarding the early IANA code point allocation request.
+* **Support ECN in MPLS Using MPLS Network Actions:** Authors plan to request Working Group adoption in the near future following minor additions to operational considerations text.

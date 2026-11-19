@@ -1,0 +1,78 @@
+# [SIDROPS](../wg/sidrops.html)
+
+## Summary
+
+The SIDROPS working group met at IETF 127. Session B was chaired by Russ Housley (introductory presentation: [Chairs' Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-chairs-slides-00)). The session covered operational approaches for pre-validating BGP updates at the source, potential updates to the RPKI-Router (RTR) protocol for Mapping Origin Authorizations (MOAs) and push-based pacing, considerations around sovereign IP space for legacy address holders, and performance optimization techniques for incremental validation in Relying Parties (RPs).
+
+---
+
+## Key Discussion Points
+
+### 1. Source Pre-Validation
+
+* **Presentation:** A proposal was presented on validating BGP route announcements against local RPKI data at the source prior to exporting them to the global routing table.
+* **Problem Statement:** Self-inflicted invalid Route Origin Authorizations (ROAs) frequently result from operator misconfigurations between the RPKI control plane and router configuration, or transient synchronization delays between the two planes.
+* **Proposed Solution:** 
+  * Perform cross-validation against the local RTR cache at the egress/source point before announcing a route.
+  * If validation fails (Invalid), block the route and cache it locally; re-evaluate automatically when updated ROA data is received.
+  * Complements existing mechanisms such as egress Route Origin Validation (ROV, RFC 8981) and inbound cache handling (RFC 9324).
+* **Discussion:**
+  * The presenter highlighted that the mechanism preserves the structural independence between RPKI management systems and router control planes.
+  * An optional "strict mode" was mentioned, which would disallow the announcement of unknown prefixes.
+
+### 2. IPv6 Mapping Prefix PDU for RPKI-Router Protocol (MOA RTR PDU)
+
+* **Presentation:** Gordon (China Telecom) presented a proposed extension to the RPKI-Router protocol to carry MOA data, serving as a companion PDU specification for [draft-ietf-sidrops-moa-profile](https://datatracker.ietf.org/doc/draft-ietf-sidrops-moa-profile/).
+* **Technical Details:**
+  * Defines a new PDU type running over RTR version 3.
+  * Encapsulates an IPv6 mapping prefix along with associated IPv4 prefixes.
+  * Utilizes standard RTR lifecycle management, including refresh, retry, and expire timers, serial number matching, and withdrawal mechanisms aligned with RFC 8210.
+* **Discussion:**
+  * **Job Snijders** expressed caution regarding making changes to the RTR protocol or bumping to version 3 before RTR v2 (RFC 8210) sees widespread deployment and field operational experience. He noted that protocol version negotiation is being exercised in the field for the first time with v2, and cautioned against rushing v3 changes.
+  * **Job Snijders** also noted that [draft-ietf-sidrops-moa-profile](https://datatracker.ietf.org/doc/draft-ietf-sidrops-moa-profile/) is still undergoing revision and has not yet received an IANA allocation, suggesting the RTR PDU work wait until the base profile matures further.
+  * Russ Housley directed the discussion to the mailing list to gather community feedback on timing and protocol evolution.
+
+### 3. Push Mode Extension for RTR
+
+* **Presentation:** China Mobile and ZTE presented an opt-in push-mode extension to the RPKI-Router protocol (RFC 8210) intended to allow RPs to control data pacing to routers.
+* **Proposed Mechanism:**
+  * Introduces lightweight subscription mechanisms supporting both event-driven and periodic updates controlled by the RP cache.
+  * Designed to prevent "thundering herd" query bursts on RP caches during network recovery or mass update events.
+  * Fully backward-compatible, falling back to standard RTR pull mode if unsupported by either end.
+* **Discussion:**
+  * **Job Snijders** and **Rob Austein** pointed out that RPs already possess effective pacing controls under RFC 8210 (e.g., delaying or queuing serial notification updates) and that processing router poll requests is computationally cheap when data has not changed.
+  * **Rob Austein** recalled the foundational RTR design assumption: routers are expensive and resource-constrained, while RPs are cheap, high-capacity servers, meaning cache capacity should be scaled to handle router queries.
+  * Participants agreed that proponents need to demonstrate on the mailing list that a real-world problem exists that cannot be solved within the existing RTR protocol capabilities.
+
+### 4. Sovereign IP Space and Legacy Address Holders in RPKI
+
+* **Presentation:** Joe Gersh (Independent Researcher) presented a concept for "sovereign IP space," aimed at legacy address holders who wish to participate in RPKI while declaring their address allocations free from potential overreach or unilateral revocation by superior registries/Trust Anchors (TAs).
+* **Implementation Details:** A test implementation was demonstrated using a distributed ledger / blockchain to validate non-interference ("don't tread on me") constraints and multi-signature authorization patterns without requiring end-user crypto wallets.
+* **Discussion:**
+  * **Job Snijders** suggested separating the architectural concepts (legacy address trust anchors and non-interference rules) from the specific reference implementation choice (blockchain).
+  * **Job Snijders** pointed to existing mechanisms such as [draft-ietf-sidrops-constraining-rpki-trust-anchors](https://datatracker.ietf.org/doc/draft-ietf-sidrops-constraining-rpki-trust-anchors/), which defines methods for constraining TAs via local configuration, and noted that merging payload state across multiple TAs is a deliberate architectural feature for RPKI resilience.
+  * **Job Snijders**, **John Scudder**, and **Rob Austein** recommended that future contributions focus on human-readable protocol specifications rather than implementation artifacts or generated text.
+
+### 5. Considerations for Incremental Validation in RPKI Relying Parties
+
+* **Presentation:** Yingying Su and Libin Liu presented benchmarks on validation reuse strategies within the Panda RPKI Relying Party software.
+* **Technical Details:**
+  * Evaluated four reuse strategies for incremental updates: signature-level caching, object-level caching, publication point (PP) level caching, and a hybrid PP/object approach.
+  * Benchmark results demonstrated that publication point reuse and hybrid caching reduced update processing latency from ~85 seconds down to 16–17 seconds during incremental updates.
+* **Discussion:**
+  * **John Scudder**, **Rob Austein**, **Tim Bruijnzeels**, and **Job Snijders** noted that while sharing implementation experience and secure optimization techniques is valuable to the community, published RFCs are not required or typical for software implementation optimizations.
+  * **Job Snijders** congratulated the authors on the development of the Panda RP software and referenced validation path poisoning work discussed in [Mixed Certificate Chains in the RPKI (actually, why not to mix)](https://datatracker.ietf.org/meeting/127/materials/slides-127-sidrops-sessb-mixed-certificate-chains-in-the-rpki-actually-why-not-to-mix-01), cautioning the authors to account for potential security implications when caching validation states across incremental updates.
+
+---
+
+## Decisions and Action Items
+
+* **MOA RTR PDU & RTR Versioning:** Discussion on whether to advance RTR PDU extensions for MOA or defer RTR v3 work until RTR v2 operational feedback is collected will continue on the working group mailing list.
+* **Push Mode for RTR:** Proponents were directed to the mailing list to provide concrete operational use cases demonstrating where existing RFC 8210 RP pacing mechanisms are insufficient.
+
+---
+
+## Next Steps
+
+* **[draft-ietf-sidrops-moa-profile](https://datatracker.ietf.org/doc/draft-ietf-sidrops-moa-profile/):** Authors will continue incorporating working group feedback on the base profile draft.
+* **Incremental RP Validation:** Authors will share performance optimization insights with RP implementers via the mailing list rather than pursuing an RFC track document.

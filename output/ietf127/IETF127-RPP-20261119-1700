@@ -1,0 +1,116 @@
+# [RPP](../wg/rpp.html)
+
+## Summary
+
+The RESTful Provisioning Protocol (RPP) Working Group met at IETF 127 in San Francisco. The session was chaired by Gavin Brown, with Andy Newton stepping in as co-chair for Marco Davenport and Charlie Lewis. 
+
+The meeting covered working group deliverables and milestones, a major overview of core specifications updates, a proposed structural reorganization of RPP drafts, details on message handling, Internationalized Domain Name (IDN) support, the RPP extension framework, and key findings from the IETF 127 Hackathon.
+
+---
+
+## Key Discussion Points
+
+### Working Group Deliverables & Milestones
+- **Chairs Presentation**: [Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-rpp-chair-slides-00) (Gavin Brown)
+- **Discussion**:
+  - Gavin Brown noted that the working group hit one milestone but missed another, proposing adding six months to remaining unachieved milestones.
+  - Paweł Kowalik noted that `draft-ietf-rpp-requirements` and architecture concepts remain stable. The architecture document is parked as a working group document that will be maintained, updated if necessary, and considered for publication as an Informational RFC once protocol specifications are finalized.
+  - Gavin Brown emphasized keeping milestone-related documents active with regular updates and version bumps.
+
+---
+
+### Document Updates and Restructuring
+- **Presentation**: [IETF 127 RPP Document Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-rpp-ietf-127-rpp-document-update-01) (Paweł Kowalik)
+- **Drafts Discussed**:
+  - `draft-ietf-rpp-core`
+  - `draft-ietf-rpp-data-objects`
+  - `draft-ietf-rpp-json`
+  - JSContact profile draft
+- **Technical Updates**:
+  - Removed mandatory array ordering and the `urgent` parameter from update operations.
+  - Standardized the `availability` operation as a regular data object path operation.
+  - Split object status definitions per object type, separating client-managed and server-managed statuses.
+  - Replaced the dedicated restore report operation with a partial update on the restore process.
+  - Introduced a generic `visibility` attribute (currently used to obscure authorization codes by default unless requested via the `include-elements` query parameter).
+  - Introduced object inheritance (e.g., base message objectsExtended by concrete message types).
+  - Generated normative JSON Schemas mechanically from `draft-ietf-rpp-data-objects`.
+
+- **Signalization & Web Browser Support**:
+  - Evaluated custom HTTP headers versus media type parameters (`accept`/`content-type`) for client-server profile signaling.
+  - Andy Newton cautioned regarding CORS preflight checks and strict HTTP header handling if browser-based AJAX clients interact directly with RPP endpoints.
+  - Gavin Brown reminded the group that supporting web browsers is a `SHOULD` requirement in `draft-ietf-rpp-requirements`, so any deviation or technical compromise requires consensus.
+
+- **Proposed Structural Reorganization**:
+  - Jim Gould strongly advocated splitting `draft-ietf-rpp-data-objects` and associated specifications so that framework rules reside in core documents, while individual data objects (Domain, Host, Contact, Discovery, Organization/User) are moved into standalone object specifications (similar to EPP's RFC structure).
+  - Paweł Kowalik confirmed that the editors intend to keep `draft-ietf-rpp-core`, `draft-ietf-rpp-data-objects`, and `draft-ietf-rpp-json` as framework documents, while splitting object-specific rules, paths, query parameters, and JSON schemas into separate object drafts.
+
+---
+
+### Messages in RPP
+- **Presentation**: [Messages in RPP](https://datatracker.ietf.org/meeting/127/materials/slides-127-rpp-messages-in-rpp-02) (Martin)
+- **Overview**:
+  - RPP models asynchronous notifications and messages based on EPP polling mechanisms, while addressing EPP limitations (such as single-head queue blocking and single-reader restrictions).
+  - RPP introduces polymorphic message payloads using inheritance from a base message structure, message retrieval by type via HTTP `GET`, explicit deletion/acknowledgement via HTTP `DELETE`, queue depth signaling in headers, and an at-least-once delivery guarantee with timeout resets.
+- **Discussion**:
+  - **Batch Retrieval & Acknowledgement**: Paweł Kowalik, Christian, and Eric Skoglund supported enabling clients to fetch and acknowledge multiple messages in batches to prevent queue backlogs during high-volume events.
+  - **Filtering**: Jim Gould and Eric Skoglund suggested allowing clients to filter message queues not only by message type but also by attributes such as TLD or registry group.
+  - **Process Information**: Paweł Kowalik noted that including complete process information inline within messages is preferable to external object references, preventing issues if process objects expire on the server before the message is retrieved.
+
+---
+
+### Internationalized Domain Names (IDN) in RPP
+- **Presentation**: [IDN in RPP](https://datatracker.ietf.org/meeting/127/materials/slides-127-rpp-idn-in-rpp-03) (Martin)
+- **Overview**:
+  - Discussed introducing IDN handling into RPP data objects and endpoints based on Label Generation Rulesets (LGR) maintained by IANA.
+  - Proposed using A-labels exclusively for URL paths and headers to avoid percent-encoding complexities, while supplying U-labels (`uName`) and LGR identifiers in JSON payloads for object creation.
+- **Discussion**:
+  - Paweł Kowalik supported keeping path/endpoint references strictly A-label based to maintain protocol simplicity.
+  - Jim Gould cautioned that full IDN variant support is extremely complex and recommended decoupling IDN/variant specifications from the core RPP deliverables into separate extension drafts.
+  - Jim Galvin summarized ongoing work in REGEXT regarding IDN variants and "same entity sets" (including diacritics and CC-TLD considerations like emojis). He recommended decoupling registry policy and language tags from strict LGR identifiers and ensuring close alignment between RPP and REGEXT work.
+  - Gavin Brown cautioned against relying too heavily on IANA LGR structure naming or hardcoding LGR identifiers in object schemas, noting that language tags are less prone to breaking changes than evolving LGR tables.
+
+---
+
+### Extending RPP
+- **Presentation**: [Extending RPP](https://datatracker.ietf.org/meeting/127/materials/slides-127-rpp-extending-rpp-02) (Martin)
+- **Overview**:
+  - Extensions in RPP are additive-only and must be independent, discoverable, and non-restrictive to core features.
+  - Introduced an extension guidelines document containing extension point hierarchies, standardized templates, and JSON Schema composition rules using `allOf` and `rpp:extends`.
+- **Discussion**:
+  - Deep asked about alignment with the JSON Schema working group efforts; Martin confirmed RPP tracks the draft specifications and relies on stable JSON Schema drafts (e.g., draft 2020-12).
+  - Jim Gould and Paweł Kowalik discussed whether base data objects should formally be built using the extension mechanism ("eating your own dog food"). Paweł noted that while conceptually similar, base objects are core, but extension rules will follow the exact same structural patterns.
+
+---
+
+### IETF 127 Hackathon Report
+- **Presentation**: Hackathon summary incorporated into [IETF 127 RPP Document Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-rpp-ietf-127-rpp-document-update-01) (Paweł Kowalik)
+- **Key Findings**:
+  - Implementers built and updated an RPP-to-EPP proxy, validating the current specification draft updates with nearly 700 integration test cases.
+  - Refined signaling terminology based on implementation experience:
+    - **Extension**: Adds protocol functionality.
+    - **Profile**: Constrains protocol behavior.
+    - **Preset**: Combines extensions and profiles communicated on the wire.
+  - Implementation experience revealed that applying raw JSON Patch for partial updates can be overly flexible and problematic for backing EPP registries, as servers often must fetch full state before evaluating patches.
+
+---
+
+## Decisions and Action Items
+
+1. **Milestones**: Extend unachieved working group milestone target dates by 6 months.
+2. **Document Restructuring**: Proceed with splitting `draft-ietf-rpp-data-objects` and related documents into core framework specifications alongside separate object-specific specifications (Domain, Host, Contact, etc.).
+3. **JSContact Profile Call for Adoption**: Chairs to initiate an explicit Call for Adoption on the mailing list for the JSContact profile draft.
+4. **IDN Decoupling**: Keep IDN variant handling out of the core protocol specifications, moving advanced variant and LGR features into separate extension drafts while maintaining alignment with REGEXT work.
+
+---
+
+## Next Steps
+
+- **Chairs**:
+  - Coordinate with the Area Director regarding procedural handling for the mechanical split of working group documents.
+  - Issue the mailing list Call for Adoption for the JSContact profile draft.
+  - Confirm milestone target adjustments on the mailing list.
+- **Document Authors & Editors**:
+  - Execute the document split into core framework and individual object specifications.
+  - Incorporate feedback on batch message retrieval (`GET`) and deletion (`DELETE`) into `draft-ietf-rpp-core` and `draft-ietf-rpp-data-objects`.
+  - Refine signalization (headers vs. media types) and JSON Patch mechanisms based on Hackathon findings.
+  - Continue addressing open issues on GitHub across `draft-ietf-rpp-core`, `draft-ietf-rpp-json`, and `draft-ietf-rpp-data-objects`.

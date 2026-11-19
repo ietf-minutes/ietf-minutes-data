@@ -1,0 +1,141 @@
+# [QUIC](../wg/quic.html)
+
+## Summary
+
+The QUIC Working Group met to discuss working group drafts and proposal updates across load balancing, structured logging, receive timestamps, delegated stateless resets, congestion control data exchange, and peer-to-peer/NAT traversal. Key highlights include preparing QUIC-LB for Working Group Last Call (WGLC), streamlining qlog by removing TLS-specific layering violations, progressing receive timestamps towards WGLC, and confirming strong working group interest in solving orphan connection resets caused by process crashes.
+
+---
+
+## Key Discussion Points
+
+### Administration and Status Updates
+- **RFC Published**: RFC 9592 (*Managing Multipath QUIC*) has been published.
+- **Agenda Bashing**: The agenda was adjusted to cover QUIC-LB, qlog, Receive Timestamps, SQUAD BoF report, Delegated Stateless Resets, Exchanging CC Data, Cuback, and P2P QUIC / NAT Traversal.
+
+---
+
+### [QUIC-LB Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-quic-lb-update-00)
+- **Presenter**: Martin Duke
+- **Document**: [`draft-ietf-quic-load-balancers`](https://datatracker.ietf.org/doc/draft-ietf-quic-load-balancers/)
+- **Technical Overview**:
+  - QUIC-LB provides a structured connection ID (CID) specification allowing layer-4 load balancers to route packets to designated backend servers without terminating connections.
+  - CIDs feature a Config ID (3 bits), length self-encoding (5 bits), Server ID, Nonce, and extra server-use bytes.
+  - Three encryption modes are defined: Plaintext, single-block AES-ECB (for 16-byte Server ID + Nonce), and the 4-pass Feistel cipher (Four-pass encoding) for variable-length encrypted CIDs.
+  - Deployments: Plaintext support is deployed on AWS NLB and Envoy; encrypted QUIC-LB is currently being deployed by Google and another major vendor.
+- **Discussion**:
+  - Christian Huitema noted that 4-pass Feistel evaluation performs comparably to 64-bit ciphers like Blowfish.
+  - Per Sundström recommended placing YANG modules in normative text and requesting an early YANG Doctors review alongside IANA registrations.
+  - Antonio Gurtov asked about hardware load balancer vendor interest and motivations.
+  - Chairs proposed proceeding with Working Group Last Call (WGLC) alongside an early security review. The separate, expired retry offload draft will be formally retired/abandoned due to lack of implementation interest.
+
+---
+
+### [qlog](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-qlog-00)
+- **Presenter**: Lucas Pardue
+- **Documents**: [`draft-ietf-quic-qlog-main-schema`](https://datatracker.ietf.org/doc/draft-ietf-quic-qlog-main-schema/), [`draft-ietf-quic-qlog-quic-events`](https://datatracker.ietf.org/doc/draft-ietf-quic-qlog-quic-events/), [`draft-ietf-quic-qlog-h3-events`](https://datatracker.ietf.org/doc/draft-ietf-quic-qlog-h3-events/)
+- **Technical Overview & Proposals**:
+  - **TLS Layering Cleanup**: Proposal to strip TLS-specific logging fields/events (e.g., SNI, ALPN, cipher suite, resumption booleans) from the core QUIC qlog schema. TLS logging will be split into a separate TLS qlog extension draft (Christian Huitema volunteered to co-author).
+  - **Tuple & Path ID**: `tuple_id` will be moved exclusively to packet events (`packet_sent`, `packet_received`, `packet_dropped`) rather than generic event headers. Core qlog will avoid adding multipath events or path IDs. Yanmei Liu and Christian Huitema volunteered to work on a separate multipath qlog draft.
+  - **`connection_id_updated` Event**: Proposal to delete this event from the core schema as it is redundant with packet headers and tuple assignment events.
+- **Discussion**:
+  - Christian Huitema and Martin Duke supported removing TLS parameters from the QUIC core logging schema to keep protocol boundaries clean.
+  - General support was expressed for simplifying core qlog events to accelerate finalization.
+
+---
+
+### [Receive timestamps](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-receive-timestamps-01)
+- **Presenter**: Marten Seemann
+- **Document**: [`draft-ietf-quic-receive-ts`](https://datatracker.ietf.org/doc/draft-ietf-quic-receive-ts/)
+- **Technical Overview**:
+  - Updates include range encoding changes (`additional_timestamp_delta_count` starting at 0 for 1 delta), new transport parameter code points, explicit protocol violation error definitions, and decode safety bounds.
+  - Implementation status: Supported in MsQuic (v0.3/v0.4) and Google Quiche (v0.4); Chrome deployment planned for Q1 with BBR integration.
+- **Discussion**:
+  - Magnus Westerlund requested clearer specification text regarding local microsecond clock assumptions and ACK frequency interactions.
+  - Yanmei Liu confirmed positive results when integrating receive timestamps into congestion controllers.
+  - Draft is nearing readiness for WGLC pending minor text updates.
+
+---
+
+### [SQUAD Report](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-squad-report-00)
+- **Presenter**: Max Franke
+- **Technical Overview**:
+  - Brief readout from the SQUAD BoF held earlier in the week regarding multicast video delivery and QUIC abstractions.
+  - Key feedback emphasized broadening the focus from IP multicast to a general 1-to-many application interface abstraction on transport layers. A dedicated mailing list will be established.
+
+---
+
+### [Delegated stateless resets](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-delegated-stateless-resets-00)
+- **Presenter**: Stefano Fogliata
+- **Document**: `draft-fogliata-quic-delegated-stateless-reset`
+- **Technical Overview**:
+  - Addresses orphan QUIC connections created when a user-space QUIC stack crashes or freezes while the host OS/device remains healthy, preventing normal connection teardown and wasting radio/battery resources.
+  - Proposes delegating stateless reset tokens to an OS/system component via a new `RESET_TOKEN` frame and an explicit server transport parameter.
+- **Discussion**:
+  - Rui Paulo, Ben Schwartz, Eric Kinnear, Ian Swett, and Lorenzo Colitti voiced strong support, citing significant battery savings, user experience improvements, and OS API security boundaries (preventing raw packet generation while enabling OS-driven stateless resets).
+- **Session Poll**:
+  - **Question**: "Should the working group work on a solution to this problem?"
+  - **Results**: Yes: 35, No: 2, No Opinion: 8 (Total: 102).
+
+---
+
+### [Exchanging CC data in QUIC](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-exchanging-cc-data-in-quic-00)
+- **Presenter**: Jinghao Yuan
+- **Document**: `draft-yuan-quic-cc-data-exchange`
+- **Technical Overview**:
+  - Defines `CONGESTION_DATA` and `CONGESTION_DATA_RECALL` frames alongside transport parameters to export congestion statistics (RTT, loss rate, bandwidth) between QUIC endpoints.
+  - Used for adaptive bitrate (ABR) streaming decisions and zero-RTT Careful Resume on TikTok live streaming workflows. Production tests showed a 2.75% reduction in stall ratios and a 10.8% increase in bitrate.
+- **Discussion**:
+  - Lars Eggert questioned the potential harm or unfairness to competing bottleneck flows.
+  - Martin Duke, Antonio Gurtov, and Nidhi Jaju suggested using `NEW_TOKEN` or SCONE mechanisms rather than exposing raw transport metrics directly to clients/JavaScript due to cross-origin side-channel and fingerprinting risks.
+  - Kazuho Oku noted that server-to-client bandwidth hints are valuable for ABR logic.
+
+---
+
+### [Cuback](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-cuback-00)
+- **Presenter**: Kazuho Oku
+- **Technical Overview**:
+  - Introduces Cuback, an ACK-clocked formulation of Cubic that replaces complex window-tracking state machines with a pure `dW` function computed upon entering recovery.
+  - Significantly simplifies implementation complexity while achieving faster convergence than standard Cubic in competing traffic scenarios.
+  - Detailed technical discussions will take place in CCWG / ICCRG.
+
+---
+
+### [QUIC NAT Traversal](https://datatracker.ietf.org/meeting/127/materials/slides-127-quic-quic-nat-traversal-00)
+- **Presenter**: Marten Seemann
+- **Document**: `draft-seemann-quic-nat-traversal`
+- **Technical Overview**:
+  - Proposes peer-to-peer QUIC hole punching built upon MASQUE `Connect-UDP` relay channels and connection migration primitives.
+  - Introduces an `ALTERNATIVE_ADDRESS` frame allowing servers to communicate candidate addresses post-handshake, enabling background hole punching without delaying initial connection setup.
+- **Discussion**:
+  - Aldi Sefa, Antonio Gurtov, Nidhi Jaju, Eric Kinnear, Ben Schwartz, Stefano Fogliata, Marco Munizaga, Lorenzo Colitti, and Gorry Fairhurst discussed use cases (e.g., AirDrop, P2P file sharing), local network privacy implications, stateful firewalls vs. NATs, and coordination across IETF and W3C.
+
+---
+
+## Decisions and Action Items
+
+1. **QUIC-LB** (`draft-ietf-quic-load-balancers`):
+   - Move document to Working Group Last Call (WGLC).
+   - Request an Early Security Review and an Early YANG Doctors Review.
+   - Formally abandon/retire the expired Retry Offload draft.
+
+2. **qlog** (`draft-ietf-quic-qlog-main-schema`, `draft-ietf-quic-qlog-quic-events`, `draft-ietf-quic-qlog-h3-events`):
+   - Remove TLS-specific fields/events from the core schema; spin off a separate TLS qlog draft.
+   - Restrict `tuple_id` to packet-level events.
+   - Delete the `connection_id_updated` event.
+   - Spin off multipath qlog definitions into a separate document.
+
+3. **Receive Timestamps** (`draft-ietf-quic-receive-ts`):
+   - Clarify clock precision assumptions in the text prior to issuing WGLC.
+
+4. **Delegated Stateless Resets**:
+   - Working group consensus established via poll (35 Yes, 2 No) to adopt/work on a solution to orphan connection resets.
+
+---
+
+## Next Steps
+
+- Chairs to issue WGLC for [`draft-ietf-quic-load-balancers`](https://datatracker.ietf.org/doc/draft-ietf-quic-load-balancers/).
+- Editors to apply schema simplifications to [`draft-ietf-quic-qlog-main-schema`](https://datatracker.ietf.org/doc/draft-ietf-quic-qlog-main-schema/).
+- Finalize editorial updates on [`draft-ietf-quic-receive-ts`](https://datatracker.ietf.org/doc/draft-ietf-quic-receive-ts/) ahead of WGLC.
+- Confirm adoption call for Delegated Stateless Resets on the mailing list.
+- Continue discussion on CC data exchange and P2P QUIC in relevant working groups (CCWG, ICCRG, MASQUE, QUIC).

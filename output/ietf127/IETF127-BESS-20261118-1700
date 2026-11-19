@@ -1,0 +1,124 @@
+# [BESS](../wg/bess.html)
+
+## Summary
+
+The BGP Enabled ServiceS (BESS) Working Group met at IETF 127. The session was chaired by Matthew Bocci, with co-chairs Jeffrey Zhang and Stephane Litkowski participating online. Minutes were taken by Krishna Swamy. 
+
+The meeting covered standard working group document updates, followed by technical presentations and discussions on EVPN L3 multi-homing, assisted replication for SRv6, EVPN anycast multihoming, multicast router state synchronization, EVPN subnet slicing, group policy extensions, multicast multihoming convergence, and IPFIX export of BGP VPN information.
+
+## Key Discussion Points
+
+### Working Group Status and Administration
+* **Slide Deck:** [WG Status Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-wg-status-update-01)
+* **Document Progress:** Two new RFCs were recently published. Several drafts are progressing through the publication pipeline:
+  * [`draft-ietf-bess-evpn-bfd`](https://datatracker.ietf.org/doc/draft-ietf-bess-evpn-bfd): Consensus was reached to move this to experimental due to lack of known implementations. Sami Boutros is updating the document with required text describing the experiment.
+  * [`draft-ietf-bess-bgp-multicast-controller`](https://datatracker.ietf.org/doc/draft-ietf-bess-bgp-multicast-controller): Authors are actively addressing IDR and BGP Directorate comments.
+  * [`draft-ietf-bess-evpn-dpath`](https://datatracker.ietf.org/doc/draft-ietf-bess-evpn-dpath): BGP Directorate, General, and Routing Directorate reviews are in progress.
+  * BGP Multi-homing for VPLS: Kireeti Kompella noted that updates will be posted to address shepherd and review comments.
+* **RFC 7432bis Scope Discussion:** The working group discussed whether to merge EVPN interoperability modes into RFC 7432bis. Ali Sajassi and Stephane Litkowski cautioned against expanding the scope of RFC 7432bis, noting it could significantly delay publication.
+* **Experimental Route Type Space:** Sasha Vainshtein raised a question regarding a previously discussed draft on allocating experimental route types in EVPN. The chairs agreed to follow up on the list.
+* **Expired Drafts:** Himanshu Shah requested renewal of expired drafts covering L2 gateway and EVPN FRR. Patrice Brissette confirmed that updates are being prepared.
+
+---
+
+### EVPN Multi-Homing Support for L3 Services
+* **Presenter:** Patrice Brissette
+* **Slide Deck:** [L3 Multi-homing update](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-l3-multi-homing-update-00)
+* **Draft:** [`draft-ietf-bess-evpn-l3mh-proto`](https://datatracker.ietf.org/doc/draft-ietf-bess-evpn-l3mh-proto)
+* **Discussion:**
+  * Patrice presented an update on EVPN multi-homing procedures for L3 interfaces. Updates explicitly clarify route encodings: options to include the IP VRF along with the route, or use the ESI plus EVI Route Targets.
+  * Clarified the label field usage in Route Type 2 (carrying MPLS labels or VNIs in label 2) to maintain backward compatibility with existing implementations.
+  * Multiple implementations (including SONiC and Cisco XR) exist.
+
+---
+
+### Applicability of Assisted Replication to EVPN SRv6 Services
+* **Presenter:** Jorge Rabadan
+* **Slide Deck:** [ietf127-bess-evpn-srv6-ar-00](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-ietf127-bess-evpn-srv6-ar-00-00)
+* **Draft:** `draft-ietf-bess-evpn-srv6-ar`
+* **Discussion:**
+  * The draft defines procedures for using Assisted Replication (RFC 9574) in EVPN SRv6 networks. It introduces a new SRv6 Endpoint behavior, `N.DT2MAR`.
+  * When a replicator receives packets at the `N.DT2MAR` endpoint, it decapsulates, performs local flooding, and re-encapsulates traffic to remote EVPN SRv6 destinations with source squelching.
+  * Himanshu Shah inquired how multihomed source ESI filtering is handled on the replicator. Jorge explained that multihoming can be handled via control-plane mechanisms (Extended Assisted Replication) or local bias while preserving the source IP.
+
+---
+
+### EVPN Anycast Multihoming / Aliasing
+* **Presenter:** Jorge Rabadan
+* **Slide Deck:** [ietf127-bess-evpn-anycast-multihoming-06](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-ietf127-bess-evpn-anycast-multihoming-06-00)
+* **Draft:** `draft-ietf-bess-evpn-anycast-aliasing`
+* **Discussion:**
+  * Enhances all-active multihoming in NVO3 environments using an Anycast VTEP. Remote PEs see a single destination Next Hop for the Anycast VTEP, eliminating the need for Ethernet Auto-Discovery (AD) per-EVI routes.
+  * Revision updates clarify local switching behavior on egress PEs (using unicast VTEP IP during local access failures), error handling procedures, and fast-reroute scope.
+  * Krishna Swamy asked about carrying Router MACs per-switch/system versus per-tenant in AD per-ES routes. Jorge agreed to follow up offline to refine the text.
+
+---
+
+### EVPN Multicast Router State Synchronization
+* **Presenter:** Jorge Rabadan
+* **Slide Deck:** [ietf127-bess-evpn-mcast-router-sync-01](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-ietf127-bess-evpn-mcast-router-sync-01-00)
+* **Draft:** `draft-ietf-bess-evpn-mcast-router-sync`
+* **Discussion:**
+  * Defines mechanisms to synchronize multicast router state (IGMP/MLD queriers, PIM neighbor state) across multihomed PEs.
+  * Introduces the Multicast Router Discovery (MRD) route type, a new sub-TLV in the BGP Tunnel Encapsulation Attribute for PIM Hello options, and uses EVPN Route Types 7 and 8 for PIM Join/Prune synchronization.
+  * Covers three main use cases: multihomed external queriers in IGMP/MLD proxy EVPN Broadcast Domains, L3 multihoming with connected PIM routers, and OISM with connected PIM routers.
+
+---
+
+### EVPN Subnet Slicing
+* **Presenter:** Ali Sajassi
+* **Slide Deck:** [draft-sajassi-bess-evpn-subnet-slicing](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-draft-sajassi-bess-evpn-subnet-slicing-00)
+* **Draft:** `draft-sajassi-bess-evpn-subnet-slicing`
+* **Discussion:**
+  * Tailored for enterprise/campus networks where subnets stretch widely across low-capacity access switches. Optimizes the routing component of IRB by partitioning subnets into slices handled by anchor PEs (distribution/border switches).
+  * Access switches (non-anchor PEs) store only local host routes, forwarding non-local traffic to anchor PEs responsible for specific slices. Slices are advertised using Route Type 5, and leaves direct Route Type 2 advertisements to responsible anchors via targeted Route Targets.
+  * In chat, Jie Dong asked if the term "slice" relates to IETF Network Slices (RFC 9543) defined in TEAS. Stephane Litkowski and Ali Sajassi clarified that "slicing" here refers to subnet partitioning and is distinct from TEAS network slicing.
+  * Jorge Rabadan and others raised questions regarding anchor PE placement (border gateways vs. spines) and high availability/redundancy when anchor nodes fail. Ali clarified that anchor PEs are typically deployed in redundant pairs per slice.
+
+---
+
+### Group Policy ID in EVPN
+* **Presenter:** Ali Sajassi
+* **Slide Deck:** [draft-lrss-bess-evpn-group-policy](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-draft-lrss-bess-evpn-group-policy-00)
+* **Draft:** `draft-lrss-bess-evpn-group-policy`
+* **Discussion:**
+  * Defines micro-segmentation capabilities within a tenant/VRF using Group Policy IDs (GPI) in EVPN, targeted at multi-tier enterprise applications, data centers, and AI/GPU cluster workloads.
+  * Introduces a 4-bit Flag field in BGP EVPN signaling (with 1 bit explicitly signaling data-plane GPI support) to ensure deterministic policy enforcement between ingress and egress PEs.
+  * Israel Means asked how policy inconsistencies during network convergence are handled. Ali explained that PEs fall back to a configured default mode policy when unknown or inconsistent policy tags are encountered.
+  * The draft was previously held pending progress on companion encapsulation specifications; Ali requested working group adoption now that dependencies are clear.
+
+---
+
+### Fast Convergence in EVPN / MVPN Multicast Multihoming
+* **Presenter:** Ali Sajassi
+* **Slide Deck:** [draft-vgovindan-bess-evpn-mvpn-seamles-mh-converge-00](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-draft-vgovindan-bess-evpn-mvpn-seamles-mh-converge-00-00)
+* **Draft:** `draft-vgovindan-bess-evpn-mvpn-seamles-mh-converge-00`
+* **Discussion:**
+  * Proposes an extension to [`draft-ietf-bess-evpn-mvpn-seamless-interop`](https://datatracker.ietf.org/doc/draft-ietf-bess-evpn-mvpn-seamless-interop) to improve failover convergence times for all-active multihoming.
+  * Egress PEs advertise overlay multicast state attached to a list of Route Targets for all PEs in the multihoming group. This pre-builds state across all multihomed PEs prior to any link or node failure.
+  * Jorge Rabadan noted that pre-building state improves convergence and helps prevent packet duplication during failover events.
+
+---
+
+### Exporting BGP VPN Information in IPFIX
+* **Presenter:** Yao Liu
+* **Slide Deck:** [draft-liu-bess-ipfix-bgp-vpn](https://datatracker.ietf.org/meeting/127/materials/slides-127-bess-draft-liu-bess-ipfix-bgp-vpn-00)
+* **Draft:** `draft-liu-bess-ipfix-bgp-vpn`
+* **Discussion:**
+  * Defines four new IPFIX Information Elements (IEs): BGP VPN Next Hop IPv4/IPv6 addresses, SRv6 VPN Service SID, and SRv6 Service SID Locator Length.
+  * Stephane Litkowski and Ali Sajassi questioned the necessity of dedicated VPN Next Hop IEs, suggesting that standard BGP Next Hop IEs already carry the egress PE address matched by the data plane.
+  * Sasha Vainshtein commented that in Option B inter-AS scenarios, the BGP Next Hop changes across domain boundaries, making VPN egress attribution complex. The authors will refine the draft based on the feedback.
+
+---
+
+## Decisions and Action Items
+
+1. **Experimental EVPN Route Type Space:** Chairs will follow up on the mailing list regarding the draft proposing experimental route type allocations in EVPN.
+2. **VPLS Multi-homing Draft:** Kireeti Kompella to post an updated revision addressing shepherd and review comments.
+3. **EVPN BFD:** Sami Boutros to update [`draft-ietf-bess-evpn-bfd`](https://datatracker.ietf.org/doc/draft-ietf-bess-evpn-bfd) with experiment details to allow progression as an Experimental track RFC.
+
+## Next Steps
+
+* **Adoption Polls:** The working group adoption poll for `draft-ietf-bess-evpn-multicast-dg` was extended for two additional weeks.
+* **Adoption Queue:** `draft-lrss-bess-evpn-group-policy` will be added to the WG adoption queue.
+* **RFC 7432bis Scope:** Working group chairs and authors will maintain the current focused scope of RFC 7432bis without merging full interop modes, ensuring timely publication.

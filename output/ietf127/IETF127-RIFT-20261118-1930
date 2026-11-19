@@ -1,0 +1,70 @@
+# [RIFT](../wg/rift.html)
+
+## Summary
+
+The RIFT working group met at IETF 127 in San Francisco. The session covered working group document status, key-value (KV) store extensions for IP address block allocation, SRv6 extensions for RIFT, and an updated proposal for RIFT multicast routing.
+
+## Key Discussion Points
+
+### Working Group Status and Document Updates
+Jeff Tantsura presented the [Chairs slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-rift-chairs-slides-00). Key updates included:
+* **RFC Publication:** RFC 9592 (RIFT Key-Value Data Store Structure) was published.
+* **Working Group Drafts:**
+  * `draft-ietf-rift-auto-evpn`: The draft has expired. The authors need to refresh it and request an early review to prepare for Working Group Last Call (WGLC).
+* **Individual Drafts:** Presentations scheduled for address block extensions, SRv6 extensions, and multicast.
+
+---
+
+### RIFT KV Address Block Extension
+Sandy Zhang presented [01-RIFT-KV-addressblock](https://datatracker.ietf.org/meeting/127/materials/slides-127-rift-01-rift-kv-addressblock-00).
+* **Overview:** Proposed a mechanism using RIFT Key-Value (KV) extensions to distribute dynamic IP address blocks from top-of-fabric (northernmost) switches to leaf switches in AI/Data Center (AIDC) environments. Leaves act as DHCP servers to allocate addresses to connected GPUs, allowing address aggregation and minimizing routing table size.
+* **Discussion:**
+  * **Targeting and Collision:** Jeff Tantsura noted that KV messages are flooded down to all leaves. It is unclear how a leaf identifies which IP block is intended for it to prevent overlapping address allocations between leaves.
+  * **Persistence vs. Ephemeral State:** Jeff Tantsura and Christian Hopps raised concerns that routing protocol state is ephemeral. Dynamic allocations may lead to renumbering or address block churn upon switch reboots or topology changes, unlike static DHCP server pool configurations.
+  * **Comparison to Existing Protocols:** Jeff Tantsura suggested comparing this approach against established dynamic allocation mechanisms such as SLAAC.
+
+---
+
+### RIFT Extensions for SRv6
+Weiqiang Cheng presented [02-RIFT extensions for SRv6](https://datatracker.ietf.org/meeting/127/materials/slides-127-rift-02-rift-extensions-for-srv6-00).
+* **Overview:** Details extensions to enable SRv6 (including compressed SID / cSID support and Zero Touch Provisioning) in RIFT networks.
+* **Updates since IETF 117:**
+  * Added variable-length encoding for SRv6 KV information.
+  * Defined a dedicated SRv6 locator element.
+  * Added use cases for AI backend networks and hyperscale data center WAN/front-end networks.
+  * Added references to compressed SID (RFC 9800) support.
+  * Clarified per-publisher unique Key IDs to avoid KV collisions across publishers.
+* **Core Extensions:**
+  * SRv6 ZTP via KV distribution of locators, END SIDs, and adjacency END.X SIDs from controller/Top-of-Fabric (ToF) nodes.
+  * SRv6 locator advertisement (northbound propagation and southbound positive/negative disaggregation tags).
+  * SRv6 adjacency SIDs in neighbor elements.
+* **Discussion & Adoption Request:** Weiqiang Cheng requested WG adoption for the draft. Jeff Tantsura acknowledged the request and indicated that chairs will initiate review for adoption.
+
+---
+
+### RIFT Multicast
+Jeffrey Zhang presented [RIFT Multicast](https://datatracker.ietf.org/meeting/127/materials/slides-127-rift-rift-multicast-00).
+* **Overview:** Updated the specification for RIFT multicast after resolving issues around subtree connection algorithms.
+* **Mechanism:**
+  * Operates similarly to Bidirectional PIM without an explicit Rendezvous Point (RP).
+  * Nodes send tree-specific northbound joins up to top-of-fabric/sub-top nodes.
+  * Sub-tree roots at the top layer run a hash algorithm to choose a candidate root and advertise child nodes via southbound TIEs (Topology Information Elements).
+  * When topology changes occur, sub-tree roots select the designated root based on child counts and system ID tie-breakers, reparenting as needed.
+  * Supports multi-plane topologies where east-west connections synchronize top-layer topology and tree state.
+* **Discussion:**
+  * Sandy Zhang and Christian Hopps asked questions regarding receiver-side mechanics and offered to provide feedback on the list.
+  * In response to an attendee's question about inter-DC multicast, Jeffrey Zhang clarified that the protocol applies within a RIFT domain, while inter-DC traffic would interface via protocols like PIM or EVPN at the domain boundary.
+
+---
+
+## Decisions and Action Items
+
+* **`draft-ietf-rift-auto-evpn`:** Authors to refresh the draft and request an early review in preparation for WGLC.
+* **`01-RIFT-KV-addressblock`:** Sandy Zhang to prepare detailed slides for the next IETF meeting showing the state machine (FSM), protocol flows, persistence model, and a comparison against existing mechanisms like SLAAC.
+* **SRv6 Extensions:** Working group chairs to initiate review for WG adoption of the SRv6 extensions draft.
+
+---
+
+## Next Steps
+
+* Authors of the multicast draft will add formal details regarding the hash algorithm, candidate root selection FSM, and join procedures before seeking WG adoption.

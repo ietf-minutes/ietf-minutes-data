@@ -1,0 +1,161 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group met to discuss updates on active working group drafts, recent RFC publications, and proposals related to core OAuth specifications, metadata, delegation, deferred responses, and AI agent authentication. Key topics included closing remaining open issues on OAuth 2.1 towards Working Group Last Call (WGLC), deployment experience and metadata fetching constraints for Client ID Metadata Documents, key-binding and gateway extensions for Identity Assertion JWT Authorization Grants, updates to Delegate SD-JWT, integration of interactive response modes into Deferred Token Response, and proposed approaches for AI agent authentication and commerce.
+
+---
+
+## Key Discussion Points
+
+### Working Group Updates and AI Guidance
+* **Chairs:** Rifaat Shekh-Yusef, Hannes Tschofenig (remote); Mike Jones assisting on-site.
+* **Slides:** [Chairs Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-chairs-slides-01)
+* **Recent Publications:**
+  * RFC 9700 (updates to JWT profile for client authentication / RFC 7523bis).
+  * RFC 10017 (OAuth 2.0 for Browser-Based Applications BCP).
+  * Cross-Device Flows Security BCP.
+* **RFC Editor Queue:** SD-JWT VC, RFC 8725bis, Identity Chaining, and Token Status List.
+* **AI Assistance Guidance:** Guidance on AI-assisted contributions was reiterated. Participants may use AI tools for spelling, grammar, or sounding board feedback, but must perform their own technical reasoning and take personal responsibility for any submitted content or mailing list posts.
+
+---
+
+### OAuth 2.1
+* **Presenter:** Aaron Parecki
+* **Slides:** [OAuth 2.1](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-sessa-oauth-21-00)
+* **Draft Reference:** `draft-ietf-oauth-v2-1`
+* **Updates:**
+  * Draft-17 incorporated normative requirements from the Browser-Based Applications BCP (RFC 10017) and an editorial pass.
+  * PKCE `plain` method has been removed, `iss` response parameter is required for authorization servers (AS), and new security considerations for consent phishing have been added.
+* **Discussion on Open Issues:**
+  * **OAuth 2.0 vs 2.1 Client Compatibility & Version Negotiation:** 
+    * Aaron Parecki recommended not introducing new protocol mechanisms or version negotiation into `draft-ietf-oauth-v2-1`. Capability negotiation should be handled in a separate extension specification if needed.
+    * Filip Skokan and Justin Richer supported the recommendation, noting that properly written clients can interoperate with both 2.0 and 2.1 servers via configuration.
+    * Nick Watson noted native app environments where legacy clients cannot be updated, warning that without a standard signal, clients might remain stuck on OAuth 2.0 indefinitely.
+    * Joseph Heenan suggested Pushed Authorization Requests (PAR) as a way to enforce 2.1 security requirements on updated clients while maintaining backward compatibility for legacy clients under the same client identifier.
+    * Dick Hardt and Mike Jones noted that OAuth evolution is feature-specific rather than strictly linear by version number.
+  * **Token Syntax Restrictions:** Proposal to limit the character set of access tokens to ensure compatibility with standard HTTP Bearer headers.
+  * **Registry Cleanup:** Proposal to define `invalid_client` for authorization response errors in 2.1 to align with existing IANA registry entries.
+* **Next Steps:** Organize a virtual interim meeting to resolve the remaining open issues and prepare the document for Working Group Last Call.
+
+---
+
+### OAuth Client ID Metadata Document
+* **Presenter:** Aaron Parecki
+* **Slides:** [Client ID Metadata Document](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-sessa-client-id-metadata-document-00)
+* **Draft Reference:** `draft-ietf-oauth-client-id-metadata-document`
+* **Updates:**
+  * Refactored client authentication into a top-level section.
+  * Updated guidance to recommend using array-based `token_endpoint_auth_methods_supported` values.
+  * Aligned with OAuth 2.1 by requiring the `iss` parameter and prohibiting bare root-path client ID URLs.
+* **Discussion on Open Issues:**
+  * **AS Identification Header when Fetching Metadata:** Discussed whether the AS should send an HTTP header with its issuer identifier when fetching metadata. Justin Richer and Paul Carleton argued against varying metadata based on the AS, stating that configuration should remain tied strictly to the client identifier URL. Nick Watson supported a header to avoid clients creating per-AS custom URLs.
+  * **SSRF and Metadata Fetching Risks:** Discussed Server-Side Request Forgery (SSRF) and reflection risks when an AS fetches metadata. Mitigation guidance includes requiring `application/json` Accept headers, prohibiting root paths, and rate limiting. Pat McSweeney raised concerns about data leakage via outbound HTTP requests from AS instances. Justin Richer advised against standardizing fixed file extensions or path structures.
+  * **Query Strings in Client Identifier URLs:** Proposal to strictly prohibit (`MUST NOT`) query strings in client identifier URLs to prevent security issues caused by dynamic client metadata modification.
+  * **Caching and Re-fetching:** Brandon argued for explicit restrictions against indefinite caching (`MUST NOT` cache forever). Justin Richer recommended advising servers to follow standard HTTP cache headers without imposing rigid MUST NOT requirements that implementers will ignore.
+* **Next Steps:** Discuss open points on the mailing list and schedule a dedicated interim session if needed prior to the next IETF meeting.
+
+---
+
+### Identity Assertion JWT Authorization Grant
+* **Presenter:** Aaron Parecki
+* **Slides:** [Identity Assertion JWT Authorization Grant](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-sessa-identity-assertion-jwt-authorization-grant-00)
+* **Draft Reference:** `draft-ietf-oauth-identity-assertion-authz-grant`
+* **Updates:**
+  * Added normative guidance on sender constraining (DPoP and mTLS), error responses, discovery, and SAML compatibility.
+* **Discussion on Themes & Missing Building Blocks:**
+  * **Just-In-Time (JIT) Provisioning:** Recommended addressing JIT user creation and claim negotiation in a separate future extension spec rather than expanding core ID-JAG.
+  * **Key Binding / Proof-of-Possession:** Identified broader gaps in token exchange and JWT authorization grants regarding key binding responses and DPoP support (referencing `draft-mcguinness-oauth-jwt-grant-pop`). Recommended addressing general key binding gaps in dedicated specifications.
+  * **Gateway Scenarios:** Highlighted that intermediate gateways introduce audience validation issues. Aaron Parecki and Karl McGuinness proposed bridging gateway flows using an Identity Continuation Assertion (`draft-parecki-oauth-identity-continuation-assertion`).
+  * **Discovery and Multi-tenancy:** Discussed how clients indicate tenant context. Paul Carleton noted tenant configuration and discovery are broad topics best addressed in a standalone specification.
+* **Next Steps:** Schedule virtual interims focused on gateway and key-binding architectures, triage core issues, and move toward Working Group Last Call for the core specification.
+
+---
+
+### Delegate SD-JWT
+* **Presenter:** Gareth Thomas
+* **Slides:** [Delegate SD-JWT](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-sessa-delegate-sd-jwt-00)
+* **Draft Reference:** `draft-ietf-oauth-delegate-sd-jwt`
+* **Overview:** Defines an extension to SD-JWT (RFC 9901) to enable chaining/delegation by converting key-binding JWTs into nested SD-JWTs, supporting agent authorization, payment delegation, and digital credentials.
+* **Key Updates & Scope Adjustments:**
+  * Transitioning presentation protocol details (e.g., OpenID for VP) out of the core specification into agnostic requirements, leaving protocol-specific bindings to respective presentation specs.
+  * Establishing core delegation policy constraints (e.g., expiration limits, delegation depth, delegate audience) within the spec, while leaving domain-specific business logic to application layers.
+  * Documenting relationships and mapping rules with `draft-ietf-oauth-sd-jwt-vc`.
+  * Refactoring the internal token structure to improve compatibility with standard SD-JWT libraries.
+  * Distinguishing explicitly between keys used for delegation versus standard presentation key-binding.
+
+---
+
+### Deferred Token Response
+* **Presenter:** Devin (on behalf of authors)
+* **Slides:** [Deferred Token Response](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-sessa-deferred-token-response-01)
+* **Draft Reference:** `draft-ietf-oauth-deferred-token-response`
+* **Updates:**
+  * Integrated interactive response capabilities (formerly JAGAR) into the Deferred Token Response (DTR) draft to support out-of-band user confirmation during deferred flows.
+* **Discussion on Open Issues:**
+  * **Redirect URI in Interactive Mode:** Discussed parameter naming conflicts when combining interactive deferred modes with authorization code grants. Nick Watson recommended supporting redirect parameters across all grant types under a distinct parameter name.
+  * **Callback / Notification Security:** Addressing security concerns raised by Brian Campbell regarding client-generated callback notification tokens. The proposed solution (suggested by Karl McGuinness) shifts notification token generation to the AS.
+  * **Authorization Endpoint Deferral:**
+    * *Option A:* Restrict core deferred token mechanisms strictly to the `/token` endpoint (no changes).
+    * *Option B:* Allow deferral directly at the `/authorize` endpoint.
+    * *Outcome:* Nick Watson, Jeff Lombardo, and Brian Campbell spoke in favor of Option A (restricting deferral to the `/token` endpoint).
+  * **Scope Reduction:** Discussed splitting the callback notification mechanism into a separate document to keep the core DTR specification simple.
+
+---
+
+### Know Your Agent Pay Token (KYAPay)
+* **Presenter:** Mike Jones
+* **Slides:** [KYAPay Token](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-sessa-kyapay-token-00)
+* **Overview:** Introduces a family of specifications for AI agent authentication and agentic commerce on existing web infrastructure:
+  1. Know Your Agent (KYA) Token (JWT with claims regarding principal, agent issuer, and instance).
+  2. Payment Token and Hybrid KYA/Payment Token.
+  3. HTTP Header specification for conveying tokens to CDNs, WAFs, and bot managers.
+  4. Token exchange profile for obtaining OAuth tokens for Model Context Protocol (MCP) servers.
+  5. Standalone auxiliary drafts: updates to AMR values (updating RFC 8176 for passkeys, FIDO, facial liveness, `draft-skyfire-oauth-amr-values`), identity verification methods, and AML/CFT payment compliance methods.
+* **Discussion:**
+  * **Privacy Concerns:** Chris Patton raised concerns regarding cross-site linkability and tracking if persistent agent/principal identities are presented across websites. Mike Jones clarified that minimal disclosure and scoped token issuance address these privacy requirements.
+  * **OAuth Scope and Precedent:** Arndt Schwenkschuster and Gareth Thomas questioned whether payment specifications fit within OAuth's scope. Mike Jones and Hannes Tschofenig noted that OAuth has established precedent with payment-adjacent transaction authorization (e.g., RAR / Open Banking) and that agentic authorization falls under the current WG charter.
+  * **Auxiliary Drafts:** Hannes Tschofenig noted that general-purpose updates like the AMR registry update (`draft-skyfire-oauth-amr-values`) are straightforward, low-hanging improvements for the working group to progress.
+
+---
+
+### OAuth Compatible AI Agent Authentication
+* **Presenters:** Jonathan Campbell, Pat McSweeney
+* **Slides:** [OAuth Compatible AI Agent Authentication](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-sessa-oauth-compatible-ai-agent-authentication-01)
+* **Overview:** A proposal for dynamic scope escalation and step-up authorization for AI agents operating with minimal default permissions without relying on untrusted LLMs to generate or modify scope descriptions.
+* **Flow Description:**
+  1. An agent calls a Resource Server (RS) using a low-privilege token.
+  2. RS returns a `403 Forbidden` response containing a cryptographically signed scope challenge with human-readable action descriptions.
+  3. The agent passes the signed challenge to the Authorization Server (AS).
+  4. The AS conducts out-of-band user approval (leveraging deferred token response mechanisms) and returns a short-lived, action-specific token to the agent.
+* **Discussion & Feedback:**
+  * **Overlapping Work:**
+    * Carl Wallace noted structural alignment with Deferred Token Response (`draft-ietf-oauth-deferred-token-response`) and the Transaction Authorization Challenge (`draft-rosomakho-oauth-txn-challenge`).
+    * Jeff Lombardo highlighted OAuth RAR Metadata and Error Remediation (`draft-ietf-oauth-rar-metadata-remediation`).
+    * Vittorio Bertocci noted similarities to Transactional Access Tokens.
+    * Justin Richer referenced OpenID Grant Management and UMA patterns.
+  * **Agent Specificity:** Nick Watson and Aaron Parecki observed that while AI agents motivate this work, the challenge and dynamic scope escalation flow represents a general-purpose OAuth pattern applicable to standard OAuth clients.
+  * **Trust Model:** Michael Thomas inquired about RS-to-AS public key distribution for validating RS-signed scope challenges.
+* **Next Steps:** Authors will evaluate existing building blocks (DTR, RAR remediation, Transaction Challenge) and update the proposal based on working group feedback.
+
+---
+
+## Decisions and Action Items
+
+1. **OAuth 2.1 (`draft-ietf-oauth-v2-1`):**
+   * Decided **not** to introduce version negotiation or dynamic version signals into `draft-ietf-oauth-v2-1`. Any protocol capability negotiation will be handled in separate extension drafts.
+2. **Deferred Token Response (`draft-ietf-oauth-deferred-token-response`):**
+   * Working group consensus supported **Option A**: keeping core token deferral restricted to the `/token` endpoint without adding deferral mechanisms to the `/authorize` endpoint.
+3. **Client ID Metadata Document (`draft-ietf-oauth-client-id-metadata-document`):**
+   * Agreed to mandate that Client Identifier URLs **MUST NOT** contain query string components.
+
+---
+
+## Next Steps
+
+1. **Interim Meetings:**
+   * **OAuth 2.1 (`draft-ietf-oauth-v2-1`):** Schedule a virtual interim to resolve remaining minor issues (token character set, error codes) and progress to WGLC.
+   * **Identity Assertion JWT Authorization Grant (`draft-ietf-oauth-identity-assertion-authz-grant`):** Schedule virtual interims to address gateway continuation assertions and proof-of-possession/key-binding patterns.
+   * **Client ID Metadata Document (`draft-ietf-oauth-client-id-metadata-document`):** Advance mailing list discussions on SSRF mitigations, caching rules, and AS header signals; hold an interim if needed before IETF 128.
+2. **AI Agent & Escalation Proposals:**
+   * Authors of AI Agent Authentication (AAuth) will collaborate with authors of `draft-ietf-oauth-deferred-token-response`, `draft-ietf-oauth-rar-metadata-remediation`, and `draft-rosomakho-oauth-txn-challenge` to consolidate overlapping authorization challenge and escalation primitives.

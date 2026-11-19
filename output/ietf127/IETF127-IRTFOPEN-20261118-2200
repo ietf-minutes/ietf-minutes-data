@@ -1,0 +1,99 @@
+# [IRTFOPEN](../wg/irtfopen.html)
+
+## Summary
+
+The IRTF Open (IRTFOPEN) session was chaired by Dirk Kutscher (IRTF Chair). The session featured introductory updates on IRTF activities, awards, and upcoming workshops, followed by two Applied Networking Research Prize (ANRP) award presentations and an invited talk:
+
+1. **IRTF Chair Update and Announcements** — Dirk Kutscher presented administrative updates, research group activities, ANRW announcements, travel grant programs, and the ANRP awards.
+2. **WireWatch: Measuring the Security of Proprietary Network Encryption in Android** — Mona Wang presented research analyzing non-standard, custom encryption protocols used in popular mobile applications.
+3. **The Case for RevDNS: Reliable and Decentralized Certificate Verification via DNS** — Protick Bhowmick presented a DNSSEC-based approach to certificate revocation checking using aggressive negative caching.
+4. **Big Dumb Networks** — Mark Handley presented OpenAI's design approach for massive AI training interconnects, offloading control and multipath routing to host transport protocols over static IPv6 Segment Routing (SRv6) topologies.
+
+---
+
+## Key Discussion Points
+
+### 1. IRTF Chair Update and Announcements
+*Presenter:* Dirk Kutscher  
+*Slide Deck:* [Chair Presentation](https://datatracker.ietf.org/meeting/127/materials/slides-127-irtfopen-chair-presentation-02)
+
+- **Policies and Scope:** Reminder of IETF/IRTF IPR policies, Code of Conduct, and research ethics. IRTF focuses on research and experimentation rather than internet standardization across its 17 research groups (12 meeting at this IETF session).
+- **New Activities & Meetings:**
+  - Highlighting the proposed Network Management Research Group / NetAI RG activities covering collective communication libraries, KV caches, and agent networks.
+  - Announcement of a side meeting focused on IRTF education, summer schools, training, and open experimentation materials for young researchers.
+  - Travel grant program supported by Akamai, Comcast, APNIC, and Netflix; call for applications for IETF 122 in Kuala Lumpur.
+- **ANRW & ANRP:**
+  - Applied Networking Research Workshop (ANRW 2025) will take place at IETF 123 in Berlin (co-chairs: Andra Lutu and Nitinder Mohan).
+  - Applied Networking Research Prize (ANRP) awarded 6 papers out of 70 nominations this year.
+
+---
+
+### 2. WireWatch: Measuring the Security of Proprietary Network Encryption in Android
+*Presenter:* Mona Wang  
+*Slide Deck:* [WireWatch](https://datatracker.ietf.org/meeting/127/materials/slides-127-irtfopen-mona-wang-wirewatch-00)
+
+- **Background & Motivation:** While web HTTPS adoption exceeds 80–90%, mobile app traffic often relies on proprietary protocols. Major apps (e.g., WeChat with >1.5 billion active users) use custom transport protocols like MMTLS (a custom variant based on TLS 1.3 semantics over HTTP POST). Top Chinese Input Method Editors (IMEs/keyboards) transmit keystrokes using custom, insecure encryption schemes.
+- **Vulnerability Findings:**
+  - Custom cryptographic protocols in keyboards exhibited textbook flaws (e.g., base64 RSA-bootstrapped AES vulnerable to CBC padding oracle attacks, timestamp-derived keys, static hardcoded keys, unpadded RSA, and unencrypted HTTP/UDP transmissions).
+  - Measurement across stores: Scraped and dynamic-analysis pipeline showed ~80%+ TLS usage on Google Play, whereas the Xiaomi Store had ~66% plaintext traffic and ~50% proprietary encryption in top apps. Furthermore, 50% of TLS implementations on the Xiaomi Store failed to validate certificates properly.
+  - Reverse engineering of 9 top proprietary protocol families revealed severe cryptographic vulnerabilities in 8 of them, exposing full URL browsing history and telemetry.
+- **Discussion & Q&A:**
+  - *Root Causes:* Legacy code from the early 2010s, developer emphasis on anti-scraping/obfuscation over standards-based transport security, and intense working schedules ("996" culture).
+  - *Digital Sovereignty & CAs:* Questions were raised regarding sovereign CAs and SM cipher suite usage. Mona Wang clarified that SM cipher suites were rarely observed (<2 apps), suggesting sovereignty was not the primary driver.
+  - *MMTLS Analysis:* Usama (Muhammad Usama Sardar) and Martin Thomson discussed MMTLS details in chat and Q&A. MMTLS pins keys and uses HTTP POST per request/response, requiring session resumption on every transaction, but did not exhibit the blatant cryptographic flaws found in other custom protocols.
+  - *Application-Layer Security:* Martin Thomson emphasized that fixing transport security alone is insufficient if higher-layer application privacy practices remain flawed.
+
+---
+
+### 3. Reliable and Decentralized Certificate Verification via DNS (RevDNS)
+*Presenter:* Protick Bhowmick  
+*Slide Deck:* [The Case for RevDNS](https://datatracker.ietf.org/meeting/127/materials/slides-127-irtfopen-protick-bhowmick-the-case-for-revdns-00)
+
+- **OCSP Limitations & Centralization:** Online Certificate Status Protocol (OCSP) introduces TLS handshake latency, privacy risks (leaking browsing habits to CAs), and soft-fail security bypasses on timeouts. Measurement data showed 12% timeout rates and extreme infrastructure centralization (62% of wild certificates relying on Akamai for OCSP response serving).
+- **Core Insight & RevDNS Mechanism:**
+  - Revocation is extremely sparse (e.g., Let's Encrypt had ~655k revoked out of 612M active certificates; Microsoft had ~1k revoked out of 78M).
+  - CAs publish dedicated DNSSEC-signed zones (`ocsp.example.com`) containing TXT records *only* for revoked certificate serial numbers.
+  - For non-revoked certificates, queries return `NXDOMAIN` alongside DNSSEC NSEC records. Leveraging aggressive negative caching (RFC 8198), recursive resolvers cache signed range proofs of non-existence.
+- **Performance & Feasibility:**
+  - Single NSEC records cover millions of valid contiguous serial numbers (e.g., one NSEC record covered 2.1M valid certificates for Microsoft).
+  - Offloads >95% of queries to recursive resolvers, reducing cache memory footprints by ~20x while achieving TLS handshake latency savings up to 270 ms for non-CDN responders.
+- **Discussion & Q&A:**
+  - *Infrastructure Centralization:* Joel Jaeggli noted that CDNs hosting authoritative DNS might still maintain concentration; Protick clarified that recursive resolver caching absorbs the vast majority of requests.
+  - *Alternative Revocation Mechanisms:* In response to Usama's questions regarding CRLs and OCSP stapling, Protick noted low deployment rates for OCSP stapling due to web server configuration overhead.
+  - *In-Chat Discussion:* Martin Thomson and Dave Plonka discussed alternative mechanisms like Firefox's CRLite and Chromium's CRLSets, noting that RevDNS provides a clean evaluation of DNSSEC capabilities for sparse revocation sets.
+  - *DANE TLSA:* Ingmar raised DANE TLSA comparisons; Protick noted RevDNS specifically targets low-overhead revocation range proofs over standard DNSSEC without changing server certificates.
+
+---
+
+### 4. Big Dumb Networks
+*Presenter:* Mark Handley  
+*Slide Deck:* [Big Dumb Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-irtfopen-mark-handley-big-dumb-networks-00)
+
+- **Context & Motivation:** OpenAI supercomputer back-end networks support synchronous AI pre-training across >100,000 GPUs connected by >10 million optical links. Because computations are tightly synchronized, tail latency at the 100th percentile ($p_{100}$) dictates overall job performance.
+- **Design Philosophy ("Big Dumb Network"):**
+  - Remove control-plane intelligence, dynamic routing protocols (no BGP/SDN for data routing), and switch-based adaptive load balancing.
+  - Use static routing tables configured at commissioning time on multi-plane Clos switches (51.2 Tbps, 512x100G radix).
+- **Host-Driven Routing & Transport Protocol (MRC):**
+  - **SRv6 Source Routing:** End-host NICs source-route every packet over 256 active paths using IPv6 Segment Routing (SRv6) micro-SIDs. Packets are sprayed uniformly across all available paths.
+  - **Multi-path Reliable Connection (MRC):** An open standard (OCP) transport protocol co-developed with industry partners. Features direct out-of-order payload delivery to memory (DMA-style), packet trimming (separating congestive loss from link failures), and selective retransmission.
+  - **Fast End-Host Failover:** When a packet loss occurs, the host transport protocol immediately demotes the failed path to a "sin bin" and replaces it with a backup path from a pre-calculated list. Link failures are mapped out within 30–40 $\mu\text{s}$ without waiting for network control plane convergence. Spreading loss across 256 paths minimizes tail-latency impact per flow.
+  - **Congestion Control:** Receiver-driven, credit-based rate pacing in host software eliminates core in-network queuing/congestion, restricting bottlenecks to last-hop incasts or oversubscribed inter-building links.
+- **Discussion & Q&A:**
+  - *Degraded / Flapping Links:* Warren Kumari inquired about silent packet degradation. Mark explained hosts issue SRv6 loopback probes every 1 ms across all links to detect and quarantine lossy paths.
+  - *Packet Reordering:* Francois Michel asked about packet reordering overhead. Mark clarified MRC writes arriving payloads directly into memory out-of-order using target memory offsets, completing transactions sequentially once all fragments land.
+  - *WAN Adaptation & Internet Applications:* Lars Eggert and Mark Handley discussed applying packet spraying, trimming, and SRv6 host routing to wide-area protocols where tail latency is critical.
+  - *NIC Offload Feasibility:* In response to China Mobile inquiries on NIC resource requirements, Mark noted production MRC implementations exist across NVIDIA ConnectX-8/9, AMD Pensando/Pollara, and Thor Ultra NICs.
+
+---
+
+## Decisions and Action Items
+
+- *None* (IRTF open sessions do not formulate normative standards decisions or take formal consensus polls).
+
+---
+
+## Next Steps
+
+- **ANRP Nominations:** The nomination window for the upcoming ANRP cycle closes on November 23.
+- **ANRW 2025:** Call for papers for ANRW 2025 (IETF 123 in Berlin) will open in January.
+- **IRTF Education Side Meeting:** Scheduled for Thursday at 09:00 to discuss training and educational initiatives for young internet researchers.
