@@ -1,0 +1,75 @@
+# [MLCODEC](../wg/mlcodec.html)
+
+## Summary
+
+The MLCODEC Working Group met to discuss progress on its core extension drafts for the Opus codec. Key topics included resolving a potential memory expansion vulnerability in the Opus extension mechanism draft (`draft-ietf-mlcodec-opus-extension`), reviewing deployment experience for DRED (`draft-ietf-mlcodec-opus-dred`), addressing transport MTU considerations for Opus HD (`draft-ietf-mlcodec-opus-scalable-quality-extension`), and reviewing recent threshold and testing updates to the speech coding enhancement draft (`draft-ietf-mlcodec-opus-speech-coding-enhancement`).
+
+## Key Discussion Points
+
+### Working Group & Document Status
+Mo Zanaty presented the [Chair slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mlcodec-chair-slides-03):
+* **`draft-ietf-mlcodec-opus-extension`**: Working Group Last Call (WGLC) raised an issue with repacketizer memory handling in libopus, delaying publication to resolve stack and memory expansion concerns.
+* **`draft-ietf-mlcodec-opus-dred`**: First WGLC completed with positive deployment feedback from Signal; shepherd write-up pending.
+* **`draft-ietf-mlcodec-opus-scalable-quality-extension`**: WGLC completed; additional reviews requested.
+* **`draft-ietf-mlcodec-opus-speech-coding-enhancement`**: Draft updated to version -07; WGLC planned soon.
+* **`draft-ietf-mlcodec-test-battery`**: Pending decision on whether to add a formal milestone to the working group charter.
+
+### Extension Formatting for the Opus Codec
+Tim Terriberry presented [Opus Extension](https://datatracker.ietf.org/meeting/127/materials/slides-127-mlcodec-opus-extension-00) regarding issues found in `draft-ietf-mlcodec-opus-extension`:
+* **Issue**: The libopus repacketizer splits and recombines Opus frames. Repeated zero-byte extensions across up to 48 frames expand 1 byte of input into 48 struct descriptors (a 768x expansion factor). In large packets (e.g., Opus HD packets up to 20 KB), a flood of repeated zero-byte extensions could expand to ~15 MB of descriptors on the stack, causing stack overflows or crashes on memory-constrained/embedded systems.
+* **Options Considered**:
+  1. Imposing arbitrary limits on total extensions.
+  2. Iterating parsers over the wire format without expanding struct lists (high computational complexity, $O(N \times \text{frames}^2)$).
+  3. Special-casing zero-byte extensions in the implementation to collapse spans (adds significant code complexity).
+  4. Ignoring multiple instances of the same zero-byte extension for a single frame.
+  5. Having the repacketizer discard all unknown extensions.
+* **Discussion**:
+  * Mark Harris noted in chat that frame separators act as zero-byte extensions where order matters. Jean-Marc Valin and Tim Terriberry clarified that frame separators are handled separately and cannot be repeated.
+  * Participants agreed that zero-byte extensions act as flags where multiple repetitions for the same frame carry no semantic value.
+  * **Resolution**: Senders MUST NOT send duplicate zero-byte extensions for the same frame, and receivers/decoders SHOULD ignore them if received. The draft will also add security considerations detailing memory amplification risks during depacketization.
+
+### Deep Audio Redundancy (DRED)
+Jean-Marc Valin provided an update on `draft-ietf-mlcodec-opus-dred`:
+* Signal confirmed successful production deployment of DRED since July with positive performance metrics.
+* DRED payload sizes remain small (~200 bytes per second at max bitrates), making MTU issues non-existent in practice.
+* Normative weights and hashes are present in the specification. The document is ready for shepherd write-up.
+
+### Scalable Quality Extension (Opus HD)
+Jean-Marc Valin presented updates on `draft-ietf-mlcodec-opus-scalable-quality-extension`:
+* WGLC completed with positive reviews from Jan Skoglund and Jonathan Lennox.
+* **Transport & MTU Discussion**:
+  * High-bitrate modes (such as 900 kbps for 20 ms frames under Japanese Audio Society Hi-Res certification) produce packet sizes exceeding standard 1500-byte MTUs.
+  * Jonathan Lennox noted that IP fragmentation across RTP often fails over NATs due to missing port numbers in subsequent fragments.
+  * **Resolution**: The draft will be updated to include a warning regarding transport MTU constraints (such as RTP/NATs) and non-normative guidance suggesting shorter frame durations (e.g., 10 ms, 5 ms, 2.5 ms) to fit within standard MTUs.
+
+### Speech Coding Enhancement
+Jan Skoglund presented [Speech enhancement](https://datatracker.ietf.org/meeting/127/materials/slides-127-mlcodec-speech-enhancement-00) covering updates in `draft-ietf-mlcodec-opus-speech-coding-enhancement` (-05 to -07):
+* **SDP & Format Updates**: Shortened SDP parameters (`SNH` for speech enhancement, `XBW` for extending bandwidth); separated SDP and IANA considerations; pinned reference Opus archives and added a Python test verification script.
+* **Threshold & Qualification Adjustments**:
+  * Relaxed per-clip and group-mean objective test thresholds to prevent false failures for minor, non-audible degradations (validated with a small LACE model test during the Hackathon).
+  * Introduced a MUSHRA subjective test override option: If isolated test clips fail objective criteria, a MUSHRA subjective test can override the failure provided the enhanced version rates significantly better than the unenhanced version (within a -20 point margin for single clips and -10 point margin for group means).
+* **Next Steps**: Locate a permanent archival home for normative test vectors, update hashes/references, and proceed to WGLC.
+
+### Test Battery
+Mo Zanaty reported on `draft-ietf-mlcodec-test-battery`:
+* Camille was unable to attend due to time zone constraints.
+* Per previous working group consensus, objective metrics will not be added to the test battery draft unless a concrete proposal demonstrates clear correlation with subjective quality evaluations.
+
+## Decisions and Action Items
+
+* **`draft-ietf-mlcodec-opus-extension`**:
+  * **Decision**: Update specification to state that senders MUST NOT send multiple zero-byte extensions for the same frame, and receivers SHOULD ignore duplicate zero-byte extensions for the same frame. Add security considerations regarding depacketization memory amplification risks.
+  * **Action Item**: Tim Terriberry to publish draft version -07 incorporating these changes and issue a short WGLC restart.
+* **`draft-ietf-mlcodec-opus-dred`**:
+  * **Action Item**: Chairs/Shepherd to complete shepherd write-up and progress draft to the IESG.
+* **`draft-ietf-mlcodec-opus-scalable-quality-extension`**:
+  * **Decision**: Add implementation/transport considerations warning about MTU limits over RTP/NATs and suggesting shorter frame sizes to fit within MTUs.
+  * **Action Item**: Jean-Marc Valin to update draft with MTU warning text prior to publication progression.
+* **`draft-ietf-mlcodec-opus-speech-coding-enhancement`**:
+  * **Action Item**: Chairs/AD to finalize hosting location for normative test vectors; Jan Skoglund to prepare for WGLC once test vector references are finalized.
+
+## Next Steps
+
+* Issue revised working group last calls for `draft-ietf-mlcodec-opus-extension` and `draft-ietf-mlcodec-opus-scalable-quality-extension` following draft updates.
+* Initiate WGLC for `draft-ietf-mlcodec-opus-speech-coding-enhancement`.
+* Progress `draft-ietf-mlcodec-opus-dred` to the IESG.

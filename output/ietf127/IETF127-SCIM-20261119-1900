@@ -1,0 +1,81 @@
+# [SCIM](../wg/scim.html)
+
+## Summary
+
+The System for Cross-domain Identity Management (SCIM) Working Group met at IETF 127. The session focused on updates to individual specification drafts, a proposal regarding SaaS Security Posture Management (SSPM) integration, and a comprehensive review of open Pull Requests (PRs) aimed at rechartering the Working Group. 
+
+Key discussions covered reining in protocol optionality via an interoperability profile, standardizing paginated group membership resources, and expanding the WG charter scope to cover non-human identities (NHI), schema semantics, filtering discovery, and asynchronous operations. The scheduled presentation on user supersession events was skipped due to the author's absence.
+
+---
+
+## Key Discussion Points
+
+### SCIM Protocol Interoperability Profile
+*   Danny Zollner presented the [SCIM Protocol Interoperability Profile](https://datatracker.ietf.org/meeting/127/materials/slides-127-scim-scim-protocol-interoperability-profile-00) (related to `draft-zollner-scim-profile`).
+*   **Overview**: The draft aims to reduce optionality in the SCIM specification to address implementation incompatibilities common in enterprise hub-and-spoke deployments.
+*   **Key Changes**: 
+    *   Updated `serviceProviderConfig` discovery formatting for interoperability features.
+    *   Clarified scope around protocol behavior (excluding resource-specific required attributes).
+    *   Required the `eq` operator on uniqueness-constrained attributes (`id`, `userName`) and `externalId`.
+    *   Disallowed unauthenticated discovery endpoint calls and aligned TLS requirements with BCP 195.
+    *   Defined error structures for unsupported optional base spec features.
+*   **Discussion**:
+    *   Atul Tulshibagwale questioned whether these restrictions should be incorporated into a new base version of SCIM (e.g., SCIM 2.1) rather than a separate profile. Aaron Parecki noted that regardless of the document title, the WG can focus first on refining the technical content.
+    *   Kartik Rampali asked about banning ETags and conditional requests given the potential for overwriting updates. Danny Zollner explained that ETag support is rarely implemented in practice by mainstream SCIM clients or providers, though he remains open to list feedback.
+*   **Session Poll**:
+    *   *Who has read the draft?* — yes: 3, no: 13, no_opinion: 0 (total: 32)
+*   **Reviewers**: Ray committed to providing feedback within 1 week; Stephen Hutchinson and Martin Sommer committed to reviewing within 1 month.
+
+---
+
+### SCIM Group Membership Resource
+*   Danny Zollner presented [SCIM Group Membership Resource](https://datatracker.ietf.org/meeting/127/materials/slides-127-scim-scim-group-membership-resource-00) for `draft-zollner-scim-group-membership`.
+*   **Problem**: In base SCIM, group membership is represented as a single array within the Group resource, which cannot be paginated. Groups with large membership lists cause memory errors or lead implementations to strip the `members` attribute entirely.
+*   **Solution**: Promotes group membership to its own dedicated resource (`/GroupMemberships`), making it directly eligible for standard SCIM pagination mechanisms.
+*   **Changes in Latest Version**:
+    *   Renamed draft to `draft-zollner-scim-group-membership`.
+    *   Replaced complex group member metadata with a single boolean indicating if the body of the Group object contains a complete list of members.
+    *   Removed explicit bans on `PATCH`/updates, deferring immutability definitions to the schema level.
+    *   Enforced a 1:1 constraint per group/member pair and clarified parent group deletion semantics.
+*   **Discussion**: Paul Lindsay thanked the author for addressing potential security risks regarding member/group data leakage.
+*   **Session Poll**:
+    *   *Is there interest in starting a call for adoption of draft-zollner-scim-group-membership?* — yes: 12, no: 0, no_opinion: 5 (total: 35)
+
+---
+
+### Integration of SaaS Security Services
+*   Atul Tulshibagwale presented a proposal to standardize integration interfaces between SaaS providers and security posture management tools (SSPM, ITDR, CASB, IGA).
+*   Identified four functional areas: connector lifecycle management, identity/agent inventory, change eventing, and SaaS security configuration/policy posture sharing.
+*   **Discussion**: Peter and Hirsch Singhal expressed that configuration and security posture management extend beyond identity provisioning and fall outside SCIM's core scope. Steven Tim suggested coordinating policy representation offline. The topic will not be added to the SCIM charter.
+
+---
+
+### Working Group Rechartering & Open Pull Requests
+*   Aaron Parecki and Danny Zollner led the charter discussion using [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-scim-chair-slides-00), [Charter Draft v1 (Paolo)](https://datatracker.ietf.org/meeting/127/materials/slides-127-scim-charter-draft-v1-paolo-00), and [SCIM WG Draft Charter - Open PRs](https://datatracker.ietf.org/meeting/127/materials/slides-127-scim-scim-wg-draft-charter-open-prs-00).
+*   **Session Poll**:
+    *   *Who has read the proposed charter text?* — yes: 5, no: 17, no_opinion: 0 (total: 36)
+*   **Open PR Review**:
+    *   *PR 7*: Replaces the term "account" with "resource" across the text for terminology consistency.
+    *   *PR 3 / PR 9*: Expands scope to Non-Human Identities (NHI), workload identities, software agents, and separates physical devices from software principals.
+    *   *Large Multivalued Attributes*: Clarifies that both retrieval and modification/bulk operations at scale are in scope.
+    *   *PR 12 (Schema Semantics)*: Focuses on improving complex attribute definitions and schema rules. Hirsch Singhal suggested using "strictly defined" or "less ambiguous" rather than "clearer".
+    *   *Filtering Discovery*: Adds explicit discovery of supported filtering operators per attribute.
+    *   *PR 13 (Roles & Entitlements)*: Expands scope to cover discovery and enumeration of available roles/entitlements. Hirsch Singhal noted requests for client-side entitlement creation; Danny Zollner clarified that role definitions remain read-only while assignments are updatable.
+    *   *Asynchronous Processing*: Adds scope for defining standard behaviors for asynchronous request/response processing over HTTP.
+    *   *Flat-File / Schematized Ingestion*: Proposes defining non-semantic bulk schematized data ingestion. Justin Richer warned that the wording could be misinterpreted as creating a new non-SCIM protocol and recommended framing the work strictly around SCIM schemas as standalone artifacts.
+*   **AD Feedback**: Responsible AD Chris Lemmons reminded the group that charters should remain high-level, noting that existing SCIM RFCs provide natural bounding boxes without needing overly prescriptive text.
+
+---
+
+## Decisions and Action Items
+
+*   **Adoption Call**: The chairs will issue a formal working group adoption call on the mailing list for `draft-zollner-scim-group-membership`.
+*   **Profile Review**: Volunteers (Ray, Stephen Hutchinson, Martin Sommer) will submit review feedback for `draft-zollner-scim-profile` to the mailing list.
+*   **Charter PR Merges**: Chairs will merge non-contentious PRs into the draft charter repository.
+*   **Charter Refinement**: Justin Richer and Danny Zollner will adjust the charter text regarding schematized data ingestion to prevent scope ambiguity.
+
+---
+
+## Next Steps
+
+*   Finalize working group alignment on the revised charter text by late January 2026 to allow IESG evaluation and IETF Last Call prior to IETF 128 in Kuala Lumpur.

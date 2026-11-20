@@ -1,0 +1,97 @@
+# [RADEXT](../wg/radext.html)
+
+## Summary
+The RADEXT Working Group met during IETF 127 in San Francisco (with hybrid remote participation). The meeting covered working group administration and rechartering status, updates on active working group documents, and presentations on candidate new work items. Key topics discussed included protocol errors, security review and deprecation of legacy RADIUS practices, Connect-Info syntax, National Security and Emergency Preparedness Service attributes, location uncertainty, persistent device identification, WLAN security profiles for Wi-Fi 8 / Post-Quantum Cryptography (PQC), and TLS-based EAP session tickets.
+
+## Key Discussion Points
+
+### Working Group Administration & Status
+- **Presentation**: [Chair's deck](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-chairs-deck-00) presented by Valery Smyslov.
+- Working group rechartering is complete, allowing new work items to be adopted.
+- `draft-ietf-radext-tls-bis` passed IESG evaluation and entered the RFC Editor queue, unblocking dependent draft `draft-ietf-radext-reverse-coa`.
+- Following rechartering, three drafts were adopted: `draft-ietf-radext-connectinfo`, `draft-ietf-radext-epcs`, and `draft-ietf-radext-protocol-error`.
+- `draft-ietf-radext-deprecating-radius` has had no changes since March 2024 and is ready for Working Group Last Call (WGLC).
+- The Status-Realm document (Margaret Wasserman) remains expired and requires a shepherd or an updated draft revision.
+
+### Standardising Protocol-Error
+- **Presentation**: [Protocol-Error](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-protocol-error-00) presented by Alan DeKok.
+- **Document**: `draft-ietf-radext-protocol-error`
+- The document addresses the practice of silently dropping valid packets by defining a canonical NAK/protocol error mechanism.
+- Implementations and testing are underway in FreeRADIUS, RADSECproxy, and Radiator.
+- **Discussion**:
+  - Ashwin raised a question regarding behavior when AAA servers lose connectivity to authentication backends (e.g., Active Directory down). Alan DeKok noted that additional error codes are needed specifically for proxy states to convey the exact failure to the NAS.
+  - Margaret Wasserman suggested mandating that `Proxy-State` be included in Protocol-Error responses to allow mapping errors to ongoing sessions. Alan DeKok agreed, noting that echoing `Proxy-State` also helps avoid issues with implementations like Microsoft NPS.
+
+### A Review of RADIUS Security
+- **Presentation**: [Review of RADIUS Security](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-review-of-radius-security-00) presented by Alan DeKok.
+- **Document**: `draft-ietf-radext-review-radius`
+- Updates include:
+  - Security analysis proving CHAP password is plain-text equivalent and significantly less secure than User-Password.
+  - Text explaining rationale for blast radius mitigations, proxy security risks, and removing/deprecating `Acct-Delay-Time`.
+  - A summary of general RADIUS protocol security flaws.
+- The plan is to publish this document in a cluster alongside `draft-ietf-radext-tls-bis` and `draft-ietf-radext-deprecating-radius`.
+
+### Syntax for RADIUS Connect-Info Attribute
+- **Presentation**: [Connect-Info RADEXT IETF127](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-connect-info-radext-ietf127-00) presented by Mark Grayson.
+- **Document**: `draft-ietf-radext-connectinfo`
+- Recent updates incorporate feedback from a multi-vendor WBA interop event:
+  - Split security and privacy sections.
+  - Clarified Multi-Link Operation (MLO) reporting and added an optional Link ID in the ABNF.
+  - Fixed modulation rate range syntax (1–12) and updated formatting for rates and samples.
+- All open issues are resolved, and the draft is ready for WGLC.
+
+### RADIUS Attributes for EPCS
+- **Presentation**: [RADIUS attributes for National Security and Emergency Preparedness Service](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-radius-attributes-for-national-security-and-emergency-preparedness-service-00) presented by Shrikanth.
+- **Document**: `draft-ietf-radext-epcs`
+- Major updates include:
+  - Generalized procedures beyond OpenRoaming.
+  - Separated authorization, invocation, and accounting logic.
+  - Clarified protocol option handling and priority level mappings to 802.11 elements.
+  - Defined terminology around designated priority service regulators vs. identity providers (IDPs).
+  - Integrated location-based authorization using RFC 3588 / RFC 5580 location attributes.
+  - Explicitly stated that EPCS does not displace standard emergency call handling.
+- **Discussion**: Margaret Wasserman commended the structural improvements and recommended further WG review of the updated text before issuing WGLC.
+
+### Carrying Location Objects with Uncertainty
+- **Presentation**: [5580-uncertainty RADEXT IETF 127](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-5580-uncertainty-radext-ietf-127-00) presented by Mark Grayson.
+- Proposes updating RFC 5580 by adding Profile Type 2 (geospatial profile based on RFC 6225 with location uncertainty at 95% confidence per RFC 7549), replacing obsoleted RFC 3825 definitions.
+- Updated security considerations to emphasize secure transport. The authors requested a WG adoption call.
+
+### RADIUS Persistent Device ID
+- **Presentation**: [RADIUS Persistent Device Id](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-radius-persistent-device-id-00) presented by Ashwin and Premanand Seralathan.
+- Addresses NAC database scale, license consumption, and profiling issues caused by client MAC address randomization or networks without MAC addresses (e.g., 5G SIMs).
+- Proposes a `Persistent-Device-Id` RADIUS attribute set during certificate onboarding (e.g., TPM/MDM) to identify physical clients across MAC randomization events.
+- **Discussion**:
+  - Margaret Wasserman raised privacy concerns regarding persistent tracking across sessions and questioned why this approach is preferred over turning off MAC randomization or using CUI.
+  - Ashwin, Premanand Seralathan, Mark Grayson, Dan Harkins, and Juan Carlos Zúñiga explained that over-the-air MAC addresses remain randomized (preserving privacy against passive Wi-Fi eavesdroppers), while the encrypted attribute inside RADIUS allows internal network controllers to consolidate profiles in trusted corporate/BYOD environments.
+  - Jan-Frederik Rieckers suggested updating the title and draft text to clarify that it focuses on client certificate device identification rather than strictly MAC randomization.
+
+### RADIUS Attribute for WLAN Profiles
+- **Presentation**: [RADIUS Attribute for WLAN Profiles](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-radius-attribute-for-wlan-profiles-00) presented by Dan Harkins.
+- Wi-Fi 8 (IEEE 802.11bn) and post-quantum cryptography (PQC) introduce security profiles where the same Authentication and Key Management (AKM) value is reused across multiple profiles (e.g., CNSA 1.0 vs. CNSA 2.0 vs. hybrid PQC).
+- Proposes a new WLAN security profile attribute (OUI/CID + profile number) so the AAA server can negotiate the correct TLS cipher suite.
+- **Discussion**:
+  - The authors requested early IANA allocation for attribute value 191.
+  - Margaret Wasserman and AD Christopher Inacio clarified that IANA assignment requires IETF Review (publication as an IETF stream RFC). Christopher Inacio noted that early allocation requires the document to first be formally adopted as a WG draft.
+
+### Session Tickets in TLS-Based EAP Methods
+- **Presentation**: [Session tickets in TLS-based EAP methods](https://datatracker.ietf.org/meeting/127/materials/slides-127-radext-session-tickets-in-tls-based-eap-methods-00) presented by Alan DeKok.
+- Informational presentation on work targeted at the EMU WG.
+- Highlights issues with TLS 1.3 session tickets in EAP-TLS/TTLS/PEAP, supplicants incorrectly linking EAP state machines to fragment boundaries, and high latency with large PQC certificates (up to 80 round trips).
+- Proposes issuing TLS session tickets after successful inner-tunnel authentication and decoupling EAP state machines from TLS fragmentation.
+
+## Decisions and Action Items
+- **Working Group Last Calls**:
+  - Issue WGLC for `draft-ietf-radext-deprecating-radius`.
+  - Issue WGLC for `draft-ietf-radext-connectinfo`.
+- **Adoption Calls**:
+  - Run WG adoption calls for `5580-uncertainty` (location uncertainty) and `RADIUS Attribute for WLAN Profiles`.
+- **IANA Early Allocation**:
+  - Following potential adoption of `RADIUS Attribute for WLAN Profiles`, submit a formal request for early allocation to the Area Director.
+- **Draft Modifications**:
+  - `draft-ietf-radext-protocol-error`: Add text requiring `Proxy-State` to be echoed in response messages if present in the request, and define specific error codes for proxy failures.
+
+## Next Steps
+- Perform cross-vendor interop testing for `draft-ietf-radext-protocol-error` prior to IETF 128.
+- Resolve shepherd/authorship assignment for the expired Status-Realm draft.
+- Align `draft-ietf-radext-review-radius`, `draft-ietf-radext-deprecating-radius`, and `draft-ietf-radext-tls-bis` for publication as a document cluster.

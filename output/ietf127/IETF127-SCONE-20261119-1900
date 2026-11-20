@@ -1,0 +1,87 @@
+# [SCONE](../wg/scone.html)
+
+## Summary
+
+The SCONE Working Group met at IETF 127 to review progress on its core working group documents, evaluate candidate extensions, and discuss working group closure plans. The SCONE protocol draft is currently under IESG review pending resolution of a Discuss point linked to the manageability document. The working group reviewed `draft-ietf-scone-applicability-manageability-03` and agreed to issue a Working Group Last Call (WGLC) once version `-04` is published. 
+
+The working group also evaluated four individual proposals: SCONE-ECHO, SCONE applicability for IEEE 802.11 access networks, qlog for SCONE, and SCONE-based rate advice for RoCEv2 networks. The consensus of the working group was not to adopt these items or recharter, but rather to focus on finalizing the active working group documents and prepare for working group shutdown.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status and Protocol Draft Update
+- **Chairs Slides** ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-scone-chairs-slides-01)) – Presented by Brian Trammell and Marcus Ihlar.
+- The core protocol specification is under IESG review. The remaining Discuss will be cleared as `draft-ietf-scone-applicability-manageability` progresses.
+- Marcus Ihlar raised a technical edge case: if a client sends SCONE packets on the uplink without intending to receive any, it might omit the transport parameter and consequently omit the indicator byte. On-path network elements relying on the indicator to identify SCONE flows might miss classifying the flow. Marcus Ihlar agreed to file a GitHub issue and post it to the mailing list for resolution in the next revision.
+
+### Manageability Considerations for SCONE
+- **draft-ietf-scone-applicability-manageability-03** ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-scone-draft-ietf-scone-applicability-manageability-03-00)) – Presented by Sanjay Mishra.
+- Revision `-03` represents a major rewrite incorporating 32 PRs and addressing early review comments from Joe Clark. Key updates include:
+  - Section 1.1 added to detail network element functions in 4G/5G and on-path environments.
+  - Section 3.11 added covering deployment options (signaling-only, monitoring, and unconditional rate enforcement).
+  - Removal of QUIC proxy protocol text based on feedback from Martin Thomson.
+  - Refined nomenclature, standardizing on "throughput advice".
+- **Tunneling & Encapsulation:** Zaid Ali Kahn and Gorry Fairhurst discussed simplifying the tunneling text to clearly delineate encrypted/MASK tunnels (where on-path SCONE advice is opaque) from transport-mode encapsulation (where outer/inner headers can be inspected).
+- **Terminology:** Brief discussion took place regarding "manageability" versus "operational considerations." Mirja Kühlewind supported keeping "manageability" for consistency across transport documents.
+- **Unconditional Rate Enforcement:** Chris Box noted that the text suggests network-enforced rates be "significantly higher" than SCONE throughput advice, and offered to file an issue to quantify this guidance better.
+
+### SCONE-ECHO
+- **SCONE-ECHO** ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-scone-scone-echo-00)) – Presented by Martin Duke.
+- Proposal to implement SCONE receiver behavior directly in the QUIC layer: when a SCONE packet is received, QUIC echoes the advice back in a QUIC frame to allow server-side Adaptive Bit Rate (ABR) control without requiring application-level API integration.
+- **Technical Discussion:**
+  - Marcus Ihlar and Christian Huitema raised concerns about potential feedback looping and intermediate network elements generating random advice to trigger excessive echo frames. Christian Huitema suggested filtering logic (e.g., minimum reporting window).
+  - Lucas Pardue (speaking as QUIC WG Chair) cautioned against speed-running QUIC extensions without thorough consideration of protocol edge cases and security implications.
+  - Lars Eggert, Kazuho Oku, and Mirja Kühlewind noted that SCONE-ECHO is a two-party endpoint extension (client/server), whereas SCONE was chartered for three-party network-to-endpoint signaling. They suggested that any such work belongs in the QUIC Working Group or as an individual effort rather than expanding SCONE's scope.
+- **Session Poll:**
+  - *Poll Question:* "is this draft a useful extension to QUIC and SCONE that should be published by the IETF (regardless of which working group it goes to)?"
+  - *Results:* Yes: 13, No: 1, No Opinion: 7 (Total participants: 51).
+- **Conclusion:** The SCONE Working Group will not adopt the document. Proponents may pursue prototyping (e.g., at an IETF Hackathon) and present the work to the QUIC Working Group if appropriate.
+
+### SCONE Applicability for IEEE 802.11 Access Networks
+- **SCONE Applicability for IEEE 802.11 Access Networks** ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-scone-applicability-for-ieee-80211-access-networks-00)) – Presented by Sri Gundavelli.
+- The draft explores applying SCONE rate advice in Wi-Fi environments, detailing channel load parameters, signal-to-noise ratio (SNR), and deployment placement across Access Points (APs) and Wireless LAN Controllers (WLCs).
+- **Discussion:**
+  - Marcus Ihlar, Lars Eggert, and Jörg Ott argued that detailed 802.11 guidance belongs in IEEE 802.11, the Wi-Fi Alliance, or the Wireless Broadband Alliance (WBA), rather than the IETF.
+  - Stuart Cheshire and Mirja Kühlewind highlighted a timescale mismatch: Wi-Fi channel conditions change dynamically on sub-second scales, whereas SCONE provides stable throughput policy advice over longer averaging windows (e.g., 67 seconds).
+- **Conclusion:** The work will not be taken up in the SCONE WG. The author was encouraged to seek empirical data via Hackathon experiments and engage IEEE 802.11 or WBA.
+
+### qlog for SCONE
+- **slides-ietf127-scone-qlog** ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-scone-slides-ietf127-scone-qlog-00)) – Presented by Gorry Fairhurst.
+- Proposes standard qlog event definitions for SCONE to assist in debugging and stack implementation testing.
+- **Discussion:**
+  - Marcus Ihlar noted that network elements use 4-tuples and internal logging rather than connection-ID-based qlog formats.
+  - Kazuho Oku and Lucas Pardue discussed qlog schema dependencies, noting qlog is still progressing within the QUIC Working Group.
+  - Mirja Kühlewind suggested incorporating qlog definitions into an appendix of existing SCONE drafts. However, AppMan editors (Zaid Ali Kahn and Sanjay Mishra) objected to adding qlog to `draft-ietf-scone-applicability-manageability` to avoid delaying its publication.
+  - Christian Huitema pointed out that referencing unfinalized qlog drafts would create normative dependency issues.
+- **Conclusion:** The working group will not hold up current drafts or recharter for qlog.
+
+### SCONE-Based Rate Advice for RoCEv2 Networks
+- **SCONE-Based Rate Advice for RoCEv2 Networks** ([Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-scone-based-rate-advice-for-rocev2-networks-00)) – Presented by Kenji Fujiwara.
+- Proposed applying SCONE principles to RoCEv2 (RDMA over UDP) in data center environments to provide quantitative throughput guidance.
+- **Discussion:**
+  - Lars Eggert, Christian Huitema, Marcus Ihlar, and Mirja Kühlewind noted that generic UDP traffic lacks QUIC's in-band cryptographic integrity mechanisms, making unencrypted RoCEv2 vulnerable to spoofed advice.
+  - The proposal falls well outside the current SCONE charter.
+- **Conclusion:** Out of scope for SCONE WG; appropriate for IBTA or data center transport forums.
+
+---
+
+## Decisions and Action Items
+
+1. **Indicator Byte Issue:**
+   - **Action:** Marcus Ihlar to open a GitHub issue and post to the mailing list regarding uplink indicator byte behavior when transport parameters are omitted.
+
+2. **Manageability Draft (`draft-ietf-scone-applicability-manageability`):**
+   - **Action:** Sanjay Mishra to resolve open issues (including tunneling text cleanup and Chris Box's issue on rate enforcement quantification) and submit revision `-04` by early December.
+   - **Decision:** Chairs will issue a Working Group Last Call (WGLC) on `draft-ietf-scone-applicability-manageability-04` upon publication.
+
+3. **New Work Items & Rechartering:**
+   - **Decision:** SCONE will not adopt SCONE-ECHO, SCONE for IEEE 802.11, qlog for SCONE, or SCONE for RoCEv2. The working group will not recharter.
+
+---
+
+## Next Steps
+
+- Finalize `draft-ietf-scone-applicability-manageability` via WGLC.
+- Complete IESG processing for the core SCONE protocol draft.
+- Prepare for Working Group closure following the approval and publication of its chartered deliverables.

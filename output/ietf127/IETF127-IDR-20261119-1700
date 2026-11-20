@@ -1,0 +1,112 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The Inter-Domain Routing (IDR) Working Group met to discuss working group status, updates to core BGP specifications, BGP transport security, tunnel encapsulation, route reflector deployment best practices, next-hop and best-path selection criteria, SD-WAN discovery, and route leak prevention enhancements. 
+
+Key milestones highlighted included ten drafts currently with the RFC Editor and two drafts at the IESG. The working group evaluated progress on `draft-ietf-idr-bgp4-rfc4271bis` (confirming consensus on an omnibus approach), updates to BGP over TLS, MASQUE tunnel signaling, route reflector deployment considerations, next-hop resolution enhancements, AD updates for SD-WAN discovery, and fast-tracking `draft-ietf-idr-otc-rs-verification` following active open-source implementation.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Chairs' Update
+* **Presenter:** Susan Hares
+* **Slides:** [IDR Chairs' Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-0-idr-chairs-slides-00)
+* **Discussion:**
+  * Susan Hares provided a status update across active work streams (Core, SR/SR-TE, BGP-LS, FlowSpec v2).
+  * 10 drafts are at the RFC Editor; 2 are at the IESG. Post-WGLC revisions are underway for `draft-ietf-idr-sdwan-edge-discovery` and `draft-ietf-idr-bgp-ct-srv6`.
+  * IDR is introducing a dedicated YANG category to manage models for configuration/monitoring and align with NetMod versioning and packaging effort.
+
+### BGP-4 Specification Update (RFC4271bis)
+* **Presenter:** John Scudder
+* **Draft:** `draft-ietf-idr-bgp4-rfc4271bis`
+* **Slides:** [RFC4271bis Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-1-rfc4271bis-update-01)
+* **Discussion:**
+  * John Scudder summarized updates through versions -04, -05, and -06.
+  * Key updates include: integrating RFC 7606 error handling, AS 0 processing, Extended Optional Parameters, deprecation of `AS_SET` and `AS_CONFED_SET`, correcting the AGGREGATOR attribute so it is not restricted to IPv4, removing outdated "well-known" terminology in favor of explicit attribute bit flags, and integrating RFC 8212 into path selection.
+  * Version -06 introduced an "omnibus" integration containing BGP Capabilities and 4-byte AS support into the main specification text, moving 2-byte AS operations to a backward-compatibility section.
+  * Formal polls confirmed consensus to proceed with the omnibus approach and to express guidance preferring MP-BGP over legacy IPv4 NLRI encodings.
+  * John Scudder noted ongoing work to integrate RFC 4760 (MP-BGP) and RFC 2545 into upcoming revisions (-07). Discussions confirmed that parsing NLRI encoding relies on both AFI and SAFI.
+
+### BGP over TLS/TCP
+* **Presenter:** Serge Maskit
+* **Slides:** [BGP over TLS/TCP](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-2-bgp-over-tlstcp-00)
+* **Discussion:**
+  * Serge Maskit presented updates in version -05. The draft reverted to standard TCP port 179 using implicit TLS rather than requesting a dedicated port.
+  * Active peers initiate sessions with a TLS ClientHello before any plain-text BGP exchange, preserving the standard BGP Finite State Machine (FSM).
+  * The draft mandates TCP-AO protection prior to TLS and mandates TLS 1.3 with mutual authentication. An Application-Layer Protocol Negotiation (ALPN) token (`BOTLS`) is defined.
+  * The document status was moved from Experimental to Standards Track due to vendor interest.
+  * Sriram Parameswaran asked about vendor implementations; Cisco expressed implementation interest. Alvaro Retana, Ketan Talaulikar, and John Scudder discussed mandatory TCP-AO requirements and their alignment with `draft-ietf-idr-bgp4-rfc4271bis`.
+
+### BGP Signaling of MASQUE Tunnel Encapsulation
+* **Presenter:** Alvaro Retana
+* **Slides:** [BGP Signaling of MASQUE Tunnel Encapsulation](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-3-bgp-signaling-of-masque-tunnel-encapsulation-00)
+* **Discussion:**
+  * Alvaro Retana presented updates on signaling MASQUE tunnels using the BGP Tunnel Encapsulation Attribute (RFC 9012).
+  * The draft defines MASQUE tunnel types (Connect TCP, Connect UDP, Connect IP, Connect Ethernet) and introduces two sub-TLVs: URI Template and Service Parameters (modeled after DNS SVCB records).
+  * Rather than using RFC 9012 Tunnel Egress Endpoint sub-TLVs, validation uses IP literals in the URI or IPv4/IPv6 hints from the Service Parameters sub-TLV.
+  * Susan Hares raised concerns regarding text describing validation procedures versus RFC 9012. Alvaro agreed to update the text to clarify the validation mechanism explicitly.
+
+### BGP Route Reflector Deployment Considerations
+* **Presenter:** David Smith
+* **Slides:** [BGP RR Deployment Considerations](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-4-bgp-rr-deployment-considerations-00)
+* **Discussion:**
+  * David Smith presented an overview of an informational draft detailing Route Reflector (RR) deployment best practices across L2/L3 VPNs and core BGP environments.
+  * Responding to prior feedback regarding draft placement, David Smith, Jeffrey Haas, and Ketan Talaulikar agreed that IDR is the appropriate home because the draft covers non-Internet routing scenarios (L2/L3 VPNs), though cross-working-group review with the GROW WG will be conducted.
+  * Kalyan Kalvagadda suggested adding explicit references to existing IDR work regarding forwarding RRs to prevent routing loops. Martin Horneffer expressed support for the operational guidance provided in the document.
+
+### Chairs' Discussion & Best Path Next-Hop Selection Enhancements
+* **Presenters:** Susan Hares, Olivier de Saint Martin
+* **Drafts:** `draft-ietf-idr-bgp-bestpath-nh-selection`, `draft-ietf-idr-bgp-bestpath-selection-criteria`
+* **Slides:** [Chairs's Discussion on Next-hop Selection](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-5-1-chairss-discussion-on-next-hop-selection-01), [BGP Best Path Next-hop Selection Enhancements](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-5-2-bgp-best-path-next-hop-selection-enhancements-00)
+* **Discussion:**
+  * Susan Hares introduced a roadmap addressing next-hop resolution and path selection modifications across various IDR drafts.
+  * Olivier de Saint Martin presented `draft-ietf-idr-bgp-bestpath-nh-selection`. The draft formalizes BGP next-hop resolution by defining Path Resolution Tuples (Resolution Key + optional Resolution Context) and Resolution Constraints to prevent traffic drops or suboptimal path selection in tunnel-based architectures (e.g., MPLS, SRv6 Flex-Algo).
+  * Authors of `draft-ietf-idr-bgp-bestpath-nh-selection` plan to collaborate and merge concepts with `draft-ietf-idr-bgp-bestpath-selection-criteria`.
+  * Kalyan Kalvagadda noted similarities to BGP CAR/CT resolution schemes and stressed the need for standardized metric comparison across different tunnel types.
+  * Robert Raszuk noted in the chat that this work pertains to selecting the underlying path/tunnel to reach a next hop rather than traditional next-hop resolution itself.
+
+### SD-WAN Edge and Underlay Tunnel Discovery Using BGP
+* **Presenter:** Susan Hares
+* **Draft:** `draft-ietf-idr-sdwan-edge-discovery`
+* **Slides:** [SD-WAN Edge and Underlay Tunnel Discovery Using BGP](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-6-sd-wan-edge-and-underlay-tunnel-discovery-using-bgp-00)
+* **Discussion:**
+  * Susan Hares outlined structural updates made to `draft-ietf-idr-sdwan-edge-discovery` following AD review by Ketan Talaulikar.
+  * BGP signaling procedures have been clearly separated from IPsec security functions.
+  * The draft has been submitted for Security Directorate (SecDir) review regarding key exchange parameters before re-issuing a Working Group Last Call.
+
+### Strict Only to Customer (OTC) Verification on Route Server Sessions
+* **Presenter:** Bryton Herdes
+* **Draft:** `draft-ietf-idr-otc-rs-verification`
+* **Slides:** [Strict Only to Customer (OTC) Verification on Route Server Sessions](https://datatracker.ietf.org/meeting/127/materials/slides-127-idr-sessa-1-7-strict-only-to-customer-otc-verification-on-route-server-sessions-00)
+* **Discussion:**
+  * Bryton Herdes presented `draft-ietf-idr-otc-rs-verification`, which updates RFC 9234 OTC ingress checks for route server clients.
+  * The draft adds a check requiring a route server client to verify whether an OTC attribute received on a route server session matches the route server's remote AS. If an OTC is present and does not match the route server AS, the route is rejected, preventing route leaks through route servers that have not implemented RFC 9234.
+  * OpenBGPD and FRRouting (FRR) have already implemented this check (requiring minimal 1–2 line code modifications).
+  * Serge Maskit and Bryton Herdes supported fast-tracking the document. Sriram Parameswaran clarified that the check applies to the remote AS of the peering session and volunteered to review the draft.
+
+---
+
+## Decisions and Action Items
+
+### Working Group Poll Results
+1. **Poll 1:** *Should we do omnibus [in RFC4271bis]*
+   * **Result:** Yes: 20, No: 0, No Opinion: 0 (Total: 64)
+2. **Poll 2:** *What is in the NLRI format - AFI, SAFI, AFI+SAFI, it-depends*
+   * **Result:** Yes: 0, No: 0, No Opinion: 0 (Total: 68) *(Note: Informal room show of hands unanimously confirmed AFI+SAFI is required).*
+3. **Poll 3:** *Should MP-BGP be preferred over legacy one?*
+   * **Result:** Yes: 23, No: 0, No Opinion: 0 (Total: 72)
+
+### Decisions
+* **`draft-ietf-idr-bgp4-rfc4271bis`:** Confirmed working group consensus to move forward with the omnibus integration model (incorporating Capabilities, 4-byte AS, and MP-BGP).
+* **BGP RR Deployment Considerations:** The working group agreed that `draft-ietf-idr-sessa-1-4` (BGP RR Deployment Considerations) belongs within IDR, with cross-working-group reviews to be coordinated with GROW and Ops ADs.
+
+---
+
+## Next Steps
+
+* **`draft-ietf-idr-bgp4-rfc4271bis`:** Incorporate RFC 4760 and RFC 2545 into version -07; targeted for Working Group Last Call next year.
+* **`draft-ietf-idr-otc-rs-verification`:** Prepare for fast-track Working Group Last Call following recent open-source implementations and draft adoption. Sriram Parameswaran to provide review.
+* **`draft-ietf-idr-sdwan-edge-discovery`:** Await Security Directorate (SecDir) feedback on IPsec key exchange parameters before concluding post-WGLC review.
+* **`draft-ietf-idr-bgp-bestpath-nh-selection`:** Merge concepts with `draft-ietf-idr-bgp-bestpath-selection-criteria` and refine preference mechanisms based on working group feedback.

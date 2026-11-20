@@ -1,0 +1,120 @@
+# [TLS](../wg/tls.html)
+
+## Summary
+
+The TLS Working Group met to discuss several active working group drafts and individual proposals. Key topics included updates and formal verification of Extended Key Update, codepoint registry management for Composite ML-DSA, secondary client authentication mechanisms, HTTP-level post-quantum pinning (PQ-HSTS), and integrating eXtendable-Output Functions (XOF) into the TLS 1.3 key schedule.
+
+---
+
+## Key Discussion Points
+
+### Extended Key Update for TLS 1.3
+- **Draft:** `draft-ietf-tls-extended-key-update`
+- **Presenters:** Yaroslav Rosomakho, Nick, Felix Linker
+
+- **Specification Updates:**
+  - Updated terminology to replace "epoch" with "generation" to prevent collisions with DTLS epochs.
+  - Exporters are now generation-aware; TLS must inform applications of the active EKU generation. Legacy exporter APIs remain supported for generation 0 for backward compatibility.
+  - PSK session resumption is explicitly disabled when EKU is negotiated, and resumption secrets are no longer derived.
+  - Added conflict resolution rules for simultaneous EKU requests, specifying which party wins and ensuring unaccepted request messages are excluded from transcript hash calculations.
+  - Updated DTLS framing logic so that any subsequent application message sent by a responder acts as an implicit ACK if an explicit ACK is lost.
+  - Added a deployment considerations section emphasizing explicit opt-in configuration and frequency policies based on time or data volume.
+
+- **Formal Analysis:**
+  - Symbolic analysis using the Tamarin prover confirmed that EKU does not regress any core security guarantees of TLS 1.3.
+  - Verified secrecy properties under a temporary key compromise with a passive attacker.
+  - Proofs for active attacker scenarios and post-handshake authentication are ongoing, targeted for completion by the end of the year.
+  - Formal modeling efforts directly contributed to refining the threat model section of the draft.
+
+- **Discussion:**
+  - Watson Ladd raised concerns regarding application interface changes and library integration. Yaroslav Rosomakho noted that the deployment considerations section provides guidance on explicit configuration.
+  - Muhammad Usama Sardar asked about key storage assumptions in the symbolic model; Felix Linker clarified that the model abstracts storage mechanics and focuses on adversary key access.
+
+---
+
+### Use of Composite ML-DSA in TLS 1.3
+- **Draft:** `draft-ietf-tls-composite-mldsa`
+- **Presenter:** Scott Fluhrer
+
+- **Overview:**
+  - The authors presented a revised set of composite algorithm combinations, reducing the total count down to six pairings matched by equivalent classical security strength (including ML-DSA-44 with P-256/Ed25519, ML-DSA-65 with P-384/RSA-4096, and ML-DSA-87 with P-521), all set to `RECOMMENDED=N`.
+
+- **Discussion:**
+  - Yaroslav Rosomakho advocated removing RSA-based combinations from the primary draft to reduce complexity.
+  - Andrei Popov noted Microsoft's intent to implement and deploy composite combinations.
+  - Christopher Wood, Rich Salz, Watson Ladd, and Deb Cooley discussed registry policies, clarifying that registering code points with `RECOMMENDED=N` under Specification Required does not require Working Group consensus on algorithm selection or restrict codepoints to a minimal set.
+
+---
+
+### Secondary Client Authentication in TLS
+- **Presenter:** Yaroslav Rosomakho
+
+- **Problem & Proposal:**
+  - Enterprise VPNs and multi-identity client deployments require presenting separate certificates (e.g., device identity and user identity) on a single connection.
+  - Existing alternatives present challenges: Exported Authenticators (RFC 9261) lack broad library and application support, while standard Post-Handshake Authentication (PHA) is prohibited in QUIC and HTTP/2 due to multiplexing and mid-stream authorization shifts.
+  - Proposed mechanism:
+    - Client advertises support via a `secondary_client_certificate` extension flag in `ClientHello`.
+    - Server requests secondary client authentication in `CertificateRequest`.
+    - Execution occurs immediately post-handshake (before application data): Server sends a post-handshake `CertificateRequest` right after `Finished`, and the client immediately responds with `Certificate`, `CertificateVerify`, and `Finished` before any application data is transmitted.
+
+- **Discussion:**
+  - Viktor Dukhovni confirmed that `NewSessionTicket` messages must occur after secondary client authentication completes.
+  - Jonathan Hoyland and Watson Ladd raised questions regarding the authentication guarantees, distinguishing compound dual-certificate signatures from sequential certificate verification.
+  - Deb Cooley and Flemming Andreasen supported the enterprise VPN dual-identity use case.
+  - Andrei Popov noted that Windows supports PHA and expressed support for reusing standard post-handshake mechanisms cleanly.
+
+---
+
+### HTTP Post-Quantum State (PQ-HSTS)
+- **Presenter:** Yaron Sheffer
+
+- **Overview:**
+  - Proposed an HTTP response header (similar to HSTS) that allows origins to signal that clients must require post-quantum server certificates for subsequent connections.
+  - Enforced by clients only when received over a valid TLS 1.3 connection backed by a post-quantum trust anchor and complete PQ certificate chain. Includes `includeSubDomains` support and hard connection failure on policy violations.
+
+- **Discussion:**
+  - Christopher Patton, Alessandro Ghedini, and David Benjamin (in chat) highlighted significant operational risks and lockout potential ("footgun"), particularly across multi-CDN deployments.
+  - Deb Cooley (AD) and the chairs noted that HTTP headers and policy pinning belong in the HTTP Working Group (HTTPBIS) or WebSEC rather than TLS. The authors were advised to consult with the HTTPBIS chairs or submit the proposal to DISPATCH.
+
+---
+
+### XOF for TLS 1.3 Key Schedule
+- **Draft:** `draft-sullivan-tls-xof-schedule`
+- **Presenters:** Gilles Van Assche, Nick
+
+- **Overview:**
+  - Replaces HKDF and SHA-2 across the entire TLS 1.3 key schedule (including transcript hashing, secret derivation, MACs, and binders) with an eXtendable-Output Function (XOF) such as SHAKE256 or TurboSHAKE256.
+  - Updates in revision -01:
+    - Replaced KMAC/TurboKMAC with a deck-engine structure, reducing MAC computation to two permutation calls per MAC.
+    - Introduced a `derive_n` function to extract multiple secrets in a single XOF call.
+    - Aligned output secret boundaries to 8 octets.
+    - Added byte-exact test vectors in Appendix D and expanded coverage to DTLS 1.3, Exported Authenticators, and ECH.
+
+- **Discussion:**
+  - Scott Fluhrer recommended treating hybrid KEM outputs as a single concatenated shared secret input to the XOF engine rather than splitting them across cycles.
+  - Christopher Patton expressed support for adopting the draft and moving toward XOF-based key schedules.
+  - Muhammad Usama Sardar offered to assist with symbolic security verification.
+
+- **Session Poll:**
+  - Question: *Who has read the -xof I-D?*
+  - Results: yes: 0, no: 0, no_opinion: 0 (total: [object Object])
+
+---
+
+## Decisions and Action Items
+
+1. **Composite ML-DSA (`draft-ietf-tls-composite-mldsa`):**
+   - The authors will restore the comprehensive set of composite ML-DSA combinations to the draft, request official code point allocations from the Designated Experts under `RECOMMENDED=N`, and prepare the specification for Working Group Last Call (WGLC).
+
+2. **Secondary Client Authentication:**
+   - The authors will refine the document based on feedback regarding message ordering (e.g., `NewSessionTicket`) and continue technical discussions on the TLS mailing list.
+
+3. **HTTP Post-Quantum State (PQ-HSTS):**
+   - Work will transition out of TLS; authors will coordinate with HTTPBIS chairs and DISPATCH to find the appropriate home for HTTP-layer header specifications.
+
+---
+
+## Next Steps
+
+- **`draft-ietf-tls-extended-key-update`:** Complete active-attacker and authentication symbolic proofs in Tamarin and prepare for Working Group Last Call upon proof completion.
+- **`draft-sullivan-tls-xof-schedule`:** Authors will publish an updated -02 revision incorporating feedback on hybrid secret concatenation and seek formal analysis input.
