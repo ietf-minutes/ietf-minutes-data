@@ -1,0 +1,87 @@
+# [DAWN](../wg/dawn.html)
+
+## Summary
+
+The Discovery of Agents With Names (DAWN) Working Group held its initial session at IETF 127. The primary goal of the session was orientation rather than decision-making—building a shared map of existing Internet-Drafts against the four core charter deliverables (Terminology, Use Cases, Architecture, and Protocols), identifying overlaps for potential consolidation, and formulating open technical questions.
+
+Responsible Area Director Éric Vyncke and the Working Group Chairs (Frank Brockners and Gautam) emphasized the narrow, targeted scope of the DAWN charter: enabling clients to discover public properties of named AI resources to facilitate subsequent selection and invocation. Advanced catalog management, full-text search, and post-discovery interactions are explicitly out of scope.
+
+The session featured twelve presentations spanning definitions, use case requirements, architectural frameworks, and a wide array of protocol proposals. Key architectural debates centered on the boundary between DNS-based discovery and post-discovery HTTPS/`/.well-known` resolution, security/trust models (WebPKI vs. DNSSEC), DNS message payload limits, and whether protocols like MCP and A2A require a unified abstraction layer. To drive convergence across competing proposals, the working group agreed to plan interim meetings in early 2027.
+
+---
+
+## Key Discussion Points
+
+### 1. Opening Remarks and Charter Scope
+* **Presentation:** [00 - Opening - Remarks from the chairs and AD](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-00-opening-remarks-from-the-chairs-and-ad-01) (Frank Brockners, Gautam, Éric Vyncke)
+* Gautam outlined the session objectives: establishing a shared understanding of draft alignment with charter deliverables, finding areas of overlap to consolidate, and clarifying open questions before considering document adoption.
+* Area Director Éric Vyncke clarified that the charter is intentionally narrow to ensure timely completion. Discovery is limited to parameters required for reaching and selecting an endpoint; directories, catalogs, and complex search functions are out of scope.
+* Frank Brockners urged authors to focus on reusing existing mechanisms where possible and explaining the rationale if new mechanisms are proposed.
+
+### 2. Terminology
+* **Presentation:** [01 - Terminology - Terminology for the Discovery of Agents With Names](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-01-terminology-terminology-for-the-discovery-of-agents-with-names-00) (Adrian Farrel)
+* Adrian Farrel introduced `draft-farrel-dawn-terminology`, defining key concepts including **AI Resource** (agents, models, tools, interface services), **Minimum Discoverable Information (MDI)** (data published to enable discovery), **Minimum Viable Dataset (MVD)** (data supplied by a client to query discovery), and **Discovery Information** (data returned to the client).
+* Eric Rescorla expressed skepticism regarding the need for a standalone terminology document, suggesting definitions be incorporated directly into protocol specifications or remain as an I-D. Adrian Farrel agreed that subsuming terms into architecture or protocol drafts is acceptable, provided definitions remain consistent across documents.
+* Toerless Eckert raised questions regarding how boundaries (e.g., AI gateways or MCP brokers) are categorized under the charter terms.
+
+### 3. Use Cases and Applicability
+* **Presentation:** [02 - Use-Cases - Use Cases and Applicability for Discovery of Agents With Names](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-02-use-cases-use-cases-and-applicability-for-discovery-of-agents-with-names-01) (Nic Williams)
+* Nic Williams presented initial use cases: enterprise managed devices, visitors accessing local network services, compute nodes for streaming media, and multi-party calendar/meeting scheduling.
+* Eric Osterweil and Jim Reid discussed balancing the number of use cases: keeping scenarios tightly focused prevents scope creep, while analyzing a representative set helps reveal recurring architectural design patterns.
+* **Presentation:** [03 - Use-Cases - Discovery of AI Agents for Communication Services: Use Case and Problem Statement](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-03-use-cases-discovery-of-ai-agents-for-communication-services-use-case-and-problem-statement-00) (Mohamed Jadoon)
+* Mohamed Jadoon detailed scenarios where AI agents operate at specific TCP/IP layers (e.g., transport-layer optimization vs. application layer) and require discovery mechanisms that distinguish functional responsibilities and protocol associations beyond basic network reachability.
+
+### 4. Discovery Architecture Framework & Minimum Public Discovery Information (MDI)
+* **Presentation:** [04 - Architecture - A Framework for Agent Discovery in DAWN](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-04-architecture-a-framework-for-agent-discovery-in-dawn-00) (Linda Dunbar)
+* Linda Dunbar proposed a two-layer discovery architecture combining local discovery (mDNS/DNS-SD) with global discovery (unicast DNS and federated gateways enforcing disclosure policies).
+* Stuart Cheshire noted that DNS Service Discovery (DNS-SD) operates over both local multicast DNS (mDNS) and global unicast DNS (`draft-cheshire-dnssd-roadmap`), emphasizing that lower-layer transport choice should not alter high-level discovery semantics.
+* Eric Rescorla questioned how cryptographic integrity guarantees required by the charter would be satisfied when using local mDNS.
+* **Presentation:** [05 - Architecture - Minimum Public Discovery Information: Requirements and Common Semantics](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-05-architecture-minimum-public-discovery-information-requirements-and-common-semantics-01) (Cheng Wang)
+* Cheng Wang presented criteria for defining MDI, categorizing parameters into required (Name, Endpoint, Freshness/TTL), optional (Display Name), and excluded (Capability Labels, Trust Materials/Certificates, which belong in post-discovery).
+
+### 5. Candidate Protocol Proposals
+* **Presentation:** [06 - Protocol - DNS for AI Discovery / Zero-Configuration Agent Discovery / Common Agent DNS Discovery Parameters](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-06-protocol-dns-for-ai-discovery-zero-configuration-agent-discovery-common-agent-dns-discovery-parameters-00) (Jim Mozley, Laurie)
+* Jim Mozley and Laurie presented a joint approach using existing DNS records (SVCB, SRV, TXT) across local mDNS and global DNS without introducing new Resource Record (RR) types.
+* Benjamin Schwartz noted that if endpoints communicate over HTTP-based protocols (such as MCP or A2A), standard `HTTPS` records should be used rather than generic `SVCB` records.
+* Eric Osterweil raised concerns regarding lookup latency and round-trip times (RTT) if resolution involves chaining multiple DNS lookups (e.g., SVCB followed by TXT and TLSA).
+* **Presentation:** [07 - Protocol - DNS-Based Agent Naming (DAN): AIDISCA and AIINDEX Resource Records for AI Agent Discovery](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-07-protocol-dns-based-agent-naming-dan-aidisca-and-aiindex-resource-records-for-ai-agent-discovery-00) (Eric Osterweil)
+* Eric Osterweil proposed DNS-Based Agent Naming (DAN), introducing two new DNSSEC-signed resource record types: `AIDISCA` (storing connection metadata, supported protocols, and certificate associations) and `AIINDEX` (listing discoverable agent names within a domain).
+* Benjamin Schwartz highlighted that enumerating large sets of agents within `AIINDEX` DNS record sets encounters the hard 64 KB DNS response limit.
+* Mirja Kühlewind and Eric Rescorla argued against placing dense index and metadata structures into DNS, suggesting DNS should only provide initial bootstrapping to an HTTPS/`/.well-known` endpoint.
+* **Presentation:** [08 - Protocol - BEST: The Behavioral State Protocol](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-08-protocol-best-the-behavioral-state-protocol-01) (Riccardo Di Nuzzo)
+* Riccardo Di Nuzzo outlined a lightweight HTTPS mechanism where clients resolve standard domain names and fetch discovery manifests directly from `/.well-known/best`, leveraging standard HTTP caching mechanisms (ETags, `Cache-Control`). Benjamin Schwartz supported this minimal HTTPS-centric design.
+* **Presentation:** [09 - Protocol - Registry-Assisted Resolution for Known Subjects Without DNS Discovery Anchors](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-09-protocol-registry-assisted-resolution-for-known-subjects-without-dns-discovery-anchors-01) (Ramesh)
+* Ramesh discussed discovery mechanisms for endpoints without dedicated DNS anchors (e.g., personal Mac mini agents or non-profit members), proposing fallback index registry anchors combined with signed "agent fax cards" for verification.
+* **Presentation:** [10 - Protocols - Agentic Resource Discovery (ARD) - Architecture, Initial Contact, and Lookup](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-10-protocols-agentic-resource-discovery-ard-architecture-initial-contact-and-lookup-02) (Junjie Bo)
+* Junjie Bo presented Agentic Resource Discovery (ARD), using JSON manifest structures (`application/aid+json`) accessible via DNS bootstrapping, well-known URIs, or registry lookups, featuring optional cryptographic provenance attestations.
+* **Presentation:** [11 - Protocol - Considerations for Agent Gateway Integration within the DAWN Framework](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-11-protocol-considerations-for-agent-gateway-integration-within-the-dawn-framework-00) (Kehan Yao)
+* Kehan Yao discussed discovery considerations when agents sit behind enterprise gateways or firewalls, requiring aggregated MDI schemas and DNS-SD subtyping to hide private internal topologies.
+
+### 6. Architectural Synthesis and Discussion
+* **Presentation:** [99 - Closing - Conclusion, next steps, review of all candidate proposals against the DAWN deliverables](https://datatracker.ietf.org/meeting/127/materials/slides-127-dawn-99-closing-conclusion-next-steps-review-of-all-candidate-proposals-against-the-dawn-deliverables-01) (Frank Brockners)
+* David Schinazi advised the working group to step back from specific label choices and DNS record mechanics to first reach consensus on foundational architectural properties: trust anchors (DNSSEC vs. WebPKI), protocol dependencies (DNS vs. HTTPS), and network round-trip budgets.
+* Benjamin Schwartz cautioned against attempting to build an overarching abstraction layer that prematurely unifies distinct protocols like MCP and A2A.
+* Suraj, Eric Rescorla, and Brian Trammell agreed that the group must explicitly define the workflow context—specifically determining what minimal information belongs in DNS versus what should be retrieved post-discovery over HTTPS.
+
+---
+
+## Decisions and Action Items
+
+### Session Polls
+The following official poll was taken during the session:
+
+* **Should we consider Interim Meeting(s) in Jan/Feb 2027?**
+  * **Yes:** 39
+  * **No:** 2
+  * **No Opinion:** 11
+  * **Total Participants:** 146
+
+---
+
+## Next Steps
+
+1. **Interim Meetings Planning:** The chairs and AD will organize virtual interim meeting(s) in January/February 2027 prior to IETF 128 (Kuala Lumpur) to evaluate high-level architectural requirements and drive convergence across competing protocol proposals.
+2. **MDI & Protocol Boundaries:** Technical discussion on the mailing list will focus on defining:
+   * The explicit boundary between initial DNS discovery and post-discovery HTTPS/`/.well-known` retrieval.
+   * Trust models and integrity requirements (WebPKI vs. DNSSEC dependencies).
+   * Exact parameters required for Minimum Discoverable Information (MDI).

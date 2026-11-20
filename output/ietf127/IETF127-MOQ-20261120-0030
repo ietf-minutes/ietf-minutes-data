@@ -1,0 +1,88 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The Media over QUIC (MOQ) working group met at IETF 127. The session covered progress on working group documents including updates to the MOQT Streaming Format (`draft-ietf-moq-msf`), CMSF (`draft-ietf-moq-cmsf`), and End-to-End Secure Objects (`draft-ietf-moq-secure-objects`). The working group conducted formal adoption polls for the MOQ URI specification (`moq-uri`), which received strong support. Additionally, individual presentations covered preflight capability checking, multicast repair mechanisms, ad signaling event timelines, bandwidth probing, fast track switching, and subscription flow control.
+
+---
+
+## Key Discussion Points
+
+### Agenda Bashing & Administrative Updates
+* The chairs opened the session and noted meeting policies.
+* Discussion on LOCMAF following up on the liaison response (referenced in [Liaison Response from MPEG Systems on LOCMAF](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-sessa-liaison-response-from-mpeg-systems-on-locmaf-00)) was deferred to the working group mailing list.
+
+### MOQT Streaming Format (MSF) Updates
+Will Law presented updates on `draft-ietf-moq-msf` (referenced in [MOQT Updates Since IETF 126](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-moqt-updates-since-ietf-126-00)). Key issue discussions included:
+* **Issue 220 (Track Roles and MIME Type)**: Proposal to rename `track_roles` to `track_type` and remove `mime_type`. Suhas Nandakumar supported the change.
+* **Issue 233 (Media Timeline Indexing)**: To handle very long live streams (e.g., 24-hour events), a proposal was introduced to add an index header in object properties for media timeline tracks to avoid transmitting massive records in every group header. Discussed with Alan Frindell and Colin Jennings.
+* **Issue 227 (Source Encoding)**: Replacing separate name, namespace, and origin fields with a single URI-like `source` field. Colin Jennings, Alan Frindell, Jonathan Lennox, and Mike English discussed usability and parsing syntax.
+* **Issue 82 (Track Redundancy)**: Multi-CDN redundancy proposals. Victor Vasiliev, Alan Frindell, Jordi Cenzano, Moe Zanaty, and Asad Saeed discussed track-level versus broadcast-level failover, decoder re-initialization requirements, and bit-identical versus in-line decodable media.
+* **Issue 20 (Static vs. Dynamic Catalogs)**: Distinguishing catalogs where no new tracks will be added. Mike English and Victor Vasiliev supported adding a new `tracks_complete` field while leaving `is_complete` unchanged.
+
+### CMSF & Preflight Capabilities Inspection
+David Eisenbacher presented a proposal for preflight device and capability inspection in `draft-ietf-moq-cmsf`.
+* The mechanism allows publishers to inspect client capabilities (DRM robustness, HDCP, hardware key limits) prior to granting access to specific track adaptation sets.
+* Mike English asked about the orchestration layer. Will Law questioned whether preflight verification could occur prior to catalog delivery. Alan Frindell noted structural similarities to multi-flight authorization exchanges being developed by the Auth design team.
+
+### End-to-End Secure Objects
+Colin Jennings presented updates on `draft-ietf-moq-secure-objects`.
+* Discussion focused on AES-GCM 96-bit nonce construction using 64-bit group IDs and 32-bit object IDs.
+* Moe Zanaty inquired about XORing higher bit ranges for non-contiguous object IDs. Victor Vasiliev, Alan Frindell, and Magnus Westerlund cautioned against XOR schemes due to security collision risks.
+* The working group agreed to keep the existing structure and add explicit text regarding algorithm-dependent nonce formatting.
+* While technical work is mature, formal Working Group Last Call (WGLC) will wait for additional independent implementation interoperability and alignment with `draft-ietf-moq-transport`.
+
+### MOQ URI Specification & Adoption
+Colin Jennings presented the `moq-uri` specification, which extracts URI resolution mechanics from `draft-ietf-moq-transport`.
+* **Port Selection**: Under BCP 56, MOQT over raw QUIC cannot use default port 443. An early IANA port allocation will be requested, though explicitly specifying `:443` in URIs remains permitted. Discussed by Alan Frindell, Gaurav, Magnus Westerlund, Jonathan Lennox, and Asad Saeed.
+* **Wildcard Certificates**: Jonathan Lennox and Mike Bishop supported matching standard HTTP wildcard certificate rules (matching leftmost labels only).
+* **Scope Limits**: Self-signed certificate management and DNS-SD integration were deemed out of scope for the base URI draft.
+* **Adoption Polls**:
+  * **Poll 1**: *I have familiarized myself with the content of this draft.*
+    * **Yes**: 20 | **No**: 8 | **No Opinion**: 2 (Total: 63)
+  * **Poll 2**: *I would like the WG to adopt moq-uri as the basis for further action*
+    * **Yes**: 25 | **No**: 0 | **No Opinion**: 4 (Total: 63)
+
+### Multicast & Repair Extensions
+Omar presented proposals for forward error correction (FEC) repair tracks and MPEG Media Transport (`MMTP`) encapsulation over multicast links.
+* Moe Zanadi, Will Law, Mike English, Colin Jennings, Gorry Fairhurst, and Magnus Westerlund discussed control plane integration and transport efficiency.
+* Chairs Martin Duke and Magnus Westerlund clarified that multicast transport protocols are currently outside the MOQ working group charter, but encouraged feedback on ensuring base MOQT extension points accommodate future multicast integration.
+
+### Ad Break & Event Timeline Signaling
+Steven Riedel presented SVTA 2053-1 ad break signaling and beacon tracking over MOQT event timeline tracks as a complement to SCTE 35.
+* The design incorporates Ed25519 payload signatures to prevent ad-blockers or malicious intermediaries from tampering with ad inventory or tracking URLs.
+
+### Bandwidth Probing & Fast Track Switching
+* Zafer Gürel presented `draft-gurel-moq-probing`, introducing relay-generated, low-priority probe tracks to assist subscribers with bandwidth estimation without caching overhead.
+* Deniz Ugur presented a mechanism for multivariate fast track switching using aligned Keyframe / GOP length variants across quality levels.
+
+### Subscription Flow Control
+Alan Frindell presented an extension draft (co-authored with Ian Swett) proposing subscription-level flow control in MOQT.
+* The extension allows subscribers or relays to set cumulative stream and byte limits per subscription to prevent single-track resource starvation.
+* Discussion by Moe Zanadi, Colin Jennings, and Jordi Cenzano touched on handling subgroup resets, byte tracking, and differentiating flow control from priority scheduling.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-moq-msf`**:
+   * Rename `track_roles` to `track_type` and remove `mime_type` (PR to be merged).
+   * Move to PR for optional timeline index headers in object properties (Issue 233).
+   * Proceed with PR for URI-like `source` syntax (Issue 227).
+   * Add `tracks_complete` field while maintaining existing `is_complete` semantics (Issue 20).
+   * Retain multi-CDN track redundancy (Issue 82) in an open issue state for further architectural design.
+
+2. **`draft-ietf-moq-secure-objects`**:
+   * Maintain the 96-bit AES-GCM nonce layout without XORing upper bits. Add text for algorithm-specific nonce construction.
+   * Hold WGLC pending a second independent implementation interop.
+
+3. **MOQ URI Adoption (`moq-uri`)**:
+   * Following consensus in the session poll (25 Yes, 0 No), the chairs will issue a formal working group adoption call on the mailing list.
+   * Request an early IANA port assignment for MOQT over raw QUIC.
+
+---
+
+## Next Steps
+
+* Confirm working group adoption of `moq-uri` on the mailing list.
+* Continue discussions on the mailing list and GitHub repositories for CMSF preflight inspection, ad event timelines, bandwidth probing, and subscription flow control.

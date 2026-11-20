@@ -1,0 +1,96 @@
+# [CFRG](../wg/cfrg.html)
+
+## Summary
+
+The Crypto Forum Research Group (CFRG) met at IETF 127. The session covered five main technical topics: post-quantum blind signatures and anonymous credentials, strongly unforgeable hybrid digital signatures, post-quantum password-authenticated key exchange (PQ-PAKE), Keccak-based authenticated encryption, and a strategic discussion on organizing zero-knowledge proof (ZKP) work within the CFRG. Two formal adoption polls were conducted regarding `draft-vos-cfrg-pqpake`.
+
+---
+
+## Key Discussion Points
+
+### 1. Post-Quantum Blind Signatures and Anonymous Credentials
+**Presenter:** Christopher Patton
+
+*   **Context and Applications:** IETF protocols increasingly rely on blind signatures and anonymous credentials, such as Privacy Pass, Issuer-Hiding Anonymous Tokens (I-HAT) in the MOLE working group, Anonymous Credit Tokens (ACTs), and device-bound credential bootstrapping.
+*   **Post-Quantum Requirements:** Current deployed systems (Blind RSA, VOPRFs) provide post-quantum unlinkability, but post-quantum unforgeability is required. Performance requirements dictate that signatures remain fast, even if post-quantum signatures (e.g., ML-DSA) are larger than traditional elliptic curve signatures. Modularity is necessary to decouple protocol design from complex mathematical parameter selection (like LWE).
+*   **Multivariate and Symmetric-Based Constructions:**
+    *   Christopher Patton highlighted multivariate signature paradigms, specifically referencing the Pomfret scheme (using Mayo), Unbalanced Oil and Vinegar (UOV), and VOLE-in-the-head proof systems (such as FEAST using Keccak/Minishake/TurboShake).
+    *   Experiments swapping signatures for UOV yielded small signatures (blind signatures ~4.3–5.6 KB; ACT spend proofs ~12–17 KB) with millisecond-level execution times on consumer hardware.
+    *   Risk factor: Cryptanalysis of multivariate cryptography remains an active, evolving area (recent PQC forum publications noted minor security reductions). However, broken assumptions in these schemes impact unforgeability, not user privacy.
+*   **Discussion:**
+    *   Deirdre Connolly raised concerns regarding WebCrypto integration and client-side execution overhead in WebAssembly/JavaScript environments.
+    *   Christopher Wood noted that major browsers (Chrome, Firefox) are interested in native protocol integration (e.g., in BoringSSL/NSS), avoiding pure JavaScript/WASM implementations.
+    *   Deirdre Connolly and Christopher Patton noted comparisons to [Longfellow ZK](https://datatracker.ietf.org/meeting/127/materials/slides-127-cfrg-sessb-longfellow-zk-00) (Fischlin-style proofs over ML-DSA), which offer standard security assumptions but incur higher computational and bandwidth costs.
+
+### 2. Strongly Unforgeable Hybrid Digital Signatures
+**Presenter:** Lucas Prabel
+
+*   **Problem Statement:** Composite hybrid signatures (combining traditional and post-quantum algorithms) do not automatically inherit Strong Unforgeability under Chosen Message Attacks (SUF-CMA) unless both components are strongly unforgeable and deterministic. Since ECDSA is not SUF-CMA, combined ECDSA + ML-DSA schemes lack SUF-CMA security if the post-quantum component fails.
+*   **Constructions Analyzed:**
+    *   *Nested Combiners* (`draft-prabel-cfrg-suf-hybrid-signatures` section 3, MovMA): The traditional scheme signs the message, and the PQ scheme signs the combined message and traditional signature. Allows black-box usage of both primitives. Achieves SUF-CMA as long as the PQ component remains secure.
+    *   *Schnorr-Type Combiners* (`draft-prabel-cfrg-suf-hybrid-signatures` section 4, Silithium): Binds the PQ signature to an open Schnorr-type traditional commitment.
+        *   Silithium defines the Schnorr challenge directly as the ML-DSA challenge (requires ML-DSA security).
+        *   `draft-prabel-cfrg-suf-hybrid-signatures` defines the challenge as the hash of the PQ signature, achieving SUF-CMA if *either* component remains secure, and supports non-ML-DSA schemes (e.g., Falcon, SLH-DSA).
+*   **Additional Security Properties:** Evaluated additional security properties beyond unforgeability, including Exclusive Ownership (preventing key substitution), Message-Bound Signatures, and Non-Resignability. MovMA achieves these via explicitly hashing public keys and messages into the signature context.
+*   **Discussion:**
+    *   Britta Hale noted that these hybrid constructions do not achieve Strong Non-Separability (SNS) and are only partially weakly non-separable (WNS).
+    *   Christopher Patton recommended pursuing the strongest security properties (Schnorr-type combiners with fallback security) even if black-box abstraction is sacrificed.
+
+### 3. Post-Quantum Password-Authenticated Key Exchange (PQ-PAKE)
+**Presenter:** Jelle Vos
+
+*   **Overview of `draft-vos-cfrg-pqpake`:** Presents the cPACE oQuake Plus family of hybrid post-quantum PAKE protocols. Provides protection against harvest-now-decrypt-later attacks and offline quantum password-guessing attacks.
+*   **Use Cases & Updates:**
+    *   Covers long-lived user-chosen passwords (vault storage, Wi-Fi access points) and temporary PINs (magic wormhole, device pairing/smart home commissioning in Thread/Matter).
+    *   Recent updates reorganized protocol flows to reduce message sizes and latency on constrained devices, eliminated a protocol-level timing side-channel, and refined parameter choices.
+*   **Discussion & Adoption Venue:**
+    *   Scott noted that classical cPACE provides some quantum annoyance (requiring discrete log operations per password guess), but acknowledged the need for PQ-PAKE in low-agility devices.
+    *   Christopher Wood suggested that because PQ-PAKE involves complete protocol flow specification (similar to HPKE), it might be better suited for a tightly scoped, dedicated IETF Working Group rather than CFRG.
+    *   Dan Harkins argued against creating an IETF protocol working group, stating that keeping the specification as a cryptographic tool in CFRG ensures broader applicability (e.g., for IEEE 802.11).
+    *   Laura Bauman voiced support for post-quantum PAKE work to complement TLS PAKE extensions.
+*   **Formal Polls:**
+    *   *Poll 1:* "Have you read draft-vos-cfrg-pqpake?"
+        *   Yes: 9 | No: 33 | No Opinion: 0 (Total: 81)
+    *   *Poll 2:* "Should the CFRG adopt draft-vos-cfrg-pqpake?"
+        *   Yes: 24 | No: 5 | No Opinion: 17 (Total: 84)
+
+### 4. Keccak-Based Authenticated Encryption
+**Presenter:** Gilles Van Assche
+
+*   **Design Paradigm:** Leverages the Keccak/duplex construction to provide authenticated encryption where encryption and authentication occur in a single pass at the cost of one operation.
+*   **Key Features:**
+    *   *Flexible Nonce Management:* Merges associated data and nonces; supports multi-message session authentication where a single final tag authenticates an entire message sequence.
+    *   *Committing Security:* Inherent committing security ("for free") due to the underlying hash-function properties of Keccak.
+    *   *High Performance & Code Reuse:* High hardware throughput and straightforward side-channel protections; allows reuse of Keccak code already deployed for ML-KEM and ML-DSA.
+*   **Proposed Modes:**
+    *   `Deck-BOO`: Synthetic Initialization Vector (SIV) mode providing nonce-misuse resistance (two-pass).
+    *   `D-WRAP`: Direct duplex-based mode (one-pass, requires unique nonces). Both leverage the parallelizable `Flydeck` construction.
+*   **Discussion:**
+    *   Watson Ladd suggested that running a continuous Keccak permutation state across TLS handshake messages could eliminate redundant key schedule re-initializations and reduce permutation calls on constrained hardware.
+    *   Gilles Van Assche agreed it is technically feasible for specialized lightweight applications, though distinct from current pluggable AEAD models.
+
+### 5. Zero-Knowledge Proofs (ZKP) in CFRG
+**Discussion Leaders:** Christopher Patton, Nick Sullivan
+
+*   **Landscape:** Reviewed ongoing CFRG ZK proof efforts, including BBS signatures, [Sigma protocols and Fiat-Shamir](https://datatracker.ietf.org/meeting/127/materials/slides-127-cfrg-sessb-sigma-protocols-and-fiat-shamir-04), [Longfellow ZK](https://datatracker.ietf.org/meeting/127/materials/slides-127-cfrg-sessb-longfellow-zk-00), and VDAF.
+*   **JSON Web Proofs (JWP):** John Bradley (JOSE Co-Chair) clarified that JWP defines JSON document containers for ZK proofs; BBS is currently the primary proof mechanism used, but JWP is design-agnostic.
+*   **ZK for Engineers:** Andrew Dolan and Andy Dillon proposed developing an informational "ZK for Engineers" document (similar to RFC 9958 / PQC for Engineers) to guide protocol designers through trade-offs, circuit constraints, and proof system choices.
+*   **Integration & Modularity Constraints:** Watson Ladd noted that swapping ZK proof systems under existing applications is rarely seamless because circuit representations and underlying field sizes are tightly bound to specific proof systems.
+*   **Fiat-Shamir Refinements:** Watson Ladd noted minor structural text adjustments are needed in the Fiat-Shamir draft so protocols like MOLE can normatively reference it.
+*   **Modular BBS:** David Waite provided an update on Modular BBS and noted ongoing work to support range proofs and predicate proofs.
+
+---
+
+## Decisions and Action Items
+
+*   **`draft-vos-cfrg-pqpake` Adoption:** The adoption decision for `draft-vos-cfrg-pqpake` will be taken to the CFRG mailing list. Chairs and authors will consult with Security Area Directors regarding the appropriate standardization venue (CFRG vs. a dedicated IETF Working Group).
+*   **Fiat-Shamir Draft Feedback:** Watson Ladd to submit text feedback to the mailing list regarding minor structural changes to the Fiat-Shamir draft to enable normative referencing by application drafts (e.g., MOLE).
+*   **BBS Signature Draft:** Chairs encouraged final list feedback on the BBS specification as it approaches Working Group Last Call.
+
+---
+
+## Next Steps
+
+*   Continue evaluation and cryptanalysis tracking for multivariate signature schemes (Mayo/UOV) for post-quantum blind signatures.
+*   Advance mailing list discussions on hybrid signature SUF-CMA requirements and non-separability definitions.
+*   Explore drafting a "ZK for Engineers" informational document within CFRG or PQUIP.

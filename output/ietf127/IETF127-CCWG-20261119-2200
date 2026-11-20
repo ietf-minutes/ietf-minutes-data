@@ -1,0 +1,126 @@
+# [CCWG](../wg/ccwg.html)
+
+## Summary
+
+The Congestion Control Working Group (CCWG) met at IETF 127. The session covered progress updates on active working group items, including BBR Congestion Control ([draft-ietf-ccwg-bbr](https://datatracker.ietf.org/doc/draft-ietf-ccwg-bbr/)) and SCReAM v2 ([draft-ietf-ccwg-rfc8298bis-screamv2](https://datatracker.ietf.org/doc/draft-ietf-ccwg-rfc8298bis-screamv2/)). The working group also received updates from the IETF 127 Hackathon on QUIC NS-3 simulator integrations and L4S interop testing. Finally, individual proposals were presented on Network Delivery Time Control (`draft-nguyen-ccwg-ndtc`), Cuback (`draft-oku-ccwg-cuback`), an analysis of standard congestion control differences (`draft-nishida-ccwg-standard-cc-analysis`), and C4 (`draft-huitema-ccwg-c4`). A working group poll was conducted regarding potential work on updating Reno and/or CUBIC specifications.
+
+---
+
+## Key Discussion Points
+
+### Working Group Drafts
+
+#### BBR Congestion Control
+- **Presentation**: [BBR at CCWG](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-bbr-at-ccwg-00) by Ian Swett (on behalf of Neal Cardwell).
+- **Draft Reference**: draft-ietf-ccwg-bbr
+- **Discussion**:
+  - The draft is at version -07, focusing on refinement and matching pseudocode to Linux TCP BBRv3 and Google Quiche implementations.
+  - Probe RTT filtering interval has been reverted to 10 seconds (up from 5 seconds in BBRv2), as data demonstrated better performance for BDP workloads. Congestion window (CWND) in Probe RTT is set to the maximum of 4 packets and half the estimated BDP.
+  - Exiting idle logic was clarified to prevent bandwidth overestimation caused by unacknowledged packets arriving after idle periods.
+  - Martin Duke raised research presented in ICCRG regarding harm measurement and coexistence regimes between BBR and Reno/CUBIC. Neal Cardwell clarified that BBRv2/v3 make bounded efforts to coexist up to BDPs of ~60 packets or 2–3 second loss epochs, but larger BDPs favor BBR by design; major architectural changes for high-BDP Reno coexistence are beyond the scope of the current draft.
+  - Dan Karasy emphasized the latency and bufferbloat reductions provided by BBR relative to loss-based schemes.
+  - Antonio discussed startup behavior falling behind traditional slow start; Neal Cardwell noted that using an initial window of 32 closely matches CUBIC slow start.
+  - Philip inquired about client-side deployment; Ian Swett explained that client background uploads (such as photo backups on Android) utilize a tweaked scavenger variant of BBRv1 to limit bufferbloat.
+
+#### SCReAM v2
+- **Presentation**: [SCReAM V2](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-scream-v2-00) by Ingemar Johansson.
+- **Draft Reference**: draft-ietf-ccwg-rfc8298bis-screamv2
+- **Discussion**:
+  - The draft is updated to version -03 (resolving publishing issues from -02).
+  - Designed for low-latency media transport, maintaining a small queue targeted for 5G cellular access networks.
+  - Introduces a new latency scaling metric based on the difference between long and short moving averages of queue delay, providing better resilience against 5G scheduling jitter.
+  - When L4S is enabled, it maintains approximately two CE-marked packets per RTT. The send window lower bound is set to at least 2 packets to allow operation at very low bitrates (<100 kbps) via pacing.
+  - Martin Duke and Ingemar Johansson discussed the test setups in live 5G networks and Google Meet evaluations (comparing non-L4S CC variants).
+  - Ingemar outlined cross-traffic detection and remediation mechanisms designed to prevent SCReAM from starving when competing with TCP flows without L4S.
+  - Implementation status: Active implementations in Ericsson testbed code, Google WebRTC, and an experimental integration into the Jitsi video bridge during the Hackathon (reported by Ian Swett).
+
+---
+
+### Hackathon Updates
+
+#### QUIC and NS-3 Hackathon Report
+- **Presentation**: [IETF 127 Hackathon Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-ietf-127-hackathon-update-00) by Mohit P. Tahiliani.
+- **Summary**:
+  - Interfaced multiple QUIC stacks (Picoquic, Neqo, Cloudflare Quiche, Movefast, MSQUIC) with the NS-3 network simulator.
+  - Validated Picowquick execution under NS-3 simulated time against Linux network namespace baselines.
+  - Tested ECN/L4S support in Picoquic, rate-limited sender functionality in MSQUIC, and Alternative Backoff with ECN (ABE, RFC 8511) in Quiche and Picoquic (PR submitted to Picoquic mainline).
+
+#### L4S Interop Report
+- **Presentation**: [Hackathon - L4S Interop](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-hackathon-l4s-interop-00) by Greg White.
+- **Summary**:
+  - 10th L4S interop event featuring tests over emulated bottleneck links (Linux TC dualpi2 and NetEm).
+  - Successfully demonstrated a three-party competitive test sharing a 20 Mbps bottleneck between Netflix NDTC, NVIDIA GeForce NOW, and WebRTC with SCReAM v2 in Chrome. All three controllers achieved fair capacity sharing.
+  - Announced upcoming interop at CableLabs (February) and the next IETF interop at IETF 128 in Berlin.
+
+---
+
+### Individual Proposals
+
+#### Network Delivery Time Control Update
+- **Presentation**: [Network Delivery Time Control Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-network-delivery-time-control-update-00) by Paul Nguyen.
+- **Draft Reference**: `draft-nguyen-ccwg-ndtc`
+- **Discussion**:
+  - NDTC is a rate adaptation and congestion control algorithm designed for high-rate, real-time interactive video (e.g., Netflix cloud gaming) over UDP/WebRTC.
+  - Core mechanism: Frame-Deserving Available Capacity Estimation (FDACE), which uses base video frames to estimate path capacity and set frame sizes to avoid self-induced congestion. Combines AIMD logic for packet loss and L4S ECN signals.
+  - Version -03 fixes ECN average calculation, slope calculation bugs, and frame size parameter definitions.
+  - Interop testing was conducted during the Hackathon using production servers. Open-source release of the code is planned.
+  - In response to Ingemar Johansson, Paul noted NDTC performs well over Wi-Fi, but slotted cellular links can occasionally lead to suboptimal capacity estimations.
+
+#### Cuback
+- **Presentation**: [Cuback](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-cuback-00) by Kazuho Oku.
+- **Draft Reference**: `draft-oku-ccwg-cuback`
+- **Discussion**:
+  - Proposes a simplified variant of CUBIC driven entirely by the ACK clock rather than wall-clock time.
+  - Inverts the CUBIC window growth function and unifies it with the Reno-friendly region into a single pure function evaluated per ACK or window increment.
+  - Eliminates wall-clock tracking, clock pause/resume logic during application-limited periods, and complex growth smoothing.
+  - Simulation and Fastly production A/B testing show CUBACK converges slightly faster than standard CUBIC for medium transfer sizes (1–60 MB) while matching performance at low and high BDP ranges.
+  - Lars Eggert, Dan Karasy, and Antonio noted that simplifying CUBIC state machines addresses significant implementation complexity and bug surface, though further academic review and broader testing are recommended.
+
+#### Analysis of Differences Between Standard Congestion Control Schemes
+- **Presentation**: [Analysis for the Differences Between Standard Congestion Control Schemes (draft-nishida-ccwg-standard-cc-analysis)](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-analysis-for-the-differences-between-standard-congestion-control-schemes-draft-nishida-ccwg-standard-cc-analysis-01) by Yoshifumi Nishida.
+- **Draft Reference**: `draft-nishida-ccwg-standard-cc-analysis`
+- **Discussion**:
+  - Analyzes discrepancies across RFC 5681 (TCP Reno), RFC 9002 (QUIC loss recovery/CC), and RFC 9438 (CUBIC).
+  - Highlights differences in Initial Window, Loss Window, minimum RTO, slow-start CWND growth per ACK, ssthresh calculation after loss (flight size vs. CWND), ECN reduction factors, and Reno-friendly model assumptions during non-constant loss epochs.
+  - Martin Duke, Neal Cardwell, and Apple representatives noted that RFC 9002 incorporated updated operational lessons learned from Linux TCP. They questioned whether documenting historical Reno differences is beneficial compared to updating transport-agnostic specifications or focusing efforts on CUBIC/CUBACK.
+  - The chairs conducted a session poll on whether CCWG should work on updating Reno and/or CUBIC (see Poll Results below).
+
+#### C4: Control Without Delay
+- **Presentation**: [C4: control without delay](https://datatracker.ietf.org/meeting/127/materials/slides-127-ccwg-c4-control-without-delay-00) by Christian Huitema.
+- **Draft Reference**: `draft-huitema-ccwg-c4`
+- **Discussion**:
+  - Proposes a congestion control algorithm that avoids reliance on delay/RTT measurements, targeting networks with high latency jitter (e.g., Wi-Fi contention, 5G handoffs, LEO satellites).
+  - Uses bandwidth capacity estimation via periodic probing at slightly elevated rates, accelerating growth when bandwidth increases are detected. Backoff follows a logarithmic sensitivity curve similar to HighSpeed TCP.
+  - Uses a nominal maximum RTT parameter to constrain queue growth and handle sudden drop-off events (coyote events).
+  - Simulations show performance comparable to BBR with reduced queue delay relative to CUBIC. Testing is underway in Media over QUIC and Meta's `mvfst` stack.
+  - Lars Eggert, Mark Nottingham (AD), and Eric Kinnear emphasized that CCWG publication requires demonstrated large-scale production deployment data. They encouraged further development, controlled experiments, and presenting performance evaluations in ICCRG.
+
+---
+
+## Session Polls
+
+### Poll 1
+- **Question**: CCWG should work on this topic (update Reno and/or CUBIC)
+- **Results**: Yes: 26, No: 10, No Opinion: 7 (Total participants recorded: 78)
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-ccwg-bbr`**:
+   - The authors will resolve the remaining minor editorial issues and open PRs.
+   - Ian Swett will perform multi-branch validation experiments on recent algorithmic refinements.
+   - The chairs and authors will prepare the draft for Working Group Last Call (WGLC).
+
+2. **`draft-ietf-ccwg-rfc8298bis-screamv2`**:
+   - The authors will continue refining cross-traffic detection mechanisms for non-L4S deployment environments and gather further WebRTC deployment metrics.
+
+3. **Congestion Control Specification Alignment (`draft-nishida-ccwg-standard-cc-analysis`)**:
+   - Following the poll, the working group will continue discussions on the mailing list regarding whether to formalize an updated, protocol-agnostic congestion control baseline.
+
+---
+
+## Next Steps
+
+- Continue interop testing for L4S congestion controllers (NDTC, SCReAM v2) at upcoming CableLabs and IETF 128 hackathons.
+- Encourage authors of individual proposals (`draft-oku-ccwg-cuback`, `draft-huitema-ccwg-c4`, `draft-nguyen-ccwg-ndtc`) to gather large-scale production A/B test data and present updates in ICCRG and CCWG.

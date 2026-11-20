@@ -1,0 +1,82 @@
+# [GAIA](../wg/gaia.html)
+
+## Summary
+
+The Global Access to the Internet for All (GAIA) Working Group met at IETF 121. The session featured five technical presentations covering community network deployments in rural India, reinforcement learning approaches for fine-grained Internet outage detection, open-source GIS tools for mapping population and connectivity, P2P network architectures for distributed AI agents, and active measurement frameworks for permissionless networks. The working group also reviewed the publication status of its ongoing draft on circular economies.
+
+## Key Discussion Points
+
+### Session Introduction & WG Status
+* **Presenter:** Kurtis Heimerl
+* **Slides:** [Session Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-gaia-session-slides-01)
+* The draft on circular economies (authored by Leandro Navarro et al.) has completed working group review and is progressing through the RFC Editor queue.
+
+### Connecting Agumbe: The Malgudi Days Town of India
+* **Presenter:** Mohit P. Tahiliani
+* **Slides:** [Connecting Agumbe: The Malgudi Days Town of India](https://datatracker.ietf.org/meeting/127/materials/slides-127-gaia-connecting-agumbe-the-malgudi-days-town-of-india-00)
+* Agumbe is a remote rainforest village in the Western Ghats of Karnataka, India (famous as the setting for the TV series *Malgudi Days*). Despite its cultural importance and environmental research facilities, the town had zero cellular or internet connectivity for its 400+ households until 2024.
+* **Deployment Challenges:** Dense forest area (ecological restrictions prohibiting cellular towers), extreme monsoons (6 months of rain), frequent multi-day power outages, wildlife interference (monkeys tampering with open-air Wi-Fi access points), and high initial capital deployment costs for local cable operators (LCOs) with the nearest fiber point of presence 12 km away.
+* **Architecture & Implementation:** Funded by IEEE ComSoc / IEEE Tech for Good under the "HEALTH" project (Healthcare, Education, Agriculture, Livelihood, Technology, Heritage). Deployed Gigabit Passive Optical Network (GPON) fiber drawn along existing electrical poles to avoid triggering landslides. The last mile uses premises-level Wi-Fi APs with UPS and solar power backups capable of sustaining 4–5 day grid outages. Connected 152 premises including schools, hospitals, an orphanage, police stations, government food distribution centers, and the King Cobra Research Center. Over 80% of deployments enabled IPv6 natively from day one. Cost per connection was ~$84 USD capital expenditure, with a $5 USD/month subscription fee for 60 Mbps unlimited access.
+* **Network Measurements:** Focused on latency, bufferbloat, and Quality of Experience (QoE) using tools like LibreQoS, WLAN Pros toolbox, and Flent (measuring Real-time response Under Load / RUL and Round Trips Per Minute / RPM as referenced in IPPM work). Experiments proved that 5 GHz Wi-Fi delivered significantly lower latency (~5.5 ms) and stable QoE for video/voice/gaming compared to 2.4 GHz (~154 ms latency and high jitter).
+* **Discussion:**
+  * Kevin Wang asked about post-deployment outages and resilience. Mohit noted challenges included fiber damage from uprooted trees during monsoons (repaired by local LCOs) and transient delays caused by wildlife.
+  * John Brewer inquired about backhaul costs and local maintenance. Mohit explained local 9th and 10th-grade students were trained in basic fiber splicing and troubleshooting, while monthly fees go directly to the upstream ISP.
+
+### On Efficiently Detecting Fine-Grained Residential Internet Outages
+* **Presenter:** Kevin Wang
+* **Slides:** [On Efficiently Detecting Fine-Grained Residential Internet Outages](https://datatracker.ietf.org/meeting/127/materials/slides-127-gaia-on-efficiently-detecting-fine-grained-residential-internet-outages-00)
+* Existing outage detection platforms (e.g., IOTA using Trinocular, Cloudflare Radar) focus primarily on coarse-grained (regional or /24 prefix) aggregation. Fine-grained (IP-level) active probing provides host-level accuracy but is highly inefficient because most probes hit active hosts.
+* **Proposed Approach:** Utilizes Reinforcement Learning (RL), specifically a Multi-Armed Bandit (MAB) formulation, to dynamically target fine-grained active measurement. Low-frequency baseline probes detect potential anomalies, triggering RL-guided follow-up probes across a hierarchical tree of IP prefixes (grouped by geography and network topology).
+* **Preliminary Results:** Simulation on historical outage datasets demonstrated that RL-guided probing drastically reduces probe volume compared to fine-grained brute-force probing while catching far more individual down IPs than coarse-grained baselines.
+* **Discussion:**
+  * John Kristoff raised concerns regarding temporal IP address dynamics (e.g., DHCP churn, readdressing, address leasing) and IPv6 scalability. Kevin acknowledged that dynamic geolocation and IP reassignment require periodic model retraining.
+  * Omar highlighted similarities to sampling problems such as the German Tank problem and referenced work from Princeton (Proof of Backhaul) and the DAWN project.
+  * Kevin queried the room on whether standard IETF definitions exist for a "down IP" or "Internet outage."
+
+### Open Source Tools for Mapping Connectivity, Land Cover, and Population
+* **Presenter:** John Brewer
+* **Slides:** [Open Source Tools for Mapping Connectivity, Land Cover, and Population](https://datatracker.ietf.org/meeting/127/materials/slides-127-gaia-open-source-tools-for-mapping-connectivity-land-cover-and-population-00)
+* Introduced a suite of open-source API microservices developed to support the LokNet community network planning tool (supported by APC and ISOC).
+* **Architecture:** Packaged as Docker containers wrapping heavy GIS libraries (RasterIO, GDAL, Shapely, PyProj, NumPy, FastAPI, SQLite) to allow web applications to query complex GeoTIFF datasets via lightweight HTTP/JSON requests.
+* **Core APIs:**
+  1. **GLO-30 API:** Queries the European Space Agency (ESA) Copernicus 30-meter global Digital Elevation Model (DEM) for line-of-sight view sheds and terrain elevation profiles (caches tiles locally for 30 days).
+  2. **WorldCover API:** Queries ESA 10-meter land cover classification (trees, crops, grassland, built-up areas, water) to supply land-use percentages for radio propagation models.
+  3. **WorldPop API:** Queries 100-meter spatial resolution population datasets to provide accurate population counts within a given radius or arbitrary polygon, eliminating inaccurate manual estimates.
+* **Discussion:**
+  * Martine Lenders (via chat / raised by Martin) asked about OpenStreetMap (OSM) integration. John noted he recently developed a tool using OSM data to plot realistic fiber routes along roads while filtering out non-viable line strings (e.g., ferry routes).
+  * Kurtis Heimerl asked about public hosting vs. local deployment. John confirmed public endpoints exist (`glow30.looknet.io`, `esawc.looknet.io`, `wpopapi.looknet.io`), but require API keys due to server compute loads during GeoTIFF/GeoJSON transformations.
+
+### libp2p × AGNTCY: Networking the Internet of Agents
+* **Presenters:** Joanna Rooney and Mani Gupta
+* **Slides:** [libp2p × AGNTCY: Networking the Internet of Agents](https://datatracker.ietf.org/meeting/127/materials/slides-127-gaia-libp2p-agntcy-networking-the-internet-of-agents-00)
+* Evaluated networking requirements as AI transitions from centralized inference to distributed autonomous agents operating across intermittent edge, cloud, and P2P networks.
+* Existing protocols (e.g., Model Context Protocol / MCP, Agent-to-Agent / A2A) assume static, reachable endpoints. Intermittent connectivity requires complementing directed RPC protocols with decentralized, epidemic/gossip-based networking.
+* **Agentic Protocol Stack:**
+  * **Layer 0 (P2P Connectivity):** libp2p offering transport independence (TCP, QUIC, WebRTC) and stream multiplexing (Yamux).
+  * **Layer 1 (State Coordination):** Enhanced GossipSub (`aGC-ACL`) using push-pull gossip and CRDT-like state reconciliation for ambient capability/state distribution.
+  * **Layer 2 (Identity & Discovery):** Decentralized identity separating name from network location via stable agent URIs (`agent://`), resolved using Kademlia DHTs.
+  * **Layer 3 (Semantic Intent):** High-level capability invocation via MCP, A2A, and ANCP.
+* **Standardization Opportunities:** Proposed collaborative research areas for IETF/IRTF including trust models in open agent ecosystems, verifiable capability claims, semantic context propagation across administrative domains, and verifiable delegation of authority.
+* **Discussion:**
+  * Schuyler Earl asked if the authors had engaged with the AT Protocol community on trust networks and shared compute. Mani Gupta confirmed bi-weekly collaboration with AT Protocol developers at the IPFS CID Congress.
+
+### Measuring Resilience in Permissionless Networks: From libp2p Connectivity to Universal Connectivity
+* **Presenter:** Mani Gupta
+* **Slides:** [Measuring Resilience in Permissionless Networks: From libp2p Connectivity to Universal Connectivity](https://datatracker.ietf.org/meeting/127/materials/slides-127-gaia-measuring-resilience-in-permissionless-networks-from-libp2p-connectivity-to-universal-connectivity-00)
+* Addressed measurement and resilience methodologies in permissionless peer-to-peer networks operating under hostile network conditions (ISP filtering, NAT restrictions, bootstrap isolation, and Eclipse attacks).
+* Demonstrated a live simulation using the Luminar tool, illustrating node isolation and mesh network self-healing under simulated attacks.
+* **Decentralization Fallacy:** Stated that high node count does not automatically guarantee network resilience. True resilience relies on multi-transport switching (TCP, QUIC with Encrypted Client Hello / ECH, WebSockets, WebRTC), independent path optimization, and autonomous subsystem design.
+* **Framework & Metrics:** Proposed four core resilience metrics: independent path count, recovery time, relay dependency spikes, and zero-update recovery capability. Introduced Connectivity Health Profiles to actively measure peer discovery success, transport diversity, and NAT traversal efficiency without compromising user privacy.
+
+## Decisions and Action Items
+
+* **Mailing List Submissions:**
+  * Mohit P. Tahiliani to share the Agumbe network deployment video documentary link on the GAIA mailing list.
+  * John Brewer to post links and documentation for the LokNet mapping APIs (GLO-30, WorldCover, WorldPop) to the GAIA mailing list.
+  * Mani Gupta to post links to the libp2p universal connectivity and P2P resilience measurement toolsets on the GAIA mailing list.
+
+## Next Steps
+
+* **Upcoming Events & Funding:**
+  * The Seattle Community Networking Conference (CNCon) takes place following IETF 121 with hybrid participation options.
+  * Schuyler Earl announced grant opportunities from Amateur Radio Digital Communications (ARDC). ARDC provides up to $5,000,000 annually in funding for open-license telecommunications, hardware, software, and community network projects (e.g., Rhizomatica). Application details are available at [ARDC Grant Application](https://ardc.net/apply), with the next funding cycle opening in January.

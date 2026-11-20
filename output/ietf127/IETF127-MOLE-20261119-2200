@@ -1,0 +1,78 @@
+# [MOLE](../wg/mole.html)
+
+## Summary
+
+The Moderation of unLinkable Endorsements (MOLE) BoF met to discuss establishing a working group to develop privacy-preserving, rate-limiting, and friction-reduction mechanisms for web access control. The proposed architecture builds upon and extends Privacy Pass concepts to allow clients to transfer trust signals from diverse "anchors" (signal providers, such as VPNs or account providers) to "moderators" (site access control systems or WAFs) without revealing user identity or the specific anchor used. The session covered use cases from browser vendors, content platforms, and AI agent providers, followed by presentations on the MOLE architecture, problem statement, draft charter, and formal BoF consensus polls.
+
+## Key Discussion Points
+
+### Use Cases and Problem Statement
+
+* **Browser Perspective**: Dennis Jackson presented the [Browser Use Case](https://datatracker.ietf.org/meeting/127/materials/slides-127-mole-browser-use-case-00), emphasizing that CAPTCHAs impose significant friction on users. Firefox telemetry indicates that users enabling privacy-enhancing technologies (VPNs, Enhanced Tracking Protection, private browsing) experience disproportionately more CAPTCHA challenges (up to 1 in 6 loads in private browsing). CAPTCHAs are also increasingly ineffective against automated solving services while pushing sites toward worse alternatives like proof-of-work or phone number registration walls.
+* **Site Operator Perspective**: Selena Deckelmann presented the [Wikimedia Use Case](https://datatracker.ietf.org/meeting/127/materials/slides-127-mole-wikimedia-use-case-00). Wikimedia serves over 1.5 billion unique devices, but over 50% of traffic originates from automated crawlers and agents. Long-tail URI scraping causes severe cache misses that strain edge infrastructure. Wikimedia seeks a mechanism to establish a tier for "cooperating logged-out humans with tokens," allowing per-user rate limiting rather than blunt IP-based blocking while preserving reader anonymity.
+* **Agentic Web Perspective**: Kevin Kelly presented [MoLE and the Agentic Internet](https://datatracker.ietf.org/meeting/127/materials/slides-127-mole-mole-and-the-agentic-internet-01), discussing how modern AI agents and browser plugins blur the boundary between human and automated traffic. Relying on centralized provider identities to gate agent traffic introduces severe centralization risks; open mechanisms based on behavioral rate limiting are preferred.
+* **MOLE Problem Statement**: Dennis Jackson presented the [MOLE Problem Statement](https://datatracker.ietf.org/meeting/127/materials/slides-127-mole-mole-problem-statement-00). While Privacy Pass and Private Access Tokens (PATs) successfully reduce CAPTCHAs in closed ecosystems, deploying them globally on the web introduces trade-offs: closed ecosystems reveal client identity/platform details, while shared centralized issuers create central gatekeepers. MOLE addresses this by decoupling token issuance from consumption via anchor hiding, allowing clients to prove their endorsement comes from an accepted set of anchors without revealing which specific anchor issued it.
+
+### Architecture Overview
+
+Sam Schlesinger and Thibault Meunier presented the [MOLE Architecture](https://datatracker.ietf.org/meeting/127/materials/slides-127-mole-mole-architecture-02).
+
+* **Participants**:
+  * **Client**: Requests resources from a site while maintaining privacy.
+  * **Anchor**: A signal provider (e.g., VPN provider, account host) that issues endorsements based on an existing user relationship.
+  * **Site / Moderator**: The site or its access control system (e.g., WAF, CDN) that evaluates credentials and grants access.
+* **Mechanism**:
+  1. **Endorsement**: A client obtains an endorsement token from an anchor.
+  2. **Anchor-Hiding Redemption**: The client redeems the endorsement with a moderator, presenting cryptographic proof that the endorsement is from an anchor within the moderator's accepted anchor set ($A, B, C$), without revealing the specific anchor.
+  3. **Credentials**: The moderator issues an ephemeral credential holding a capacity/value that dynamically updates (increments or decrements) based on client behavior and site policy over time.
+
+### Technical & Architectural Discussion
+
+* **Remote Attestation vs. MOLE**: Muhammad Usama Sardar asked how MOLE compares to Remote Attestation (RFC 9334 / RATS). Dennis Jackson and Martin Thomson clarified that MOLE is not based on hardware or device attestation. Requiring device attestation would lead to vendor lock-in and client exclusion, whereas MOLE treats attestation merely as one potential optional signal inside a broader, non-exclusive architecture.
+* **Anchor Sets & Privacy Leakage**: Keely Potterson, Neil Jenkins, and Thibault Meunier discussed anchor set sizing. If an anchor set is too small or overly specific (e.g., regional or context-specific), it could isolate or identify users. Dennis Jackson noted that mixing small anchors with large platform anchors allows smaller anchors to share the larger anonymity set.
+* **Replay Protection & Multi-Use Credentials**: Benjamin Schwartz, Rowan May, and Sam Schlesinger discussed credential types. The initial deployment model uses single-use anonymous tokens per moderator, while longer-term work explores multi-use post-quantum (PQ) credentials with rate limits and explicit expiration epochs.
+* **Rogue Anchors & Feedback**: Benjamin Schwartz and Pablo Gonzalez raised concerns about "leaky" or malicious anchors issuing excessive tokens. Sam Schlesinger explained that Privacy-Preserving Measurement (PPM) style feedback loops (such as DAP in `draft-ietf-ppm-dap`) can allow moderators to measure anchor health in aggregate without violating user privacy.
+* **Ecosystem Risks, Discrimination & Holdouts**: Daniel Gillmor, Farzaneh Abedi, Tommy Pauly, Watson Ladd, and Shivan Sahib discussed social and policy dynamics. Concerns were raised that sites might use MOLE to enforce discrimination or age/location gating, or that niche browsers (e.g., Tor, Brave) might be penalized if they do not present tokens. Participants stressed the necessity of probabilistic "holdouts" (clients occasionally withholding tokens) so that sites cannot treat the absence of a token as proof of malicious intent.
+
+### Charter Discussion
+
+Martin Thomson presented the [Charter Discussion](https://datatracker.ietf.org/meeting/127/materials/slides-127-mole-charter-discussion-00).
+
+* **Scope & Deliverables**:
+  1. An architecture document describing interactions, roles, and security/privacy boundaries.
+  2. Classical-crypto (PQ-private) protocol specifications for HTTP.
+  3. Post-quantum unforgeable credential protocol specifications.
+  4. Privacy-preserving feedback mechanisms (leveraging PPM).
+* **Post-Quantum Timeline**: Sanketh Menda and Andrew Campling questioned why non-PQ-unforgeable credentials would be developed first. Martin Thomson and Sam Schlesinger clarified that all protocols are PQ-private from day one to protect against harvest-now-decrypt-later attacks, but classical unforgeability allows rapid deployment experience while PQ-unforgeable cryptographic primitives mature through cryptanalysis.
+* **Governance & Policy Scope**: Nick Doty, Andrew Campling, Daniel Gillmor, and Mirja Kühlewind urged that deployment considerations, anti-abuse safeguards, and policy guidelines be formally tracked as deliverables rather than deferred entirely to external bodies like the W3C. Martin Thomson agreed to add explicit deployment guidance deliverables to the charter.
+* **Industry Alignment**: Representatives from major browser vendors (Eric Kovac for Chrome, Dennis Jackson for Firefox, Tommy Pauly for Safari/Apple), anti-abuse providers (Pablo Gonzalez for ReCAPTCHA, Chris Wood for Cloudflare), and VPN operators (David Schinazi) expressed strong alignment and intent to experiment with implementations on a rapid timeline.
+
+---
+
+## Session Polls
+
+1. **Do you think that the problem statement is well-understood, solvable, and useful to solve?**
+   * Yes: 64 | No: 3 | No Opinion: 3 (Total: 108)
+
+2. **Do you think the IETF is the right place to do this work?**
+   * Yes: 67 | No: 1 | No Opinion: 7 (Total: 109)
+
+3. **Do you think the initial scope from the draft charter we just discussed is correct?**
+   * Yes: 54 | No: 2 | No Opinion: 16 (Total: 108)
+
+4. **Do you think a WG should be formed on this topic, with a charter based on the draft charter we just discussed?**
+   * Yes: 62 | No: 4 | No Opinion: 2 (Total: 107)
+
+5. **Are you willing to help write and/or review drafts in this potential WG?**
+   * Yes: 39 | No: 9 | No Opinion: 15 (Total: 108)
+
+---
+
+## Decisions and Action Items
+
+* **Charter Refinement**: Update the draft MOLE charter text to explicitly incorporate deliverables covering deployment considerations, operational guidance, and anti-abuse policy safeguards.
+
+## Next Steps
+
+* Continue charter wording refinements on the MOLE mailing list.
+* Area Director Deb Cooley will take the refined charter forward to the IESG for Working Group formation.

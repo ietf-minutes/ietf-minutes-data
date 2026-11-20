@@ -1,0 +1,99 @@
+# [WIMSE](../wg/wimse.html)
+
+## Summary
+
+The WIMSE and OAuth working groups held a joint session at IETF 127, co-chaired by Justin Richer and Pieter Kasselman (with Rifat Gulcu participating remotely). The session focused on the technical intersection between workload identity (WIMSE), authorization delegation (OAuth), and production identity frameworks (SPIFFE). 
+
+Key discussion topics included historical context and future directions for identity chaining, the evolving role of `client_id` in workload environments, SPIFFE-based OAuth client authentication, AuthZen authorization integration, cross-domain transaction tokens, agentic context in transaction tokens, transactional access tokens, and establishing explicit processing rules for actor delegation chains. A room poll demonstrated strong support for adopting the OAuth Actor Profile work in the OAuth Working Group, subject to follow-up on the mailing list.
+
+---
+
+## Key Discussion Points
+
+### Welcome, Chair Updates, and Ecosystem Boundaries
+- **Presenters:** Pieter Kasselman, Justin Richer
+- **Slides:** [Welcome and Chair Updates](https://datatracker.ietf.org/meeting/127/materials/slides-127-wimse-sessa-welcome-and-chair-updates-03)
+- Pieter Kasselman introduced the joint session model, highlighting how identity architectures span multiple standards bodies and working groups:
+  - **SPIFFE (CNCF):** Focuses on opinionated workload identifiers (SPIFFE IDs) and automated last-mile credential delivery (SPIRE).
+  - **WIMSE (IETF):** Focuses on modern workload identity, Workload Proof Tokens (`draft-ietf-wimse-wpt`), AI Identity Management Systems (`draft-ietf-wimse-aims`), Workload Identity Credentials (`draft-ietf-wimse-workload-creds`), WIMSE Identifiers (`draft-ietf-wimse-identifier`), Mutual TLS (`draft-ietf-wimse-mutual-tls`), and multi-service architecture (`draft-ietf-wimse-arch`).
+  - **OAuth (IETF):** Focuses on authorization delegation, token issuance, and rich API authorization mechanisms.
+
+### Identity Chaining Presentation and Memorial
+- **Presenter:** Brian Campbell
+- Brian Campbell provided a historical summary of identity chaining mechanisms, tracing the progression from browserless SAML authorization grants (RFC 7522) and JWT assertion grants (RFC 7523) to OAuth Token Exchange (RFC 8693), ID-JAG (Identity Chaining JWT Authorization Grant), and Workload Authorization Grant (WAG / `draft-ietf-wimse-workload-creds`).
+- Honored late identity community contributors whose work shaped these specifications: Andrew Nash, Pat Patterson, Vittorio Bertocci, and Kelley Burgin.
+- Emphasized the growing importance of cross-domain authorization grants to support AI agents and multi-service workload delegation.
+
+### Future of Client ID
+- **Presenter:** Justin Richer
+- Examined how OAuth `client_id` assumptions break down when applied to dynamic workloads, microservices, and AI agents.
+- `client_id` was historically designed for durable, pre-registered web server applications or static native apps.
+- In workload and AI agent contexts, `client_id` can represent structured/verifiable identities such as SPIFFE IDs, WIMSE workload identifiers (`draft-ietf-wimse-identifier`), SIMD URLs, dynamic registrations, or JWT-encoded assertions.
+- Suggested that authorization servers should focus on recognizing and validating assertions presented within `client_id` fields rather than assuming statically provisioned IDs.
+- **Chat Discussion:** Mark Atwood noted that client attestation raises assurance but should remain optional so as not to exclude open-source or self-built clients. Em Lauber and Hirsch Singhal discussed using unique SPIFFE URIs as client IDs to ensure uniqueness across namespaces.
+
+### SPIFFE OAuth Client Authentication
+- **Presenter:** Arndt Schwenkschuster
+- Presented updates to `draft-ietf-oauth-spiffe-client-auth`, which enables workloads to authenticate to OAuth token endpoints using SPIFFE credentials (JWT SVIDs, X.509 SVIDs, or Workload Identity Tokens).
+- Covered mapping SPIFFE IDs to OAuth `client_id` structures using direct URI mappings or postfix wildcards (dropping per-segment wildcards for simplicity).
+- Clarified client ID processing at the token endpoint for SIMD metadata lookups versus registered SPIFFE IDs.
+- Bruno and Flemming Andreasen raised questions regarding trust anchor discovery, SIMD integration expectations, and wildcard matching constraints.
+
+### AuthZen Overview and Integration with OAuth and WIMSE
+- **Presenter:** Omri Gazitt
+- Introduced the AuthZen specification (OpenID Foundation) and its application to OAuth and WIMSE architectures (`draft-ietf-wimse-aims`).
+- Outlined the AuthZen core information model (5-tuple: subject, action, resource, context) and decision model (Boolean evaluation, batch evaluation, resource/subject search, metadata).
+- Detailed the role of Policy Enforcement Points (PEP) and Policy Decision Points (PDP) across resource servers, gateways, and authorization servers during token minting.
+- Presented extension profiles, including COSI (Compatible with AuthZen), Rich Authorization Requests (RAR) bindings, and access request/approval workflows.
+
+### Cross-Domain Transaction Tokens (Transaction Token JAG)
+- **Presenter:** George Fletcher
+- Discussed exchanging internal transaction tokens across trust domain boundaries using a JWT Authorization Grant profile (Transaction Token JAG).
+- Explained how internal workload transaction tokens (TCTX/RCTX) bound to a single trust domain can be exchanged via token exchange at an Authorization Server to produce a cross-domain JAG token.
+- Highlighted claims minimization and trust agreements to prevent internal topology leakage when crossing domain boundaries.
+- **Chat & Floor Discussion:** Maxwell Gerber, Justin Richer, Pieter Kasselman, Mark Atwood, and Antoine Fressancourt discussed distinguishing user-focused ID-JAG, workload WAG, and transaction-centric tokens (TAG), reiterating that internal identifiers MUST be stripped at domain boundaries. Jenny Yuan (Ni Yuan) referenced `draft-liu-oauth-cross-domain-txn-token` regarding methods to minimize cross-domain latency hops.
+
+### Transaction Tokens: Agentic Context and Operations at Scale
+- **Presenter:** Aashish Sharma
+- Presented two proposals related to transaction tokens:
+  1. **Agentic Context:** Adding explicit agent identity tracking, agent attribute registries, and minimum assurance levels into transaction tokens so downstream resource servers can evaluate policy on intermediate AI agents in multi-hop call chains.
+  2. **Best Current Practice (BCP):** Operations at scale across microservices, covering TTL management, context propagation, asynchronous/workflow rehydration, schema governance, and observability.
+- Atul Tulshibagwale, Omri Gazitt, and Pat White commented on preventing unauthorized agent token modifications, leveraging AuthZen for policy checks, and distinguishing delegation metadata from impersonation.
+
+### Transactional Access Tokens
+- **Presenter:** Atul Tulshibagwale
+- Proposed issuing short-lived, context-specific transactional access tokens integrated with Rich Authorization Requests (RAR).
+- Introduced a transaction handle (`txn_handle`) that allows clients to correlate requests across authorization requests without exposing globally trackable transaction identifiers to resource servers.
+- Karl McGuinness, George Fletcher, Max Gerber, and Brian Campbell discussed token naming clarity, potential overlap with agent protocol dialogue IDs, and whether existing RAR mechanisms already support these patterns without new token types.
+
+### OAuth Actor Profile for Delegation
+- **Presenter:** Karl McGuinness
+- Presented `draft-mcguinness-oauth-actor-chain` (OAuth Actor Profile for Delegation), establishing formal processing rules for the `act` (actor) claim and `cnf` (confirmation) claim in JWT access tokens across multi-hop delegation chains.
+- Explicitly separates the target principal (`sub`), presenting client (`client_id`), and top-most acting entity (`act`).
+- Prasad (A Prasad) noted relation to `draft-mw-oauth-actor-chain` (presented at IETF 125) and discussed aligning evidence structures, selective disclosure, and minimum viable profile definitions.
+- Ray Boss, Pieter Kasselman, Omri Gazitt, and Rifat Gulcu voiced support for establishing standardized actor delegation rules within OAuth.
+
+---
+
+## Decisions and Action Items
+
+### Session Polls
+- **Question:** "Is there support to bring this document (actor-profile) for adoption in OAuth?"
+  - **Results:** yes: 30, no: 1, no_opinion: 9 (total: 106)
+
+### Action Items
+- **OAuth Actor Profile Adoption:** Responsible OAuth Chair (Rifat Gulcu) to issue a formal call for adoption for `draft-mcguinness-oauth-actor-chain` on the OAuth mailing list, working with authors to address document scope, simplification, and structure.
+- **Cross-Domain & Delegation Alignment:** Authors of cross-domain transaction tokens (George Fletcher, Jenny Yuan/Ni Yuan, Aashish Sharma) and actor chain specifications (Karl McGuinness, Prasad) to collaborate on the mailing list to consolidate processing rules, evidence boundaries, and trust domain minimization practices.
+
+---
+
+## Next Steps
+- Continue discussions on WIMSE mailing list (`wimse@ietf.org`) and OAuth mailing list (`oauth@ietf.org`).
+- Progress active WIMSE working group drafts:
+  - `draft-ietf-wimse-arch`
+  - `draft-ietf-wimse-identifier`
+  - `draft-ietf-wimse-mutual-tls`
+  - `draft-ietf-wimse-workload-creds`
+  - `draft-ietf-wimse-wpt`
+  - `draft-ietf-wimse-aims`
+- Evaluate interest in future joint WIMSE/OAuth sessions for overlapping workload identity and delegation topics.

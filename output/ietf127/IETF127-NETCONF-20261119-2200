@@ -1,0 +1,104 @@
+# [NETCONF](../wg/netconf.html)
+
+## Summary
+
+The NETCONF Working Group met at IETF 127 to review the status of active documents, discuss updates to chartered work items, and consider new telemetry and data model proposals. Key discussions focused on resolving Working Group Last Call (WGLC) comments for list pagination, progressing QUIC transport specifications, defining centralized error registries, detailing call home mechanisms over QUIC, and refining YANG Push Version 2 architecture.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Admin
+- **Chairs:** Kent Watsen, Per Andersson
+- **AD:** Mahesh Jethanandani
+- **RFC Status:** RFC 10035 (YANG Library Augmented By) was recently published. Drafts for HTTP client/server, NETCONF client/server, and RESTCONF client/server remain in the RFC Editor queue pending references to QUIC client/server specifications.
+- **Active Drafts Status:** 
+  - `draft-ietf-netconf-https-notif` returned to the WG for updates.
+  - `draft-ietf-netconf-privcand` remains in WGLC.
+  - Status updates for `draft-ietf-netconf-over-quic` and `draft-ietf-netconf-https-notif-cbor` were posted to the mailing list.
+
+---
+
+### Chartered Items
+
+#### 1. List Pagination for YANG-driven Protocols
+* **Presentation:** [1. List Pagination for YANG-driven Protocols](https://datatracker.ietf.org/meeting/127/materials/slides-127-netconf-list-pagination-for-yang-driven-protocols-01) (presented by Jin/Qin Wu)
+* **Documents:** `draft-ietf-netconf-list-pagination`, `draft-ietf-netconf-list-pagination-nc`, `draft-ietf-netconf-list-pagination-rc`
+* **Discussion Points:**
+  - **Capability Discovery & Advertisement:** Discussed redundant capability advertisements between protocol-specific capabilities (NETCONF/RESTCONF) and YANG Library. Rob Wilton suggested keeping protocol-specific capabilities while removing mandatory YANG Library advertisement requirements in Section 2. Per Andersson and Robert Wilton clarified in chat and at the mic that implementations should publish both for consistency, with YANG Library being the primary reference.
+  - **Metadata Attachment (Issue #103):** Addressing metadata attachment for empty result sets when metadata cannot be attached directly to missing entries. Section 3.4 was added to specify paging-level metadata requirements.
+  - **HTTP HEAD Method Support (Issue #47):** Confirmed support for both `GET` and `HEAD` methods. Kent Watsen noted that RESTCONF should strictly adhere to standard HTTP semantics.
+  - **Sort-By Pattern (Issue #110):** Addressed ABNF/pattern parsing issues to correctly handle path prefixes and single periods for leaf-lists.
+  - **HTTP Status Code Alignment (Issue #46):** Aligned error tags with standard RESTCONF status codes: unknown local/cursor values return `400 Bad Request`, and unsupported operations map to `405 Method Not Allowed`.
+  - **Implementation Status:** Implementations exist (e.g., Clixon library cursor implementation noted by Qin Wu and Kent Watsen).
+  - **WGLC Status:** AD Mahesh Jethanandani confirmed WGLC will remain open until the pending PRs land, after which a brief final re-review may be held due to conformance value updates.
+
+#### 2. YANG Groupings for QUIC Clients and QUIC Servers
+* **Presentation:** [2. YANG Groupings for QUIC clients and QUIC servers](https://datatracker.ietf.org/meeting/127/materials/slides-127-netconf-2-yang-groupings-for-quic-clients-and-quic-servers-00) (presented by Per Andersson)
+* **Document:** `draft-ietf-netconf-quic-client-server`
+* **Discussion Points:**
+  - **Updates:** Updated invariants to require TLS 1.3 or later (rather than strictly pinning to TLS 1.3). Refined transport parameter structures by introducing a `quick-variant-type` for explicit value configuration.
+  - **TSV-ART Review Issues:** A question was raised in the TSV-ART review regarding whether YANG modules should be generated from IANA registries. Rob Wilton and Mahesh Jethanandani stated that generating modules from IANA registries is standard IETF practice and out of scope for reconsideration here. AD assistance was requested to clear TSV-ART review points.
+
+#### 3. Error List and Error Identities Registries for YANG-driven Protocols
+* **Presentation:** [3. Error List and Error Identities Registries for YANG-driven protocols](https://datatracker.ietf.org/meeting/127/materials/slides-127-netconf-3-error-list-and-error-identities-registries-for-yang-driven-protocols-00) (presented by Per Andersson)
+* **Document:** `draft-ietf-netconf-error-registries`
+* **Discussion Points:**
+  - **Motivation:** Establishes a canonical IANA source for NETCONF/YANG-driven protocol error tags and identities, allowing programmatically generated IANA-maintained YANG modules.
+  - **Identities vs. Enums:** Discussion occurred regarding whether error codes should be identity derivations or flat enums. Mahesh Jethanandani asked if enums would avoid identity proliferation. Rob Wilton noted that while enums offer compact numeric encoding in CBOR, identities provide necessary flexibility across protocol boundaries without requiring complex, over-engineered hierarchies. Per Andersson supported identities for human readability and cross-protocol reusability.
+
+#### 4. NETCONF Call Home and RESTCONF Call Home Using QUIC
+* **Presentation:** [4. NETCONF Call Home and RESTCONF Call Home Using QUIC](https://datatracker.ietf.org/meeting/127/materials/slides-127-netconf-4-netconf-call-home-and-restconf-call-home-using-quic-02) (presented by Kent Watsen)
+* **Document:** `draft-ietf-netconf-quic-call-home`
+* **Discussion Points:**
+  - **Mechanism Overview:** The device initiates an unsolicited UDP datagram (padded to $\ge$ 1200 bytes) to a dedicated port on the controller containing the device's TLS certificate. The controller validates the source IP, certificate validity, and identity before initiating a standard QUIC client connection back to the device.
+  - **TSV-ART & Security Reviews:** Updated document (version -02) to address security concerns raised by Mira (TSV-ART) regarding unsolicited UDP packet safety and DoS amplification, adding explicit controller validation rules prior to connection setup. Operational logging guidance was added per Bo's Ops review.
+  - **NAT & Middlebox Traversal:** Joe Clarke raised concerns regarding Port Address Translation (PAT) and Carrier-Grade NAT (CGN), where an incoming QUIC connection initiated by the controller cannot route to an unmapped internal device without NAT state or explicit payload details. Kent Watsen suggested exploring payload extensions (e.g., domain/IP/port hints) or reliance on middlebox awareness. Rob Wilton noted operational complexity concerns regarding directional QUIC bindings for NETCONF vs. RESTCONF.
+
+#### 5. YANG Datastore Telemetry (YANG Push Version 2)
+* **Presentation:** [5. YANG Push v2](https://datatracker.ietf.org/meeting/127/materials/slides-127-netconf-5-yang-push-v2-00) (presented by Rob Wilton)
+* **Document:** `draft-ietf-netconf-yang-push-2`
+* **Discussion Points:**
+  - **Simplified Message Operations:** Replaced separate `merge` and `replace` primitives with a single `update` operation alongside `delete`. On-change updates leave omitted descendants unchanged, while periodic messages send full state snapshots followed by completion flags.
+  - **Notification Envelope Integration:** Integrated key envelope fields (device, subscription, publisher ID) directly into the specification. The default publisher ID is defined as `0`.
+  - **Distributed Publishers:** Clarified rules for multi-publisher subscriptions. Clients must wait for completion notifications from all active publishers before considering a collection event complete.
+  - **Encoding Consistency:** Discussed encoding alignment between subscription RPCs and notification payloads. Per Andersson and Kent Watsen highlighted protocol differences between RESTCONF (where media types allow format negotiation) and NETCONF (where XML transport rules apply).
+
+---
+
+### Non-Chartered Items
+
+#### 6. YANG Path Format (ypath)
+* **Presentation:** [6. YANG path format (ypath)](https://datatracker.ietf.org/meeting/127/materials/slides-127-netconf-yang-path-format-ypath-00) (presented by Rob Wilton)
+* **Discussion Points:**
+  - Presented for information (FYI); primary draft home is the NETMOD Working Group.
+  - Defines a simplified, JSON-like path format covering schema paths, instance data paths, and filter paths for YANG Push v2 and YANG Packages.
+  - Per Andersson noted similarities to RESTCONF data resource URI paths. Kent Watsen and Rob Wilton discussed keeping the YPath document abstract in NETMOD while documenting protocol-specific applications within NETCONF/RESTCONF drafts.
+
+#### 7. Comparable Sequence Numbers Across Publishers in YANG Datastore Telemetry
+* **Presentation:** [7. Comparable Sequence Numbers Across Publishers in YANG Datastore Telemetry](https://datatracker.ietf.org/meeting/127/materials/slides-127-netconf-7-comparable-sequence-numbers-across-publishers-in-yang-datastore-telemetry-01) (presented by Syam Kumar)
+* **Discussion Points:**
+  - Proposed a Hybrid Logical Clock (HLC) mechanism (combining physical timestamps with a logical tiebreaker) to resolve message ordering and wraparound issues across distributed telemetry publishers.
+  - Rob Wilton expressed strong reservations against including HLC in core `draft-ietf-netconf-yang-push-2` due to high implementation cost and inter-publisher IPC coordination overhead. Syam Kumar agreed to follow up with details on the mailing list.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **List Pagination (`draft-ietf-netconf-list-pagination*`):** Protocol-specific capabilities for NETCONF and RESTCONF will be retained. YANG Library remains mandatory as the authoritative source for module presence.
+2. **YANG Push v2 (`draft-ietf-netconf-yang-push-2`):** Simplified message primitives to `update` and `delete`. Pulled envelope structures and distributed publisher definitions directly into the draft rather than referencing external drafts.
+3. **Sequence Numbers in YANG Push:** Hybrid Logical Clocks will not be included in the core `draft-ietf-netconf-yang-push-2` specification.
+
+### Action Items
+- **`draft-ietf-netconf-list-pagination`:** Authors to issue revision 16 addressing PRs, WGLC feedback, and status code alignments (400 Bad Request / 405 Method Not Allowed).
+- **`draft-ietf-netconf-quic-client-server`:** AD Mahesh Jethanandani to coordinate with TSV-ART reviewers regarding registry-generated YANG module scope.
+- **`draft-ietf-netconf-quic-call-home`:** Authors to incorporate SECDIR review feedback once received and investigate NAT/PAT traversal mechanics for controller-initiated QUIC connections.
+- **`draft-ietf-netconf-yang-push-2`:** Authors to schedule bi-monthly virtual interim meetings to stabilize core message formats and data models prior to IETF 128.
+
+---
+
+## Next Steps
+- Keep WGLC open for `draft-ietf-netconf-list-pagination` family pending publication of updated draft revisions.
+- Progress `draft-ietf-netconf-quic-client-server` toward WGLC closure upon clearing remaining TSV-ART items.
+- Continue inter-working group coordination with NETMOD on YPath developments.

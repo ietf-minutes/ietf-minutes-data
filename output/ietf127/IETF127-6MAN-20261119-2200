@@ -1,0 +1,136 @@
+# [6MAN](../wg/6man.html)
+
+## Summary
+
+The 6MAN working group met at IETF 127. The session covered administration updates, active working group draft presentations, and individual document proposals. 
+
+Key leadership updates were announced: Jen Linkova stepped down as co-chair to serve as Internet Area Director, and Eric Kline joined Bob Hinden as 6MAN co-chair alongside Éric Vyncke as Area Director. 
+
+The working group reviewed document status, open errata, and polled the room regarding resuming work on `draft-ietf-6man-rfc4291bis`. Further discussions covered IEEE 802.11 multicast reliability (`draft-ietf-6man-ieee80211-dms`), expanding the IPv6 loopback prefix (`draft-ietf-6man-loopback`), extension header enforcement at destination nodes (`draft-ietf-6man-eh-occurrences`), hierarchical CGA (`draft-buraglio-6man-hcga`), RoCEv2 load balancing using the flow label (`draft-cheng-6man-rocev2-flow-label`), ICMP error handling in SRv6 VPNs (`draft-alivar-spring-icmp-error-srv6-vpn`), and the AERO/OMNI adaptation layer specs.
+
+---
+
+## Key Discussion Points
+
+### Administration, Errata, and Working Group Status
+- **Presentation:** [6man-chair-slides-ietf127](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-6man-chair-slides-ietf127-02) presented by Bob Hinden and Eric Kline.
+- **Published RFCs:** RFC 10075 (SNAC Router Flag) and RFC 10094 (Clarifying SIDs) published.
+- **Document Progress:** RFC 6724-bis and ICMPv6 reflection are in the RFC Editor queue. `draft-ietf-6man-rfc8504-bis` is in extended Working Group Last Call.
+- **Errata:** Four open errata exist (two for RFC 4291 on link-local addresses/reserved sets, and one for RFC 8200 on reassembly timers). The WG was encouraged to resolve open errata threads.
+- **RFC 4291bis Work:** Dave Thaler volunteered to serve as editor for `draft-ietf-6man-rfc4291bis` to resolve remaining non-contentious updates.
+  - **Poll:** "Objections to resuming 4291bis work?"
+    - **Results:** yes: 2, no: 19, no_opinion: 6 (total: 63)
+  - **Discussion:** Lorenzo Colitti and Suresh Krishnan noted historical controversy around the /64 boundary. Bob Hinden and Dave Thaler noted that consolidating updates into one RFC provides clarity. The decision to resume will be confirmed on the mailing list.
+
+---
+
+### IPv6 Issues with 802.11 Multicast Reliability (DMS)
+- **Presentation:** [IPv6 issues with 802.11 multicast reliability remain (DMS)](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-ipv6-issues-with-80211-multicast-reliability-remain-dms-00) presented by David Lamparter.
+- **Draft:** `draft-ietf-6man-ieee80211-dms`
+- **Technical Content:** The draft was restructured to emphasize Directed Multicast Service (DMS) over Flexible Multicast Service (FMS). It documents multicast drops caused by client power-save sleep states, missing MLD state sync during layer 2 AP roaming, and dropping of solicited-node multicast messages. It also incorporates unicast RA mechanisms.
+- **Discussion:**
+  - Ted Lemon highlighted roaming and mDNS issues, suggesting coordination with the Matter ecosystem.
+  - Lucien Avramov discussed AP behaviors during roaming and advocated for host-initiated Router Solicitations (RS) over AP-side RA buffering.
+  - Smith Kennedy supported multi-prong approaches, noting enterprise vendor support for layer 2 unicast conversion.
+  - Éric Vyncke noted that the document is tracked in regular IEEE 802.11 / IETF coordination meetings.
+  - Suresh Krishnan advised structuring Section 6 as a focused liaison statement to the Wi-Fi Alliance/IEEE with explicit recommendations.
+  - Lorenzo Colitti suggested distinguishing host vs. AP behaviors clearly and evaluating whether hosts should re-subscribe to MLD groups upon roaming.
+
+---
+
+### The IPv6 Loopback Prefix
+- **Presentation:** [The IPv6 Loopback Prefix](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-the-ipv6-loopback-prefix-00) presented by Warren Kumari (on behalf of Geoff Huston).
+- **Draft:** `draft-ietf-6man-loopback`
+- **Technical Content:** Proposes expanding the IPv6 loopback allocation from a single `::1/128` to a `/48` prefix to allow internal allocation of standard `/64` subnets across virtual interfaces, containers, and hypervisors.
+- **Feedback Addressed:**
+  - *Zone ID (RFC 4007):* Text updated to allow passing a zone ID, but requiring that socket APIs MUST ignore it.
+  - *Terminology:* Adopted "node local unicast prefix" terminology while keeping standard loopback semantics.
+- **Discussion:**
+  - Greg Mirsky referenced RFC 9780 (dummy IPv6 prefix for OAM encapsulation) and queried how encapsulation behaviors interact.
+  - Lorenzo Colitti warned against defining a new address behavior class that might break assumptions in existing specifications (e.g., RFC 6724) and recommended retaining standard "loopback" semantics to inherit existing RFC rules cleanly.
+  - Eric Nygren and Lucien Avramov noted that blurring node boundaries (e.g., host vs. VM/container) could introduce address collisions and security vulnerabilities, as seen in past Kubernetes implementations.
+
+---
+
+### Enforcement of IPv6 Extension Headers Ordering and Occurrence at Destination Nodes
+- **Presentation:** [Enforcement of IPv6 Extension Headers Ordering and Occurrence at Destination Nodes](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-enforcement-of-ipv6-extension-headers-ordering-and-occurrence-at-destination-nodes-00) presented by Justin Iurman.
+- **Draft:** `draft-ietf-6man-eh-occurrences`
+- **Technical Content:** Updates RFC 8200 to allow destination nodes to enforce ordering and occurrence rules (Section 4.1) for extension headers to protect against parser exploits. Non-compliant packets MAY be dropped and trigger an ICMPv6 Parameter Problem message. Sender behavior requirements remain unchanged (recommended).
+- **Discussion:**
+  - Brian Carpenter raised his list proposal to make header ordering a normative MUST for senders.
+  - Tim Wicinski / room comment noted that test programs like USGv6 and IPv6 Ready already treat EH ordering as mandatory for senders.
+  - The authors plan to keep sender behavior as a recommendation unless explicit WG consensus indicates otherwise.
+
+---
+
+### Hierarchical Cryptographically Generated Addresses (HCGA)
+- **Presentation:** [Hierarchical Cryptographically Generated Addresses](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-hierarchical-cryptographically-generated-addresses-02) presented by Nick Buraglio.
+- **Draft:** `draft-buraglio-6man-hcga`
+- **Technical Content:** Extends RFC 3972 (CGA) to assign cryptographically verifiable IPv6 subnets (e.g., `/64`) to host pods, containers, or hardware components using TPM-bound keys. This provides hardware-to-application network traceability in zero-trust, HPC, or high-security environments.
+- **Discussion:**
+  - Philip Tiesel raised potential hash collision concerns with 16-bit subnet boundaries under birthday attack bounds and queried support for smaller prefix splits (e.g., `/80`).
+  - Joel Jaeggli noted similarities to ECMP host pool allocation strategies used in data center networks.
+  - Éric Vyncke asked for clarification on the hash algorithm (SHA-256) and requested an early Security Directorate review.
+  - Eric Kline and Bob Hinden agreed that obtaining a Security Directorate review and finding a co-author with cryptography expertise would be appropriate next steps.
+
+---
+
+### A RoCEv2 Flow-Level Load Balancing Method Based on the IPv6 Flow Label
+- **Presentation:** [A RoCEv2 Flow-Level Load Balancing Method Based on the IPv6 Flow Label](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-a-rocev2-flow-level-load-balancing-method-based-on-the-ipv6-flow-label-00) presented by Weiqiang Cheng.
+- **Draft:** `draft-cheng-6man-rocev2-flow-label`
+- **Technical Content:** Proposes having data center ingress edge devices populate the IPv6 Flow Label field using the Queue Pair (QP) numbers extracted from RoCEv2 BTH/DTH headers. This allows ECMP routers to distribute parallel RDMA sessions (elephant flows) across DCI links without modifying end-host stacks.
+- **Discussion:**
+  - Éric Vyncke questioned including IPv6 source/destination addresses in the flow label hash, as ECMP switches already include IP addresses in their 5-tuple hash.
+  - Joel Halpern recommended avoiding normative MUST mandates on specific hash algorithms and avoiding strict prohibitions against host-generated flow labels.
+  - Jie Dong noted that switches capable of inspecting deep headers can hash on QP numbers directly, and cautioned that reordering RoCEv2 packets across different paths could degrade QP performance.
+
+---
+
+### ICMP Error Handling for VPNs in SRv6 Networks
+- **Presentation:** [ICMP Error Handling for VPNs in SRv6 Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-icmp-error-handling-for-vpns-in-srv6-networks-00) presented by Ferenc Fejes.
+- **Draft:** `draft-alivar-spring-icmp-error-srv6-vpn`
+- **Technical Content:** Outlines three methods to propagate ICMP errors back to SRv6 VPN Customer Edge (CE) nodes when intermediate Provider (P) nodes generate errors:
+  1. P node tunnels ICMP errors directly to the egress PE.
+  2. Ingress PE sets the tunnel source IP to a VPN-specific SID.
+  3. Ingress PE loops back errors via its loopback to the egress PE to resolve the VPN context.
+- **Discussion:**
+  - Martin Horneffer asked if Method 2 handles overlapping IP space across different VPNs.
+  - Joel Halpern clarified that binding the tunnel source address to the ingress PE's VPN SID fully disambiguates the VPN context.
+  - Jie Dong suggested consolidating the three proposed mechanisms to reduce protocol options.
+  - Eric Kline reminded participants that official document adoption and technical progression are taking place in the SPRING WG.
+
+---
+
+### Automatic Extended Route Optimization and the Overlay Multilink Network Interface (AERO/OMNI)
+- **Presentation:** [Automatic Extended Route Optimization and the Overlay Multilink Network Interface (AERO/OMNI)](https://datatracker.ietf.org/meeting/127/materials/slides-127-6man-automatic-extended-route-optimization-and-the-overlay-multilink-network-interface-aeroomni-00) presented by Fred Templin.
+- **Drafts:** `draft-templin-aero`, `draft-templin-omni`
+- **Technical Content:** Proposes an adaptation layer between Layer 2 and Layer 3 to establish non-broadcast mobile access virtual overlay links, enabling mobile multi-homing and provider-independent addressing for end user devices.
+- **Poll:** "have you read one or more of this document set?"
+  - **Results:** yes: 3, no: 13, no_opinion: 0 (total: 67)
+- **Discussion:**
+  - Jen Linkova requested a clearer problem statement and explicit operator use cases.
+  - Nick Buraglio and Joel Jaeggli compared the proposal to existing overlay technologies (e.g., WireGuard, LISP), noting that deployment friction has historically limited user adoption of complex host overlay mechanisms.
+  - Joel Jaeggli did not support adopting the document set.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-6man-rfc4291bis`:**
+   - Confirm WG consensus on the mailing list to resume work with Dave Thaler holding the editor pen.
+2. **`draft-ietf-6man-ieee80211-dms`:**
+   - Authors to revise the document to refine Section 6 into a formal liaison statement for the Wi-Fi Alliance / IEEE 802.11 coordination group prior to requesting WGLC.
+3. **`draft-ietf-6man-loopback`:**
+   - Authors to address feedback regarding "loopback" terminology alignment with existing RFCs, boundary definitions, and potential security considerations.
+4. **`draft-ietf-6man-eh-occurrences`:**
+   - Authors to prepare an updated revision addressing mailing list comments and target Working Group Last Call by IETF 128.
+5. **`draft-buraglio-6man-hcga`:**
+   - Authors to seek an early Security Directorate review and consider adding cryptography expertise to the author team.
+
+---
+
+## Next Steps
+
+- Continue mailing list discussions for active drafts (`draft-ietf-6man-ieee80211-dms`, `draft-ietf-6man-loopback`, `draft-ietf-6man-eh-occurrences`).
+- Coordinate with SPRING WG on IPv6 requirements for `draft-alivar-spring-icmp-error-srv6-vpn`.
+- Re-convene at IETF 128 in Kuala Lumpur.

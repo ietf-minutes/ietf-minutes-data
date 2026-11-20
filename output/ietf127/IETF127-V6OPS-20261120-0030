@@ -1,0 +1,136 @@
+# [V6OPS](../wg/v6ops.html)
+
+## Summary
+
+The V6OPS Working Group met to discuss several active working group drafts and individual proposals. Key topics included customer edge router requirements, ICMP/XLAT source address translation improvements, 5G IPv6-only deployment guidance, AAAA filtering/suppression in stub resolvers, Enhanced Dual Stack (EDS), First Hop Redundancy Protocols (FHRP) in IPv6, and Happy Eyeballs reporting considerations. 
+
+The session was chaired by Nick Buraglio with assistance from co-chair XiPeng Xiao. The final scheduled presentations on IPv6 deployment statistics and path performance degradation could not be delivered due to audio technical issues and were moved to the mailing list.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status and Administration
+* **Presentation**: [chair slides - v6ops note well and WG status](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-chair-slides-v6ops-note-well-and-wg-status-00)
+* **Presenter**: Nick Buraglio
+* **Discussion**:
+  * Milestones were updated roughly a month prior to the meeting.
+  * Call for contributions to Brian Carpenter's IPv6 book via GitHub pull requests.
+  * Announcement of an interim V6OPS meeting co-located with RIPE 94 in Lithuania to encourage operator participation.
+  * Jen Linkova and XiPeng Xiao discussed surveying participant time zones to optimize scheduling for remote participants.
+
+---
+
+### draft-ietf-v6ops-rfc7084bis: Basic Requirements for IPv6 Customer Edge Routers
+* **Presentation**: [7084bis](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-7084bis-00)
+* **Presenter**: Tim Winters
+* **Discussion**:
+  * **Draft Updates (-08)**: Updated ULA terminology, referenced RFC 8504bis, updated DHCPv6 references to RFC 9915, clarified DNS proxy language (L22), and added requirements G8/W7 (IPv6 DNS resolution support, RFC 9715 R5/R6 fragmentation recommendations).
+  * **M/O Flags**: Combined WAA12 into WAA6 to prevent CEs from dropping DHCP clients/prefixes when M/O flags flap on the WAN interface.
+  * **ULAs**: Upgraded ULA generation and advertisement to SHOULD to ensure local in-home connectivity remains functional even when the WAN interface is down.
+  * **DNS over TCP & Proxy Concerns**:
+    * Ted Lemon raised concerns regarding DNS proxy requirements vs. full-service resolvers (ensuring full-service resolvers are not discouraged) and strongly advocated for enforcing DNS over TCP (referencing RFC 5625 and DNSOP discussions regarding post-quantum cryptography).
+    * David Lamparter noted in chat that RFC 5625 already requires DNS over TCP.
+    * XiPeng Xiao suggested adding RFC 9715 R7 (fallback to TCP when UDP fails) as a SHOULD/MUST requirement. Tim Winters agreed to review adding R7 and reinforcing DNS over TCP.
+  * **ULAs & SNAC**: Lorenzo Colitti and Ted Lemon discussed ULA stability and interaction with SNAC routers, concluding that local CE ULA generation provides helpful stability.
+
+---
+
+### draft-ietf-v6ops-icmpext-xlat-v6only-source: Using Dummy IPv4 Address and Node Identification Extensions for IP/ICMP translators (XLATs)
+* **Presentation**: [Using Dummy IPv4 Address and Node Identification Extensions for IP/ICMP translators (XLATs)](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-using-dummy-ipv4-address-and-node-identification-extensions-for-ipicmp-translators-xlats-00)
+* **Presenter**: Jen Linkova
+* **Discussion**:
+  * The document was returned from AD evaluation to address a scoping issue: RFC 6791 assumed stateless translators possessed public IPv4 address pools, which CLATs/translators in v6-only networks lack.
+  * **Draft Updates (-03)**: Instead of deprecating RFC 6791, draft-03 updates it: if a public IPv4 address is available, use it; otherwise, use the designated dummy IPv4 address.
+  * **Coordination**: Overlapping translation algorithm text is being moved into [draft-ietf-v6ops-rfc7915-bis](https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc7915-bis/) (presented by Jordi Palet Martinez). The remaining text in `draft-ietf-v6ops-icmpext-xlat-v6only-source` will focus on updating RFC 6791.
+  * Tom Hill and Ted Lemon supported progressing the document.
+
+---
+
+### draft-ietf-v6ops-5g-ipv6only: Considerations of IPv6-only Deployment in 5G Mobile Networks
+* **Presentation**: [03 Chenhao Ma - Considerations of IPv6-only Deployment in 5G Mobile Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-03-chenhao-ma-considerations-of-ipv6-only-deployment-in-5g-mobile-networks-00)
+* **Presenter**: Chenhao Ma
+* **Discussion**:
+  * Overview of Working Group document [draft-ietf-v6ops-5g-ipv6only](https://datatracker.ietf.org/doc/draft-ietf-v6ops-5g-ipv6only/) (-00), providing operational guidance for 464XLAT-based IPv6-only 5G deployments.
+  * Detailed 5G architecture, PCO-based (control plane) vs. RA-based (user plane) IPv6-only signaling, DNN selection, MTU recommendations (1500 bytes native), and prefix delegation for tethering/router UEs.
+  * XiPeng Xiao recommended framing the document around operator deployment experience and lessons learned rather than waiting for 3GPP liaison responses.
+  * Jen Linkova suggested engaging with 3GPP on supporting the RA PREF64 option to reduce reliance on DNS64.
+
+---
+
+### draft-ietf-v6ops-aaaa-filtering: A recommendation for filtering address records in stub resolvers
+* **Presentation**: [04 - Jen Linkova - AAAA filtering](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-04-jen-linkova-aaaa-filtering-00)
+* **Presenter**: Jen Linkova (on behalf of Ondřej Caletka)
+* **Discussion**:
+  * Addresses issues where stub resolvers suppress A or AAAA queries based on simple default-route presence, causing failures in split-VPN or non-default routing scenarios.
+  * Nick Buraglio confirmed this is a real-world issue in enterprise/VPN setups for non-Happy Eyeballs applications and suggested DNSOP review.
+  * XiPeng Xiao recommended adding local diagnostic logging when DNS queries are skipped/suppressed.
+  * Lorenzo Colitti noted that "filtering" is a misnomer (should be "suppressing" queries) and pointed out that Section 4 improperly attempts to codify OS behaviors (e.g., Chrome/Android permissions) and conflicts with `AI_ADDRCONFIG` in RFC 3493. Ondřej Caletka acknowledged the feedback to refine the text.
+
+---
+
+### Enhanced Dual Stack (EDS)
+* **Presentation**: [05 Xipeng - Enhanced Dual Stack EDS](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-05-xipeng-enhanced-dual-stack-eds-01)
+* **Presenter**: XiPeng Xiao
+* **Draft**: `draft-xiao-v6ops-enhanced-dual-stack`
+* **Discussion**:
+  * Proposes caching connection failures (TCP/QUIC) in a 6-field OS-level table to avoid unusable IP destinations during IPv6 rollout in enterprises.
+  * **Feedback**:
+    * Philipp Tiesel suggested splitting the document into rollout strategy vs. failure caching, noting that cross-process failure caching yields limited benefit and cannot fix application programming errors.
+    * Tommy Polly noted that OS-level failure caching acts like a delayed, hard-failing version of Happy Eyeballs, risking inconsistent user experience and hidden network failures.
+    * Lorenzo Colitti noted that `getaddrinfo()` already enforces RFC 6724 Rule 1 by testing destination routes, and timeouts on new hosts limit EDS effectiveness.
+    * Jen Linkova argued that dual-stack complexity is best solved by moving directly to IPv6-mostly rather than adding OS-level connection caching.
+
+---
+
+### First Hop Redundancy in IPv6 Networks: Operational Considerations
+* **Presentation**: [06 First Hop Redundancy in IPv6 Networks: Operational Considerations,](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-06-first-hop-redundancy-in-ipv6-networks-operational-considerations-00)
+* **Presenter**: Jen Linkova
+* **Draft**: `draft-linkova-v6ops-fhrp`
+* **Discussion**:
+  * Reviews operational choices for IPv6 first-hop redundancy: multiple routers sending RAs, VRRP, and Anycast gateways. Explores failover timing and integrating unique link-local address guidance from an expired draft.
+  * Philipp Tiesel and Nick Buraglio voiced support, noting that enterprise operators lack clear IPv6 FHRP guidance outside vendor documentation.
+  * Lorenzo Colitti provided feedback on RA timer behaviors (`ReachableTime`, `Stale`) and requested detailed text on Anycast gateway setups.
+  * Nick Buraglio suggested detailing host behavior bugs when handling router priorities.
+
+---
+
+### Happy Eyeballs Reporting Considerations
+* **Presentation**: [07 Philipp - Happy Eyeballs Reporting Considerations](https://datatracker.ietf.org/meeting/127/materials/slides-127-v6ops-07-philipp-happy-eyeballs-reporting-considerations-00)
+* **Presenter**: Philipp Tiesel
+* **Draft**: `draft-tiesel-happy-reporting-considerations`
+* **Discussion**:
+  * Explores telemetry and reporting requirements for Happy Eyeballs across various personas (developers, corporate IT, service providers, researchers).
+  * Jen Linkova expressed skepticism regarding operator utility vs. privacy risks, suggesting passive traffic distribution (NetFlow) provides clearer operational signals.
+  * Philipp Tiesel clarified that refining and narrowing down the valid use cases/personas is the primary objective of the draft.
+
+---
+
+### IPv6 Deployment Statistics & Performance Degradation
+* **Presentations**:
+  * *08-jingzhao-IPv6 Deployment Statistics And Analysis*
+  * *08-JingZhao-IPv6 Path Performance Degradation in Dual Stack Networks*
+* **Discussion**:
+  * Due to persistent audio technical difficulties, Jing Zhao was unable to present. Nick Buraglio and XiPeng Xiao directed the discussion for these items to the V6OPS mailing list and adjourned the meeting.
+
+---
+
+## Decisions and Action Items
+
+1. **[draft-ietf-v6ops-rfc7084bis](https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc7084bis/)**:
+   * Authors will update the text to ensure DNS over TCP is strictly required and evaluate incorporating RFC 9715 R7 (TCP fallback) as a SHOULD requirement prior to requesting Working Group Last Call (WGLC).
+2. **[draft-ietf-v6ops-icmpext-xlat-v6only-source](https://datatracker.ietf.org/doc/draft-ietf-v6ops-icmpext-xlat-v6only-source/)**:
+   * Authors will remove redundant translation algorithm text (which is being incorporated into [draft-ietf-v6ops-rfc7915-bis](https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc7915-bis/)) and issue a revised draft for a final WGLC.
+3. **[draft-ietf-v6ops-5g-ipv6only](https://datatracker.ietf.org/doc/draft-ietf-v6ops-5g-ipv6only/)**:
+   * Authors will update the draft to focus on operator deployment experience and lessons learned.
+4. **`draft-linkova-v6ops-fhrp`**:
+   * Authors will expand the text regarding Anycast gateways, Link-Local Address guidance, and host priority handling, then request a Working Group adoption call.
+
+---
+
+## Next Steps
+
+* **V6OPS Interim Meeting**: Collect participant survey responses regarding time zones for the interim V6OPS meeting co-located with RIPE 94.
+* **Mailing List Discussions**:
+  * Cross-review [draft-ietf-v6ops-aaaa-filtering](https://datatracker.ietf.org/doc/draft-ietf-v6ops-aaaa-filtering/) with DNSOP.
+  * Discuss Jing Zhao's papers on IPv6 deployment statistics and path performance degradation on the mailing list.
