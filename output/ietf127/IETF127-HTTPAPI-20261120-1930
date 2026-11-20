@@ -1,0 +1,98 @@
+# [HTTPAPI](../wg/httpapi.html)
+
+## Summary
+
+The HTTPAPI Working Group met to discuss updates to active working group drafts, co-chair leadership changes, and potential new work items. 
+
+Key administrative changes include Darrel Miller stepping down as co-chair, with Kazuho Oku stepping in as the new co-chair alongside Rich Salz. Technical discussions focused on progress and open issues in rate limiting headers, idempotency key semantics, REST API media types, byte range PATCH, HTTP events query, and passing problem details via HTTP headers. The working group agreed to park work on Authentication Links.
+
+---
+
+## Key Discussion Points
+
+### Administrative & Chair Updates
+* **Document Status**: Rich Salz noted that the Digest Fields Problem Types draft is awaiting RPC editor assignment, and the Privacy document is undergoing production editing.
+* **Co-Chair Change**: Darrel Miller announced he is stepping down as co-chair to focus on authoring responsibilities. Kazuho Oku was introduced as the new working group co-chair.
+
+### [The Idempotency-Key HTTP Header Field](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpapi-the-idempotency-key-http-header-field-00)
+* **Draft**: `draft-ietf-httpapi-idempotency-key-header`
+* **Presenter**: Rich Salz (on behalf of co-author Dmitrii Tishkin)
+* **Updates in `-08` & `-09`**:
+  * Dmitrii Tishkin has joined as a co-author.
+  * PR 60 / Issue 34 clarifies that keys are opaque and unique (per tenant or exact match required, or one key for multiple resources), removes case-sensitivity wording, clarifies key fingerprints, and relaxes resource requirements from `MUST` to `SHOULD`.
+* **Retries and Replay Semantics** (Issue 46):
+  * The draft permits replaying a stored response (e.g., returning 404 for a subsequent request to delete a resource that was already removed).
+  * Mike Bishop noted that idempotency keys prevent multiple state changes; if a state change occurred, the stored response should be returned, whereas retrying failed requests without state changes is reasonable.
+  * Watson Ladd agreed that intermediaries should not retry automatically, leaving it to the application to handle retries. The decision was made not to add explicit replay indicators.
+* **Error Handling & Status Codes** (Issues 42 & 51):
+  * Status codes 409 and 422 are already widely used by applications, making it difficult for clients to distinguish idempotency errors.
+  * Dmitrii Tishkin proposed using dedicated Problem Types (RFC 9457) using the `describedby` relationship. Rich Salz and Mike Bishop expressed support for using Problem Types over introducing new status codes or overloading existing ones.
+* **Key Expiration**:
+  * Key expiration protects retries within the retention period; once expired, a request with the same key is treated as new.
+
+### [Rate Limit Changes pending for -12](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpapi-rate-limit-changes-pending-for-12-00)
+* **Draft**: `draft-ietf-httpapi-ratelimit-headers`
+* **Presenter**: Darrel Miller
+* **Updates for `-12`**:
+  * **Parameter Renaming**: Parameters were renamed for consistency across headers: `q` for quota, `a` for available, and `w` for window.
+  * **Policy Names**: Allowed policy identifiers to be either a token or a quoted string (case-insensitive).
+  * **Call Cost**: Added an optional `cost` parameter to communicate the quota consumed by the preceding request.
+  * **Partition Keys**: Replaced out-of-band partitioning agreements with an explicit mechanism for servers to convey partition key structure using a new header and IANA registry (`user-id`, `client-id`, `method`). Partition values are separated by ASCII 1F and base64-encoded as a byte sequence.
+  * **Intermediary Guidance**: Removed the restriction limiting intermediaries to making policies strictly more constraining, providing broader guidance for policy-unaware intermediaries.
+* **Discussion**: Lucas Pardue noted the changes address previous review comments and offered to do a re-review once draft `-12` is published.
+
+### REST API Media Types
+* **Draft**: `draft-ietf-httpapi-rest-api-mediatypes`
+* **Discussion**:
+  * Henry Andrews raised questions regarding whether the draft should target idealized complete OpenAPI entry-point documents or accommodate document fragments used in practice.
+  * Darrel Miller stated that the primary goal should be identifying entry-point documents, as processors can infer context when dereferencing fragment links.
+  * Mike Bishop noted that JSON Schema issues in the repository have been moved to the JSON Schema WG and should be closed.
+
+### Byte Range PATCH
+* **Draft**: `draft-ietf-httpapi-patch-byterange`
+* **Presenter**: Austin
+* **Discussion**:
+  * Austin noted a PR pointing out that using a `Prefer` header to allow non-atomic, ongoing updates conflicts with HTTP PATCH (RFC 5789) atomicity requirements.
+  * Mike Bishop and Lucas Pardue discussed interactions with the Resumable Uploads specification. Lucas Pardue noted that resumable uploads handle linear appends explicitly without breaking patch semantics.
+  * Austin will evaluate removing the `Prefer` header section or detailing integration with Resumable Uploads.
+
+### Authentication Links & Deprecation Header
+* **Deprecation Header**: Confirmed already published as an RFC.
+* **Authentication Links**: The working group noted a lack of ongoing interest over the past three meetings. The chairs decided to park/abandon this document.
+
+### [HTTP Events Query](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpapi-http-events-query-00)
+* **Presenter**: Rahul Gupta
+* **Overview**: Defines an abstract data model, an `Events` header, and response streaming semantics (long polling or streaming mode) for querying event notifications over HTTP.
+* **Updates**:
+  * Replaced `application/http` with `multipart` in examples to address HTTP request desync risks raised by Mike Bishop.
+  * Set `duration=0` to mean server-determined duration based on feedback from Jaime Jimenez.
+  * Added rules to terminate notifications if authorization becomes invalid during streaming.
+  * Updated references to point to published HTTP QUERY and Incremental specifications.
+* **Discussion**: Michael raised whether this work belongs in HTTPBIS alongside other subscription mechanisms (e.g., Mercure) to better serve browsers and caches. Rahul Gupta responded that HTTP Events Query is designed as a lightweight REST-compliant building block for HTTP APIs and is complementary to other subscription efforts.
+
+### Problem Details Header & Link Hints
+* **Presenter**: Mark Nottingham
+* **Problem Header**: Mark Nottingham introduced a draft to pass Problem Details (RFC 9457) in HTTP response headers.
+* **Link Hints**: Mark Nottingham noted progress is ongoing on the link hints specification.
+
+---
+
+## Decisions and Action Items
+
+### Decisions
+1. **`draft-ietf-httpapi-idempotency-key-header`**: Adopt RFC 9457 Problem Types to signal idempotency errors rather than overloading HTTP status codes.
+2. **`draft-ietf-httpapi-rest-api-mediatypes`**: Remove the document from Working Group Last Call (WGLC) to resolve scope around entry-point vs. fragment documents and clean up JSON Schema issues.
+3. **Authentication Links**: Park/abandon the draft due to lack of working group interest.
+
+### Action Items
+* **Darrel Miller**: Publish version `-12` of `draft-ietf-httpapi-ratelimit-headers`.
+* **Dmitrii Tishkin**: Prepare PRs/diffs for open idempotency issues and target publishing `draft-ietf-httpapi-idempotency-key-header-09`.
+* **Henry Andrews**: Post OpenAPI use-case questions (entry-point vs. fragments) for `draft-ietf-httpapi-rest-api-mediatypes` to the mailing list.
+* **Austin**: Address atomicity concerns in `draft-ietf-httpapi-patch-byterange` regarding the `Prefer` header and evaluate alignment with Resumable Uploads.
+* **Mark Nottingham**: Update the Problem Details header draft ahead of a potential adoption call.
+
+---
+
+## Next Steps
+* **Adoption Calls**: The chairs plan to issue working group adoption calls for both **HTTP Events Query** and the **Problem Details Header** draft in January after the holiday period.
+* **Document Reviews**: Working group participants are encouraged to review `draft-ietf-httpapi-ratelimit-headers-12` once posted.

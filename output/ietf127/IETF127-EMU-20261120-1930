@@ -1,0 +1,94 @@
+# [EMU](../wg/emu.html)
+
+## Summary
+
+The EAP Method Update (EMU) Working Group met at IETF 127. The session covered progress on active working group documents including TEAPv2, EAP-PPT, Post-Quantum (PQ) enhancements and forward-secure re-authentication for EAP-AKA', session ticket handling in TLS-based EAP methods, large identities in EAP-AKA', and an offline SIM authentication proposal (EAP-WSIM). Alan DeKok and Jan-Frederik Rieckers volunteered as Designated Experts for the `eap.arpa` registry.
+
+## Key Discussion Points
+
+### Admin and Agenda Bashing
+- The chairs presented the [IETF 127 EMU WG Chairs' Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-ietf-127-emu-wg-chairs-slides-01).
+- The Note Well was noted, and the agenda was accepted without modifications.
+
+### TEAPv2
+- **Presentation:** [TEAPv2](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-teapv2-00) by Alan DeKok
+- **Document:** `draft-ietf-emu-teapv2`
+- **Discussion:**
+  - TEAPv1 suffers from complex key derivation, interoperability issues, and sparse feature implementation in deployable code (~10%).
+  - TEAPv2 is currently structured as a delta draft relative to TEAPv1. Implementation work is ongoing in `hostap` and `eapol_test` (led by Elliot Lear) to ensure all specified functionality is implemented and testable before standardization.
+  - The working group is considering allocating a new EAP Type Code for TEAPv2 due to substantial state machine and architectural differences from TEAPv1.
+  - To prevent MTU fragmentation issues over RADIUS networks, TEAPv2 plans to mandate a maximum fragment size.
+  - Mandatory ordering of protocol state transitions is proposed to eliminate unnecessary implementation complexity.
+
+### EAP-PPT Updates
+- **Presentation:** [EAP-PPT Updates](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-eap-ppt-updates-00) by Paresh Sawan and Bart Brinkman
+- **Document:** `draft-ietf-emu-eap-ppt`
+- **Discussion:**
+  - Key updates in draft `-04`:
+    - Replaced JSON messaging with TLV format (RFC 9930 style) to minimize overhead, eliminate JSON parsing on unauthenticated peers, and reduce message fragmentation.
+    - Removed key derivation (no MSK or EMSK derived), as Privacy Pass tokens are bearer credentials authenticated via server verification of issuer keys; TLS exporter-derived keys were ineffective against Man-in-the-Middle (MITM) attacks.
+    - Implemented Origin Info binding (RFC 9577) to prevent MITM attacks: the EAP-PPT server includes its name in `origin_info`, which the peer validates against the Phase 1 TLS server certificate DNS name.
+  - Bart Brinkman noted that removing key derivation creates a conflict with `draft-ietf-emu-teapv2` Section 3.2, which currently mandates crypto binding for EAP inner methods; this requirement in TEAPv2 will need updating.
+  - The draft is reaching maturity, and the authors suggested preparing for Working Group Last Call (WGLC).
+
+### PQ Enhancements for EAP-AKA'
+- **Presentation:** [PQ Enhancements for EAP-AKA'](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-pq-enhancements-for-eap-aka-00) by Praveen Gupta
+- **Documents:** `draft-ietf-emu-pqc-eapaka` and `draft-ietf-emu-hybrid-pqc-eapaka`
+- **Discussion:**
+  - **`draft-ietf-emu-pqc-eapaka` (-05):** Normative alignment updated (RFC 9958, RFC 9794); standardized PQ naming nomenclature; redesigned capability negotiation to list ECDHE first for legacy fallback followed by ML-KEM; tightened fragmentation logic and adjusted total attribute length calculations; registered ML-KEM parameter sets (512, 768, 1024) with IANA.
+  - **`draft-ietf-emu-hybrid-pqc-eapaka`:** Standardized HPKE PQ terminology and `AT_PUB_HYBRID` attribute; aligned with `draft-ietf-emu-pqc-eapaka` capability negotiation and fragmentation; defined hybrids for ML-KEM-768 with X25519/P-256 and ML-KEM-1024 with P-384.
+  - An additional post-WGLC technical comment from Heikki Vatiainen regarding `AT_MAC` will be addressed in a `-06` revision of `draft-ietf-emu-pqc-eapaka`.
+  - Praveen Gupta raised a question regarding fast re-authentication support when EAP-AKA' is used directly as a Wi-Fi access method.
+
+### Forward Secure Reauthentication in EAP-AKA'
+- **Presentation:** [Forward Secure Reauthentication in EAP-AKA’](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-forward-secure-reauthentication-in-eap-aka-00) by Guilin Wang
+- **Document:** `draft-ietf-emu-fs-reauth`
+- **Discussion:**
+  - Document was adopted as a Working Group draft (`draft-ietf-emu-fs-reauth-00`).
+  - Updated key derivation to take the tail portion of the derivation output for Transient Encryption Keys (TEKs).
+  - Explicit formulas added for TEK derivation supporting both pure PQ KEM (`draft-ietf-emu-pqc-eapaka`) and Hybrid PQ (`draft-ietf-emu-hybrid-pqc-eapaka`).
+  - Added `AT_SUPPORT_TEKS_FS` attribute to advertise capability support.
+  - Removed the next re-authentication ID from the success notification message to adhere to standard EAP messaging rules. Consequently, the first re-authentication ID is not forward-secure, but all subsequent re-authentication IDs gain forward security while preserving backward compatibility.
+
+### Session Tickets in TLS-Based EAP Methods
+- **Presentation:** [Session tickets in TLS-based EAP methods](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-session-tickets-in-tls-based-eap-methods-00) by Alan DeKok
+- **Document Context:** `draft-ietf-emu-pqc-eap-tls`
+- **Discussion:**
+  - Session ticket handling across TLS 1.2 and 1.3 presents severe interoperability issues in practice (e.g., tickets sent after inner tunnel completion per RFC 9427 are rejected by some supplicants).
+  - Many supplicants incorrectly bind TLS state machine transitions to EAP fragment boundaries rather than TLS messages, causing failures across heterogeneous implementations (e.g., Android supplicants interacting with Windows NPS).
+  - Post-Quantum Cryptography (PQC) certificates compound round-trip delays (up to 80+ round trips / ~10 seconds latency), dramatically increasing packet drop probability over standard RADIUS proxy fabrics.
+  - Proposed writing guidance specifying mandatory supplicant behavior (prohibiting state changes tied to EAP fragmentation boundaries) and introducing ALPN-like capability negotiation during initial authentication to coordinate session resumption features.
+  - Andrew Holder inquired about certificate chain sizes in PQC testing and suggested evaluating Merkle Tree Certificates (MTC) to reduce data volume.
+
+### Large Identity in EAP-AKA Prime
+- **Presentation:** [Large Identity in EAP-AKA prime](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-large-identity-in-eap-aka-prime-00) by Tao Sun
+- **Discussion:**
+  - 3GPP SA3 is introducing PQC algorithms for Subscription Concealed Identifier (SUCI) generation.
+  - PQC SUCI payloads (standalone ML-KEM-768 or hybrid) exceed standard EAP MTUs (>1100 octets binary, double if converted to UTF-8 NAI string format).
+  - Standard `AT_IDENTITY` attributes cannot accommodate these payloads due to attribute length byte limits and legacy RADIUS `User-Name` 253-octet limits.
+  - Proposed fallback mechanism: Send an anonymous-only identity in the initial `EAP-Response/Identity`, followed by a new `AT_LARGE_IDENTITY` attribute using `AT_FRAGMENT` fragmentation within the EAP-AKA' exchange.
+  - The author requested feedback on WG adoption and coordinate responses to 3GPP SA3 liaison requests.
+
+### EAP-WSIM
+- **Presentation:** [EAP-WSIM](https://datatracker.ietf.org/meeting/127/materials/slides-127-emu-eap-wsim-00) by Praveen Gupta
+- **Document:** `draft-gupta-emu-eap-wsim`
+- **Discussion:**
+  - Outlines an offline SIM-based EAP method allowing mobile network operator (MNO) SIM credentials to authenticate devices on Wi-Fi networks without requiring live connectivity back to the MNO HLR/HSS core.
+  - Targeted at Wi-Fi offload, enterprise Wi-Fi, and 6G non-3GPP access integration.
+  - Mark Grayson noted that OpenRoaming federation (with 140+ networks) and existing GSMA IR.67/RADSEC configurations already enable EAP-AKA SIM authentication across third-party Wi-Fi without requiring new EAP methods or offline servers.
+  - Praveen Gupta responded that OS-level SIM access restrictions hinder widespread deployment of SIM-based authentication for OpenRoaming relative to EAP-TLS certificate profiles.
+
+## Decisions and Action Items
+
+### Decisions
+- **`draft-ietf-emu-eap-ppt`:** Confirmed removal of inner key derivation (MSK/EMSK) and adoption of TLV encoding and Origin Info binding. `draft-ietf-emu-teapv2` Section 3.2 will be updated to accommodate inner methods that do not produce MSK/EMSK key material.
+- **`draft-ietf-emu-pqc-eapaka`:** Authors will issue revision `-06` to resolve `AT_MAC` feedback prior to advancing.
+
+### Action Items & Volunteers
+- **`eap.arpa` Designated Experts:** Alan DeKok and Jan-Frederik Rieckers volunteered as Designated Experts for the `eap.arpa` registry. Names will be submitted to the WG chairs.
+- **Document Reviews:** Working group members were requested to review `draft-ietf-emu-eap-ppt` ahead of potential Working Group Last Call.
+
+## Next Steps
+- Publish updated revisions for `draft-ietf-emu-pqc-eapaka` (`-06`) and `draft-ietf-emu-hybrid-pqc-eapaka`.
+- Align TEAPv2 inner-method crypto binding requirements with `draft-ietf-emu-eap-ppt`.
+- Continue mailing list discussions regarding TLS session ticket handling guidance, EAP-AKA' large identity fragmentation, and `draft-gupta-emu-eap-wsim`.

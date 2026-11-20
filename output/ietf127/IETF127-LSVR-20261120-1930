@@ -1,0 +1,84 @@
+# [LSVR](../wg/lsvr.html)
+
+## Summary
+
+The Link State Vector Routing (LSVR) Working Group met to discuss working group document status, updates to active drafts, and proposed extensions to BGP Link-State Shortest Path First (BGP-LS-SPF). Key topics included an update on the base YANG model for BGP-LS/BGP-LS-VPN/BGP-LS-SPF, proposed updates to BGP-LS-SPF NLRI selection rules, SRv6 extensions to BGP-LS-SPF, and new proposals addressing area/region division for scaling BGP-LS-SPF in large dynamic networks such as satellite networks.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Chair Update
+- **Presentation**: [00. Agenda bashing and Chairs' Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsvr-0-agenda-bashing-and-chairs-slides-00)
+- **Presenter**: Krishnaswamy Ananthamurthy
+- **Discussion**:
+  - The chairs reviewed the agenda, Note Well, and meeting mechanics.
+  - The L3DL liaison response was completed and sent on August 13, 2024, led by Russ White.
+  - The working group active draft `draft-ietf-lsvr-bgp-ls-yang` is undergoing updates, with plans for early reviews by YANG Doctors and the BGP Directorate.
+
+### A YANG Model for BGP-LS, BGP-LS-VPN, and BGP-LS-SPF
+- **Presentation**: [01. A YANG Model for BGP-LS, BGP-LS-VPN, and BGP-LS-SPF](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsvr-01-a-yang-model-for-bgp-ls-bgp-ls-vpn-and-bgp-ls-spf-00)
+- **Draft**: `draft-ietf-lsvr-bgp-ls-yang`
+- **Presenter**: Mahesh Jethandani
+- **Discussion**:
+  - Mahesh Jethandani presented updates in version -05 of `draft-ietf-lsvr-bgp-ls-yang`.
+  - Added RIB support (`loc-rib`, `adj-rib-in`, and `adj-rib-out`) for all three address families. Routes are keyed by encoded NLRI with decoded descriptors.
+  - Updated the security considerations section following the RFC 8407 template.
+  - Required a fix in the base BGP YANG model (`draft-ietf-idr-bgp-model`) regarding unprefixed leafref paths used in RIB groupings, which has been updated to version -22.
+  - Remaining action items for the authors before requesting Working Group Last Call (WGLC) include adding EPN NLRI support and handling the compound key for label index format.
+  - Ketan Talaulikar suggested not holding up the base YANG model to include every new feature (e.g., Flex-Algo TLVs), recommending instead that future BGP-LS extension specifications define their own YANG augments. Mahesh Jethandani agreed with drawing the line after the pending items.
+  - Sue Hares noted coordination between IDR and LSVR for IANA assignments and YANG model progression.
+
+### Proposed Update to BGP Link-State SPF NLRI Selection Rules
+- **Presentation**: [02. Proposed Update to BGP Link-State SPF NLRI Selection Rules](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsvr-02-proposed-update-to-bgp-link-state-spf-nlri-selection-rules-00)
+- **Presenter**: Jie Dong
+- **Discussion**:
+  - Discussed optimization of NLRI selection rules defined in RFC 9552 Section 6.1 to avoid unnecessary/redundant update advertisements and improve convergence times.
+  - Proposed modifications:
+    - Rule 1: Provide a configuration knob to disable preferring self-originated NLRIs from directly connected peers.
+    - Rule 3: Add an option (3b) to retain the existing NLRI when sequence numbers match, preventing duplicate advertisements.
+    - Rule 4: Add BGP peer address comparison when candidate routes originate from the same peer.
+  - Simulation results across various network topologies demonstrated reductions in generated updates and improved convergence times.
+  - AC Lindem commented on edge cases like cold restarts of isolated routers, noting that non-volatile storage for sequence numbers helps avoid issues, and supported moving toward adoption.
+  - The authors requested Working Group adoption for the draft.
+
+### Applying BGP-LS Segment Routing over IPv6 (SRv6) Extensions to BGP-LS-SPF
+- **Presentation**: [03. Applying BGP-LS Segment Routing over IPv6(SRv6) Extensions to BGP-LS-SPF](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsvr-03-applying-bgp-ls-segment-routing-over-ipv6srv6-extensions-to-bgp-ls-spf-00)
+- **Presenter**: Li Zhang
+- **Discussion**:
+  - Updates in version -08 include setting the Protocol ID to 4 (Direct), referencing RFC 9552 for SID NLRI procedure details, and adding SPF Status and Sequence Number TLVs.
+  - AC Lindem suggested explicitly detailing what gets installed in the forwarding table and under what reachability conditions rather than leaving it implied, and mentioned considering support for micro-SIDs (uSIDs) in future revisions.
+  - Authors requested Working Group adoption.
+
+### Area-Scoped Link-State Distribution for BGP-LS-SPF
+- **Presentation**: [04. Area-Scoped Link-State Distribution for BGP-LS-SPF](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsvr-04-area-scoped-link-state-distribution-for-bgp-ls-spf-00)
+- **Presenter**: Ximiao
+- **Discussion**:
+  - Proposed introducing logical areas into BGP-LS-SPF to contain local link-state updates within an area while maintaining global reachability via prefix advertisements through boundary routers.
+  - Target applications include large, highly dynamic flat networks such as LEO satellite constellations.
+  - AC Lindem noted similarities to OSPF alternate ABR concepts, emphasizing that loop prevention across arbitrary area structures (such as rings of areas) is complex and requires careful protocol design.
+  - Ketan Talaulikar recommended consulting network operators deploying BGP-LS-SPF to confirm operational requirements before developing detailed solutions.
+
+### Region Division in Networks using BGP-LS SPF Routing
+- **Presentation**: [05. Region Division in Networks using BGP-LS SPF Routing](https://datatracker.ietf.org/meeting/127/materials/slides-127-lsvr-5-region-division-in-networks-using-bgp-ls-spf-routing-00)
+- **Presenter**: Min
+- **Discussion**:
+  - Presented a problem statement and framework for dividing large flat BGP-LS-SPF networks (such as satellite networks) into regions without requiring a traditional backbone region.
+  - Defines internal nodes and border nodes to scope flooding domains and prevent inter-region advertisement loops.
+  - Li Zhang asked if any protocol extensions are proposed; Min clarified that no extensions are defined in the initial draft, but may be added based on WG interest.
+  - AC Lindem supported using the term "region" to distinguish this concept from standard IGP areas and raised questions regarding how inter-region links and paths are represented.
+  - Ketan Talaulikar and Jie Dong reiterated the need to gather operator requirements and coordinate across routing working groups (e.g., RTGWG) prior to standardizing solutions.
+
+---
+
+## Decisions and Action Items
+
+- **`draft-ietf-lsvr-bgp-ls-yang`**: Authors will incorporate missing EPN NLRI support and compound key handling for label index formats in the next revision. New TLVs (such as Flex-Algo) will be left for separate extension/augmentation drafts rather than delaying the base model.
+- **WGLC / Reviews**: Early reviews for `draft-ietf-lsvr-bgp-ls-yang` will be requested from the YANG Doctors and BGP Directorate.
+
+---
+
+## Next Steps
+
+- **Adoption Calls**: Call for Working Group adoption for the proposed BGP-LS-SPF NLRI selection rules update and the SRv6 extensions to BGP-LS-SPF will be conducted on the mailing list.
+- **Area/Region Scaling Discussion**: Authors of the area-scoped and region-division proposals will engage operators to refine requirements and discuss use cases on the mailing list and in coordination with related routing working groups.
