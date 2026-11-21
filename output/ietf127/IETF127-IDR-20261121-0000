@@ -1,0 +1,104 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The Inter-Domain Routing (IDR) Working Group met at IETF 127. The session focused on updates and extensions to BGP Flow Specification Version 2 (Flowspec v2), BGP SR Policy YANG data models, performance metrics signaling, AI fabric Node ID advertisements, BGP attribute escape mechanisms, and VPN prefix Outbound Route Filtering (ORF) propagation.
+
+Key architectural concerns were discussed regarding traffic compression encapsulation, route churn driven by dynamic performance telemetry in BGP, the misuse of Extended Communities for new data-plane Node IDs, and the risks of standardizing path attribute dropping mechanisms.
+
+---
+
+## Key Discussion Points
+
+### 1. BGP Flow Specification Version 2 (Flowspec v2) Update
+- **Presenters:** Susan Hares, Jeffrey Haas
+- **Draft Reference:** draft-ietf-idr-fsv2-ip-basic (BGP Flow Specification Version 2 - for Basic IP)
+- **Discussion:**
+  - Susan Hares and Jeffrey Haas presented updates on Flowspec v2 NLRI formatting, filter family TLV ordering, and dependency chain handling.
+  - TLVs must be ordered in strictly increasing type order, and specific component types must not appear more than once per filter family.
+  - Dependency handling introduces fate sharing: if a dependency group `n` is invalid, all filter families sharing that group number `n` are marked invalid. Optional vs. mandatory flags determine whether an unhandled term causes complete rule rejection or can be safely skipped.
+  - Route validation procedures continue to maintain customer route match checks from RFC 8955 while integrating RPKI origin validation and handling BGP confederations.
+
+### 2. Flowspec Action Container & Ordered Actions
+- **Presenter:** Susan Hares
+- **Discussion:**
+  - Proposed carrying user-ordered Flowspec actions within the BGP Community Container (leveraging Wide Communities structure) to support complex action chains across AS boundaries.
+  - Action families group related operations (e.g., rate-limiting, redirecting, sampling). Action dependency numbers and failure handling rules (optional vs. mandatory actions) establish fate-sharing rules for action execution.
+
+### 3. BGP Flow-Spec Traffic Compress Action
+- **Presenter:** Chengwen Wang
+- **Draft Reference:** draft-ietf-idr-flowspec-traffic-compress-action (BGP Flow-Spec Traffic Compress Action)
+- **Discussion:**
+  - Presented a receiver-driven BGP extended community action allowing tail-end nodes to request selective traffic compression at head-end nodes for bandwidth efficiency (e.g., data center backups).
+  - Joel Halpern noted a critical technical issue: RFC 3173 (IPComp) in transport mode does not encapsulate outer IP headers. Operating between ingress and egress routers in transport mode violates RFC 8200 (IPv6 specification). The specification must use tunnel mode and fully document encapsulation behavior.
+  - Joel Halpern offered to collaborate with the authors offline to resolve the encapsulation architecture.
+  - In the session chat, John Scudder, Daniel Bernier, and Jeffrey Haas discussed whether compression should occur at the application layer rather than the network layer and noted that compressing already-compressed data must be avoided.
+
+### 4. IDR YANG Models & Upcoming Interim
+- **Presenter:** Susan Hares
+- **Discussion:**
+  - Announced an upcoming IDR YANG virtual interim meeting scheduled for early January to coordinate YANG modeling across IDR functional areas (Core, Flowspec, BGP-LS, and SR Policy).
+
+### 5. BGP SR Policy YANG Model
+- **Presenter:** Chengwen Wang
+- **Discussion:**
+  - Presented a YANG data model for configuring and monitoring the BGP SR Policy address family (`bgp-sr-policy`).
+  - Covers global configuration (prefix limits, EBGP advertisement controls, handling of unsupported sub-TLVs), RIB state (local RIB and Adj-RIB-In/Out), and operational event notifications (prefix limit exceeded, candidate path state changes).
+  - In chat, Jeffrey Haas highlighted the importance of reusable candidate path groupings across BGP and SPRING YANG models.
+
+### 6. BGP-LS SR Policy Operational YANG Model
+- **Presenter:** Aravind
+- **Draft Context:** draft-ietf-idr-bgp-ls-sr-policy-admin-flags (Advertisement of SR Policy Operational States using BGP Link-State)
+- **Discussion:**
+  - Introduced a read-only YANG data model for augmenting the BGP-LS link-state database model with SR Policy candidate path NLRIs and attributes in alignment with RFC 9587 and RFC 9557.
+  - Candidate paths are indexed using composite keys (local node descriptors and candidate path descriptors) and preserve wire fidelity for segment lists, metric types, operational flags, and explicit bandwidth.
+
+### 7. Extended Communities for SR Policy Performance Metrics
+- **Presenter:** Xiao Min
+- **Draft Context:** draft-ietf-idr-sr-policy-metric (BGP SR Policy Extensions for Metric)
+- **Discussion:**
+  - Proposed four BGP Extended Communities to signal SR Policy performance metrics across network domains: available bandwidth, unidirectional delay, delay variation, and packet loss.
+  - Jeffrey Haas and Andrew Stone (in chat) cautioned against putting rapidly changing performance telemetry into BGP due to continuous route churn and refresh storms.
+  - Jeffrey Haas requested that the author add explicit churn-mitigation mechanisms and analyze how the proposed metrics overlap with the work in the CATS Working Group.
+
+### 8. BGP Extended Community for AI Fabric Node ID
+- **Presenters:** China Mobile Presenter, Zheng Zhang
+- **Draft Reference:** draft-ietf-idr-node-target-ext-comm (BGP Extended Community for Identifying the Target Nodes)
+- **Discussion:**
+  - Proposed carrying a 2-byte compact Node ID within a transitive BGP Extended Community to simplify forwarding lookups and fault responses in large-scale AI fabrics (up to 64k nodes).
+  - Jeffrey Haas questioned why existing mechanisms such as the 4-byte BGP Identifier / Router ID could not be used for node identification.
+  - Zheng Zhang explained that existing implementations tie Router IDs to IP addresses, creating compatibility concerns when advertising non-IP node identifiers.
+  - In chat, Joel Halpern, Jie Dong, and Keyur Patel noted that defining node IDs for non-IP forwarding planes is outside IDR scope or requires a new Address Family Identifier (AFI), rather than embedding node IDs in BGP Extended Communities.
+
+### 9. BGP Path Attribute Escape & Outbound Route Filtering (PA-ORF)
+- **Presenter:** Aijun Wang
+- **Draft Reference:** draft-ietf-idr-bgp-attribute-escape (BGP Attribute Escape)
+- **Discussion:**
+  - Proposed using Outbound Route Filtering (ORF) extensions (PA-ORF) to control the propagation scope of path attributes and prevent attribute escape across domain boundaries. Defined actions include attribute stripping, route rejection, treat-as-withdraw, and propagation scope limiting.
+  - John Scudder strongly objected to architectural standardization of path attribute dropping mechanisms, emphasizing that protocol extensibility depends on unknown path attributes passing transparently through transit networks.
+  - Keyur Patel, Robert Raszuk, Susan Hares, and Bryton Herdes voiced strong agreement with John Scudder.
+  - Jeffrey Haas noted that while some operators deploy unknown attribute dropping at leaf/stub boundaries, using ORF to negotiate default-drop boundaries is a misuse of the ORF mechanism. He suggested separating attribute filter encoding definitions from ORF transport.
+  - Robert Raszuk and Keyur Patel emphasized in chat that transitive propagation of ORF without loop detection or flooding scopes (like RTC) creates severe topology risks. Bryton Herdes shared Cloudflare and NANOG presentation links illustrating real-world operational problems caused by stripping standard attributes like OTC (Optionally to Customer).
+
+### 10. Upstream VPN Prefix ORF Propagation
+- **Presenter:** Aijun Wang
+- **Discussion:**
+  - Proposed a mechanism allowing Route Reflectors (RRs) to propagate VPN prefix ORF requests upstream to originating PEs when all downstream PEs indicate no interest in a given prefix, avoiding unnecessary VPN route distribution.
+  - Included inquiry/response signaling for RRs to verify downstream interest before sending upstream ORF filters.
+  - Jeffrey Haas noted that while upstream propagation has interesting properties, safety constraints must be thoroughly analyzed on the mailing list.
+
+---
+
+## Decisions and Action Items
+
+- **Flowspec Compression Encapsulation:** Joel Halpern will work offline with the authors of draft-ietf-idr-flowspec-traffic-compress-action to specify tunnel mode encapsulation and ensure RFC 8200 compliance.
+- **SR Policy Performance Telemetry:** Xiao Min will review overlap with the CATS WG and update the draft to incorporate explicit churn-mitigation mechanisms.
+- **AI Fabric Node Identifier:** Zheng Zhang and co-authors will evaluate chair and participant feedback regarding the use of BGP Identifiers or proposing a dedicated AFI instead of using Extended Communities.
+- **Attribute Escape / PA-ORF:** Aijun Wang will take feedback from John Scudder, Jeffrey Haas, and others to the mailing list to refine the attribute filtering design outside of the standard ORF framework.
+
+---
+
+## Next Steps
+
+- **IDR YANG Virtual Interim:** An interim session dedicated to IDR YANG modules (Flowspec, BGP-LS, SR Policy, Core) will be scheduled for the first week of January.
+- **Mailing List Discussion:** Continued technical discussion on Flowspec v2 action chains, attribute propagation controls, and VPN prefix ORF safety logic will take place on the IDR mailing list.

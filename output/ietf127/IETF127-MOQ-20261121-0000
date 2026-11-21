@@ -1,0 +1,70 @@
+# [MOQ](../wg/moq.html)
+
+## Summary
+
+The Media over QUIC (MOQ) Working Group held its third session at IETF 127. The session focused on implementation interop reports, updates to sender-side track switching in the Low Overhead Media Container specification (`draft-ietf-moq-loc`), an alternative active-stream-depth LOC algorithm, the MOQ Feedback (MQF) framework, and unified transport-layer timestamps. 
+
+## Key Discussion Points
+
+### Interop Report
+* **Presenter:** Mike English
+* Implementation uptake for `draft-ietf-moq-transport` draft-22 has increased to 16 implementations with improving test pass rates across client-relay pairings.
+* **Scope & Coverage:** Martin Duke requested extending test coverage beyond `draft-ietf-moq-transport` to include adjacent WG specifications such as `draft-ietf-moq-cmsf` (CMSF) and `draft-ietf-moq-msf` (MSF). Mike English agreed to prioritize `draft-ietf-moq-transport` and include adjacent documents.
+* **Test Tools & Diagnostics:** 
+  * Giovanni Marzot noted the availability of `moq-test-tracks` for standardized test tracks.
+  * Suhas Nandakumar's web interop report tool successfully identified multiple implementation bugs.
+  * Alan Frindell and Mo Zanaty discussed logging formats (qlog/MOQLOG) and PCAP Wireshark dissector availability.
+* **Release Target:** Alan Frindell suggested targeting draft-24 for `draft-ietf-moq-transport` in January ahead of the scheduled European interim.
+
+### Low Overhead Media Container (LOC) & Sender-Side Track Switching
+* **Presenter:** Will Law
+* **Slide Deck:** [LOC](https://datatracker.ietf.org/meeting/127/materials/slides-127-moq-loc-00)
+* **Parameter Renaming:** Will Law proposed renaming the "Switching Set Assignment" parameter to support broader use cases. The working group evaluated options (`Conditional Set Assignment`, `Conditional Set`, `Track Set`).
+* **Synthetic Output Tracks (Issue #7):** Alan Frindell raised the question of whether sender-side switching should output a single synthetic track to simplify the client decoder model. 
+  * Mo Zanaty, Victor Vasiliev, and Cullen Jennings opposed synthetic tracks, stating it breaks object model conventions, invalidates downstream relay caching, and increases client edge-case complexity. 
+  * Mike English noted that `draft-ietf-moq-cmsf` provides composition terminology for synthetic tracks where desired.
+* **Bandwidth Filters vs. Sets:** Will Law evaluated replacing set structures with pure range/bandwidth filters. Martin Duke noted edge cases around delayed arrival of object zero across representations. The consensus was to retain the existing set ranking and weights design.
+* **Unified Selection Model:** The group discussed unifying range filters, top-n filtering, and LOC into a single framework. Cullen Jennings supported convergence, while Mo Zanaty, Alan Frindell, Mike English, and Suhas Nandakumar recommended keeping specifications separate for now to avoid coupling complexity and slowing progress.
+
+### Alternative LOC Algorithm: Active Stream Depth
+* **Presenter:** Alperen Zengen
+* Alperen Zengen presented an ABR algorithm for `draft-ietf-moq-loc` that eliminates bandwidth estimation by relying on active stream depth (count of open streams delivering objects in the current representation) and a `ClientGuard` flag.
+* **Mechanism & Parameters:** Features fast-start and steady-state phases, configurable risk factors, latency budgets, and optional retroactive supersedes during downshifts.
+* **Feedback:** 
+  * Will Law noted interest, highlighting that `draft-ietf-moq-loc` is an external extension point capable of defining multiple algorithms, though raised potential rebuffering risks when probing upward without bandwidth bounds.
+  * Mo Zanaty and Mike English suggested testing the algorithm across varied congestion controllers (e.g., BBR vs. CUBIC) to ensure signals are accurately distinguished from congestion controller overreactions.
+
+### MOQ Feedback (MQF)
+* **Presenter:** Yanmei Liu
+* **Draft Alignment:** Yanmei Liu presented updates to the feedback specification (co-authored with Cullen Jennings and Suhas Nandakumar), updated for alignment with `draft-ietf-moq-transport` draft-22.
+* **Architecture & Format:** 
+  * Establishes a setup capability bitmap (publish feedback, optional metrics, subscribe feedback).
+  * Reports include timestamp, sequence number, object entry status (group ID, object ID, receive timestamp), and optional media metrics (stall duration, estimated bandwidth).
+* **Discussion:**
+  * Omar questioned support for upstream multicast and requested separating "received" from "recovered via FEC" object states.
+  * Will Law suggested decoupling generic `draft-ietf-moq-transport` layer metrics (group ID, object ID, arrival timestamps) from media-specific metrics, recommending media-layer feedback be positioned within `draft-ietf-moq-msf`.
+  * Mike English raised privacy and fingerprinting concerns regarding telemetry flowing via feedback tracks.
+
+### MOQT Timestamps
+* **Presenter:** Alan Frindell
+* Proposed a unified transport-layer timestamp mechanism defining four track properties (time scale, clock ID, timestamp origin, timestamp mapping) and one object property.
+* **Transport Semantics & Use Cases:** Alan Frindell outlined transport use cases, including latency tracing through relay topologies, accurate relay delivery timeouts, and priority scheduling adjustments.
+* **Discussion:**
+  * Cullen Jennings and Suhas Nandakumar advocated for a significantly simplified scheme (single UTC clock, microsecond or millisecond units), arguing against multiple clock IDs and relay-visible timestamp mappings.
+  * Will Law confirmed that `draft-ietf-moq-msf` could harmonize timestamp fields if a common transport base is adopted.
+  * Mo Zanaty emphasized distinguishing transmission time (relay-facing transport timestamp) from media presentation timelines (where out-of-order decode times occur due to B-frames).
+
+## Decisions and Action Items
+
+### Decisions
+1. **LOC Set Parameter Renaming:** Rename the LOC switching set assignment parameter to `Track Set`.
+2. **LOC Output Track Structure (Issue #7):** Reject synthetic output tracks for `draft-ietf-moq-loc`. Retain the existing model where the client maintains active track subscriptions while the relay toggles pause states.
+3. **Selection Model Alignment:** Maintain `draft-ietf-moq-loc`, top-n, and range filters as separate feature specifications rather than combining them into a single unified selection framework.
+
+### Action Items
+* **Will Law:** Submit a PR updating `draft-ietf-moq-loc` to use the term `Track Set`.
+* **Mike English & Interop Team:** Expand interop runner tracking to include adjacent working group specifications (`draft-ietf-moq-cmsf`, `draft-ietf-moq-msf`).
+* **Alan Frindell & Ian Swett:** Continue refining the MOQT timestamp specification based on feedback regarding simplification, clock ID removal, and separation of transport vs. media timelines.
+
+## Next Steps
+* The working group will aim to release draft-24 of `draft-ietf-moq-transport` in January ahead of the planned European interim meeting.

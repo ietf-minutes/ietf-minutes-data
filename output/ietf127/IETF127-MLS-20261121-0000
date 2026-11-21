@@ -1,0 +1,125 @@
+# [MLS](../wg/mls.html)
+
+## Summary
+
+The Messaging Layer Security (MLS) Working Group met at IETF 127. The session covered updates on core Working Group drafts (`draft-ietf-mls-extensions`, `draft-ietf-mls-targeted-messages`, `draft-ietf-mls-ratchet-tree-options`, and `draft-ietf-mls-virtual-clients`), the status of post-quantum cipher suites currently in IETF Last Call, proposals for performance optimization in large post-quantum groups (SlimMLS), lightweight pairwise communication (opportunistic channels), user-controlled device authorization, and select individual internet-drafts.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Admin
+*Presentation:* [Chairs' Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-chairs-slides-01)  
+*Presenter:* Sean Turner
+
+- **MLS Partial & MLS Combiners:** Recent pull requests from Mark Atwood added RFC 2119 normative language. These updates require review (Richard Barnes reviewed preliminary changes) and will necessitate a second Working Group Last Call (WGLC) for both documents once finalized.
+- **Extension Numbering Registry:** Rohan Mahy reminded authors to use the shared pre-IANA registry list or private range values to avoid overlapping extension numbers across drafts.
+
+---
+
+### Working Group Drafts
+
+#### MLS Extensions & MLS Targeted Messages
+*Presentation:* [MLS Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-mls-slides-00)  
+*Presenter:* Raphael Robert
+
+- **MLS Extensions (`draft-ietf-mls-extensions`):**
+  - Draft -11 includes structural and mechanical clarifications making previously implicit behaviors explicit.
+  - Changes are breaking for current implementations. The working group will wait for implementations (OpenMLS, `mls-rs`) to reach stability and complete interoperability testing before progressing the document.
+- **MLS Targeted Messages (`draft-ietf-mls-targeted-messages`):**
+  - Draft -02 updated HPKE binding and capability negotiation.
+  - **Issue #4 (Scope):** Rohan Mahy proposed allowing targeted messages to target multiple recipients in a single message (similar to Welcome message framing) without adding a ratchet. Currently, multi-recipient delivery requires sending separate targeted messages at the application level.
+  - Sean Turner noted that pending pull requests from Mark Atwood will be reviewed before issuing a WGLC, and an explicit poll on Issue #4 will be conducted on the mailing list.
+
+---
+
+#### MLS PQ Cipher Suites & Ratchet Tree Options
+*Presentation:* [MLS PQ Cipher Suites & Ratchet Tree Options](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-mls-pq-cipher-suites-ratchet-tree-options-00)  
+*Presenter:* Rohan Mahy
+
+- **Post-Quantum Cipher Suites:**
+  - The draft is currently in IETF Last Call (ending December 5) with an IESG Telechat date set for December 17.
+  - Recent revisions standardized SHA-2 KDFs, assigned spaced-out cipher suite values, and updated ML-DSA usage text based on feedback from Mark Atwood and Mike Wentworth.
+- **Ratchet Tree Options (`draft-ietf-mls-ratchet-tree-options`):**
+  - Updates include TLS struct cleanups and wire format registration.
+  - To maintain signature consistency between full `GroupInfo` and `partial_group_info` when assembling groups, the `ratchet_tree` extension must be placed as the final extension in `GroupInfo` when partial group info is enabled.
+  - Rohan Mahy cautioned against expanding central `MLSMessage` struct enums in extension drafts to avoid protocol versioning and matrix management issues seen in legacy protocols.
+
+---
+
+#### MLS Virtual Clients
+*Presentation:* [MLS Virtual Clients](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-mls-virtual-clients-00)  
+*Presenter:* Brendan McMillion
+
+- **Document Updates:**
+  - Intended status updated from Informational to Standards Track.
+  - Reworked Delivery Service (DS) requirements: DS must route messages to all emulator clients backing a single virtual client. Clients must accept messages originating from their own leaf node (overriding RFC 9420 default rejection behavior).
+  - Generation conflicts resulting from concurrent device sends under one virtual client can be mitigated via DS enforcement or short-term message retention/retransmission by clients.
+  - Added explicit cross-cipher-suite secret derivation via `import_secret` using `KDF.Extract` and `ExpandWithLabel`. Clients receiving Commit/Update/Welcome messages must verify matching public keys.
+- **Open Issues & PRs:**
+  - *External Commit Resync:* Clients undergoing a self-remove during an external commit resync must retain group state and re-derive private keys rather than tearing down state per RFC 9420.
+  - *Derivation Epochs:* Proposal to restrict derivation of higher-level group secrets to specific derivation epochs (e.g., membership changes). This permits non-derivation epoch states to be purged immediately.
+  - Open questions remain regarding whether to mark derivation vs. non-derivation epochs, and whether to mandate a maximum age/time bound on derivation epochs to preserve Forward Secrecy and Post-Compromise Secrecy (PCS).
+
+---
+
+### Non-Working Group Drafts & Proposals
+
+#### SlimMLS (Optimized MLS for Large Groups & Post-Quantum)
+*Presentation:* [MLS Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-mls-slides-00)  
+*Presenters:* Raphael Robert, Konrad Kohbrok
+
+- Addresses severe bandwidth and memory overhead when combining large groups (e.g., 100 to 1,000 members) with Post-Quantum (PQ) cipher suites (e.g., ML-KEM-1024, ML-DSA-87), where initial Join/Welcome sizes can reach 10 MB and Commits strain background mobile processing limits.
+- **Mechanism:** Replaces full public keys with hash references across the tree. Clients only download full public keys when performing KEM operations on their direct co-path. Additional optimizations include batch-signing key packages and streamlined Commit signatures.
+- **Session Polls:**
+  - *Have you read the SlimMLS I-D?* — yes: 8, no: 11, no_opinion: 2 (total: 36)
+  - *Should the WG adopt the SlimMLS I-D?* — yes: 19, no: 0, no_opinion: 1 (total: 36)
+
+---
+
+#### Opportunistic Channels
+*Presentation:* [MLS Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-mls-slides-00)  
+*Presenter:* Konrad Kohbrok
+
+- Provides lightweight pairwise signaling (e.g., delivery receipts, read receipts) between members of a large group without establishing separate 1-to-1 MLS groups or relying on heavy PQ targeted messages.
+- Defines a reduced 2-party MLS channel operating without a ratchet tree. Post-Compromise Secrecy (PCS) updates are achieved by injecting Pre-Shared Keys (PSKs) from parent groups using pathless Commits.
+- Introduces signatureless MLS Public and Private Messages (relying solely on symmetric MAC protection).
+- Rohan Mahy noted this mechanism currently targets 2 specific MLS clients rather than multi-device user accounts (unless combined with virtual clients). Raphael Robert noted that while symmetrically protected channels offer slightly lower guarantees than full signatures, they provide significant security gains over unencrypted receipts common in existing products.
+
+---
+
+#### User-Controlled Device Authorization for MLS
+*Presentation:* [User-Controlled Device Authorization for MLS (draft-atwood-mls-didwebvh-credential)](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-user-controlled-device-authorization-for-mls-draft-atwood-mls-didwebvh-credential-00)  
+*Presenter:* Mark Atwood (via Chat/Slides)
+
+- `draft-atwood-mls-didwebvh-credential-00` addresses federated architectures (MIMI) where central Authentication Services authorize devices.
+- Defines credentials carrying a `did:webvh` hash-chained signed history of device keys that group members check offline. Device revocations propagate via standard MLS Commits.
+- Rohan Mahy questioned log overhead; Mark Atwood clarified logs average ~1.5 KB per entry (capped at 1 MB) and suggested credential-by-reference to reduce repetition across multi-device leaves.
+
+---
+
+#### Select Individual I-Ds
+*Presentation:* [Select Individual I-Ds](https://datatracker.ietf.org/meeting/127/materials/slides-127-mls-select-individual-i-ds-00)  
+*Presenter:* Rohan Mahy
+
+- **Framed Content TBS Group Context Hash:** Proposes replacing the full `GroupContext` with a cryptographic hash of `GroupContext` inside `FramedContentTBS`. Prevents signing/hashing over thousands of participant URIs per message, alleviating tight memory constraints (e.g., 32 MB limits on iOS push notification extensions).
+- **Semiprivate Messages:** Enables targeted message delivery through federated hubs without disclosing payload contents to intermediary path providers.
+  - *Session Poll:* *Who has read the semiprivate message I-D?* — yes: 6, no: 10, no_opinion: 2 (total: 36)
+  - Mark Atwood confirmed implementation in `mimid`. Cryptography review was requested prior to adoption.
+- **Credential by Reference:** Defines a credential wrapper referencing external credentials by type and signature, reducing duplicate credential data in group states.
+
+---
+
+## Decisions and Action Items
+
+1. **SlimMLS Adoption:** Strong support was recorded in the room (19-0). The chairs will issue a formal Working Group Adoption Call on the mailing list in early December.
+2. **`draft-ietf-mls-targeted-messages` Issue #4:** Sean Turner to issue a poll on the mailing list regarding whether targeted messages should support multi-recipient framing.
+3. **`draft-ietf-mls-extensions` & `draft-ietf-mls-targeted-messages` PRs:** Working group chairs and authors to review pending pull requests from Mark Atwood.
+
+---
+
+## Next Steps
+
+- **PQ Cipher Suites:** Await completion of IETF Last Call (December 5) and IESG Telechat (December 17).
+- **Semiprivate Messages:** Solicit cryptographer reviews and gather feedback on the mailing list following initial implementations.
+- **Virtual Clients & Opportunistic Channels:** Continue discussion on derivation epoch bounds and multi-device interaction on GitHub and the mailing list.
