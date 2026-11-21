@@ -1,0 +1,111 @@
+# [IVY](../wg/ivy.html)
+
+## Summary
+
+The IVY (Network Inventory Service and Data Model) Working Group met at IETF 127. The session covered progress updates and open issues on active working group documents near Working Group Last Call (WGLC), including software, location, and entitlement inventory models. The group also discussed the newly adopted passive network inventory draft, focusing on scope definitions, and reviewed a proposal for cryptographic asset discovery and inventory (CADI) in the context of Post-Quantum Cryptography (PQC) migration.
+
+## Key Discussion Points
+
+### Working Group Administration and Document Status
+* **Slides**: [Admin slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-ivy-admin-slides-00)
+* **Chairs**: Shifan Lin, Daniele Ceccarelli (Delegate: Rob Wilton)
+* **Document Status**:
+  * `draft-ietf-ivy-network-inventory-yang` (Base Network Inventory Model) has been submitted to the IESG for publication. Updates are being coordinated by Italo Busi to address IESG feedback.
+  * `draft-ietf-ivy-network-inventory-topology` has completed WGLC.
+  * The chairs reminded participants to maintain focus and review efforts on post-WGLC documents as updates are made based on IESG and directorate reviews.
+
+---
+
+### YANG Data Model of Network Inventory Software
+* **Draft**: `draft-ietf-ivy-network-inventory-software`
+* **Presentation**: [YANG Data Model of Network Inventory Software](https://datatracker.ietf.org/meeting/127/materials/slides-127-ivy-yang-data-model-of-network-inventory-software-00)
+* **Presenter**: Bo Wu
+
+* **Discussion**:
+  * **Design & Changes in Revision -05**: The draft maintains a read-only reporting design (excluding lifecycle management operations such as install, activate, rollback). Fine-grained identities (e.g., virtual machine, NE container) were removed in favor of abstract/software-based classifications. The module now clearly separates running software (in base `software-revision`) from the `installed` software list.
+  * **Software States**: Status attributes apply only to non-running software in the installed list. Running software is represented by the base revision. Chris Lambrecht expressed concern that limiting status to two identities might not capture intermediate states needed by operators (e.g., activation in progress, failed installation). Bo Wu and Mahesh Jethanandani clarified that hotfixes or activations requiring no reload transition directly to the running software revision list. Chris Lambrecht agreed to follow up on the mailing list.
+  * **Operational Considerations**: Updated to clarify that the scope is limited to operator-relevant, separately versionable, and independently upgradable artifacts (e.g., images, FPGAs, feature modules, patches), excluding fine-grained internal sub-components.
+  * **Software Bill of Materials (SBOM)**: To address security/compliance feedback from Mahesh Jethanandani and Roman Danyliw, authors proposed an optional reusable `software-identification` container containing SBOM references (CPE, PURL, CoSWID, SBOM URI) at the network element, component, and patch levels.
+
+---
+
+### YANG Data Model for Network Inventory Location
+* **Draft**: `draft-ietf-ivy-network-inventory-location`
+* **Presentation**: [YANG Data Model for Network Inventory Location](https://datatracker.ietf.org/meeting/127/materials/slides-127-ivy-yang-data-model-for-network-inventory-location-00)
+* **Presenter**: Bo Wu
+
+* **Discussion**:
+  * **Revision -07 Changes**: Module prefix updated to `network-inventory-location`. `chassis-id` types were changed to flexible strings, and `max-allocated-power` was updated to `uint32` to accommodate high-power AI racks. Clarified that while elements can be moved or re-parented, real-time dynamic tracking is out of scope.
+  * **Location Type (String vs. Identity)**: Jan Lindblad (via YANG Doctor review) suggested using identities to prevent spelling inconsistencies. Bo Wu explained that strings offer flexibility across diverse operator conventions. Aihua Guo suggested a `union` of identities and strings. Mahesh Jethanandani noted that while a union provides flexibility, queries based on string matching could fail due to formatting variations (e.g., "Street" vs. "St."), suggesting further discussion on the mailing list.
+  * **Rack vs. Generic Container**: The authors maintained a separate top-level `rack-list` rather than folding racks into generic location containers, citing standard operational practices for U-slot mounted assets.
+  * **Security Classification**: Chris Lambrecht noted that physical security identities should extend beyond racks to include rooms and cages. Bo Wu acknowledged this and agreed to incorporate broader security classifications.
+
+---
+
+### A YANG Module for Entitlement Inventory
+* **Draft**: `draft-ietf-ivy-entitlement-inventory`
+* **Presentation**: [A YANG Module for Entitlement Inventory](https://datatracker.ietf.org/meeting/127/materials/slides-127-ivy-a-yang-module-for-entitlement-inventory-00)
+* **Presenter**: Camilo Cardona
+
+* **Discussion**:
+  * **Revision -05 Updates**: Addressed YANG Doctor and Ops Directorate feedback with naming cleanups, type adjustments (`uint64`), and text clarifications.
+  * **Data Integrity and Consistency**: Camilo Cardona explained that entitlement data can be inherently incomplete or inconsistent across devices and licensing systems. The model intentionally embraces reporting available entitlement state without attempting complex cross-system reconciliation.
+  * **Capability Modeling & Post-Quantum Alignment**: Mahesh Jethanandani and Diego Lopez discussed linking entitlement capabilities with feature capabilities and Post-Quantum Cryptography (PQC) initiatives, noting alignment opportunities with the CADI draft (`draft-liu-cadi`).
+
+---
+
+### Cryptographic Asset Discovery and Inventory (CADI)
+* **Draft**: `draft-liu-cadi`
+* **Presentation**: [Cryptographic Asset Discovery and Inventory](https://datatracker.ietf.org/meeting/127/materials/slides-127-ivy-cryptographic-asset-discovery-and-inventory-02)
+* **Presenter**: Peter
+
+* **Discussion**:
+  * **Background & Motivation**: International migration roadmaps (G7, CISA, EU NIS2/DORA) require inventorying cryptographic assets to prepare for PQC transition.
+  * **Proposed Model Extension**: Proposes augmenting the IVY base core model per network element with a crypto container containing:
+    1. A Cryptographic Bill of Materials (CBOM) reference URI (aligned with OWASP CycloneDX standard).
+    2. Structured crypto objects (algorithms, certificates, protocols, related materials) along with `depends-on` and `provided-by` relationships.
+  * **Scope & Scope Boundaries**:
+    * Swamy inquired whether network controllers are in scope. Mahesh Jethanandani and Peter clarified that controllers manage inventory and that network elements remain the primary target.
+    * Bo Wu and Mahesh Jethanandani suggested aligning the CBOM/SBOM metadata definitions with `draft-ietf-ivy-network-inventory-software`.
+  * **Chartering**: Area Director Mahesh Jethanandani and the chairs confirmed that CADI fits within IVY's domain. The AD and chairs will work to update the WG charter to explicitly cover cryptographic asset inventory prior to initiating a working group adoption call.
+
+---
+
+### YANG Data Model for Passive Network Inventory
+* **Draft**: `draft-ietf-ivy-passive-network-inventory`
+* **Presentation**: [YANG Data Model for Passive Network Inventory](https://datatracker.ietf.org/meeting/127/materials/slides-127-ivy-yang-data-model-for-passive-network-inventory-01)
+* **Presenter**: Aihua Guo
+
+* **Discussion**:
+  * **Model Architecture**: Active work focuses on extending base network element constructs for passive devices, establishing a technology-agnostic base with technology-specific extensions (e.g., optical, microwave). Specific modeling work includes cable joint boxes, fiber closures, internal port connectivity, and MPO multi-fiber cables.
+  * **Scope and Definition of "Passive"**:
+    * **Guidelines vs. Strict Definition**: Italo Busi and Rob Wilton recommended avoiding a rigid definition of "passive" that could become obsolete as technology evolves (e.g., fiber sensing). Instead, the draft should focus on practical guidelines and YANG model extensions needed for components that cannot be represented in the base inventory model.
+    * **Power Classification**: Nigel Davis and Chris Lambrecht supported defining "powered" specifically around drawing electrical power. Non-electronically powered components (such as fibers lit by Raman pump lasers or optical splitters) should still be treated within the passive inventory model.
+    * **Deployment State**: Italo Busi and Nigel Davis agreed that inventory must cover installed assets (including unlit or unconnected fibers within deployed cables), but spare parts stored in warehouses or cabinets remain out of scope.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-ivy-network-inventory-software`**:
+   * Authors to publish revision `-06` incorporating the `software-identification` container for SBOM references (CPE, PURL, CoSWID, URI) at element, component, and patch levels.
+   * Chris Lambrecht and authors to discuss non-running software status states on the mailing list.
+
+2. **`draft-ietf-ivy-network-inventory-location`**:
+   * Authors to address `location-type` (string vs. identity/union) on the mailing list based on Jan Lindblad's review and Aihua Guo's proposal.
+   * Expand physical security classifications to accommodate spaces such as rooms and cages.
+
+3. **`draft-liu-cadi`**:
+   * AD (Mahesh Jethanandani) and WG Chairs to update the IVY working group charter to explicitly include cryptographic asset discovery and inventory within scope before considering adoption.
+   * Authors to collaborate with Bo Wu to align CBOM reference definitions with the SBOM structure in `draft-ietf-ivy-network-inventory-software`.
+
+4. **`draft-ietf-ivy-passive-network-inventory`**:
+   * Document to use operational guidelines rather than a rigid definition for passive assets.
+   * Electrical power draw will serve as the primary criterion distinguishing passive components. Scope is confirmed to cover installed assets (including unlit fibers), while warehouse spares are excluded.
+
+---
+
+## Next Steps
+
+* **Working Group Last Call (WGLC)**: Pending resolution of final review items on the mailing list, WGLC will be planned for `draft-ietf-ivy-network-inventory-software`, `draft-ietf-ivy-network-inventory-location`, and `draft-ietf-ivy-entitlement-inventory`.
+* **Charter Update & Adoption**: Progress the IVY charter update to enable adoption of `draft-liu-cadi`.

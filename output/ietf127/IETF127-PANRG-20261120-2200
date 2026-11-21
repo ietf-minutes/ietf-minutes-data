@@ -1,0 +1,66 @@
+# [PANRG](../wg/panrg.html)
+
+## Summary
+
+The Path-Aware Networking Research Group (PANRG) met at IETF 127. The session was chaired by Jen Linkova (with Brian Trammell absent due to travel). The agenda featured two technical presentations followed by Q&A and group discussion:
+1. An exploration of protocol-agnostic in-network retransmissions for encrypted transport protocols (PAC RAT).
+2. A proposal for adapting Happy Eyeballs to path-aware networks, specifically targeting SCION path selection.
+
+## Key Discussion Points
+
+### Session Intro and Chair Updates
+* **Presentation:** [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-panrg-chair-slides-00)
+* **Presenter:** Jen Linkova
+* Jen Linkova opened the session, presented the IRTF Note Well, and noted the meeting agenda.
+
+---
+
+### In-Network Retransmissions for Encrypted Transport Protocols
+* **Presentation:** [In-Network Retransmissions for Encrypted Transport Protocols](https://datatracker.ietf.org/meeting/127/materials/slides-127-panrg-in-network-retransmissions-for-encrypted-transport-protocols-01)
+* **Presenter:** Presenter
+
+* **Technical Overview:**
+  * Transport protocols like QUIC encrypt sequence numbers, which prevents traditional third-party middleboxes from performing TCP-style connection splitting or in-network retransmissions.
+  * Building on prior work (Sidekick protocol and the ROBIN scheme for in-network acknowledgments), the presenter introduced **PAC RAT** (PackRat), a mechanism designed for in-network retransmissions for encrypted transport data (specifically downloads over lossy last-mile links).
+  * **Scalable Set Reconciliation:** Uses rateless invertible Bloom lookup tables (IBLTs) / Bloom filter representations to identify missing packets between an in-network proxy and a receiver using packet hashes or offsets without decrypting or modifying transport sequence numbers.
+  * **ACK Gap Withholding:** To prevent spurious end-to-end retransmissions and premature congestion control responses from the sender, the receiver selectively withholds acknowledgment gaps for a short window based on the estimated RTT to the local proxy. This allows the proxy to retransmit dropped packets locally before end-to-end loss is declared.
+  * **Fallback & Resiliency:** If decoding fails or the proxy fails, the system seamlessly falls back to standard end-to-end retransmissions.
+
+* **Discussion:**
+  * **Miria Kulewind** noted that mobile networks already deploy efficient Layer 2 retransmissions, and reducing overall end-to-end latency to near-edge data centers diminishes the impact of end-to-end loss recovery. She also pointed out that tunneling mechanisms (e.g., MASQUE tunnels) offer an alternative way to perform selective local retransmissions transparently.
+  * **Speaker 3** questioned the impact on end-to-end RTT estimation and congestion control. The presenter clarified that over higher-latency paths, algorithms like BBR performed well with PAC RAT in emulation across several QUIC implementations (Google, Cloudflare, PicoQUIC), though low-latency last-mile paths can introduce RTT measurement variance.
+  * **Speaker 3** asked how PAC RAT interacts with multipath transport protocols (e.g., MPTCP or Multipath QUIC). The presenter noted that if packets travel across distinct paths via the proxy, sets must be maintained per-path to avoid breaking set reconciliation. Miria Kulewind added that multipath transport protocols maintain separate per-path congestion control state, which reduces interference.
+
+---
+
+### Happy Eyeballs for Path-Aware Networks
+* **Presentation:** [Happy Eyeballs for Path-Aware Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-panrg-happy-eyeballs-for-path-aware-networks-00)
+* **Presenter:** Tony
+
+* **Technical Overview:**
+  * Adapt Happy Eyeballs principles (RFC 8305) to support path-aware networks such as SCION, where clients can discover and race connections over multiple distinct paths.
+  * Proposed a 7-step process:
+    1. **Signaling:** Convey SCION addresses via DNS SVCB/HTTPS records using a new `scion` parameter key containing the ISD-AS and host address.
+    2. **Path Lookup:** Treat SCION path resolution like a pending DNS answer, waiting up to `resolution delay` (default 25 ms) before falling back to standard IP.
+    3. **Address Sorting:** Treat SCION as a third address family alongside IPv6 and IPv4 (attempting SCION first by default).
+    4. **Path Attempts:** Race connection attempts over selected SCION paths.
+    5. **Path Count Bounding:** Default to attempting 2 paths concurrently to protect servers from excessive handshake state.
+    6. **Path Attempt Delay:** Introduce a `path attempt delay` (default 50 ms based on measurements showing 94% of SCION paths in the SCIEN/SCION network have RTTs < 50 ms).
+    7. **Path Selection Logic:** Choose the primary path with the fewest AS hops, and pick a secondary path with maximum topological disjointness (fewest shared transit ASes/links) as failure insurance.
+
+* **Open Questions Raised by Presenter:**
+  * What are the most common real-world failure modes (link down, AS failure, or stale cache entries)?
+  * Should clients maintain historical RTT data per path to dynamically adjust the path attempt delay and path counts?
+  * How should server reverse-path selection behave during connection setup?
+  * How can clients bound the path length/latency of a secondary disjoint path without prior RTT measurements?
+
+---
+
+## Decisions and Action Items
+
+* No formal binding consensus calls or administrative decisions were taken during this session.
+
+## Next Steps
+
+* Continue refining set reconciliation mechanisms and empirical measurements for in-network retransmission schemes.
+* Solicit feedback from operators and the RG on the SCION Happy Eyeballs parameter defaults and open research questions.

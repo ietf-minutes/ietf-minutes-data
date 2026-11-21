@@ -1,0 +1,117 @@
+# [IDR](../wg/idr.html)
+
+## Summary
+
+The Inter-Domain Routing (IDR) Working Group met to discuss several active working group documents and new proposals. Key topics included signaling unreachable underlay paths (BGP UPA), service metadata for 5G edge computing, target node identification using Extended Communities, SR Policy administrative flags and candidate path threshold signaling, BGP Classful Transport (BGP CT) adaptation to SRv6 and non-MPLS dataplanes, the BGP MultiNexthop attribute, data center origin leaf identification, and BGP-LS performance metric reporting for SR Policies.
+
+---
+
+## Key Discussion Points
+
+### BGP Unreachable Path Advertisement (BGP UPA)
+* **Presenter:** Serge Krier
+* **Discussion:**
+  * Serge Krier presented an update on signaling loss of underlay reachability via BGP while maintaining route summarization (similar to IGP UPA in RFC 9929). The mechanism uses a transitive opaque Extended Community carrying the BGP Router ID to allow ingress PEs to trigger fast failover without waiting for overlay timeout.
+  * Martin Horneffer commented that while the concept is good, it faces deployment challenges in networks requiring intent-based inter-domain routing.
+  * Jeffrey Haas raised security and scoping concerns regarding attribute escape and malicious injection across Autonomous System (AS) boundaries. He suggested encoding an AS number instead of (or in addition to) a Router ID to restrict propagation scope, or using path attributes / non-transitive scoping to limit the blast radius.
+  * Keyur Patel suggested looking at Site of Origin (SoO) procedures in L3VPNs for identifying originating sites.
+  * Swadesh Agrawal clarified that UPA routes can be host routes (/32 or /128) or less specific routes depending on the aggregation level.
+  * In chat, participants (Nat Kao, Robert Raszuk, Jeff Tantsura, Srihari Sangli, Natrajan Venkataraman) discussed whether non-transitive Extended Communities, `NO_EXPORT`, or parallel UNREACH SAFIs would better contain the failure blast radius.
+* **Next Steps:** Authors will update the draft to strengthen security and leakage mitigation considerations and requested a Working Group Adoption call.
+
+### BGP Extension for 5G Edge Service Metadata (`draft-ietf-idr-5g-edge-service-metadata`)
+* **Presenter:** Linda Dunbar
+* **Discussion:**
+  * Linda Dunbar detailed revisions made following detailed feedback from co-chair Susan Hares. Key changes included adding flex toggle and Anycast descriptions, clarifying IP-in-IP vs. MPLS penalties in 5G, handling User Equipment (UE) mobility across User Plane Functions (UPFs), detailing route aggregation and site availability handling, and addressing DDoS threats associated with site index zero.
+  * Susan Hares emphasized that the draft's path selection tie-breaking procedures must explicitly align with BGP best-path selection as defined in `draft-ietf-idr-bgp4-rfc4271bis`.
+* **Next Steps:** Authors will refine the path selection text and seek further working group review toward Working Group Last Call (WGLC).
+
+### BGP Extended Community for Identifying the Target Nodes (`draft-ietf-idr-node-target-ext-comm`)
+* **Presenter:** Jie Dong
+* **Discussion:**
+  * Jie Dong summarized updates to the generic mechanism using a new BGP Extended Community to carry target BGP Router IDs, ensuring specific policy or routing updates (e.g., BGP FlowSpec) are installed only on designated nodes within an administrative domain.
+  * Recent updates resolved comments from the BGP, Routing, and Operations Directorate reviews.
+  * Jeffrey Haas noted that the document appears mature and ready for Working Group Last Call.
+* **Next Steps:** Working Group Last Call to be requested.
+
+### SR Policy Extensions for Administrative Flags (`draft-ietf-idr-sr-policy-admin-flags`)
+* **Presenter:** Tarek Saad
+* **Discussion:**
+  * Tarek Saad presented updates including an SR Candidate Path Constraint sub-TLV to signal the maximum number of segment lists supported/computed by a device, alongside preemption priority support.
+  * The authors requested early code point allocations.
+  * Chair Susan Hares noted an administrative gap in RFC 9252 where flag bits lacked an explicit IANA registry. She stated she will draft a short registry document to formalize the flag registry so IANA can process the code point requests.
+* **Next Steps:** Chairs will process early code point allocation and issue the IANA registry document.
+
+### BGP CT - Adaptation to SRv6 and Other Dataplanes (`draft-ietf-idr-bgp-ct-srv6`)
+* **Presenter:** Kaliraj Vairavakkountar
+* **Discussion:**
+  * Kaliraj Vairavakkountar presented updates on adapting BGP Classful Transport (BGP CT) to non-MPLS dataplanes (e.g., IP/IPv6 hop-by-hop in DC fabrics) and SRv6.
+  * Highlighted use cases include Weighted Equal-Cost Multi-Path (WECMP), plane maintenance, and fast resiliency in multi-plane DC interconnect fabrics.
+  * A dependency exists on a SPRING working group document defining the SRv6 inter-domain `replace` SID function.
+  * Susan Hares outlined two procedural options for advancing the draft:
+    1. Keep the draft intact and wait for SPRING to progress the underlying SRv6 SID dependency.
+    2. Split the document into a base non-MPLS CT draft and an SRv6-specific CT draft, re-issuing Working Group Last Call for both when ready.
+  * Requirements for advancing to RFC include at least two independent implementations.
+* **Next Steps:** Authors will confer with the chairs to decide whether to split the document.
+
+### BGP MultiNexthop Attribute (`draft-ietf-idr-multinexthop-attribute`)
+* **Presenter:** Swadesh Agrawal
+* **Discussion:**
+  * Swadesh Agrawal reported on a first-cut implementation demoed during the IETF Hackathon. The attribute carries primary and repair forwarding paths with associated actions and arguments.
+  * In Route Reflector (RR) WECMP scenarios, advertising a single route with the MultiNexthop attribute prevented the memory explosion encountered when using BGP ADD-PATH (`draft-ietf-idr-addpath-paths-limit`).
+  * Based on implementation experience, the authors clarified that label instructions within the MultiNexthop attribute override any label in the NLRI.
+  * Keyur Patel cautioned regarding BGP UPDATE message size limits when scaling ECMP legs and suggested referencing extended/jumbo BGP message specifications.
+  * Jeffrey Haas recommended restructuring the draft into a modular base framework specification with separate extension drafts for specific data planes and use cases.
+* **Next Steps:** Authors will request early code point allocation for customer trials and work on reorganizing the document structure.
+
+### Origin Leaf Identification in Data Center Fabrics
+* **Presenter:** Patrick Bossert
+* **Discussion:**
+  * Patrick Bossert introduced an informational proposal (`draft-bossert-idr-dc-leaf-id`) to identify the originating leaf switch, pod, or port of a prefix inside a data center fabric using BGP Large Communities (RFC 8097).
+  * Jeff Tantsura questioned why Site of Origin (SoO) extended communities are not used or extended instead of using Large Communities, requesting concrete practical use cases.
+  * Natrajan Venkataraman asked about interactions with Route Distinguishers (RD) and ADD-PATH path hiding.
+  * Jeffrey Haas warned against overloading BGP Large Communities due to potential contamination across Autonomous System boundaries, suggesting IPv6 Extended Communities (RFC 5701, 144 bits) as a safer alternative.
+  * Keyur Patel questioned the necessity of encoding functions within the community.
+  * Susan Hares and Bruno Decraene suggested evaluating the BGP Wide Communities container (`draft-ietf-idr-wide-bgp-communities`) as a pre-existing container for origin identification metadata.
+* **Next Steps:** Authors will refine the draft addressing feedback on community type choices and path hiding.
+
+### BGP Extension for Distributing Candidate Path (CP) Threshold Constraints of SR Policy
+* **Presenter:** Chengsong Liu
+* **Discussion:**
+  * Chengsong Liu presented extensions to signal SR Policy Candidate Path threshold parameters (bandwidth, latency, loss rate) for performance-driven CP switching. The encoding was simplified to a unified `SR Parametric Constraint Sub-TLV` carrying metric bounds and margins, aligning with PCEP extensions.
+  * Susan Hares requested context on the underlying SPRING draft defining candidate path threshold parameters.
+* **Next Steps:** Refer to the SPRING status update below.
+
+### BGP-LS Advertisement of SR Policy Performance Metric
+* **Presenter:** Chenwei Lin
+* **Discussion:**
+  * Chenwei Lin presented extensions for BGP-LS to report real-time measured performance metrics (latency, min/max delay, packet loss) at the candidate path or segment list level for SR Policies.
+  * Jie Dong questioned whether candidate path-level metric TLVs are necessary if granular segment list-level metrics are already provided, and expressed concern about applying round-trip metrics to unidirectional SR Policies.
+  * Chenwei Lin agreed to consider removing path-level metrics and discuss round-trip metric validity on the mailing list.
+
+### SPRING Dependency Status Update
+* **Presenter:** Joel Halpern (SPRING Working Group Co-Chair)
+* **Discussion:**
+  * Joel Halpern provided clarity regarding the SPRING candidate policy threshold constraints draft referenced by Chengsong Liu's presentation.
+  * Although presented in SPRING, the draft has seen no mailing list discussion for six months. Per SPRING policy, active mailing list engagement is required before a Working Group Last Call can be initiated.
+  * Interested IDR participants were encouraged to comment on the SPRING mailing list to demonstrate demand.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-idr-node-target-ext-comm`**: Working Group Last Call (WGLC) will be initiated by the chairs following the resolution of directorate review comments.
+2. **`draft-ietf-idr-sr-policy-admin-flags`**:
+   * Chairs will issue an early code point allocation request.
+   * Chair Susan Hares will author a short IANA registry document for RFC 9252 flag bits.
+3. **`draft-ietf-idr-5g-edge-service-metadata`**: Authors must update the path selection text to explicitly align with the BGP best-path selection algorithm in `draft-ietf-idr-bgp4-rfc4271bis`.
+4. **`draft-ietf-idr-multinexthop-attribute`**: Authors to submit an early code point allocation request for ongoing implementations/trials and reorganize the document into a base framework and extension drafts.
+5. **`draft-ietf-idr-bgp-ct-srv6`**: Authors and chairs will coordinate offline to decide between holding the draft for SPRING dependencies or splitting base CT procedures from SRv6 specifics.
+
+---
+
+## Next Steps
+
+* **BGP UPA**: Authors to address attribute escape, malicious injection, and scoping concerns on the list prior to a formal WG adoption call.
+* **Data Center Origin Leaf ID**: Authors to evaluate RFC 5701 IPv6 Extended Communities and Wide Communities as alternatives to Large Communities.
+* **SPRING Draft Dependencies**: IDR members interested in SR Policy CP threshold signaling are urged to engage on the SPRING mailing list to advance `draft-ietf-spring-sr-policy-cp-threshold`.

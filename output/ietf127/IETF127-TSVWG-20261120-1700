@@ -1,0 +1,102 @@
+# [TSVWG](../wg/tsvwg.html)
+
+## Summary
+
+The Transport and Services Working Group (TSVWG) met at IETF 121. The session covered working group document status updates, liaison updates, SCTP security key management alternatives, L4S operational and architectural updates (including Structured Rate Management and cellular performance), transport port registration guidance updates, ILNP checksum compatibility, WebRTC data channel acceleration via SCTP, UDP fragmentation socket guidance, and QUIC transport parameter implementation analysis. 
+
+Working Group Last Call (WGLC) for [draft-ietf-tsvwg-fq-pie](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-fq-pie/) concludes today. [draft-ietf-tsvwg-sctp-dtls-chunk](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-dtls-chunk/) is prepared for WGLC. Key decisions include scheduling a design team meeting to resolve SCTP key management transition proposals prior to a formal list consensus call, and pursuing Independent Submission Stream publication for the ILNP checksum draft.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status & Admin
+* Presentation: [Chair's Update](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-chairs-update-02)
+* Chairs Martin Duke and Zaheduzzaman Sarker opened the session and reviewed the agenda.
+* **Document Status**:
+  * [draft-ietf-tsvwg-fq-pie](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-fq-pie/): Mohit P. Tahiliani reported that version -03 incorporated review feedback from Chris Box, added BSD author acknowledgments, and corrected publication metadata. WGLC ends today, with version -04 to follow.
+* **Liaison Statements**:
+  * Greg White confirmed that IEEE 802.11, the Wireless Broadband Alliance (WBA), and the Wi-Fi Alliance (WFA) received the liaison statement regarding RFC 9656 and RFC 9956, with discussions scheduled for upcoming meetings.
+  * An incoming liaison statement from the Broadband Forum (BBF) regarding L4S in broadband networks was noted.
+* **L4S Interop**:
+  * Greg White reported on the 10th L4S interop event held during the Hackathon, highlighting L4S integrations into video conferencing tools, including Google's libwebrtc, Pion WebRTC (UDP-Prague), and Jitsi Video Bridge (Scream v2).
+
+### (D)TLS Protected SCTP
+* Presentation: [(D)TLS Protected SCTP](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-dtls-protected-sctp-00)
+* Magnus Westerlund presented updates on [draft-ietf-tsvwg-sctp-dtls-chunk](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-dtls-chunk/). Version -07 adds an API notification when receiving packets under a new key context, moves PPID registrations to key management specifications, and incorporates editorial feedback from Russ Housley. The draft is ready for WGLC.
+* Key management transition: Magnus Westerlund presented `draft-westerlund-tsvwg-dtls-handshake-03` as a simplified alternative to [draft-ietf-tsvwg-dtls-chunk-key-management-01](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-dtls-chunk-key-management-01/). The individual draft relies on standard TLS 1.3 exporters without requiring Extended Key Update extensions or RFC 9261 exported authenticators.
+* Jan Lindblad and Michael Tuexen supported switching to the simpler individual draft, noting easier deployment across existing TLS 1.3 stacks without technical or security drawbacks.
+* To gauge working group sentiment, the chairs ran three polls:
+  * **Poll 1**: *I have familiarized myself with dtls-handshake-03* — yes: 9, no: 31, no_opinion: 6 (total: 73)
+  * **Poll 2**: *I would support adoption of dtls-handshake-03* — yes: 13, no: 1, no_opinion: 33 (total: 73)
+  * **Poll 3**: *Provided that dtls-hanshake-03 is adopted, TSVWG should "unadopt " chunk-key-management-01* — yes: 16, no: 2, no_opinion: 17 (total: 72)
+* The chairs determined that a design team meeting will be scheduled within 2–3 weeks to discuss objections raised on the mailing list before initiating a formal adoption call.
+
+### SRM for L4S
+* Presentation: [SRM for L4S](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-srm-for-l4s-00)
+* Miroslav Kovac presented Structured Rate Management (SRM) for L4S (`draft-kovac-tsvwg-srm`), designed for high-capacity edge routers (e.g., BNGs) with deep buffers. SRM uses token bucket policers to mark CE bits when L4S traffic exceeds Committed Information Rates (CIR), avoiding the need for per-flow buffer delay measurements or complex DualQ AQM hardware implementations.
+* Stuart Cheshire highlighted that policing via token buckets models a virtual buffer to signal L4S senders without introducing physical packet delay, and offered to assist in refining the text.
+* Christian Huitema, Greg White, and Chris Box spoke in favor of the work, noting it simplifies edge router queuing and provides necessary operational guidance referenced in [draft-ietf-tsvwg-l4sops](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-l4sops/).
+* Gorry Fairhurst, Mirja Kühlewind, and Ana N requested additional comparative performance data under cross-traffic and variable link capacity before proceeding with adoption.
+
+### L4S in Cellular Networks
+* Presentation: [L4S in Cellular Networks](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-l4s-in-cellular-networks-00)
+* Stuart Cheshire shared empirical speed test latency measurements, demonstrating that L4S on cable networks maintains 17 ms uplink latency under 100% saturation, whereas current cellular connections experience over 1 second of downlink queuing delay and 0.5 seconds of uplink queuing delay.
+* Vidhi Goel detailed cellular L4S operation in 5G. While downlink AQM in the gNodeB operates effectively, uplink queuing occurs on the user equipment (UE). Under current 3GPP specifications, the gNodeB infers UE buffer buildup via coarse Buffer Status Reports (BSR) and performs CE marking on behalf of the UE.
+* Vidhi Goel raised the question of whether uplink queuing should be managed directly by UEs using separate L4S QoS bearers/flows. Chris Box and Koen De Schepper noted that because cellular link capacity fluctuates rapidly, the gNodeB scheduler remains best positioned to perform marking based on dynamic grant allocations.
+
+### 443 is Enough
+* Presentation: [443 is enough](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-443-is-enough-00)
+* Brian Trammell presented `draft-trammell-tsvwg-443-is-enough`, proposing an update to RFC 7605 port registration guidance. The document addresses automated AI coding agents and developers requesting dedicated transport ports for web-adjacent, HTTP REST APIs instead of multiplexing over port 443 using ALPN, SNI, and path identifiers.
+* Magnus Westerlund, Lorenzo Colitti, Christian Huitema, Lars Eggert, and Mike Bishop discussed refining the draft to explicitly detail network ossification and aggressive NAT timeout penalties associated with non-443 ports, which provides clear incentives for automated agents to select port 443.
+* Strong support for adoption was expressed. The author will incorporate feedback prior to a formal adoption call.
+
+### TCP and UDP Checksum Calculations for ILNP
+* Presentation: [TCP and UDP checksum calculations for ILNP](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-tcp-and-udp-checksum-calculations-for-ilnp-01)
+* Saleem Bhatti presented `draft-bhatti-tsvwg-ilnp-checksum`, proposing to update Identifier-Locator Network Protocol (ILNP) checksum calculations to cover the full 128-bit IPv6 address field, aligning ILNP wire formats with standard IPv6 stacks.
+* Lars Eggert, Zaheduzzaman Sarker, and Lorenzo Colitti noted that because the underlying ILNP specifications (RFCs 6740–6748) originated from the IRTF and are experimental, the proposed update should proceed via the Independent Submission Stream (ISE) or as an individual document rather than a TSVWG standards-track RFC.
+
+### SNAP Updates
+* Presentation: [SNAP updates](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-snap-updates-00)
+* Philipp Tiesel presented `draft-tiesel-tsvwg-sdp-sctp-snap`, specifying the SCTP Negotiation Acceleration Protocol (SNAP) to accelerate WebRTC data channel establishment by embedding SCTP INIT chunks within SDP signaling.
+* An ongoing Chrome origin trial demonstrated a reduction of up to 6 round-trip times (RTTs) at the 95th percentile during connection handshakes.
+* The working group discussed SDP syntax choices: a Base64-encoded SCTP INIT blob versus key-value TLV attributes in SDP. Niels ten Oever and Jonathan Lennox favored the Base64 approach to minimize redundant parsing.
+
+### HPWAN Survey
+* Presentation: [HPWAN - state-of-art: heads-up before AD-sponsored publication](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-hpwan-state-of-art-heads-up-before-ad-sponsored-publication-00)
+* Daniel King provided an informational update on `draft-king-hpwan-state-of-art`, surveying High-Performance Wide Area Networks (HPWAN) in National Research and Education Networks (NRENs) for HPC and AI workloads.
+* Gorry Fairhurst clarified that the document summarizes a previous BoF and that work is tracked on a dedicated mailing list outside TSVWG.
+
+### UDP Fragmentation
+* Presentation: [UDP Fragmentation](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-udp-fragmentation-01)
+* Marten Seemann presented `draft-seemann-tsvwg-udp-fragmentation`, which documents operating system socket options and APIs for controlling UDP IP Don't Fragment (DF) flags, modeled after the ECN socket guidance in RFC 9715 / RFC 9656.
+* **Poll 4**: *I have familiarized myself with the draft* — yes: 12, no: 27, no_opinion: 2 (total: 80)
+* Michael Tuexen supported adoption and offered FreeBSD implementation code.
+
+### QUIC Transport Parameters
+* Presentation: [QUIC Transport Parameters and protocol designer thoughts](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-quic-transport-parameters-and-protocol-designer-thoughts-00)
+* Lucas Pardue presented an analysis of open-source QUIC implementations regarding their handling of duplicate transport parameters and protocol greasing.
+* The survey revealed six distinct implementation behaviors responding to the RFC 9000 `SHOULD` requirement for duplicate transport parameters, though all converged on detecting duplicates at the parameter ID layer.
+
+### Android TCP Receive-Side L4S
+* Presentation (Not Presented): [Android TCP receive-side L4S](https://datatracker.ietf.org/meeting/127/materials/slides-127-tsvwg-android-tcp-receive-side-l4s-00)
+* Due to session time constraints, this presentation was omitted. Participants were directed to review the published slide deck and follow up with the authors offline.
+
+---
+
+## Decisions and Action Items
+
+* **[draft-ietf-tsvwg-fq-pie](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-fq-pie/)**: WGLC closes today; author to submit version -04 incorporating minor feedback.
+* **[draft-ietf-tsvwg-sctp-dtls-chunk](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-dtls-chunk/)**: Standard WGLC to be issued following the meeting.
+* **SCTP Key Management**: Magnus Westerlund to coordinate a design team meeting within 2–3 weeks to resolve technical feedback on `draft-westerlund-tsvwg-dtls-handshake-03` versus [draft-ietf-tsvwg-dtls-chunk-key-management-01](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-dtls-chunk-key-management-01/). Chairs will initiate a formal adoption/unadoption call on the list afterwards.
+* **`draft-bhatti-tsvwg-ilnp-checksum`**: Author to submit the document to the Independent Submission Stream (ISE) editor rather than pursuing TSVWG adoption.
+
+---
+
+## Next Steps
+
+* Issue WGLC for [draft-ietf-tsvwg-sctp-dtls-chunk](https://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-dtls-chunk/).
+* Initiate Working Group Adoption calls on the mailing list for:
+  * `draft-trammell-tsvwg-443-is-enough` (following revision incorporating NAT/ossification feedback)
+  * `draft-seemann-tsvwg-udp-fragmentation`
+  * `draft-kovac-tsvwg-srm` (pending draft revisions and further performance data)

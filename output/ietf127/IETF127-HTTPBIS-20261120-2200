@@ -1,0 +1,113 @@
+# [HTTPBIS](../wg/httpbis.html)
+
+## Summary
+
+The HTTP Working Group (HTTPBIS) met to review progress on active working group drafts and discuss several new proposals. The working group agreed to issue a second Working Group Last Call (WGLC) for [draft-ietf-httpbis-resumable-upload](https://datatracker.ietf.org/doc/draft-ietf-httpbis-resumable-upload/) and a WGLC for [draft-ietf-httpbis-pre-denied](https://datatracker.ietf.org/doc/draft-ietf-httpbis-pre-denied/). Updates and open issues were addressed for [draft-ietf-httpbis-secondary-server-certs](https://datatracker.ietf.org/doc/draft-ietf-httpbis-secondary-server-certs/). Additional proposals discussed included HTTP signature keys, the `Redirect-By` header, updates to HTTP Status 402 (Payment Required), parallel appends for resumable uploads, authenticating HTTP tunnels with message signatures, and unbound DATA frames for HTTP/3.
+
+---
+
+## Key Discussion Points
+
+### Working Group Drafts
+
+#### Resumable Uploads
+* **Presentation**: [Resumable Uploads](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-resumable-uploads-00) (Marios Kleanthous)
+* Document: draft-ietf-httpbis-resumable-upload
+* Recent revisions resolved several edge cases identified during reviews (including feedback from Julian Reschke and Lucas Pardue). 
+* Integration with digest fields was deferred to potential future drafts.
+* One final PR remains to be merged before publishing a new version. The editors and chairs agreed the draft is ready for a second 2-week Working Group Last Call (WGLC).
+
+#### Layered Cookies
+* Document: draft-ietf-httpbis-layered-cookies
+* Authors were not present to give a live update. RFC 6265bis remains in the RFC Editor queue. The chairs will request an update via the mailing list.
+
+#### Purpose Declined HTTP Status Code
+* Document: draft-ietf-httpbis-pre-denied
+* Presented by Mark Nottingham.
+* Status code `419` was selected and incorporated into the latest draft version following outreach regarding potential collisions with existing CMS frameworks.
+* The draft is ready for Working Group Last Call.
+
+#### Secondary Certificate Authentication of HTTP Servers
+* **Presentation**: [Secondary Certificate Authentication of HTTP servers](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-secondary-certificate-authentication-of-http-servers-00) (Nick Harper)
+* Document: draft-ietf-httpbis-secondary-server-certs
+* **Client-Only Settings Negotiation**: Proposed changing setting negotiation so that only the client needs to send the setting to enable unsolicited server certificate frames.
+* **Certificate Errors**: Discussed handling of validation failures. Failing validation should lead to discarding the certificate rather than mandatory connection termination. Consensus favoured retaining the `SERVER_CERTIFICATE_INVALID` error code as an informative signal for server operators without forcing connection teardown.
+* **Trust Store Rules**: Discussed text requiring clients to use the same trust store settings for secondary certs as the primary TLS handshake. Alessandro Ghedini and Martin Thomson noted clients legitimately use different trust stores per domain. The working group agreed to close the PR without adding the restriction.
+* **Scope**: Reaffirmed that secondary certificates apply strictly to the specific HTTP connection on which they are delivered and do not persist across TLS session resumption.
+* **Naming**: Agreed to retain `SERVER_CERTIFICATE` rather than renaming back to `CERTIFICATE` to maintain explicit scoping.
+
+---
+
+### Individual Proposals & Proposals Under Discussion
+
+#### HTTP Signature Keys
+* **Presentation**: [HTTP Signature Keys](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-http-signature-keys-01) (Dick Hardt)
+* Reviewed the outcome of the call for adoption for generic HTTP signature key headers (previously discussed as draft-ietf-httpbis-unbound-DATA / signature key headers).
+* Discussion (Martin Thomson, Justin Richer, Ted Hardie, Joost de Valk) highlighted that different application domains (e.g., AAuth, WIMSE, WebAuthn) have distinct trust models, verification semantics, and formats. Attempting to define a single general-purpose HTTP signature key header in HTTPBIS is premature and risks losing domain-specific semantics.
+* The group recommended that key discovery and presentation mechanisms be defined within the specific protocol frameworks (e.g., OpenID Foundation AAuth, WIMSE) while seeking HTTPBIS input on HTTP specifics as needed.
+
+#### Redirect-By Response Header Field
+* **Presentation**: [Redirect-By](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-redirect-by-00) (Joost de Valk)
+* Proposed standardizing a `Redirect-By` response header field (based on widespread existing usage of `X-Redirect-By` in software like WordPress and Typo3) to identify the component or plugin generating a HTTP redirect for debugging purposes.
+* Tom Aughton presented Common Crawl telemetry showing varied granularity across current deployments.
+* Mark Nottingham, Mike Bishop, and Ben Schwartz noted that as an advisory/informational header intended solely for debugging, standardizing it will not necessarily force software alignment unless consumers depend on structured parsing.
+* A session poll was taken:
+  * **Poll 1**: *Are you interested in pursuing this work?* — yes: 11, no: 1, no_opinion: 21 (total: 75)
+* Discussion will continue on the mailing list.
+
+#### 402 (Payment Required)
+* **Presentation**: [402 (Payment Required)](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-402-payment-required-00) (Mark Nottingham)
+* Proposed un-reserving status code 402, defining general status code semantics, clarifying that no single payment scheme owns 402, and providing guidance to prevent squatting.
+* Martin Thomson and Tommy Pauly noted the importance of highlighting compatibility hazards when multiple payment schemes might conflict or lack negotiation mechanisms.
+* David Schinazi questioned whether un-reserving the code provides clear actionability for clients. Mark Nottingham clarified the intent is to establish clear guardrails and prevent single-scheme squatting given existing active use.
+* A session poll was taken:
+  * **Poll 2**: *Are you interested in adopting this document (on 402) in this WG?* — yes: 15, no: 3, no_opinion: 18 (total: 75)
+* The chairs will follow up on the mailing list.
+
+#### Parallel Appends for Resumable Uploads
+* **Presentation**: [Parallel Appends for Resumable Uploads](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-parallel-appends-for-resumable-uploads-00) (Yaroslav Rosomakho, Santosh Rajagopalan)
+* Proposed an extension to draft-ietf-httpbis-resumable-upload to allow uploading file chunks in parallel within a bounded reorder window.
+* David Schinazi questioned whether parallel uploads across multiple streams/connections solve actual transport bottlenecks or indicate transport protocol/stack issues. Marios Kleanthous and Martin Thomson raised concerns regarding server-side overhead and coordination complexity.
+* Additional justification, deployment data, and performance analysis are required.
+
+#### Authenticating HTTP Tunnels with HTTP Message Signatures
+* **Presentation**: [Authenticating HTTP Tunnels with HTTP Message Signatures](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-authenticating-http-tunnels-with-http-message-signatures-00) (Yaroslav Rosomakho)
+* Proposed using HTTP Message Signatures (RFC 9421) to authenticate HTTP `CONNECT` requests, specifically addressing workload-to-proxy authentication scenarios in WIMSE.
+* Flemming Andreasen, Jim Tittsler, and Arndt Schöning expressed support for solving workload authentication over explicit proxies. Ben Schwartz and Justin Richer discussed how message signatures fit relative to HTTP authentication headers and WIMSE proofs.
+* The chairs recommended continuing discussion on the mailing list and coordinating with WIMSE working group chairs.
+
+#### Unbound DATA Frames for HTTP/3
+* **Presentation**: [Unbound DATA - if time allows](https://datatracker.ietf.org/meeting/127/materials/slides-127-httpbis-unbound-data-if-time-allows-00) (Yaroslav Rosomakho)
+* Proposed an HTTP/3 setting that enables an "unbound DATA" marker on `CONNECT` streams, eliminating per-frame overhead for the remainder of the stream.
+* Benchmarks demonstrated measurable throughput and CPU efficiency gains, particularly for small chunk sizes and decoupled library architectures.
+* Mike Bishop, Ben Schwartz, and Alessandro Ghedini supported progressing the proposal on the Standards Track rather than Experimental.
+* The chairs plan to issue a call for adoption for Standards Track on the mailing list.
+
+---
+
+## Decisions and Action Items
+
+1. **draft-ietf-httpbis-resumable-upload**:
+   * Issue a 2-week Working Group Last Call (WGLC) once the latest pull request is merged and a new revision is published.
+
+2. **draft-ietf-httpbis-pre-denied**:
+   * Issue a Working Group Last Call (WGLC) for the document using status code `419`.
+
+3. **draft-ietf-httpbis-secondary-server-certs**:
+   * Update text to reflect client-only setting negotiation.
+   * Retain `SERVER_CERTIFICATE_INVALID` error code for informative logging without requiring mandatory connection teardown.
+   * Close the PR regarding trust store restrictions without action.
+   * Retain `SERVER_CERTIFICATE` naming (close issue without action).
+   * Request early IANA code points after publishing the updated draft.
+
+4. **Cookies (`draft-ietf-httpbis-layered-cookies`)**:
+   * Chairs to request a progress update on the mailing list.
+
+---
+
+## Next Steps
+
+* **402 (Payment Required)**: Chairs to follow up on the mailing list regarding adoption, incorporating guidance on negotiation compatibility.
+* **Redirect-By Header**: Chairs to bring the proposal to the mailing list for further feedback following the session poll.
+* **Unbound DATA for HTTP/3**: Chairs to issue a Working Group Call for Adoption on the mailing list for Standards Track.
+* **HTTP Tunnel Authentication**: Authors to coordinate with HTTPBIS and WIMSE working groups.

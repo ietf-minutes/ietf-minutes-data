@@ -1,0 +1,92 @@
+# [UFMRG](../wg/ufmrg.html)
+
+## Summary
+
+The User-Facing Formal Methods Research Group (UFMRG) met at IETF 127. The session focused primarily on formal analysis of DNS and DNSSEC across zone configurations, recursive resolvers, and client implementations (web browsers), followed by a brief presentation on formal security analysis of early attestation protocols in TLS.
+
+## Key Discussion Points
+
+### Session Overview and Chair Introduction
+- **Presenter:** Jonathan Hoyland
+- **Slides:** [Chair Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-ufmrg-chair-slides-00)
+- Jonathan Hoyland opened the session, reminding participants of the IRTF Note Well guidelines and confirming the agenda.
+
+---
+
+### Detecting DNS(SEC) Misconfigurations with Formal Reasoning
+- **Presenter:** Felix Linker (joint work with David at ETH Zurich and YE at HKUST Guangzhou)
+- **Slides:** [Detecting DNS(SEC) Misconfigurations with Formal Reasoning](https://datatracker.ietf.org/meeting/127/materials/slides-127-ufmrg-detecting-dnssec-misconfigurations-with-formal-reasoning-01)
+- **Discussion:**
+  - Felix Linker presented a new formal model using Constrained Logic Programming (CLP) in Prolog to perform change impact analysis on DNS zone updates without needing to explicitly define specific configuration errors in advance.
+  - Unlike previous formal verification tools (e.g., from ETH, UCLA, Microsoft), this approach supports DNSSEC and targets a property called "resolvability change impact analysis" to detect queries that become newly resolvable or lose resolvability after a zone configuration update.
+  - The model compiles zone resource records (RRSIG, DNAME, NS, wildcards) into logic facts/rules and abstract predicates (`resolves/8`), abstracting away lower-level transport and caching mechanisms.
+  - The framework offers two operation modes: an offline change impact analysis mode (with correctness proofs) and an executable online querying mode that queries operational name servers to validate model completeness.
+  - Evaluation against the Ferret dataset and BIND 100k query traces demonstrated high fidelity to real DNS implementations and successfully reproduced real-world outages (e.g., the May 2024 `.de` ZSK misconfiguration).
+  - Limitations include performance bottlenecks with complex DNAME rewrites and incomplete support for signed wildcard NSEC/NSEC3 proof synthesis.
+  - Future practical applications include key rollover regression testing, evaluation of new draft standards (e.g., DELEG records), and lightweight DNSSEC response validation engine prototypes (e.g., collaboration with ISC / BIND).
+
+- **Questions and Comments:**
+  - *Jonathan Hoyland / Chat:* Clarified how positive responses and negative responses (NXDOMAIN) are categorized. Felix explained that positive responses contain non-empty data sets, though tracking signed versus unsigned NXDOMAIN responses is planned.
+  - *Rahel Fainchtein / Chat:* Inquired about NAPTR (Naming Authority Pointer) record support. Felix noted NAPTR is not yet in the model but worth exploring.
+  - *Stephen Farrell / Chat:* Asked how wildcard records are handled without state explosion. Felix explained wildcards are modeled as Prolog lists of domain labels using list unification, tail variables, and CLP constraints for exceptions.
+
+---
+
+### DNSSECVerif Mind the Gap: Cross-RFC Formal Analysis Exposes DNSSEC’s Hidden Vulnerabilities
+- **Presenter:** Shifan Qi
+- **Slides:** [DNSSECVerif Mind the Gap: Cross-RFC Formal Analysis Exposes DNSSEC’s Hidden Vulnerabilities](https://datatracker.ietf.org/meeting/127/materials/slides-127-ufmrg-dnssecverif-mind-the-gap-cross-rfc-formal-analysis-exposes-dnssecs-hidden-vulnerabilities-00)
+- **Discussion:**
+  - Shifan Qi presented formal security analysis targeting cross-RFC interactions in recursive resolver DNSSEC validation logic (covering 41 RFCs and 52 interaction edges).
+  - The study identified structural gaps in previous resolver testing methodologies (fuzzers like ResolveFuzz omit DNSSEC; existing formal tools like DNSMod ignore resolver-side DNSSEC or use outdated RFC models).
+  - Modeling challenges included formalizing complex security contexts: authority scope constraints, Negative Trust Anchor (NTA) transitions, cache status matrices (freshness vs. DNSSEC validation state), and dual domain/hash ordering (NSEC vs. NSEC3).
+  - The analysis unveiled 3 new vulnerability classes and formally verified 3 known attack types across major open-source recursive resolvers (BIND, Unbound, PowerDNS, Knot Resolver):
+    - *Cross-zone cache wildcard contaminant:* Exploits underflowed/unbounded RRSIG `labels` fields to inject attacker-controlled NSEC records into resolver caches for neighboring non-existent domains, resulting in DNSSEC-validated denial-of-existence cache poisoning (assigned 3 high-severity CVEs with CVSS ~7.3–7.8).
+    - *False NXDOMAIN via mixed NSEC/NSEC3 transitions.*
+    - *Cache validation errors during NTA activation/expiration transitions.*
+  - Mitigations were proposed to update RFC 4035 and RFC 8198 to enforce strict RRSIG label underflow rejection, multi-dimensional validation for wildcard synthesis, and strict NSEC/NSEC3 coexistence boundaries. A corresponding Internet-Draft was presented in the DNSOP working group.
+
+- **Questions and Comments:**
+  - *Muhammad Usama Sardar:* Clarified CVSS scores and confirmed that the 3 newly discovered attacks directly led to high-severity vendor CVEs.
+  - *Felix Linker:* Asked whether the cross-RFC analysis methodology was developed up-front or derived post-facto. Shifan explained it stemmed from combining resolver implementation experience with targeted RFC specifications before formalizing the rules.
+  - *Jonathan Hoyland / Chat:* Highlighted Mark Nottingham's open-source IETF LLM analysis project (`https://github.com/mnot/ietf-llm`) for RFC processing.
+
+---
+
+### A Model-Guided Analysis of Client-Side DNS RR Handling
+- **Presenter:** Rahel Fainchtein
+- **Slides:** [A Model-Guided Analysis of Client-Side DNS RR Handling](https://datatracker.ietf.org/meeting/127/materials/slides-127-ufmrg-a-model-guided-analysis-of-client-side-dns-rr-handling-00)
+- **Discussion:**
+  - Rahel Fainchtein presented a formal state-transition framework built in Maude to test client-side (web browser) handling of modern DNS resource records (HTTPS RRs, Encrypted Client Hello [ECH], and Happy Eyeballs v3).
+  - Client-side specifications suffer from vagueness, optional behaviors (`SHOULD`/`MAY`), and under-specified edge cases compared to resolver/authoritative specs.
+  - Using bounded path exploration and test case minimization, the framework generated 5,000+ test cases to evaluate browser engines (Chromium/Chrome/Edge/Brave, Firefox, and WebKit/Safari/iOS).
+  - Divergent behaviors were categorized into direct RFC violations, implementation choices leading to connection failures, and unsupported features:
+    - *Chromium TCP Fallback Termination:* When parallel A, AAAA, and HTTPS queries are issued, Chromium terminates pending DNS-over-TCP fallback queries for truncated HTTPS RRs as soon as A/AAAA responses arrive, ignoring valid HTTPS/ECH parameters.
+    - *Firefox RFC Violation:* Firefox accepted and processed HTTPS RRs containing the `no-default-alpn` flag without specifying mandatory ALPN values, violating RFC requirements to reject self-inconsistent RRs.
+    - *WebKit Uniformity:* WebKit-based browsers exhibit uniform behavior across OS platforms, but dictate behavior for all iOS browser engines.
+  - Ongoing work includes expanding formal models to cross-protocol interactions (DNS, TCP, TLS) and automating RFC rule extractions using AI/LLM agents.
+
+- **Questions and Comments:**
+  - *Felix Linker:* Asked whether client developers or server operators bear responsibility for handling implementation divergences, and whether generated test cases would be publicly released. Rahel answered that client implementations need improvement, though server operators must remain aware of client fallbacks. Test cases will be published as a open test vector repository.
+  - *Jonathan Hoyland:* Asked how ambiguous RFC language (e.g., "may check DNS") is formalized. Rahel noted it requires subjective modeling informed by direct consultation with RFC authors (e.g., RFC 9460 author Ben Schwartz).
+
+---
+
+### EarlyAttestationBleed and EarlyAttestationTschüss
+- **Presenter:** Muhammad Usama Sardar (joint work with Songbo)
+- **Slides:** [EarlyAttestationBleed and EarlyAttestationTschüss](https://datatracker.ietf.org/meeting/127/materials/slides-127-ufmrg-earlyattestationbleed-and-earlyattestationtschuss-00)
+- **Discussion:**
+  - Muhammad Usama Sardar presented a formal symbolic security analysis using ProVerif on early attestation protocols in confidential computing frameworks (e.g., Contrast, MarbleRun, Constellation) and draft specifications based on RFC 9261 (Exported Authenticators for TLS).
+  - Under an endpoint adversary model (where the host operating system outside the TEE is untrusted), early attestation designs binding attestation to Handshake Traffic Secrets fail to guarantee application security.
+  - Formal analysis demonstrated that attestation must be cryptographically bound to the Application Traffic Secret (ATSC).
+  - Found critical-severity vulnerabilities (CVSS 9.1–9.6) leading to multiple CVEs and security advisories.
+  - Impact on implementations and standards:
+    - Multiple open-source implementations (RustLS, Go libraries, Cocos AI, Confidential Computing Consortium attestation SIG) have retired or archived early attestation in favor of post-handshake attestation.
+    - The SATI TLS attestation draft was withdrawn, and related early attestation EAT profiles were updated or archived.
+
+---
+
+## Decisions and Action Items
+
+- **Standards & Vulnerability Reporting:**
+  - Vendors (BIND, Unbound, PowerDNS, Knot Resolver, Chromium, Firefox) received vulnerability reports and CVEs resulting from the formal verification efforts presented in the session.
+  - Proposed RFC updates regarding RRSIG label underflow checks and wildcard synthesis logic were submitted to the DNSOP working group.

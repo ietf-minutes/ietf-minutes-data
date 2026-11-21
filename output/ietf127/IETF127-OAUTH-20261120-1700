@@ -1,0 +1,82 @@
+# [OAUTH](../wg/oauth.html)
+
+## Summary
+
+The OAUTH Working Group met at IETF 127. The session focused on human-in-the-loop transaction authorizations, client instance identification, DPoP requirements in Authorization Server metadata, audience-bound client authorization, bounded work and intent tokens for agentic workflows, authority metadata, and agent authorization use cases.
+
+## Key Discussion Points
+
+### Chairs' Opening and Agenda
+* **Chairs**: Mike Jones, Rifaat Shekh-Yusef
+* **Note Takers**: Yaron Sheffer, Aaron Parecki
+* **Slides**: [Chairs Slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-oauth-chairs-slides-01)
+
+### Transaction Authorization Challenge
+* **Presenter**: Yaroslav Rosomakho
+* **Overview**: Presented a framework to handle transaction authorization challenges requiring human confirmation, especially for high-risk operations initiated by automated or agentic clients (e.g., database deletion or financial transfers). The protected resource returns a signed transaction authorization challenge to the client/agent, which is then submitted to the Authorization Server (AS). The AS validates the challenge with the approving party and issues an access token bound to a transaction identifier (`TXAN`) mirroring RAR claims. The specification builds on deferred token responses (`draft-ietf-oauth-deferred-token-response`).
+* **Discussion**:
+  * Justin Richer, Nick Watson, and Aaron Parecki noted that distinguishing between "agents" and "clients" in protocol diagrams introduces unnecessary confusion; in OAuth terms, the software requesting resource access acts as the client regardless of internal agentic behavior.
+  * Jonathan Rosenberg highlighted similarities to parallel work, emphasizing natural language rationales for human approvals and granular transaction scopes.
+  * Jeff Lombardo and Nick Watson discussed client capabilities and reaching resource owners.
+
+### Client Instance Identification
+* **Presenter**: Carl Wallace
+* **Overview**: Addressed four key challenges in managing client instances: attribute/action attribution, runtime containment/revocation, key rotation vs. new instance identification, and binding policies to instances rather than software classes. Carl presented a revised proposal modeling instances as attested instances (building on `draft-ietf-oauth-attestation-based-client-auth`) rather than defining new actor assertions.
+* **Discussion**:
+  * Hannes Tschofenig recommended aligning terminology (such as attester, verifier, and endorser) with standard remote attestation architecture work.
+  * Arndt Schwenkschuster highlighted platform integration considerations and compared the approach to workload identity models in `draft-ietf-oauth-spiffe-client-auth`.
+  * Justin Richer supported tackling client instance identification, stressing the need to separate instance presentation from instance identity creation.
+  * Yaron Sheffer, Atul Tulshibagwale, and Aaron Parecki expressed support for formalizing client instance identification.
+
+### DPoP Required in Authorization Server Metadata
+* **Presenter**: Emelia Smith
+* **Overview**: Proposed adding `dpop_bound_access_tokens_required` (boolean) to Authorization Server Metadata. This enables ASs to explicitly signal domain-wide DPoP requirements during discovery, avoiding an initial failed request, particularly in greenfield ecosystems such as AT Protocol and MCP servers.
+* **Discussion**:
+  * Aaron Parecki, Justin Richer, and Jeff Lombardo supported the draft as a straightforward fix for an existing gap.
+  * Brian Campbell clarified that DPoP requirements were originally designed as Resource Server (RS) signals rather than AS signals, questioning the necessity of AS metadata signaling.
+  * Pieter Kasselman and Max Gerber discussed control boundaries between AS and RS and the benefits for greenfield architectures.
+
+### Audience-Bound Client Authorization
+* **Presenter**: Yaron Sheffer
+* **Overview**: Addressed token exchange and introspection scenarios where downstream authorization servers must verify that a Resource Server (RS1) presenting a token is the legitimate audience and holder, preventing unauthorized token misuse by downstream entities (RS3). Proposed establishing client-to-audience relationships via local policy, cryptographic matching (`private_key_jwt` matching RS JWKS), or explicit client lists in Protected Resource Metadata.
+* **Discussion**:
+  * Carl Wallace suggested treating resource servers as first-class identities/issuers or using identity assertion grant patterns.
+  * Arndt Schwenkschuster and Aaron Parecki questioned how the proposal differs from cross-domain identity chaining or continuation assertion patterns.
+
+### Bounded Work
+* **Presenters**: Dapeng Liu, Carl Wallace
+* **Overview**: Framed requirements for executing agentic tasks ("bounded work"), introducing concepts for bounded work proposals, durable governing authorizations, and approved evidence to bound multi-step agent actions.
+* **Discussion**:
+  * Jeff Lombardo raised questions regarding lifecycle ownership of missions between agents and authorization servers.
+  * Justin Richer and Carl Wallace suggested holding an interim meeting dedicated to problem framing and requirements rather than evaluating specific draft proposals immediately.
+
+### OAuth Authority Metadata
+* **Presenter**: Yaron Sheffer
+* **Overview**: Proposed standardizing authority vocabularies (scope and RAR types) as contracts between ASs and RSs. Introduced access requirement profiles (e.g., token max lifetime, DPoP/sender constraining, ACR values) and attenuation relationships in protected resource metadata to guide AS policy evaluation during token minting.
+* **Discussion**:
+  * Carl Wallace, Jeff Lombardo, Arndt Schwenkschuster, and Justin Richer cautioned against over-complicating client-side processing or overloading Protected Resource Metadata documents, advocating for lightweight references or RS-to-AS hinting.
+  * Yaron Sheffer clarified that authority metadata is targeted at AS policy decisions rather than client consumption.
+
+### Agent Authorization Use Cases & Gap Analysis
+* **Presenter**: Meiling Chen
+* **Overview**: Presented 14 agent authorization use cases (`draft-chen-oauth-agent-usecases-gap-analysis`) across consumer, enterprise, and security operations domains. Identified three core technical gaps: authentication context gap (delayed/multi-step consent), delegation chain gap (lacking cross-domain cryptographic chains), and mass revocation gap.
+* **Discussion**:
+  * Atul Tulshibagwale asked whether OpenID Authzen or Shared Signals specs were evaluated.
+  * Justin Richer and Yaron Sheffer noted that while standalone use case RFCs often become stale quickly, maintaining an active repository/draft is valuable for structuring WG problem definitions.
+
+### Intent Token
+* **Presenter**: Meiling Chen
+* **Overview**: Proposed an `Intent Token` (a signed JWT) representing delegated user intent (unstructured natural language or structured JSON). The token is captured during semantic authorization and evaluated by the AS during resource authorization to issue short-lived, tightly scoped access tokens matching the original user intent.
+* **Discussion**:
+  * Yaron Sheffer strongly cautioned against having the AS directly process unstructured natural language input due to prompt injection risks, though retaining unstructured intent data for auditing is useful.
+  * Carl Wallace and Kartik discussed defining a minimal viable intent representation and establishing core AS extension mechanisms to track long-running contexts.
+
+## Decisions and Action Items
+
+* **Call for Adoption**: The chairs will issue a call for working group adoption on the mailing list for the DPoP Required in Authorization Server Metadata proposal (`dpop_bound_access_tokens_required`).
+
+## Next Steps
+
+* **Virtual Interims**: The WG chairs agreed to schedule virtual interim sessions prior to IETF 128 (Kuala Lumpur) to focus on:
+  1. Client Instance Identification (`draft-ietf-oauth-attestation-based-client-auth` extensions and deployment models).
+  2. Agentic OAuth problem framing (bounded work, mission lifecycle, and intent tracking).

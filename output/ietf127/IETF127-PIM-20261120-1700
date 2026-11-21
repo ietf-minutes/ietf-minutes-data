@@ -1,0 +1,136 @@
+# [PIM](../wg/pim.html)
+
+## Summary
+
+The Protocols for IP Multicast (PIM) Working Group met to discuss working group status, active internet-drafts, and new protocol proposals. Key topics included native IPv4 multicast in IPv6 core networks, deterministic ECMP hashing, combining LISP PIM Join attributes into Standards Track, lessons learned from multicast deployments, IGMP/MLD proxy query message optimizations for snooping switches, PIM Flooding Mechanism (PFM) prejoin extensions, PIM-Bidir multiplane data center design considerations, and a live demonstration of the Group Assignment Protocol (GAP) over LISP.
+
+---
+
+## Key Discussion Points
+
+### Working Group Status
+* **Presentation:** [Agenda/status](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-agendastatus-00)
+* **Presenters:** Stig Venaas, Mike McBride
+* **Discussion:**
+  * `draft-ietf-pim-rfc1112bis` completed Working Group Last Call (WGLC) and is virtually ready for publication.
+  * Recent RFC publications include RFC 9798 and RFC 9797. The zeroconf assignment work (GAP) cleared IESG discusses and is moving to the RFC Editor queue alongside PFM forwarding enhancements.
+  * Active drafts not discussed during this session include `draft-ietf-pim-igmp-mld-snooping-yang-l2vpn-ext`, `draft-ietf-pim-evpn-multicast-yang`, `draft-ietf-pim-multipath-igmpmldproxy`, `draft-ietf-pim-multicast-over-srv6`, and `draft-ietf-pim-flex-algo`.
+
+### Native IPv4 Multicast in IPv6 Core
+* **Presentation:** [PIM IPv4 in IPv6 core](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-pim-ipv4-in-ipv6-core-00)
+* **Presenter:** Stig Venaas
+* **Draft Reference:** `draft-ietf-pim-ipv4-in-ipv6-core`
+* **Discussion:**
+  * Stig Venaas reviewed the recently adopted draft, which enables forwarding native IPv4 multicast traffic over an IPv6 core network without assigning IPv4 addresses to core router interfaces (analogous to RFC 5549 for unicast).
+  * IPv4 PIM control messages use IPv6 headers and IPv6 link-local source addresses. To avoid conflict with native IPv6 PIM, a dedicated "All PIM Routers" IPv6 multicast address is proposed.
+  * Primary neighbor comparisons, DR elections, Join/Prune targets, and Assert winner selection use IPv6 link-local addresses, while (S,G) group and source addresses remain IPv4.
+  * Rendezvous Point (RP) interactions are currently kept out of scope under the assumption that RPs reside outside the core or are reachable via standard unicast mechanism.
+  * **Feedback:**
+    * Toerless Eckert suggested explicitly scoping the draft to transit core routers, as first-hop and last-hop routers interact directly with RPs and hosts.
+    * Ram Kumar asked why operators do not run dual-stack or MVPN. Stig Venaas and Toerless Eckert explained that operators deploying 5549 unicast prefer eliminating IPv4 address management on core interfaces entirely.
+    * Mike McBride suggested adding explicit text detailing operator deployment motivations and explaining why alternatives like MVPN may not fit specific native core requirements.
+
+### Deterministic Upstream Neighbor Selection for PIM Joins
+* **Presentation:** [Deterministic hashing](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-deterministic-hashing-01)
+* **Presenter:** Stig Venaas
+* **Draft Reference:** `draft-ietf-pim-deterministic-ecmp`
+* **Discussion:**
+  * Addresses ECMP hashing inconsistencies in leaf-spine topologies where independent hashing choices at different leaves result in duplicate multicast traffic across multiple spine switches.
+  * The draft proposes replacing next-hop IP addresses in the hash with a 32-bit Router ID advertised in PIM Hello messages, ensuring all leaves hash over the same set of IDs.
+  * For multi-tier fabrics, a 32-bit "Color" attribute is introduced (PIM Hello Option 43). Leaves hash first on Color and then on Router ID within the selected color.
+  * Two hash algorithms were evaluated: Jenkins one-at-a-time (deployed by Arista) and RP Hash from RFC 7761 (implemented by Cisco). Testing indicates RP Hash is faster and exhibits uniform distribution, while Jenkins has operational history.
+  * **Feedback:**
+    * Hooman Bidgoli noted hashing occurs at signaling time, making execution speed less critical except during reconvergence, and asked about compatibility with Multicast Only Fast Reroute (MOFR). He suggested supporting both algorithms via configuration knobs or Hello negotiation.
+    * The working group discussed handling spines that do not advertise a Color; the current proposal ignores non-color spines if at least one spine advertises a Color.
+    * Mike McBride and Stig Venaas recommended changing the document status from Informational to Standards Track (Proposed Standard) given protocol option additions and vendor implementations.
+
+### PIM Join Attributes for LISP Environments
+* **Presentation:** [draft-ietf-pim-rfc8059-9798bis-02](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-draft-ietf-pim-rfc8059-9798bis-02-00)
+* **Presenter:** Prasad Miriyala
+* **Draft Reference:** `draft-ietf-pim-rfc8059-9798bis`
+* **Discussion:**
+  * Consolidates experimental RFC 8059 and RFC 9798 into a single Standards Track document.
+  * Enables downstream LISP egress sites to signal preferred transport modes (IPv4/IPv6 address families, unicast or multicast underlays) to upstream ingress sites via PIM Join attributes.
+  * Existing IANA-allocated code points are retained.
+  * The document serves as a normative reference for `draft-ietf-lisp-rfc6831bis`. A companion deployment experience draft is progressing in the LISP WG.
+  * Prasad Miriyala requested Working Group Last Call (WGLC). Stig Venaas requested checking for any open errata on RFC 8059 or RFC 9798 to incorporate prior to WGLC.
+
+### Multicast Lessons Learned
+* **Presentation:** [Multicast Lessons Learned](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-multicast-lessons-learned-01)
+* **Presenter:** Mike McBride
+* **Draft Reference:** `draft-ietf-pim-multicast-lessons-learned`
+* **Discussion:**
+  * Recent revisions added a Multicast OAM section (covering `mrinfo`, `mtrace`, `traceroute`, and operational tooling requirements), PGM details to the reliable multicast section, socket API loopback OS variations (Linux vs. BSD), LISP in the mobility section, and overarching conclusions.
+  * Core takeaways emphasized: source discovery is not a network function; SSM is dramatically simpler than ASM; all-or-nothing hop-by-hop upgrade requirements impede deployment; and operational tooling and OS APIs are critical for success.
+  * **Feedback:**
+    * Nate Carstens requested updating the dynamic multicast group address allocation section to reflect current draft statuses.
+    * Dino Farinacci suggested documenting historical lessons from SRM (Scalable Reliable Multicast), NORM, and 29 West messaging middleware.
+    * Toerless Eckert and Lenny Giuliano suggested framing BIER as an architecture directly derived from lessons learned in MPLS multicast (stateless multicast matching segment routing paradigms).
+    * Stig Venaas suggested referencing Multicast Beacons in the OAM discussion.
+    * Jeffrey Zhang requested ensuring scaling considerations are clearly articulated across all sections.
+
+### Proxy Query Messages for Multicast Snooping
+* **Presentation:** [Proxy Query Messages](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-proxy-query-messages-00)
+* **Presenter:** Nate Carstens
+* **Discussion:**
+  * Addresses bandwidth inefficiencies described in RFC 4541 when layer 2 switches forward IGMP/MLD membership reports and data traffic across inter-switch links to non-router ports.
+  * The authors are splitting the work into a dedicated Standards Track draft to standardize Proxy Query Messages for IGMPv3 and MLDv2.
+  * RFC 4541 recommended using a null IPv6 source address (`::`) for MLD proxy queries, which conflicts with MLDv1/MLDv2 standards requiring valid link-local IPv6 source addresses (`fe80::/10`).
+  * Proposal:
+    * For IGMP: continue using IPv4 source address `0.0.0.0` (excluded from querier election).
+    * For MLD: assign a new `P` (Proxy) flag in the IGMP/MLD Query Flags Registry. When `P=1`, receiving switches process the message as a query without including it in querier election, sent with a valid link-local IPv6 source address.
+  * **Feedback:**
+    * Toerless Eckert supported standardizing proxy query behavior on the Standards Track to resolve widespread historical interoperability issues in layer 2 snooping implementations.
+
+### PIM Flooding Mechanism Prejoin Sub-TLV
+* **Presentation:** [PIM Flooding Mechanism](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-pim-flooding-mechanism-00)
+* **Presenter:** Ananya Goswami
+* **Discussion:**
+  * Proposes a prejoined sub-TLV for PIM Flooding Mechanism (PFM) messages to lower join latency in leaf-spine networks.
+  * The First Hop Router (FHR) pre-selects a spine router and advertises its Router ID in the prejoined sub-TLV inside PFM (S,G) source discovery messages.
+  * Upon receiving the PFM message, the designated spine pre-establishes (S,G) state and sends a PIM join toward the FHR before receiver joins arrive. Last Hop Routers (LHRs) use this hint to direct receiver joins to the pre-established spine.
+  * **Feedback:**
+    * Jeffrey Zhang asked how this compares to RP or Bidir PIM models. Stig Venaas clarified that PFM operates in RP-less/SSM environments; pre-joining builds forwarding state along a specific spine prior to receiver interest.
+    * Ram Kumar, Rishabh Parekh, and Hooman Bidgoli inquired about leaf ECMP decisions, multi-tier spine scaling, and state trade-offs. Ananya Goswami and Stig Venaas noted this is aimed at data center environments to trade modest state overhead on selected spines for reduced join latency.
+
+### PIM-Bidir Multiplane Considerations
+* **Presentation:** [PIM-Bidir-multiplane](https://datatracker.ietf.org/meeting/127/materials/slides-127-pim-pim-bidir-multiplane-00)
+* **Presenter:** Jeffrey Zhang
+* **Discussion:**
+  * Evaluated PIM-Bidir and ASM RP placements in multiplane leaf-spine data center topologies.
+  * In multiplane architectures, super-spines are divided into isolated planes without cross-plane east-west links. Valley-free routing protocols (e.g., BGP per RFC 7938 or RIFT) prevent packets from traversing up-down-up across planes.
+  * Under link failures between a leaf and a spine, a leaf switch can lose reachability to a super-spine RP even if physical paths exist via alternative planes, because valley-free routing constraints suppress non-valley-free paths.
+  * **Conclusion:** RPs should be placed on Leaf switches rather than Super-Spine switches in multiplane networks, as leaf-to-leaf reachability is guaranteed over available physical paths. In multi-tenant EVPN environments, placing RPs on leaf nodes may require ASIC loopback capabilities for decapsulation.
+  * **Feedback:**
+    * Jeff Tantsura confirmed that BGP data center designs (RFC 7938) explicitly prevent non-valley-free routing. He agreed that placing RPs on leaf switches is the correct design pattern and suggested focusing further work on multi-tenancy requirements.
+    * Toerless Eckert asked via chat about management port reachability under failure in valley-free topologies; Jeff Tantsura noted out-of-band management is standard practice.
+
+### GAP Protocol and LISP Live Demonstration
+* **Presenter:** Dino Farinacci
+* **Discussion:**
+  * Dino Farinacci conducted a live demonstration of the Group Assignment Protocol (GAP) integrated with LISP natively on an iOS mobile device ("GAP Chat").
+  * GAP Chat hashed the group string "Dino" to an IPv4 multicast destination (`224.25.1.57`).
+  * The iOS client joined the group over a global LISP overlay connecting group members in London, Frankfurt, Milan, and the local iPhone without underlying PIM support in the core network.
+  * Demonstrated dynamic multi-homing across Wi-Fi and 5G cellular interfaces using NAT traversal via LISP Re-encapsulation Tunnel Routers (RTRs), performing real-time load-splitting and path selection based on RTT threshold comparisons.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-pim-deterministic-ecmp`**:
+   * **Decision:** Change document track from Informational to Standards Track (Proposed Standard). Authors to update draft header and text accordingly.
+2. **`draft-ietf-pim-rfc8059-9798bis`**:
+   * **Action Item:** Prasad Miriyala to check for any outstanding errata on RFC 8059 and RFC 9798 and incorporate fixes into the draft.
+   * **Action Item:** Chairs to review `draft-ietf-pim-rfc8059-9798bis` for Working Group Last Call readiness.
+3. **`draft-ietf-pim-multicast-lessons-learned`**:
+   * **Action Item:** Authors to incorporate feedback regarding dynamic group address allocation status, BIER transport history, additional OAM tools (Multicast Beacons), scaling considerations, and reliable multicast history (SRM, NORM, 29 West).
+4. **`draft-ietf-pim-ipv4-in-ipv6-core`**:
+   * **Action Item:** Stig Venaas to add text clarifying the scope to core transit routers and documenting operator deployment motivations over alternative architectures.
+
+---
+
+## Next Steps
+
+* Progress `draft-ietf-pim-rfc1112bis` to the IESG for publication.
+* Issue Working Group Last Call for `draft-ietf-pim-rfc8059-9798bis` following errata review.
+* Continue development on `draft-ietf-pim-ipv4-in-ipv6-core`, `draft-ietf-pim-deterministic-ecmp`, `draft-ietf-pim-multicast-lessons-learned`, Proxy Query Messages, and PFM Prejoin extensions on the PIM working group mailing list.

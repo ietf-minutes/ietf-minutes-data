@@ -1,0 +1,92 @@
+# [SML](../wg/sml.html)
+
+## Summary
+
+The Structured Email (SML) Working Group met at IETF 117. The session covered proposals for handling large email attachments, origin-bound one-time passcodes (OTP) in email, structured action requests, structured vacation notices (`draft-ietf-sml-structured-vacation-notices`), structured quoted content (`draft-ietf-sml-structured-quoted-content`), and updates to the core Structured Email specification (`draft-ietf-sml-structured-email`). A working group poll was conducted regarding the adoption of the OTP-tokens-in-email draft.
+
+## Key Discussion Points
+
+### Administrative and Agenda Bashing
+- **Chairs:** Alexey Melnikov and Arnt Gulbrandsen (remote).
+- **Slides:** [Chairs' slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-sml-chairs-slides-02)
+- **Notetakers:** John Levine and Arnt Gulbrandsen.
+- The Note Well, Code of Conduct, and administrative policies were presented. The agenda was accepted.
+
+### The Big Attachment Problem
+- **Presenter:** Bron Gondwana
+- **Slides:** [The Big Attachment Problem](https://datatracker.ietf.org/meeting/127/materials/slides-127-sml-the-big-attachment-problem-00)
+- **Discussion:**
+  - Bron Gondwana presented a mechanism for attaching files larger than standard SMTP limits by adding a `Content-External` header to an HTML body part (which provides a fallback preview/link for legacy clients). The header defines the download URL, optional encryption keys, and mandatory content digests for verification.
+  - The model relies on receiving mail servers fetching external content upon arrival ("fetch-on-arrival"), scanning it, and storing it locally with reference counting to match the message lifecycle.
+  - John Levine and Daniel Kahn Gillmor expressed concerns that fetch-on-arrival could create denial-of-service (DoS) vectors or complicate message handling. Bron Gondwana clarified that the server provides presentation-layer access to the downloaded file without modifying the signed/original MIME message body.
+  - Lisa Dusseault noted that mandatory unauthenticated URLs present compliance issues for enterprise and data portability policies that mandate authenticated endpoints.
+  - Pete Resnick (via chat) suggested exploring existing RFC 2557 `Content-Location` mechanisms or `Content-Disposition: inline`.
+  - Neil Jenkins and Philip Tao recommended separating the core MIME payload format specification from JMAP/IMAP server synchronization extensions. Ken Murchison supported keeping the core format work within the SML working group.
+
+### Origin-Bound One-Time Codes in Email
+- **Presenter:** Tess O'Connor
+- **Discussion:**
+  - Tess O'Connor presented a proposal (`draft-wells-origin-bound-one-time-codes`) to standardize a mail header carrying origin-bound one-time passcodes (OTP). The mechanism aims to improve auto-fill reliability and mitigate phishing risks by adopting the same underlying data model as proposed SMS OTP micro-syntaxes.
+  - Neil Jenkins supported the effort and suggested considering client clipboard binding mechanics.
+  - Andy Newton and Arnt Gulbrandsen discussed the scope regarding SMS syntax, suggesting that SML keep SMS details in an informative appendix so the normative focus remains on email headers.
+  - **Poll:** Should we take the draft on OTP-tokens-in-email as a working group item?
+    - **Results:** yes: 17, no: 0, no_opinion: 1 (total: 26)
+
+### Structured Action Requests
+- **Presenter:** Alex Backer
+- **Slides:** [Structured action requests](https://datatracker.ietf.org/meeting/127/materials/slides-127-sml-structured-action-requests-04)
+- **Discussion:**
+  - Alex Backer introduced `draft-backer-sml-action-requests`, which builds on `draft-ietf-sml-structured-email` to track actionable requests (owner, due date, priority 1–9, and status states such as requested, acknowledged, in progress, delegated, completed, declined, canceled) directly within email threads.
+  - The draft introduces an `Action-ID` header and increments version numbers on replies to allow MUAs to reconstruct state without requiring a centralized task server. Status changes are restricted to authorized senders, leveraging `draft-ietf-sml-trust`.
+  - Hans-Jörg Happel observed that the document combines a general structured reply mechanism with a specific task-management profile, suggesting these two aspects be decoupled.
+  - Neil Jenkins questioned why a new model is required given existing standards like iTIP/iMIP (RFC 5546 / RFC 6047) and VTODO. Alex Backer noted that embedding action objects directly within email threads avoids requiring calendar server integration and provides task-specific attributes like priority, delegation, and follow-up policies.
+
+### Structured Vacation Notices
+- **Presenter:** Hans-Jörg Happel
+- **Slides:** [Structured Vacation Notices](https://datatracker.ietf.org/meeting/127/materials/slides-127-sml-structured-vacation-notices-01)
+- **Document:** `draft-ietf-sml-structured-vacation-notices`
+- **Discussion:**
+  - The document is mature and awaiting progression of the core draft (`draft-ietf-sml-structured-email`). It defines structured data for temporary absence, permanent absence (departed employees), no-reply notices, and address changes, alongside support for pre-vacation notices and recurring/part-time availability.
+  - Philip Tao suggested adding explicit syntactic definitions and schema boilerplate prior to the examples section. Hans-Jörg Happel agreed to add the boilerplate and registry details.
+  - Implementations and deployment interest were reported for Thunderbird, Roundcube Webmail, and server-side processing engine implementations.
+
+### Structured Quoted Content
+- **Presenter:** Philip Tao
+- **Slides:** [Structured Quoted Content](https://datatracker.ietf.org/meeting/127/materials/slides-127-sml-structured-quoted-content-00)
+- **Document:** `draft-ietf-sml-structured-quoted-content`
+- **Discussion:**
+  - Updates include detailed JSON-LD object definitions, 1:1 mapping between quoted headers and HTML elements, `data-source-hints` for locating MIME parts, and guidance for backwards compatibility (legacy quotes should not be retroactively structured).
+  - Participants discussed whether user signatures and legal footers should be handled in this document or in the core draft (`draft-ietf-sml-structured-email`). Neil Jenkins and Daniel Kahn Gillmor emphasized the utility of explicit signature and footer markup for client UI de-emphasis and search indexing.
+  - Strong consensus was reached among Philip Tao, Neil Jenkins, and Daniel Kahn Gillmor to embed structured quoted content annotations directly within the HTML body part rather than using a separate MIME part.
+
+### Structured Email (Core Draft)
+- **Presenter:** Hans-Jörg Happel
+- **Slides:** [Structured Email (Core draft)](https://datatracker.ietf.org/meeting/127/materials/slides-127-sml-structured-email-core-draft-01)
+- **Document:** `draft-ietf-sml-structured-email`
+- **Discussion:**
+  - Compatibility testing across major providers (Office 365, Gmail, Postfix) demonstrated that SML MIME structures and inline HTML data attributes are preserved without modification during transit.
+  - Terminology is being updated to normatively define Fully Machine Readable Messages (FMRM) and Partially Machine Readable Messages (PMRM).
+  - The author proposed replacing the IMAP flag specification in Section 6 with a sender-specified header signaling MRM status. Alexey Melnikov noted IMAP flags might still be useful as server-side optimizations for encrypted emails where headers cannot be inspected before decryption.
+  - Data placement consensus:
+    - Full representation messages MUST use `multipart/alternative`.
+    - Partial representation SHOULD use `multipart/related`, but JSON-LD embedded within HTML `<script type="application/ld+json">` elements is permitted (specifically supporting structured quoted content).
+  - To address variations in JSON-LD structure (`@graph` vs. nested objects), the draft will recommend using `schema.org/mainEntity` inside `EmailMessage` to explicitly identify the primary subject entity.
+
+## Decisions and Action Items
+
+- **OTP Tokens in Email:** 
+  - Following the positive working group poll (17-0-1), Tess O'Connor will update and revive `draft-wells-origin-bound-one-time-codes`.
+  - Chairs will review charter applicability and initiate a formal WG adoption call on the mailing list.
+
+- **`draft-ietf-sml-structured-email`:**
+  - Update draft to normatively define Fully Machine Readable Messages (FMRM) and Partially Machine Readable Messages (PMRM).
+  - Mandate `multipart/alternative` for full representations; explicitly permit embedded JSON-LD in HTML for partial representations/quoted content.
+  - Incorporate `schema.org/mainEntity` guidance for primary entity identification in JSON-LD graphs.
+  - Submit formal registry proposal text to IANA for review.
+
+- **`draft-ietf-sml-structured-quoted-content`:**
+  - Transition the specification to embed structured annotations directly inside the HTML body part.
+  - Add guidance and examples for marking up user signatures and legal footers in coordination with the core draft.
+
+- **`draft-ietf-sml-structured-vacation-notices`:**
+  - Add formal IANA registry boilerplate and explicit schema syntax sections prior to the examples section.

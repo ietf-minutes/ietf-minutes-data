@@ -1,0 +1,126 @@
+# [DTN](../wg/dtn.html)
+
+## Summary
+
+The DTN Working Group met at IETF 127 for its second session of the week. The agenda covered updates on active working group drafts, individual contributions, field demonstration results, and proposals for working group adoption. Key topics included:
+
+- Updates on the Manifest Extension Block and BP Safe pairwise key exchange protocol.
+- Protocol refinements and implementation status of [draft-ietf-dtn-btpu](https://datatracker.ietf.org/doc/draft-ietf-dtn-btpu/) and [draft-ietf-dtn-btpu-fec](https://datatracker.ietf.org/doc/draft-ietf-dtn-btpu-fec/).
+- High-throughput (2 Gbps) field demonstration results of BTPU over a free-space optical link by Eleria using the Hardy Bundle Protocol Agent (BPA) and [draft-ietf-dtn-bibe](https://datatracker.ietf.org/doc/draft-ietf-dtn-bibe/).
+- Multicast endpoint addressing via the IMC URI scheme (`imc:`).
+- Mapping HTTP request/response payloads over Bundle Protocol for REST services and web distribution.
+- The SPAM framework for BPsec integrity protection against arbitrary packet dropping.
+- CCSDS Custody Transfer, Compressed Bundle Status Reporting, and Bundle Sequence Identification specifications.
+- Design options for adding bundle aggregation to [draft-ietf-dtn-bibe](https://datatracker.ietf.org/doc/draft-ietf-dtn-bibe/).
+- Reverse DNS lookups for IPN endpoints using the `ipn.arpa` domain.
+
+---
+
+## Key Discussion Points
+
+### Manifest Extension Block & BP Safe
+*Presenter: Brian Sipos*
+
+- **Manifest Extension Block**:
+  - Serves as a general-purpose container for deriving and recording metadata about other blocks in a bundle along its lifetime.
+  - Primary use cases: recording audit logs of security actions, performing two-step security verification shortcuts (verifying cryptographic hashes of blocks in the manifest), and preserving extension blocks as bearer tokens across transit networks.
+  - The author requested feedback on operational considerations, concrete examples, and coupling manifest processing with security workflows.
+- **BP Safe (Pairwise Key Exchange)**:
+  - Covers autonomous peer-to-peer key negotiation without preconfiguration, utilizing the LAKE protocol (RFC 9528 / EDHOC) over BP datagram transport.
+  - Establishes Primary Security Associations (peer authentication) and Secondary Security Associations (fed directly into BPsec data plane policies).
+  - Draft updated to version -02 (editorial updates; core PDU and messaging structures are stable).
+  - Benjamin Dowling noted complementary effort on integrating MLS with BPsec. Brian Sipos clarified that BP Safe is intentionally scoped to pairwise security associations.
+
+### Bundle Transfer Protocol - Unidirectional (BTPU) Implementation & Protocol Updates
+*Presenter: Eric*
+
+- Relates to [draft-ietf-dtn-btpu](https://datatracker.ietf.org/doc/draft-ietf-dtn-btpu/) and [draft-ietf-dtn-btpu-fec](https://datatracker.ietf.org/doc/draft-ietf-dtn-btpu-fec/).
+- Status update on a `no-std` Rust implementation within the Hardy BPA codebase.
+- Key updates introduced in draft -05:
+  - **Explicit Session Management**: Introduced explicit `start_session` and `session_end` mechanisms (conveying `session_id`, initial transfer number, and window size) to handle unidirectional links where link-layer up/down status cannot be signaled.
+  - **Resource and Window Management**: Defined rules for window bounds, serial number comparisons (RFC 1982 style), handling tombstone states for completed/canceled transfers, and mitigating slow-loris conditions.
+  - **Framing Rules**: Required complete bundles to be sent in a single BTPU message when not using transfer messages to avoid queue jumping and resource exhaustion.
+- Brian Sipos noted a Python reference implementation (draft -03) is available for interop testing.
+
+### Operational Demonstration: High-Rate Free-Space Optical BTPU Deployment
+*Presenter: Gabe Nell*
+
+- Eleria demonstrated high-rate DTN communications using TypeBeam free-space optical laser terminals (100 Gbps laser links over distances up to 65 km between Mount Diablo, Mount Hamilton, Livermore HQ, and an airborne plane).
+- Operating stack: Hardy BPA using [draft-ietf-dtn-btpu](https://datatracker.ietf.org/doc/draft-ietf-dtn-btpu/) convergence layer, a file service layer encapsulating payload files into 20 MB bundles using [draft-ietf-dtn-bibe](https://datatracker.ietf.org/doc/draft-ietf-dtn-bibe/), and a custom `dtn sync` utility sending rotated telemetry logs (~100 GB/hour/node).
+- Achieved ~2 Gbps sustained received throughput, with performance bound by storage disk write speeds rather than network or protocol overhead.
+- Discussion covered log rotation mechanics, MTU sizing (9216 bytes Ethernet framing), and potential future interop testing with CCSDS File Delivery Protocol (CFDP) Class 1.
+
+### IMC URI Scheme
+*Presenter: Rick Taylor*
+
+- Proposal derived from CCSDS multicast efforts to define a multicast addressing scheme without defining forwarding or routing mechanisms (`imc:allocator.group.service`).
+- Mirrors IPN structure but defines non-singleton multicast endpoints.
+- `imc:0.0` defined as the null multicast endpoint (empty set). Service `0` is reserved for administrative endpoints to listen for group control and management messages.
+- Allocator 0 is IANA-managed with carved-out ranges for standard allocations and private use.
+- Discussion centered on text representation: Brian Sipos and Eric advocated requiring full three-element format (`allocator.group.service`) rather than allowing elision of the `0.` allocator prefix. Jörg Ott inquired about dynamic group ranges.
+
+### HTTP over Bundle Protocol
+*Presenter: Rick Taylor*
+
+- Proposed mapping HTTP request/response messages over BP using Binary HTTP (RFC 9292) encapsulated in CBOR.
+- Intended for high-delay/disrupted fat links to support REST APIs, web distribution, CDN caching, and HLS/Dash streaming without modifying application stacks.
+- Proxy gateways map HTTP message lifetimes to BP bundle lifetimes; TLS terminates at the gateway while BPsec (COSE certificates) provides end-to-end payload security.
+- Wes Hardaker highlighted operational distinctions between CoAP over BP (for constrained environments) and HTTP over BP (for high-bandwidth high-latency environments).
+- Area Director Jen Linkova and Warren Kumari confirmed that chartering boundaries will not block the work, and cross-group feedback from the HTTP WG will be sought.
+
+### SPAM: Secure Protection Against Arbitrary Packet Dropping
+*Presenter: Benjamin Dowling*
+
+- Addresses a vulnerability in BPsec where destination nodes cannot distinguish between an honest intermediate node stripping a security block (BIB/BCB) versus a malicious node dropping security blocks.
+- Draft -05 updates:
+  - Adopted the Manifest Extension Block structure instead of defining custom block types.
+  - Refined key identifiers and key separation properties.
+  - Defined Audit Blocks (created by bundle source) and Report Blocks (created by intermediate nodes when removing security blocks), both marked as critical blocks.
+- Rick Taylor and Ed Birrane raised questions regarding alignment of key identifiers with COSE security context maps and implementation overhead.
+
+### CCSDS Custody Transfer & Compressed Bundle Status Reporting
+*Presenter: Felix Flentge*
+
+- Based on the CCSDS Custody Transfer and Compressed Bundle Status Reporting Orange Book (published June 2024, deployed for LunaNet and tested on NASA's Capstone mission).
+- Proposed splitting the work into three distinct IETF specifications:
+  1. **Bundle Sequence Identification**: Sequence numbers qualified by block source EID and sequence ID, utilizing sequence ranges/collections to compactly represent gaps.
+  2. **Custody Transfer**: Transfers retention and retransmission responsibility via Compressed Custody Transfer Extension Blocks (CTAB) and Compressed Custody Signals.
+  3. **Compressed Bundle Status Reporting**: Uses Compressed Reporting Extension Blocks (CREB) and Compressed Reporting Signals to report bundle events (reception, forwarding, delivery, deletion, custody accept/reject).
+- Rick Taylor questioned whether custody transfer could operate independently of sequence numbers; Felix explained sequence numbers are necessary to avoid timestamp inefficiency.
+
+### Bundle-in-Bundle Encapsulation (BIBE) Aggregation
+*Presenter: Rick Taylor*
+
+- Discussion on adding bundle aggregation (packing multiple bundles into a single outer encapsulating bundle) to [draft-ietf-dtn-bibe](https://datatracker.ietf.org/doc/draft-ietf-dtn-bibe/).
+- Goal is to minimize BPsec cryptographic overhead (especially post-quantum algorithms) across high-volume small bundles.
+- Outer bundle age/lifetime is bounded by the maximum age of the encapsulated inner bundles.
+- Two CBOR encoding design choices presented:
+  - *Option A*: Explicit type-code header in CBOR (enables an IANA registry for future encapsulation payload types).
+  - *Option B*: Implicit format detection preserving current BIBE draft structure.
+- Rick Taylor favoured Option A for future extensibility. Simon (CCSDS) welcomed the alignment between CCSDS and IETF DTN work.
+
+### Reverse DNS Lookups for IPN Endpoints (`ipn.arpa`)
+*Presenter: Eric*
+
+- Proposed establishing `ipn.arpa` to allow mapping IPN destination EIDs (`allocator.node`) to DNS records for dynamically discovering Convergence Layer Adapter (CLA) endpoints (e.g., `_dtnbundle._tcp` SRV/TXT records per RFC 6535 / RFC 2782).
+- Designed as an optional terrestrial/gateway lookup mechanism, using `DNAME` records to delegate allocator domains to respective organizations.
+- Warren Kumari and Wes Hardaker commented on delegation scaling and advised coordinating with IANA (Ken Davies) regarding `arpa` zone management.
+
+---
+
+## Decisions and Action Items
+
+- **[draft-ietf-dtn-btpu](https://datatracker.ietf.org/doc/draft-ietf-dtn-btpu/)**: Eric and Brian Sipos to execute interoperability testing between the Rust Hardy implementation and the Python reference implementation.
+- **[draft-ietf-dtn-bibe](https://datatracker.ietf.org/doc/draft-ietf-dtn-bibe/)**: Rick Taylor to summarize the BIBE aggregation encoding options (Option A vs. Option B) on the mailing list to determine working group consensus on incorporating aggregation into the draft.
+- **IMC URI Scheme**: Rick Taylor to issue an explicit request for working group adoption for `draft-taylor-dtn-imc` and revise the draft to mandate the full three-element format (`allocator.group.service`).
+
+---
+
+## Next Steps
+
+- **Working Group Adoption Requests**:
+  - `draft-taylor-dtn-imc` (IMC URI scheme)
+  - `draft-dowling-dtn-spam` (SPAM framework for BPsec)
+  - CCSDS Custody Transfer, Compressed Status Reporting, and Bundle Sequence Identification drafts (starting adoption review with Bundle Sequence Identification).
+- **HTTP over BP**: Rick Taylor to collect further community feedback and coordinate cross-working-group review with the HTTP Working Group.
+- **`ipn.arpa`**: Eric to consult with IANA and the DNS community on zone administration and scaling for IPN reverse lookups.
