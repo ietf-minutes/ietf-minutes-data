@@ -1,0 +1,166 @@
+# [LAKE](../wg/lake.html)
+
+## Summary
+
+The Lightweight Authenticated Key Exchange (LAKE) Working Group met at IETF 127. The session covered working group document status updates, reports from an informal side meeting on extension compatibility, progress on post-quantum key exchange and authentication drafts, formal verification results, and several individual proposals. Key decisions included submitting `draft-ietf-lake-edhoc-psk` to the IESG for publication, forming a design team to address message extension compatibility, and keeping post-quantum hybridization work separate from `draft-ietf-lake-pqsuites` to avoid delaying core cipher suite publication.
+
+---
+
+## Key Discussion Points
+
+### Administration & Side Meeting Report
+* **Chairs:** Mališa Vučinić, Francesc-Xavier Aguiló
+* **Slides:** [00-Chairs' slides](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-00-chairs-slides-01)
+* **Document Status:**
+  * `draft-ietf-lake-private-use-ranges` was recently adopted by the working group.
+  * `draft-ietf-lake-edhoc-psk` completed shepherd review and is ready for submission to the IESG.
+  * `draft-ietf-lake-authz` completed Working Group Last Call (WGLC).
+* **Side Meeting Summary (Nov 18, 2026):**
+  * Discussed extension compatibility issues across RFC 9528 message flows and new authentication methods (e.g., assumptions in EAD extensions about responder authentication in Message 2).
+  * Decided to form a design team to analyze security properties required by extensions rather than relying on fixed message sequence numbers.
+  * Discussed post-quantum transition for Methods 1 and 3: a liaison/request was sent to CFRG (2026-09-13) requesting standardization of a lightweight Non-Interactive Key Exchange (NIKE). Once available, LAKE can register corresponding cipher suites. In the interim, KEM-based authentication methods (`draft-ietf-lake-authkem-edhoc`) provide post-quantum capability.
+
+---
+
+### Lightweight Authorization using LAKE (`draft-ietf-lake-authz`)
+* **Presenter:** Giovanni Selva
+* **Slides:** [01-Lightweight Authorization using LAKE](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-lightweight-authorization-using-edhoc-03)
+* **Discussion:**
+  * Version -08 addressed comments from WGLC (reviews by Christian Amsüss, Marco Tiloca, Michael Richardson, Gabriel Lopez-Millan, Yunle Wei, and Renzo Navas).
+  * Updated voucher response format to a map with wildcard extension points.
+  * Updated normative reference to Constrained Resource Identifiers (CRI) (`draft-ietf-core-href`).
+  * Renamed `ID_CRED_I` to `ID_CRED_U` in reverse flows for clarity.
+  * Fixed error content formatting to use CBOR arrays to prevent sequence parsing ambiguities.
+  * Discussion on open PR #87 regarding optional voucher handling and whether the `EAD_3` option criticality flag affects execution when vouchers are omitted.
+  * Proposal to rename protocol acronym to LLA ("LAKE Lightweight Authorization").
+
+---
+
+### LAKE with Pre-Shared Key (PSK) Authentication (`draft-ietf-lake-edhoc-psk`)
+* **Presenter:** Elsa Perez
+* **Slides:** [02-LAKE with Pre-Shared Key (PSK) Authentication](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-02-lake-with-pre-shared-key-psk-authentication-00)
+* **Discussion:**
+  * Versions -10 and -11 addressed shepherd review comments from Marco Tiloca.
+  * Clarified Message 3 candidate tuple processing, `ID_CRED_PSK` compact encoding examples, and terminology updates (changing "EDHOC" to "LAKE").
+  * Successfully integrated PSK functionality into the Lakers open-source implementation.
+  * Version -11 added an informational note regarding identity hints in `EAD_2` to assist initiator key selection.
+  * The draft is ready for publication request to the IESG.
+
+---
+
+### Remote Attestation over LAKE (`draft-ietf-lake-ra`)
+* **Presenter:** Yushun Li
+* **Slides:** [03-Remote Attestation over LAKE](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-03-remote-attestation-over-lake-01)
+* **Discussion:**
+  * Restructured Section 5 to consolidate EAD items for Background Check and Passport models under two EAD labels.
+  * Updated privacy considerations: personally identifiable information (PII) carried in evidence must be protected against active/passive attackers, meaning evidence must not be sent before Message 3 (for Methods 0–3) or Message 4 (for PSK).
+  * Planned future integration with additional post-handshake messages ($Message_n$) to allow more flexible evidence transmission.
+  * Usama Mansoor asked about active attackers acting as initiators; Mališa Vučinić and Yushun Li clarified that evidence is only disclosed after mutual authentication is established.
+
+---
+
+### KEM-based Authentication for EDHOC (`draft-ietf-lake-authkem-edhoc`)
+* **Presenter:** Lydia de la Torre
+* **Slides:** [04-draft-ietf-lake-authkem-edhoc-01](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-04-draft-ietf-lake-authkem-edhoc-01-01)
+* **Discussion:**
+  * Draft -01 removed duplicate cipher suite registrations, delegating algorithm definitions to `draft-ietf-lake-pqsuites`.
+  * Key schedule updated to use `TH5` and `KEY5` for protecting Message 5. Proposed KDF labels 13 and 14 for harmonization.
+  * Preserved AEAD protection in Message 3 to prevent identity disclosure attacks via unauthenticated payload manipulation.
+  * Authors favor requiring the same KEM algorithm for both key exchange and authentication to minimize memory footprint in constrained devices.
+  * Discussed whether Message 5 (MAC3) could be optional or replaced by protected application data if key confirmation is implicitly guaranteed; formal verification will evaluate this option.
+
+---
+
+### Quantum-Resistant Cipher Suites for LAKE (`draft-ietf-lake-pqsuites`) & Hybridization
+* **Presenter:** Clement Papon
+* **Slides:** [05-draft-ietf-lake-pqsuites](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-05-draft-ietf-lake-pqsuites-00)
+* **Discussion:**
+  * Defines PQ cipher suites combining ML-KEM (ephemeral key exchange) and ML-DSA (signatures) for Method 0 and PSK.
+  * Uses SHAKE256 for LAKE hash and SHA-256 for application hash.
+  * Restructured security considerations to address store-now-decrypt-later attacks and side-channel protections. Renamed IANA registry prefixes from `EDHOC` to `LAKE`.
+  * **Hybridization Discussion:** Discussed whether to support hybrid post-quantum/classical schemes. John Preuß Mattsson, Francesc-Xavier Aguiló, and Clement Papon agreed that hybrid algorithms should be defined at the algorithm level (via CFRG/COSE) in a separate document to prevent delaying `draft-ietf-lake-pqsuites`.
+
+---
+
+### Additional Private Use Ranges in IANA Registries (`draft-ietf-lake-private-use-ranges`)
+* **Presenter:** Marco Tiloca
+* **Slides:** [06-draft-ietf-lake-private-use-ranges](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-06-draft-ietf-lake-private-use-ranges-00)
+* **Discussion:**
+  * Defines private use ranges in three LAKE IANA registries (Methods, Error Codes, and External Authorization Data).
+  * Discussed document status: author prefers Informational status (does not formally update RFC 9528), while discussing whether Standards Track is required.
+  * Addressed review feedback from Christian Amsüss and Rickard regarding privacy warnings (random selection of private range values to prevent device fingerprinting) and CBOR integer range representations. Carsten Bormann noted that CBOR encoding boundaries do not strictly dictate registry policy boundaries.
+
+---
+
+### EDHOC-AKA (`draft-chen-lake-edhoc-aka`)
+* **Presenter:** Meiling Chen
+* **Slides:** [07-EDHOC-AKA](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-07-edhoc-aka-00)
+* **Discussion:**
+  * Proposes combining 3GPP AKA with EDHOC-PSK by generating a dynamic session key $K_{AKA}$ via 3GPP AKA and carrying AKA challenge/response parameters inside EAD fields without modifying the EDHOC state machine.
+  * Adds forward secrecy to AKA sessions for cellular/satellite IoT deployments.
+  * **Poll:** "Have you read the draft?"
+    * **Results:** yes: 6, no: 16, no_opinion: 0 (total: 59).
+  * Göran Selander supported the technical core concept (adding forward secrecy to 3GPP AKA) and promised a detailed review. Chairs requested broader review on the mailing list before considering adoption.
+
+---
+
+### Additional Messages for LAKE (`draft-selander-lake-additional-messages`)
+* **Presenter:** Göran Selander
+* **Slides:** [08-Additional messages for LAKE](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-08-additional-messages-for-lake-00)
+* **Discussion:**
+  * Defines a generic mechanism for post-handshake protected messages ($Message_n$ for $n > M$) using exporter keys.
+  * Useful for EAP success indications, extended authorization, or post-handshake attestation exchanges.
+  * Uses Message 4 protection structure as a template with lockstep sequential processing.
+  * The proposal aligns with the scope of the newly formed extension compatibility design team.
+
+---
+
+### Formal Verification of KEM-based Authentication for LAKE
+* **Presenter:** Vaishnavi Sundararajan
+* **Slides:** [09-Formal verification of KEM-based authentication for LAKE](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-09-formal-verification-of-kem-based-authentication-for-edhoc-02)
+* **Discussion:**
+  * Formally analyzed KEM-based authentication (`draft-ietf-lake-authkem-edhoc-01`) using ProVerif in the Dolev-Yao model with store-now-decrypt-later extensions.
+  * Confirmed mutual authentication, injective agreement on key material/identifiers, perfect forward secrecy (even under ephemeral or long-term key compromise), and identity anonymity for initiator and responder.
+  * Verified that protocol design inherently prevents re-encapsulation attacks.
+  * Future work includes modeling trustworthiness checks, porting to Tamarind/SAPIK+, and testing the impact of omitting Message 5 MAC3.
+
+---
+
+### AFS-KEX Protocol with Lattice/Isogeny Instantiations
+* **Presenter:** Junlei Lin
+* **Slides:** [10-AFS-KEX Protocol with Concrete Lattice/Isogeny Instantiations Based on ML-KEM and MIKE](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-11-afs-kex-protocol-with-concrete-latticeisogeny-instantiations-based-on-ml-kem-and-mike-00)
+* **Discussion:**
+  * Presented AFS-KEX (ML-KEM based) and AFS-MIKE (Isogeny based) post-quantum key exchange protocols.
+  * AFS-KEX offers 3- or 4-round execution, identity hiding in the CRS model, and resilience to exposure of 3 out of 4 secret keys.
+  * AFS-MIKE achieves signature-free 3-round authenticated key exchange with identity hiding.
+  * Lydia de la Torre noted that size comparison with KEM-based EDHOC must consider credential reference optimizations already supported in LAKE. Scott Fluhrer noted the high computational complexity of isogeny operations.
+
+---
+
+### Remote Attestation Security Analysis (`draft-ietf-lake-ra`)
+* **Presenter:** Usama Mansoor
+* **Slides:** [11-Vulnerabilities in lake-ra-06](https://datatracker.ietf.org/meeting/127/materials/slides-127-lake-10-vulnerabilities-in-lake-ra-06-00)
+* **Discussion:**
+  * Usama Mansoor presented claims that `draft-ietf-lake-ra-06` evidence binding lacks correlation with application traffic keys (Level 3 binding), drawing analogies from earlier TLS attestation draft analysis.
+  * Yushun Li, Nathaniel Ritz, Ionuț Mihalcea, and chairs noted that formal analysis presented at the May 2026 interim verified strong session binding, and that absence of Level 3 binding in symbolic models does not translate to an actionable protocol attack.
+  * Usama Mansoor requested access to open-source implementation code to demonstrate vulnerabilities.
+  * Mališa Vučinić and Francesc-Xavier Aguiló clarified that the IETF standardizes protocol specifications rather than maintaining specific research implementations, and encouraged open publication of formal models and code.
+  * Scott Fluhrer (AD) noted that this topic has been extensively debated across multiple meetings without consensus on the vulnerability claims, and recommended concluding this debate in working group sessions and taking technical/peer-reviewed arguments to academic forums or offline channels.
+
+---
+
+## Decisions and Action Items
+
+1. **`draft-ietf-lake-edhoc-psk`:** Approved to be submitted to the IESG for publication following final shepherd write-up by Marco Tiloca.
+2. **Design Team Formation:** Form a Design Team to address extension compatibility across LAKE message flows and authentication methods (participants interested in joining should contact the chairs).
+3. **Hybrid Post-Quantum Strategy:** Keep hybrid post-quantum cipher suite work in a separate document dependent on CFRG/COSE algorithm definitions to avoid delaying `draft-ietf-lake-pqsuites`.
+4. **`draft-chen-lake-edhoc-aka`:** Participants requested to review the draft and discuss on the mailing list before any adoption call.
+
+---
+
+## Next Steps
+
+* Chairs to submit publication request for `draft-ietf-lake-edhoc-psk`.
+* Authors of `draft-ietf-lake-authz` to publish version -09 incorporating PR #87 resolutions and title/acronym updates.
+* Prepare `draft-ietf-lake-pqsuites` for Working Group Last Call pending final mailing list check.
+* Design team to kick off discussions on extension compatibility and message flow properties.
